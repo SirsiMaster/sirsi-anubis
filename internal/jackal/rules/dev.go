@@ -78,9 +78,9 @@ func NewRustTargetRule() jackal.ScanRule {
 			"~/projects",
 			"~/src",
 		},
-		maxDepth:    3,
-		minAgeDays:  7,
-		matchFile:   "Cargo.toml", // Only if parent has Cargo.toml
+		maxDepth:   3,
+		minAgeDays: 7,
+		matchFile:  "Cargo.toml", // Only if parent has Cargo.toml
 	}
 }
 
@@ -130,14 +130,14 @@ type findRule struct {
 	searchPaths []string // Root directories to search
 	maxDepth    int      // Maximum search depth
 	minAgeDays  int
-	matchFile   string   // Optional: parent must contain this file
+	matchFile   string // Optional: parent must contain this file
 }
 
-func (r *findRule) Name() string             { return r.name }
+func (r *findRule) Name() string              { return r.name }
 func (r *findRule) DisplayName() string       { return r.displayName }
 func (r *findRule) Category() jackal.Category { return r.category }
 func (r *findRule) Description() string       { return r.description }
-func (r *findRule) Platforms() []string        { return r.platforms }
+func (r *findRule) Platforms() []string       { return r.platforms }
 
 func (r *findRule) Scan(ctx context.Context, opts jackal.ScanOptions) ([]jackal.Finding, error) {
 	var findings []jackal.Finding

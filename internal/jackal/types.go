@@ -17,13 +17,13 @@ import (
 type Category string
 
 const (
-	CategoryGeneral       Category = "general"
+	CategoryGeneral        Category = "general"
 	CategoryVirtualization Category = "vms"
-	CategoryDev           Category = "dev"
-	CategoryAI            Category = "ai"
-	CategoryIDEs          Category = "ides"
-	CategoryCloud         Category = "cloud"
-	CategoryStorage       Category = "storage"
+	CategoryDev            Category = "dev"
+	CategoryAI             Category = "ai"
+	CategoryIDEs           Category = "ides"
+	CategoryCloud          Category = "cloud"
+	CategoryStorage        Category = "storage"
 )
 
 // Severity indicates how safe it is to delete the finding.

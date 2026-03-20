@@ -68,23 +68,23 @@ type Residual struct {
 type ResidualType string
 
 const (
-	ResidualPreferences    ResidualType = "Preferences"
-	ResidualAppSupport     ResidualType = "Application Support"
-	ResidualCaches         ResidualType = "Caches"
-	ResidualContainers     ResidualType = "Containers"
+	ResidualPreferences     ResidualType = "Preferences"
+	ResidualAppSupport      ResidualType = "Application Support"
+	ResidualCaches          ResidualType = "Caches"
+	ResidualContainers      ResidualType = "Containers"
 	ResidualGroupContainers ResidualType = "Group Containers"
-	ResidualSavedState     ResidualType = "Saved State"
-	ResidualHTTPStorages   ResidualType = "HTTP Storages"
-	ResidualWebKit         ResidualType = "WebKit Data"
-	ResidualCookies        ResidualType = "Cookies"
-	ResidualAppScripts     ResidualType = "Application Scripts"
-	ResidualLogs           ResidualType = "Logs"
-	ResidualLaunchAgent    ResidualType = "Launch Agent"
-	ResidualLaunchDaemon   ResidualType = "Launch Daemon"
-	ResidualReceipts       ResidualType = "Package Receipts"
-	ResidualLoginItems     ResidualType = "Login Items"
-	ResidualCrashReports   ResidualType = "Crash Reports"
-	ResidualGhostApp       ResidualType = "Ghost App (Spotlight)"
+	ResidualSavedState      ResidualType = "Saved State"
+	ResidualHTTPStorages    ResidualType = "HTTP Storages"
+	ResidualWebKit          ResidualType = "WebKit Data"
+	ResidualCookies         ResidualType = "Cookies"
+	ResidualAppScripts      ResidualType = "Application Scripts"
+	ResidualLogs            ResidualType = "Logs"
+	ResidualLaunchAgent     ResidualType = "Launch Agent"
+	ResidualLaunchDaemon    ResidualType = "Launch Daemon"
+	ResidualReceipts        ResidualType = "Package Receipts"
+	ResidualLoginItems      ResidualType = "Login Items"
+	ResidualCrashReports    ResidualType = "Crash Reports"
+	ResidualGhostApp        ResidualType = "Ghost App (Spotlight)"
 )
 
 // residualLocation defines where to search for a specific type of residual.
@@ -121,10 +121,10 @@ var systemResidualLocations = []residualLocation{
 
 // Scanner is the Ka ghost detection engine.
 type Scanner struct {
-	homeDir         string
-	installedApps   map[string]bool   // Bundle IDs of currently installed apps
-	installedNames  map[string]bool   // Names of currently installed apps (lowercase)
-	knownBundleIDs  map[string]string // Bundle ID → app name mapping
+	homeDir        string
+	installedApps  map[string]bool   // Bundle IDs of currently installed apps
+	installedNames map[string]bool   // Names of currently installed apps (lowercase)
+	knownBundleIDs map[string]string // Bundle ID → app name mapping
 }
 
 // NewScanner creates a new Ka scanner.
@@ -332,9 +332,9 @@ func (s *Scanner) mergeOrphans(orphans map[string][]Residual, lsGhosts map[strin
 	seen := make(map[string]bool)
 	for bundleID, residuals := range orphans {
 		ghost := Ghost{
-			AppName:         guessAppName(bundleID),
-			BundleID:        bundleID,
-			Residuals:       residuals,
+			AppName:          guessAppName(bundleID),
+			BundleID:         bundleID,
+			Residuals:        residuals,
 			InLaunchServices: lsGhosts[bundleID],
 			DetectionMethod:  "filesystem",
 		}

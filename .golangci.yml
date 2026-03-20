@@ -1,0 +1,53 @@
+# .golangci.yml — Sirsi Anubis linter configuration
+# Rule A6: golangci-lint must pass with zero errors on every push/PR.
+
+run:
+  timeout: 5m
+  go: "1.22"
+
+linters:
+  enable:
+    - errcheck      # Check for unchecked errors
+    - gosimple      # Simplification suggestions
+    - govet         # Go vet checks
+    - ineffassign   # Detect ineffectual assignments
+    - staticcheck   # Static analysis
+    - unused        # Check for unused code
+    - gofmt         # Enforce gofmt formatting (Rule A6)
+    - goimports     # Enforce import ordering
+    - misspell      # Catch common misspellings
+    - bodyclose     # Check for unclosed HTTP response bodies
+    - exportloopref # Check for loop variable capture
+
+linters-settings:
+  errcheck:
+    # Don't require checking errors from fmt.Fprint* (terminal output)
+    exclude-functions:
+      - fmt.Fprintln
+      - fmt.Fprintf
+      - (os.File).Close
+
+  govet:
+    enable-all: true
+    disable:
+      - fieldalignment # Not critical for CLI tool
+
+  misspell:
+    locale: US
+
+issues:
+  # Don't limit the number of issues reported
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+  exclude-rules:
+    # Allow unused parameters in interface implementations
+    - linters:
+        - unused
+      text: "parameter .* always receives"
+
+    # Exclude test files from some linters
+    - path: _test\.go
+      linters:
+        - errcheck
+        - bodyclose

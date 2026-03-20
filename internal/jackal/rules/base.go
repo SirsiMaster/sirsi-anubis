@@ -22,11 +22,11 @@ type baseScanRule struct {
 	minAgeDays  int      // Minimum age in days (0 = no minimum)
 }
 
-func (r *baseScanRule) Name() string        { return r.name }
-func (r *baseScanRule) DisplayName() string  { return r.displayName }
+func (r *baseScanRule) Name() string              { return r.name }
+func (r *baseScanRule) DisplayName() string       { return r.displayName }
 func (r *baseScanRule) Category() jackal.Category { return r.category }
-func (r *baseScanRule) Description() string  { return r.description }
-func (r *baseScanRule) Platforms() []string   { return r.platforms }
+func (r *baseScanRule) Description() string       { return r.description }
+func (r *baseScanRule) Platforms() []string       { return r.platforms }
 
 func (r *baseScanRule) Scan(ctx context.Context, opts jackal.ScanOptions) ([]jackal.Finding, error) {
 	var findings []jackal.Finding
