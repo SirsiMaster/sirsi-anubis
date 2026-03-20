@@ -17,7 +17,7 @@ linters:
     - goimports     # Enforce import ordering
     - misspell      # Catch common misspellings
     - bodyclose     # Check for unclosed HTTP response bodies
-    - exportloopref # Check for loop variable capture
+    - copyloopvar   # Check for loop variable capture (Go 1.22+)
 
 linters-settings:
   errcheck:

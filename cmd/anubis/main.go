@@ -37,7 +37,7 @@ containers, VMs, networks, and storage backends.
   anubis scales         Enforce policies (The Judgment)`,
 	Run: func(cmd *cobra.Command, args []string) {
 		output.Banner()
-		cmd.Help()
+		_ = cmd.Help()
 	},
 }
 
