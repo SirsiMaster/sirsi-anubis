@@ -3,36 +3,66 @@ package main
 import (
 	"fmt"
 	"os"
+
+	"github.com/spf13/cobra"
+
+	"github.com/SirsiMaster/sirsi-anubis/internal/output"
 )
 
-// Version is set by goreleaser at build time.
+// version is set by goreleaser at build time via -ldflags.
 var version = "dev"
 
-func main() {
-	if len(os.Args) > 1 && os.Args[1] == "version" {
+// Global flags
+var (
+	jsonOutput bool
+	quietMode  bool
+)
+
+// rootCmd is the base command for anubis.
+var rootCmd = &cobra.Command{
+	Use:   "anubis",
+	Short: "𓂀 Sirsi Anubis — The Guardian of Infrastructure Hygiene",
+	Long: `𓂀 Sirsi Anubis — The Guardian of Infrastructure Hygiene
+"Weigh. Judge. Purge."
+
+Scan, judge, and purge infrastructure waste across workstations,
+containers, VMs, networks, and storage backends.
+
+  anubis weigh          Scan your workstation (The Weighing)
+  anubis judge          Clean artifacts (The Judgment)
+  anubis guard          Manage RAM pressure (The Guardian)
+  anubis sight          Fix ghost apps in Spotlight (The Sight)
+  anubis hapi           Optimize VRAM & storage (The Flow)
+  anubis scarab         Fleet sweep across networks (The Transformer)
+  anubis scales         Enforce policies (The Judgment)`,
+	Run: func(cmd *cobra.Command, args []string) {
+		output.Banner()
+		cmd.Help()
+	},
+}
+
+// versionCmd prints the version.
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Show Anubis version",
+	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("𓂀 Sirsi Anubis %s\n", version)
 		fmt.Println("  The Guardian of Infrastructure Hygiene")
 		fmt.Println("  \"Weigh. Judge. Purge.\"")
-		os.Exit(0)
-	}
+	},
+}
 
-	fmt.Println("𓂀 Sirsi Anubis — The Guardian of Infrastructure Hygiene")
-	fmt.Println()
-	fmt.Println("Usage:")
-	fmt.Println("  anubis weigh          Scan your workstation (The Weighing)")
-	fmt.Println("  anubis judge          Clean artifacts (The Judgment)")
-	fmt.Println("  anubis guard          Manage RAM pressure (The Guardian)")
-	fmt.Println("  anubis sight          Fix ghost apps in Spotlight (The Sight)")
-	fmt.Println("  anubis hapi           Optimize VRAM & storage (The Flow)")
-	fmt.Println("  anubis scarab         Fleet sweep across networks (The Transformer)")
-	fmt.Println("  anubis scales         Enforce policies (The Judgment)")
-	fmt.Println("  anubis profile        Manage developer profiles")
-	fmt.Println("  anubis version        Show version")
-	fmt.Println()
-	fmt.Println("Flags:")
-	fmt.Println("  --dry-run             Preview without making changes")
-	fmt.Println("  --json                Output in JSON format")
-	fmt.Println("  --confirm             Skip confirmation prompts")
-	fmt.Println()
-	fmt.Println("\"Weigh. Judge. Purge.\"")
+func init() {
+	rootCmd.PersistentFlags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
+	rootCmd.PersistentFlags().BoolVar(&quietMode, "quiet", false, "Suppress all output except errors and summary")
+
+	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(weighCmd)
+	rootCmd.AddCommand(judgeCmd)
+}
+
+func main() {
+	if err := rootCmd.Execute(); err != nil {
+		os.Exit(1)
+	}
 }
