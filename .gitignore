@@ -1,6 +1,6 @@
-# Binaries
-anubis
-anubis-agent
+# Binaries (root-level only — don't match cmd/ subdirs)
+/anubis
+/anubis-agent
 *.exe
 *.dll
 *.so
