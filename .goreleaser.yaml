@@ -1,0 +1,124 @@
+# goreleaser config — Sirsi Anubis v0.2.0-alpha
+# Docs: https://goreleaser.com
+version: 2
+
+project_name: sirsi-anubis
+
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+
+builds:
+  - id: anubis
+    main: ./cmd/anubis/
+    binary: anubis
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.ShortCommit}}
+      - -X main.date={{.Date}}
+
+  - id: anubis-agent
+    main: ./cmd/anubis-agent/
+    binary: anubis-agent
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+
+archives:
+  - id: default
+    builds:
+      - anubis
+      - anubis-agent
+    format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- .Arch }}
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - LICENSE
+      - README.md
+      - CHANGELOG.md
+      - configs/default_rules.yaml
+      - configs/example_policy.yaml
+      - configs/workspace_template.yaml
+
+brews:
+  - name: sirsi-anubis
+    repository:
+      owner: SirsiMaster
+      name: homebrew-tools
+    directory: Formula
+    homepage: https://github.com/SirsiMaster/sirsi-anubis
+    description: "𓂀 Infrastructure hygiene for the AI era"
+    license: MIT
+    install: |
+      bin.install "anubis"
+      bin.install "anubis-agent"
+    test: |
+      system "#{bin}/anubis", "version"
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^ci:"
+      - "^chore:"
+
+release:
+  github:
+    owner: SirsiMaster
+    name: sirsi-anubis
+  name_template: "v{{.Version}}"
+  prerelease: auto
+  draft: false
+  header: |
+    ## 𓂀 Sirsi Anubis {{.Version}}
+
+    Infrastructure hygiene for the AI era.
+
+    ### Highlights
+    - 17 CLI commands, 64 scan rules, 15 internal modules
+    - Neural brain downloader + classifier interface
+    - MCP server for AI IDE integration (Claude, Cursor, Windsurf)
+    - Scales policy engine for fleet enforcement
+    - Hardened agent for remote deployment
+
+    ### Install
+    ```bash
+    brew tap SirsiMaster/tools && brew install sirsi-anubis
+    # or
+    go install github.com/SirsiMaster/sirsi-anubis/cmd/anubis@{{.Tag}}
+    ```
+  footer: |
+    ---
+    *𓂀 The jackal sees everything. Nothing escapes the Weighing.*
