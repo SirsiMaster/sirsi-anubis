@@ -61,6 +61,7 @@ func init() {
 	rootCmd.AddCommand(judgeCmd)
 	rootCmd.AddCommand(kaCmd)
 	rootCmd.AddCommand(guardCmd)
+	rootCmd.AddCommand(sightCmd)
 }
 
 func main() {
