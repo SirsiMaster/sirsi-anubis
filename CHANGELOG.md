@@ -12,6 +12,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 
 ---
 
+## [0.2.0-alpha] — 2026-03-25 (Ship Week Day 5)
+### Added (Day 5: Neural Brain Downloader)
+- **Brain module** (`internal/brain/`) — on-demand neural model management
+- **`anubis install-brain`** — download CoreML/ONNX model to `~/.anubis/weights/`
+  - Progress bar with bytes/total/percentage display
+  - SHA-256 checksum verification post-download
+  - Platform-aware model selection (prefers CoreML on Apple Silicon)
+- **`anubis install-brain --update`** — check for and install latest model version
+- **`anubis install-brain --remove`** — self-delete all weights and manifest
+- **`anubis uninstall-brain`** — alias for `--remove`
+- **Manifest-driven versioning** — remote `brain-manifest.json` + local `manifest.json`
+- **Classifier interface** — pluggable backends (Stub, future ONNX, CoreML)
+- **StubClassifier** — heuristic file classification (30+ file types, 9 categories)
+  - Path-based detection: `node_modules/`, `__pycache__/`, `.cache/`
+  - Extension-based: source, config, media, archives, data, ML models
+  - Concurrent batch classification via goroutines
+- **22 brain tests** — downloader + inference (manifest roundtrip, hash, batch, 35+ classification cases)
+- **`--json` support** on all brain commands
+- **Pro upsell footer** — tier messaging on brain commands
+
+### Refs
+- Canon: ANUBIS_RULES.md, docs/DEVELOPMENT_PLAN.md
+- ADR: ADR-001
+- Changelog: v0.2.0-alpha — Day 5 Neural Brain
+
 ## [0.1.0-alpha.2] — 2026-03-21
 ### Fixed (Session 2: Clean, Lint, Optimize)
 - **CI pipeline** — fixed go.mod version mismatch (`go 1.26.1` → `go 1.22.0`)

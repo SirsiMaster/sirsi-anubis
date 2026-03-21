@@ -88,6 +88,8 @@ func init() {
 	rootCmd.AddCommand(initiateCmd)
 	rootCmd.AddCommand(hapiCmd)
 	rootCmd.AddCommand(scarabCmd)
+	rootCmd.AddCommand(installBrainCmd)
+	rootCmd.AddCommand(uninstallBrainCmd)
 }
 
 func main() {
