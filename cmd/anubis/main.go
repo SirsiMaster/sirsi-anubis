@@ -62,6 +62,7 @@ func init() {
 	rootCmd.AddCommand(kaCmd)
 	rootCmd.AddCommand(guardCmd)
 	rootCmd.AddCommand(sightCmd)
+	rootCmd.AddCommand(profileCmd)
 }
 
 func main() {
