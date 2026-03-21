@@ -94,6 +94,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 - Canon: ANUBIS_RULES.md, docs/DEVELOPMENT_PLAN.md
 - ADR: ADR-001
 - Changelog: v0.2.0-alpha — Day 7 Scales + Agent
+
+### Changed (Day 8: Polish + Release)
+- **README.md** — complete rewrite with all 17 commands, 11 modules, MCP guide
+- **VERSION** — bumped to `0.2.0-alpha`
+- **Binary audit:**
+  - `anubis`: 7.7 MB (< 15 MB budget ✅)
+  - `anubis-agent`: 2.1 MB (< 5 MB budget ✅)
+- **Test suite:** 72 tests, 7 packages, all passing
+- **Code size:** 12,277 lines of Go across 15 internal modules
+- **gofmt + go vet** — clean
+
+---
+
 ## [0.1.0-alpha.2] — 2026-03-21
 ### Fixed (Session 2: Clean, Lint, Optimize)
 - **CI pipeline** — fixed go.mod version mismatch (`go 1.26.1` → `go 1.22.0`)
