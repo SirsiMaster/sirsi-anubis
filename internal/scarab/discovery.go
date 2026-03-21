@@ -193,8 +193,8 @@ func pingSweep(subnet string) []Host {
 	// Limit concurrency to avoid flood
 	sem := make(chan struct{}, 50)
 
-	for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); incrementIP(ip) {
-		target := ip.String()
+	for scanIP := ip.Mask(ipnet.Mask); ipnet.Contains(scanIP); incrementIP(scanIP) {
+		target := scanIP.String()
 		if target == ipnet.IP.String() {
 			continue // Skip network address
 		}

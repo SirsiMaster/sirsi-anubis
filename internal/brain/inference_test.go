@@ -21,13 +21,13 @@ func TestStubClassifier_LoadAndClose(t *testing.T) {
 	}
 
 	// Load
-	if err := c.Load(""); err != nil {
-		t.Fatalf("Load error: %v", err)
+	if loadErr := c.Load(""); loadErr != nil {
+		t.Fatalf("Load error: %v", loadErr)
 	}
 
 	// Close
-	if err := c.Close(); err != nil {
-		t.Fatalf("Close error: %v", err)
+	if closeErr := c.Close(); closeErr != nil {
+		t.Fatalf("Close error: %v", closeErr)
 	}
 
 	// Should error after close

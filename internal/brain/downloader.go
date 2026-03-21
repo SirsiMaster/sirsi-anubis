@@ -281,8 +281,8 @@ func installModel(model *ModelInfo, onProgress ProgressFunc) (*LocalManifest, er
 	}
 
 	// Create weights directory
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return nil, fmt.Errorf("create weights dir: %w", err)
+	if mkErr := os.MkdirAll(dir, 0o755); mkErr != nil {
+		return nil, fmt.Errorf("create weights dir: %w", mkErr)
 	}
 
 	// Determine local filename
@@ -302,18 +302,18 @@ func installModel(model *ModelInfo, onProgress ProgressFunc) (*LocalManifest, er
 	localPath := filepath.Join(dir, filename)
 
 	// Download with progress
-	if err := downloadFile(model.DownloadURL, localPath, model.SizeBytes, onProgress); err != nil {
+	if dlErr := downloadFile(model.DownloadURL, localPath, model.SizeBytes, onProgress); dlErr != nil {
 		// Clean up partial download
 		_ = os.Remove(localPath)
-		return nil, fmt.Errorf("download model: %w", err)
+		return nil, fmt.Errorf("download model: %w", dlErr)
 	}
 
 	// Verify checksum
 	if model.SHA256 != "" {
-		actualHash, err := hashFile(localPath)
-		if err != nil {
+		actualHash, hashErr := hashFile(localPath)
+		if hashErr != nil {
 			_ = os.Remove(localPath)
-			return nil, fmt.Errorf("checksum verification: %w", err)
+			return nil, fmt.Errorf("checksum verification: %w", hashErr)
 		}
 		if !strings.EqualFold(actualHash, model.SHA256) {
 			_ = os.Remove(localPath)

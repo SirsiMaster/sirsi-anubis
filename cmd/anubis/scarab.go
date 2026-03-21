@@ -131,7 +131,7 @@ func runScarabContainers() {
 		return
 	}
 
-	output.Info(fmt.Sprintf("🐳 Docker:          Running"))
+	output.Info("🐳 Docker:          Running")
 	output.Info(fmt.Sprintf("   Containers:      %d total", len(audit.Containers)))
 	output.Info(fmt.Sprintf("   Running:         %d", audit.RunningCount))
 	output.Info(fmt.Sprintf("   Stopped:         %d", audit.StoppedCount))

@@ -71,7 +71,7 @@ func TestLocalManifestRoundtrip(t *testing.T) {
 
 	// Verify file exists
 	path := filepath.Join(tmpDir, ManifestFile)
-	if _, err := os.Stat(path); os.IsNotExist(err) {
+	if _, statErr := os.Stat(path); os.IsNotExist(statErr) {
 		t.Fatal("manifest file was not created")
 	}
 

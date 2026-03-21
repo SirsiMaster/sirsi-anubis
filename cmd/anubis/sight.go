@@ -73,7 +73,7 @@ func runSight(cmd *cobra.Command, args []string) {
 		if isDryRun {
 			output.Header("👁️ Sight — Fix [DRY RUN]")
 			fmt.Println()
-			output.Info(fmt.Sprintf("Would rebuild Launch Services database"))
+			output.Info("Would rebuild Launch Services database")
 			output.Info(fmt.Sprintf("Would remove %d ghost app registrations", result.TotalGhosts))
 			if sightReindex {
 				output.Info("Would trigger Spotlight re-index")
