@@ -256,7 +256,10 @@ func DirSize(path string) int64 {
 // moveToTrash uses macOS Finder to move a file to Trash.
 // This preserves the "Put Back" functionality.
 func moveToTrash(path string) error {
-	absPath, _ := filepath.Abs(path)
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return fmt.Errorf("resolve path for trash: %w", err)
+	}
 	script := fmt.Sprintf(
 		`tell application "Finder" to delete POSIX file %q`,
 		absPath,
