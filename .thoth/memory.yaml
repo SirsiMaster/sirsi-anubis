@@ -1,6 +1,6 @@
 # 𓁟 Thoth — Project Memory for Sirsi Anubis
 # Read this FIRST before any source files.
-# Last updated: 2026-03-22T18:30:00-04:00
+# Last updated: 2026-03-22T19:20:00-04:00
 
 ## Identity
 project: sirsi-anubis
@@ -63,6 +63,9 @@ mcp_tools: 5 (scan_workspace, ghost_report, health_check, classify_files, thoth_
 # - Platform-specific code is scattered, not behind a Platform interface
 
 ## Recent Changes (most recent first)
+# 2026-03-22: Case study system — dogfooding narratives + ROI tracking across 4 repos
+#   Created: docs/case-studies/, scripts/thoth-roi.sh, pitch deck stub
+#   SirsiNexus: 618K lines → 45 Thoth lines, $111/session (star number)
 # 2026-03-22: Safety-critical coverage sprint — cleaner 49%→77%, ka 19.5%→42.7%
 #   Added: 30 cleaner tests (DecisionLog, DeleteFile, CleanFile, DirSize, constants)
 #   Added: 28 ka tests (isInstalled, countFiles, mergeOrphans, Clean, constants)
