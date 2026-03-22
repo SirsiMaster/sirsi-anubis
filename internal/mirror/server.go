@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
@@ -57,7 +59,53 @@ func (s *Server) Serve() error {
 	mux.HandleFunc("/api/status", s.handleStatus)
 	mux.HandleFunc("/api/result", s.handleResult)
 	mux.HandleFunc("/api/pick-folder", s.handlePickFolder)
+	mux.HandleFunc("/api/browse", s.handleBrowse)
 	return http.Serve(s.listener, mux)
+}
+
+// handleBrowse returns a directory listing for a given path.
+// The GUI calls this to let users navigate the filesystem tree.
+func (s *Server) handleBrowse(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	dir := r.URL.Query().Get("path")
+	if dir == "" {
+		home, _ := os.UserHomeDir()
+		dir = home
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	type dirEntry struct {
+		Name string `json:"name"`
+		Path string `json:"path"`
+		Dir  bool   `json:"dir"`
+	}
+	var dirs []dirEntry
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), ".") {
+			continue // Skip hidden files/dirs
+		}
+		if e.IsDir() {
+			dirs = append(dirs, dirEntry{
+				Name: e.Name(),
+				Path: filepath.Join(dir, e.Name()),
+				Dir:  true,
+			})
+		}
+	}
+
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"current": dir,
+		"parent":  filepath.Dir(dir),
+		"entries": dirs,
+	})
 }
 
 func (s *Server) handlePickFolder(w http.ResponseWriter, _ *http.Request) {

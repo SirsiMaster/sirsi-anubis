@@ -140,6 +140,7 @@ func ValidatePath(path string) error {
 
 // DeleteFile removes a file or empty directory after safety validation.
 // Returns the number of bytes freed.
+// DEPRECATED: Use CleanFile with a DecisionLog for full audit trail.
 func DeleteFile(path string, dryRun bool, useTrash bool) (int64, error) {
 	// SAFETY: Validate path before ANY operation
 	if err := ValidatePath(path); err != nil {
@@ -165,7 +166,7 @@ func DeleteFile(path string, dryRun bool, useTrash bool) (int64, error) {
 		return size, nil
 	}
 
-	// Trash mode (macOS)
+	// Trash mode (macOS) — always prefer this
 	if useTrash && runtime.GOOS == "darwin" {
 		return size, moveToTrash(path)
 	}
@@ -175,6 +176,66 @@ func DeleteFile(path string, dryRun bool, useTrash bool) (int64, error) {
 		return size, os.RemoveAll(path)
 	}
 	return size, os.Remove(path)
+}
+
+// CleanFile removes a file with full decision logging.
+// Policy:
+//   - Always requires human-confirmed decision (no auto-delete)
+//   - Always trash first on macOS (reversible)
+//   - Records every action with path, size, hash, reason, timestamp
+//   - Permanent delete only via explicit EmptyTrash after review
+func CleanFile(path string, reason string, groupID string, hash string, log *DecisionLog) (int64, error) {
+	// SAFETY: Validate path before ANY operation
+	if err := ValidatePath(path); err != nil {
+		_ = log.Record(Decision{
+			Path:   path,
+			Action: "skip",
+			Reason: fmt.Sprintf("blocked by safety: %v", err),
+		})
+		return 0, err
+	}
+
+	// Get size
+	info, err := os.Lstat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("cannot stat %q: %w", path, err)
+	}
+	size := info.Size()
+
+	// Always trash on macOS (reversible)
+	if runtime.GOOS == "darwin" {
+		if err := moveToTrash(path); err != nil {
+			return 0, fmt.Errorf("move to trash: %w", err)
+		}
+		_ = log.Record(Decision{
+			Path:       path,
+			Size:       size,
+			Action:     "trash",
+			Reason:     reason,
+			DupGroupID: groupID,
+			SHA256:     hash,
+			Reversible: true,
+		})
+		return size, nil
+	}
+
+	// Non-macOS: direct delete (not reversible)
+	if err := os.Remove(path); err != nil {
+		return 0, err
+	}
+	_ = log.Record(Decision{
+		Path:       path,
+		Size:       size,
+		Action:     "delete",
+		Reason:     reason,
+		DupGroupID: groupID,
+		SHA256:     hash,
+		Reversible: false,
+	})
+	return size, nil
 }
 
 // DirSize calculates the total size of a directory recursively.
