@@ -73,7 +73,6 @@ type ScanOptions struct {
 	MinSize     int64     // Minimum file size (bytes) to consider
 	MaxSize     int64     // Maximum file size (bytes), 0 = no limit
 	MediaFilter MediaType // Filter to specific media type ("" = all)
-	FollowLinks bool      // Follow symbolic links
 	ProtectDirs []string  // Directories whose files should never be suggested for deletion
 	DryRun      bool      // Preview only, don't track for cleaning
 }

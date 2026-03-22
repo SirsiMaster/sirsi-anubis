@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"runtime"
 	"sort"
+	"strings"
 	"sync"
 )
 
@@ -55,7 +56,33 @@ func (s *Server) Serve() error {
 	mux.HandleFunc("/api/scan", s.handleScan)
 	mux.HandleFunc("/api/status", s.handleStatus)
 	mux.HandleFunc("/api/result", s.handleResult)
+	mux.HandleFunc("/api/pick-folder", s.handlePickFolder)
 	return http.Serve(s.listener, mux)
+}
+
+func (s *Server) handlePickFolder(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	// Use macOS native Finder dialog to pick a folder.
+	// This gets us the real absolute path that browsers can't provide.
+	if runtime.GOOS != "darwin" {
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "folder picker requires macOS"})
+		return
+	}
+
+	script := `tell application "System Events" to return POSIX path of (choose folder with prompt "Select a folder to scan for duplicates")`
+	cmd := exec.Command("osascript", "-e", script)
+	out, err := cmd.Output()
+	if err != nil {
+		// User canceled the dialog or other error
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "canceled"})
+		return
+	}
+
+	path := strings.TrimSpace(string(out))
+	// Remove trailing slash from osascript output
+	path = strings.TrimRight(path, "/")
+	_ = json.NewEncoder(w).Encode(map[string]string{"path": path})
 }
 
 func (s *Server) handleScan(w http.ResponseWriter, r *http.Request) {
@@ -512,20 +539,20 @@ dz.addEventListener('drop', ev => {
   }
 });
 
-function selectFolders() {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.webkitdirectory = true;
-  input.multiple = true;
-  input.addEventListener('change', () => {
-    if (input.files.length > 0) {
-      // Extract directory path from first file
-      const firstFile = input.files[0];
-      const dir = firstFile.webkitRelativePath.split('/')[0];
-      addFolder(dir);
+async function selectFolders() {
+  // Use native macOS Finder dialog via the Go backend.
+  // Browsers can't give us absolute paths (security sandbox), so the server
+  // runs osascript to open a real Finder "choose folder" dialog.
+  try {
+    const res = await fetch('/api/pick-folder');
+    const data = await res.json();
+    if (data.path) {
+      addFolder(data.path);
     }
-  });
-  input.click();
+    // If data.error === 'cancelled', user just closed the dialog — do nothing
+  } catch (e) {
+    console.error('Folder picker failed:', e);
+  }
 }
 
 function addFolder(path) {
@@ -576,20 +603,17 @@ function toggleAdvanced() {
   }
 }
 
-function addProtectDir() {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.webkitdirectory = true;
-  input.addEventListener('change', () => {
-    if (input.files.length > 0) {
-      const dir = input.files[0].webkitRelativePath.split('/')[0];
-      if (!protectDirs.includes(dir)) {
-        protectDirs.push(dir);
-        renderProtectDirs();
-      }
+async function addProtectDir() {
+  try {
+    const res = await fetch('/api/pick-folder');
+    const data = await res.json();
+    if (data.path && !protectDirs.includes(data.path)) {
+      protectDirs.push(data.path);
+      renderProtectDirs();
     }
-  });
-  input.click();
+  } catch (e) {
+    console.error('Folder picker failed:', e);
+  }
 }
 
 function removeProtectDir(idx) {
