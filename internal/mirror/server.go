@@ -67,7 +67,9 @@ func (s *Server) handleScan(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Paths   []string `json:"paths"`
 		MinSize int64    `json:"min_size"`
+		MaxSize int64    `json:"max_size"`
 		Filter  string   `json:"filter"`
+		Protect []string `json:"protect"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
@@ -85,8 +87,10 @@ func (s *Server) handleScan(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		opts := ScanOptions{
-			Paths:   req.Paths,
-			MinSize: req.MinSize,
+			Paths:       req.Paths,
+			MinSize:     req.MinSize,
+			MaxSize:     req.MaxSize,
+			ProtectDirs: req.Protect,
 		}
 		if req.Filter != "" {
 			opts.MediaFilter = MediaType(req.Filter)
@@ -424,10 +428,49 @@ footer {
     </div>
     <div id="folder-list"></div>
     <div id="scan-section" style="display:none">
-      <button id="scan-btn" onclick="startScan()">Scan for Duplicates</button>
-      <button class="filter-chip" data-filter="" onclick="setFilter(this)">All Files</button>
-      <button class="filter-chip" data-filter="photo" onclick="setFilter(this)">📷 Photos</button>
-      <button class="filter-chip" data-filter="music" onclick="setFilter(this)">🎵 Music</button>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <button id="scan-btn" onclick="startScan()">Scan for Duplicates</button>
+        <button class="filter-chip" data-filter="" onclick="setFilter(this)">All Files</button>
+        <button class="filter-chip" data-filter="photo" onclick="setFilter(this)">📷 Photos</button>
+        <button class="filter-chip" data-filter="music" onclick="setFilter(this)">🎵 Music</button>
+        <button class="filter-chip" data-filter="video" onclick="setFilter(this)">🎬 Video</button>
+        <button class="filter-chip" data-filter="document" onclick="setFilter(this)">📄 Docs</button>
+      </div>
+      <!-- Advanced Options -->
+      <div id="advanced-toggle" style="margin-top:16px">
+        <button onclick="toggleAdvanced()" style="background:none;border:none;color:var(--text-dim);font-size:12px;cursor:pointer;padding:4px 0;letter-spacing:0.5px">▸ Advanced Options</button>
+      </div>
+      <div id="advanced-options" style="display:none;margin-top:12px;padding:16px;background:var(--surface);border-radius:var(--radius-sm);border:1px solid var(--border)">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div>
+            <label style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">Min File Size</label>
+            <select id="min-size" style="width:100%;padding:8px 12px;border-radius:6px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:13px">
+              <option value="0">No minimum</option>
+              <option value="1024">1 KB</option>
+              <option value="10240">10 KB</option>
+              <option value="102400">100 KB</option>
+              <option value="1048576" selected>1 MB</option>
+              <option value="10485760">10 MB</option>
+              <option value="104857600">100 MB</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">Max File Size</label>
+            <select id="max-size" style="width:100%;padding:8px 12px;border-radius:6px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:13px">
+              <option value="0" selected>No maximum</option>
+              <option value="10485760">10 MB</option>
+              <option value="104857600">100 MB</option>
+              <option value="1073741824">1 GB</option>
+              <option value="10737418240">10 GB</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:16px">
+          <label style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">Protected Directories <span style="font-weight:400;text-transform:none">(files here will never be suggested for removal)</span></label>
+          <div id="protect-list" style="display:flex;flex-direction:column;gap:6px"></div>
+          <button onclick="addProtectDir()" style="margin-top:8px;padding:6px 14px;border-radius:6px;background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);font-size:12px;cursor:pointer;transition:all 0.2s">+ Add Protected Folder</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -445,7 +488,9 @@ footer {
 
 <script>
 const folders = [];
+const protectDirs = [];
 let activeFilter = '';
+
 
 // Drag & drop
 const dz = document.getElementById('drop-zone');
@@ -502,7 +547,7 @@ function renderFolders() {
     scanSec.style.display = 'none';
     return;
   }
-  scanSec.style.display = 'flex';
+  scanSec.style.display = 'block';
   list.innerHTML = folders.map((f, i) =>
     '<div class="folder-chip">' +
     '<span>📂</span>' +
@@ -519,6 +564,50 @@ function setFilter(btn) {
   activeFilter = btn.dataset.filter;
 }
 
+function toggleAdvanced() {
+  const opts = document.getElementById('advanced-options');
+  const btn = document.querySelector('#advanced-toggle button');
+  if (opts.style.display === 'none') {
+    opts.style.display = 'block';
+    btn.textContent = '▾ Advanced Options';
+  } else {
+    opts.style.display = 'none';
+    btn.textContent = '▸ Advanced Options';
+  }
+}
+
+function addProtectDir() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.webkitdirectory = true;
+  input.addEventListener('change', () => {
+    if (input.files.length > 0) {
+      const dir = input.files[0].webkitRelativePath.split('/')[0];
+      if (!protectDirs.includes(dir)) {
+        protectDirs.push(dir);
+        renderProtectDirs();
+      }
+    }
+  });
+  input.click();
+}
+
+function removeProtectDir(idx) {
+  protectDirs.splice(idx, 1);
+  renderProtectDirs();
+}
+
+function renderProtectDirs() {
+  const list = document.getElementById('protect-list');
+  list.innerHTML = protectDirs.map((d, i) =>
+    '<div class="folder-chip" style="padding:8px 12px">' +
+    '<span>🔒</span>' +
+    '<span class="path">' + escapeHtml(d) + '</span>' +
+    '<span class="remove" onclick="removeProtectDir(' + i + ')">✕</span>' +
+    '</div>'
+  ).join('');
+}
+
 async function startScan() {
   if (folders.length === 0) return;
   document.getElementById('step-select').style.display = 'none';
@@ -529,7 +618,13 @@ async function startScan() {
     await fetch('/api/scan', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ paths: folders, filter: activeFilter })
+      body: JSON.stringify({
+        paths: folders,
+        filter: activeFilter,
+        min_size: parseInt(document.getElementById('min-size').value) || 0,
+        max_size: parseInt(document.getElementById('max-size').value) || 0,
+        protect: protectDirs
+      })
     });
 
     // Poll for completion
@@ -596,11 +691,13 @@ function showResults(r) {
     html += '</div></div>';
   });
 
-  html += '<div style="text-align:center;margin:32px 0">';
+  html += '<div style="text-align:center;margin:32px 0;display:flex;gap:12px;justify-content:center">';
   html += '<button onclick="scanAgain()" style="padding:10px 24px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);cursor:pointer;font-size:13px;transition:all 0.2s" onmouseover="this.style.borderColor=\'var(--gold)\';this.style.color=\'var(--gold)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.color=\'var(--text-dim)\'">← Scan Again</button>';
+  html += '<button onclick="exportJSON()" style="padding:10px 24px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);cursor:pointer;font-size:13px;transition:all 0.2s" onmouseover="this.style.borderColor=\'var(--gold)\';this.style.color=\'var(--gold)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.color=\'var(--text-dim)\'">↓ Export JSON</button>';
   html += '</div>';
 
   document.getElementById('results').innerHTML = html;
+  window._lastResult = r;
 }
 
 function scanAgain() {
@@ -612,6 +709,17 @@ function scanAgain() {
 function toggleGroup(idx) {
   const el = document.getElementById('group-' + idx);
   el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function exportJSON() {
+  if (!window._lastResult) return;
+  const blob = new Blob([JSON.stringify(window._lastResult, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'mirror-results.json';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function statCard(value, label) {

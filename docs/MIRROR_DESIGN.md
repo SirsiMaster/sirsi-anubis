@@ -40,53 +40,91 @@ We just need to connect the dots.
 
 ---
 
-## Product Tiers
+## Product Model
 
-### 🆓 Ankh (Free) — Hash-Based Deduplication
+### Core Principle: One Engine, Two Interfaces
 
-**Target**: Anyone with duplicate files. Zero ML required.
+The **interface determines who uses which features, not what features exist.**
+GUI and CLI are equal citizens. Every free-tier feature is accessible from both.
+Every pro-tier feature is accessible from both. The user picks their comfort zone.
 
-| Feature | Description |
-|:--------|:------------|
-| **Exact match** | SHA-256 hash comparison across directories |
-| **Perceptual hash** | pHash for images — catches resized/recompressed copies |
-| **Audio fingerprint** | Chromaprint-style fingerprinting for music files |
-| **Size analysis** | Group files by size first (fast pre-filter) |
-| **Dry run** | Show what would be cleaned, never auto-delete |
-| **Safe list** | Protect directories from dedup (e.g., originals) |
-
-**CLI**:
 ```
-anubis mirror ~/Photos ~/Downloads        # Find duplicates across dirs
+┌──────────────────────────────────────────────────────┐
+│                    anubis mirror                      │
+│                                                       │
+│   ┌───────────────────────────────────────────────┐   │
+│   │             Shared Engine (Go)                 │   │
+│   │  scanner • hasher • ranker • dedup • cleaner  │   │
+│   └───────────────────┬───────────────────────────┘   │
+│                       │                               │
+│         ┌─────────────┼─────────────┐                 │
+│         ▼                           ▼                 │
+│   ┌───────────┐               ┌───────────┐           │
+│   │    GUI    │               │    CLI    │           │
+│   │  Browser  │               │ Terminal  │           │
+│   │           │               │           │           │
+│   │ Your      │               │ Devs &    │           │
+│   │ friend    │               │ sysadmins │           │
+│   └───────────┘               └───────────┘           │
+└──────────────────────────────────────────────────────┘
+```
+
+### 🆓 Ankh (Free) — Full Deduplication Engine
+
+**One engine. Same features. Pick your interface.**
+
+| Feature | GUI | CLI |
+|:--------|:---:|:---:|
+| **Exact match (SHA-256)** | ✅ | ✅ |
+| **Perceptual hash (images)** | ✅ | ✅ |
+| **Audio fingerprint (music)** | ✅ | ✅ |
+| **Size pre-filter** | ✅ | ✅ |
+| **Media type filters** | ✅ Filter chips | ✅ `--photos`, `--music` |
+| **Min/max size filter** | ✅ Slider | ✅ `--min-size`, `--max-size` |
+| **Protected directories** | ✅ Drag to protect | ✅ `--protect ~/Originals` |
+| **Smart recommendations** | ✅ ✓ Keep / ✗ Remove | ✅ Same in terminal |
+| **Dry run (default)** | ✅ Preview only | ✅ `--dry-run` |
+| **JSON export** | ✅ Download button | ✅ `--json` |
+
+**GUI** (for your friend):
+```
+anubis mirror                    # Opens browser → drag folders → done
+```
+
+**CLI** (for devs/automation):
+```
+anubis mirror ~/Photos ~/Downloads        # Scan specific dirs
 anubis mirror --photos ~/Pictures          # Photo-specific scan
-anubis mirror --music ~/Music              # Music-specific scan  
-anubis mirror --dry-run                    # Preview only
+anubis mirror --music ~/Music              # Music-specific scan
 anubis mirror --min-size 1MB               # Skip small files
+anubis mirror --protect ~/Originals        # Lock important dirs
 ```
 
-**Output**: Duplicate groups with file paths, sizes, dates, and a recommendation
-of which to keep (newest, largest, in protected directory).
+### 👁️ Eye of Horus (Pro) — Neural Importance Ranking
 
-### 👁️ Eye of Horus (Pro) — Semantic Importance Ranking
+**Same principle: both interfaces get the full pro feature set.**
 
-**Target**: Power users, photographers, musicians, content creators.
+| Feature | GUI | CLI |
+|:--------|:---:|:---:|
+| **Face detection (ANE)** | ✅ Face badges on photos | ✅ `--protect-faces` |
+| **Scene classification** | ✅ Scene labels in UI | ✅ Scene tags in output |
+| **Importance scoring** | ✅ Visual importance bar | ✅ `--rank` |
+| **Metadata analysis** | ✅ EXIF/GPS indicators | ✅ In JSON output |
+| **Knowledge graph** | ✅ Interactive Seba view | ✅ `--graph` |
+| **Smart auto-select** | ✅ One-click cleanup | ✅ `--clean --confirm` |
 
-| Feature | Description |
-|:--------|:------------|
-| **Face detection** | CoreML Vision — photos with faces rank higher |
-| **Scene recognition** | Classify photo content (landscape, portrait, document, screenshot) |
-| **Metadata scoring** | GPS, EXIF, album membership, Finder tags, Spotlight comments |
-| **Reference tracking** | Which apps/libraries point to this file? |
-| **Importance score** | 0.0–1.0 composite score per file |
-| **Knowledge graph** | Seba-powered visualization of file relationships |
-| **Smart selection** | Auto-select the lowest-importance duplicate for removal |
+**GUI** (pro features appear as visual upgrades):
+- Photos show face badges and scene labels
+- Importance bar next to each file (amber → gold gradient)
+- "View Relationships" button opens Seba knowledge graph
+- One-click "Smart Clean" selects lowest-importance duplicates
 
-**CLI**:
+**CLI** (pro features appear as flags):
 ```
-anubis mirror --rank ~/Photos              # Scan + importance ranking
+anubis mirror --rank ~/Photos              # Add importance scoring
 anubis mirror --graph ~/Photos             # Generate knowledge graph
-anubis mirror --clean --confirm            # Remove lowest-ranked duplicates
-anubis mirror --protect-faces              # Never suggest deleting photos with faces
+anubis mirror --clean --confirm            # Auto-remove lowest-ranked
+anubis mirror --protect-faces              # Never delete photos with faces
 ```
 
 **ANE/CoreML Models** (downloaded via `anubis install-brain`):
@@ -256,6 +294,11 @@ knowledge graph visualization. And it's open source (free tier) with a premium u
 
 ## Revenue Model
 
-- **Free**: Hash dedup, perceptual hashing, CLI reports — open source, forever free
-- **Pro ($9/mo or $79/yr)**: ANE importance ranking, face protection, knowledge graph, priority support
-- **Enterprise**: Fleet dedup across teams, policy enforcement via Scales
+- **Free (Ankh)**: Full dedup engine via GUI + CLI — open source, forever free.
+  Both interfaces have identical feature parity. The interface determines
+  the user, not the capability.
+- **Pro ($9/mo or $79/yr)**: ANE neural features (face detection, importance
+  ranking, knowledge graph) — accessible from both GUI and CLI.
+  GUI shows visual upgrades (face badges, importance bars, Seba graph view).
+  CLI shows equivalent data via flags and JSON output.
+- **Enterprise**: Fleet dedup across teams, policy enforcement via Scales.
