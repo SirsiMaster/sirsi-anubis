@@ -1,6 +1,6 @@
 # ‍‍‍𓂀 Sirsi Anubis — Continuation Prompt
-**Date:** March 22, 2026 (Saturday, 6:30 PM ET)
-**Session:** Test Coverage Blitz + Launch Preparation
+**Date:** March 22, 2026 (Saturday, 7:20 PM ET)
+**Session:** Coverage Hardening + Case Studies + Dogfooding Metrics
 **Repo:** `github.com/SirsiMaster/sirsi-anubis`
 **Path:** `/Users/thekryptodragon/Development/sirsi-anubis`
 
@@ -12,10 +12,11 @@
 2. **Read `.thoth/memory.yaml`** — compressed project state (~100 lines). This replaces reading source files.
 3. **Read `.thoth/journal.md`** — timestamped reasoning (10 entries).
 4. **Read `ANUBIS_RULES.md`** — the 12 non-negotiable safety rules.
-5. **Scope**: Cleaner coverage + launch execution. No new features.
+5. **Scope**: Launch execution + case studies + production polish.
 6. **Deadline: Friday March 28** — April investor demos require complete product.
-7. **All code compiles and tests pass** — do NOT break the build.
+7. **All code compiles and 453 tests pass** — do NOT break the build.
 8. **ADR-003 is ACTIVE** — every release must update BUILD_LOG.md, build-log.html, CHANGELOG, Thoth.
+9. **Case studies**: Every product claim needs a `docs/case-studies/` entry with measured data.
 
 ---
 
@@ -27,8 +28,8 @@ Thoth is the project's persistent knowledge system. It eliminates re-reading sou
 | Layer | File | When |
 |:------|:-----|:-----|
 | Memory | `.thoth/memory.yaml` | **ALWAYS first** — architecture, decisions, limitations |
-| Journal | `.thoth/journal.md` | When WHY matters — 8 timestamped entries |
-| Artifacts | `.thoth/artifacts/` | Deep dives — benchmarks, audits |
+| Journal | `.thoth/journal.md` | When WHY matters — 10 timestamped entries |
+| Artifacts | `.thoth/artifacts/` | Deep dives — benchmarks, audits, **roi-metrics.md** |
 
 ### 2. Context Window Monitoring (Track throughout session)
 
@@ -162,34 +163,35 @@ Thoth is standalone at `github.com/SirsiMaster/sirsi-thoth`:
 
 ---
 
-## WHAT TO BUILD NEXT
+### Priority 1: Launch Execution
 
-### Priority 1: Deepen Safety-Critical Coverage
-
-Cleaner module is at ~49% — this is the safety-critical code that deletes files.
-Scanner edge cases (permissions, symlinks) are untested.
+Everything is tested, built, and documented. Time to ship.
 
 ```
-1. internal/cleaner/   — target 80%+ coverage (safety-critical)
-2. internal/ka/        — improve from 19.5%
-3. Scanner edge cases  — permission errors, symlink loops, empty dirs
-```
-
-### Priority 2: Launch Execution
-
-```
+- GitHub Release v0.3.0-alpha (goreleaser already verified, 12 binaries)
 - Product Hunt submission (copy in docs/LAUNCH_COPY.md)
 - Hacker News Show HN (copy in docs/LAUNCH_COPY.md)
-- GitHub Release v0.3.0-alpha (goreleaser already verified)
 - Investor demo rehearsal (script in docs/INVESTOR_DEMO.md)
+```
+
+### Priority 2: Expand Case Studies
+
+Case study system exists at `docs/case-studies/`. Thoth study is complete.
+Two more studies need writing (data exists, narratives needed):
+
+```
+1. Mirror Dedup Performance  — 27.3x faster, 98.8% less I/O (real benchmark data)
+2. Ka Ghost Detection       — 23 GB Parallels remnants found (real discovery)
+3. Expand SirsiNexus stub   — $111/session savings (star investor number)
 ```
 
 ### Priority 3: Production Polish
 
 ```
 - Structured logging (replace fmt.Printf with slog)
+- Platform abstraction interface (enable testing moveToTrash etc.)
+- Convert pitch deck stub to full HTML slide (ADR-024 compliant)
 - Linux folder picker (zenity)
-- Platform abstraction interface
 - VS Code extension completion
 ```
 
@@ -205,6 +207,8 @@ Scanner edge cases (permissions, symlinks) are untested.
 6. **Audience**: GUI for everyone (parents, students, hobbyists). CLI for devs/AI engineers.
 7. **Anubis→Ra**: Anubis is standalone preview; Ra is the full module coming in SirsiNexus
 8. **April investor demos** — product must be complete by March 28
+9. **Case study system** — `docs/case-studies/` + `scripts/thoth-roi.sh` in all 4 repos
+10. **Pitch deck stub** — `SirsiNexusApp/docs/pitch-deck/slide-pantheon-proof.md` needs HTML conversion
 
 ---
 
@@ -240,4 +244,4 @@ cat .thoth/memory.yaml
 go build ./cmd/anubis/ && go test ./... && echo "✓ Ready"
 ```
 
-Then begin Priority 1: Cleaner test coverage (`internal/cleaner/`)
+Then begin Priority 1: Launch execution (GitHub Release v0.3.0-alpha)
