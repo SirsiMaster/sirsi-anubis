@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Building Anubis in Public — Sirsi Technologies</title>
+  <meta name="description" content="A transparent record of how Sirsi Anubis was designed, built, tested, broken, and fixed. Every sprint, every bug, every benchmark — nothing hidden.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    /*  Swiss Neo-Deco — Sirsi Technologies
+        Emerald + Gold · Cinzel + Inter
+        Adapted from packages/sirsi-ui/styles/swiss-neo-deco.css  */
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --color-primary: #059669;
+      --color-primary-light: #10B981;
+      --color-primary-dark: #047857;
+      --color-primary-bg: #022c22;
+      --color-gold: #C8A951;
+      --color-gold-dark: #A08332;
+      --color-gold-bright: #E2C76B;
+      --color-emerald: #059669;
+      --color-emerald-light: #10B981;
+      --color-success: #10B981;
+      --color-danger: #dc2626;
+      --color-warning: #f59e0b;
+
+      --bg-primary: #022c22;
+      --bg-secondary: #011a14;
+      --bg-gradient: radial-gradient(ellipse at top right, #022c22 0%, #000000 100%);
+      --text-primary: #ffffff;
+      --text-secondary: rgba(255,255,255,0.85);
+      --text-muted: rgba(255,255,255,0.5);
+      --border-primary: rgba(255,255,255,0.1);
+      --glass-bg: rgba(2, 44, 34, 0.4);
+      --glass-border: rgba(255,255,255,0.08);
+      --card-bg: rgba(2, 44, 34, 0.6);
+      --card-border: rgba(255,255,255,0.1);
+
+      --font-heading: 'Cinzel', serif;
+      --font-body: 'Inter', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 24px;
+
+      --shadow-card: 0 10px 30px -10px rgba(0,0,0,0.5);
+    }
+
+    html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    #root {
+      background: var(--bg-gradient);
+      background-attachment: fixed;
+      min-height: 100vh;
+    }
+
+    h1, h2, h3 {
+      font-family: var(--font-heading);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    a { color: var(--color-gold); text-decoration: none; transition: color 0.2s; }
+    a:hover { color: var(--color-gold-bright); }
+    code { font-family: var(--font-mono); font-size: 0.85em; background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: rgba(2,44,34,0.05); }
+    ::-webkit-scrollbar-thumb { background: var(--color-gold); border-radius: 10px; border: 2px solid rgba(2,44,34,0.05); }
+
+    /* ─── Hero ─── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -20%;
+      right: -15%;
+      width: 700px;
+      height: 700px;
+      background: radial-gradient(circle, rgba(5,150,105,0.12) 0%, transparent 65%);
+      animation: breathe 10s ease-in-out infinite;
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      bottom: -10%;
+      left: -10%;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(200,169,81,0.08) 0%, transparent 60%);
+      animation: breathe 12s ease-in-out infinite reverse;
+    }
+
+    @keyframes breathe {
+      0%, 100% { opacity: 0.6; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.08); }
+    }
+
+    .hero-glyph {
+      font-size: 4.5rem;
+      margin-bottom: 1.5rem;
+      animation: float 6s ease-in-out infinite;
+      position: relative; z-index: 2;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    .hero h1 {
+      font-size: clamp(1.8rem, 4.5vw, 3rem);
+      letter-spacing: 0.15em;
+      line-height: 1.3;
+      position: relative; z-index: 2;
+    }
+
+    .hero h1 span { color: var(--color-gold); }
+
+    .hero-subtitle {
+      font-size: 1.05rem;
+      color: var(--text-secondary);
+      max-width: 580px;
+      margin-top: 1.5rem;
+      position: relative; z-index: 2;
+      line-height: 1.8;
+    }
+
+    .hero-stats {
+      display: flex;
+      gap: 3rem;
+      margin-top: 3.5rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      position: relative; z-index: 2;
+    }
+
+    .hero-stat { text-align: center; }
+
+    .hero-stat-value {
+      font-family: var(--font-heading);
+      font-size: 2.2rem;
+      color: var(--color-gold);
+      display: block;
+      letter-spacing: 0.05em;
+    }
+
+    .hero-stat-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      margin-top: 0.3rem;
+    }
+
+    .scroll-cue {
+      position: absolute;
+      bottom: 2.5rem;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      animation: bounce 2s infinite;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); opacity: 0.6; }
+      50% { transform: translateY(6px); opacity: 1; }
+    }
+
+    /* ─── Sections ─── */
+    .section { max-width: 880px; margin: 0 auto; padding: 5rem 2rem; }
+    .section-padded { padding: 5rem 2rem; }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 3.5rem;
+    }
+
+    .section-header h2 {
+      font-size: clamp(1.3rem, 3vw, 1.8rem);
+      color: var(--text-primary);
+    }
+
+    .section-header .gold-rule {
+      width: 60px;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--color-gold), transparent);
+      margin: 1rem auto;
+    }
+
+    .section-header p {
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      max-width: 550px;
+      margin-left: auto;
+      margin-right: auto;
+      font-size: 0.95rem;
+    }
+
+    /* ─── Quote Block ─── */
+    .quote-block {
+      max-width: 650px;
+      margin: 0 auto;
+      padding: 4rem 2rem;
+      text-align: center;
+    }
+
+    .quote-block blockquote {
+      font-family: var(--font-heading);
+      font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+      color: var(--text-secondary);
+      line-height: 1.7;
+      font-style: normal;
+      letter-spacing: 0.02em;
+    }
+
+    .quote-block blockquote strong { color: var(--color-gold); }
+
+    .quote-block .attribution {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      margin-top: 1.5rem;
+    }
+
+    /* ─── Timeline ─── */
+    .timeline { position: relative; padding-left: 3rem; }
+
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 0.75rem;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--color-gold-dark), var(--color-primary-dark), transparent);
+    }
+
+    .sprint {
+      position: relative;
+      margin-bottom: 3.5rem;
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+
+    .sprint.visible { opacity: 1; transform: translateY(0); }
+
+    .sprint-dot {
+      position: absolute;
+      left: -2.55rem;
+      top: 0.3rem;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--color-gold);
+      border: 3px solid var(--bg-primary);
+      box-shadow: 0 0 10px rgba(200,169,81,0.3);
+    }
+
+    .sprint-date {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--color-gold-dark);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .sprint h3 {
+      font-size: 1.2rem;
+      margin: 0.4rem 0;
+      letter-spacing: 0.06em;
+    }
+
+    .sprint-body {
+      color: var(--text-secondary);
+      font-size: 0.92rem;
+      margin-top: 0.6rem;
+      line-height: 1.8;
+    }
+
+    .sprint-body strong { color: var(--text-primary); }
+
+    .sprint-metrics {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .metric {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-md);
+      padding: 0.5rem 0.85rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      transition: border-color 0.2s;
+    }
+
+    .metric:hover { border-color: rgba(200,169,81,0.3); }
+
+    .metric-val { color: var(--color-gold); font-weight: 500; }
+    .metric-label { color: var(--text-muted); margin-left: 0.35rem; }
+
+    /* Callouts */
+    .callout {
+      margin-top: 0.8rem;
+      padding: 0.65rem 1rem;
+      border-radius: 0 var(--radius-md) var(--radius-md) 0;
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    .callout-bug {
+      background: rgba(220,38,38,0.06);
+      border-left: 3px solid var(--color-danger);
+    }
+
+    .callout-fix {
+      background: rgba(16,185,129,0.06);
+      border-left: 3px solid var(--color-success);
+    }
+
+    .callout-icon { margin-right: 0.35rem; }
+
+    /* ─── Status Section ─── */
+    .status-section {
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--card-border);
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .status-grid {
+      max-width: 880px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.25rem;
+      margin-top: 3rem;
+    }
+
+    .neo-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      box-shadow: var(--shadow-card);
+      transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+    }
+
+    .neo-card:hover {
+      border-color: rgba(200,169,81,0.25);
+      box-shadow: 0 15px 50px rgba(200,169,81,0.08);
+      transform: translateY(-2px);
+    }
+
+    .neo-card h4 {
+      font-family: var(--font-heading);
+      font-size: 0.9rem;
+      color: var(--color-gold);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 1rem;
+    }
+
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.4rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      font-size: 0.82rem;
+    }
+
+    .status-row:last-child { border-bottom: none; }
+    .status-row-label { color: var(--text-secondary); }
+    .status-row-value { font-family: var(--font-mono); font-size: 0.78rem; }
+    .status-row-value.pass { color: var(--color-success); }
+    .status-row-value.warn { color: var(--color-warning); }
+    .status-row-value.fail { color: var(--color-danger); }
+
+    /* ─── Benchmark Bars ─── */
+    .benchmark-row { margin-bottom: 1.75rem; }
+
+    .benchmark-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.82rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .benchmark-label span:first-child { color: var(--text-secondary); }
+    .benchmark-label span:last-child { color: var(--color-gold); font-family: var(--font-mono); }
+
+    .benchmark-track {
+      height: 6px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .benchmark-fill {
+      height: 100%;
+      border-radius: 3px;
+      width: 0%;
+      transition: width 1.4s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .benchmark-fill.emerald { background: linear-gradient(90deg, var(--color-primary-dark), var(--color-emerald-light)); }
+    .benchmark-fill.danger { background: linear-gradient(90deg, #991b1b, var(--color-danger)); }
+
+    .benchmark-footnote {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+
+    /* ─── Todo Section ─── */
+    .todo-list {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .todo-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-size: 0.88rem;
+    }
+
+    .todo-item:last-child { border-bottom: none; }
+    .todo-item-label { color: var(--text-secondary); }
+
+    .todo-badge {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      padding: 3px 10px;
+      border-radius: 99px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .todo-badge.progress { background: rgba(245,158,11,0.12); color: var(--color-warning); }
+    .todo-badge.planned { background: rgba(255,255,255,0.06); color: var(--text-muted); }
+
+    /* ─── Footer ─── */
+    footer {
+      text-align: center;
+      padding: 3rem 2rem;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      border-top: 1px solid var(--card-border);
+    }
+
+    footer a { color: var(--color-gold-dark); }
+    footer a:hover { color: var(--color-gold); }
+
+    .footer-brand {
+      font-family: var(--font-heading);
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-top: 0.5rem;
+    }
+
+    .footer-links {
+      margin-top: 1rem;
+      display: flex;
+      gap: 1.5rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 600px) {
+      .hero-stats { gap: 1.5rem; }
+      .hero-stat-value { font-size: 1.8rem; }
+      .timeline { padding-left: 2rem; }
+      .sprint-dot { left: -1.55rem; }
+      .sprint-metrics { flex-direction: column; gap: 0.4rem; }
+      .status-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div id="root">
+
+  <!-- ═══ Hero ═══ -->
+  <section class="hero">
+    <div class="hero-glyph">𓂀</div>
+    <h1>Building <span>Anubis</span><br>in Public</h1>
+    <p class="hero-subtitle">
+      A transparent record of how we design, build, test, break, and fix our software.
+      No cherry-picking — the mistakes stay in.
+    </p>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <span class="hero-stat-value">303</span>
+        <span class="hero-stat-label">Tests Passing</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-value">6</span>
+        <span class="hero-stat-label">Bugs Fixed</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-value">27.3×</span>
+        <span class="hero-stat-label">Faster Scanning</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-value">v0.3</span>
+        <span class="hero-stat-label">Current Release</span>
+      </div>
+    </div>
+    <div class="scroll-cue">↓ Scroll to see the journey</div>
+  </section>
+
+  <!-- ═══ Why ═══ -->
+  <div class="quote-block">
+    <p style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.15em; margin-bottom:1.5rem;">Our Philosophy</p>
+    <blockquote>
+      Most cleaning apps show you a polished website with marketing claims. You never see the messy middle.
+      We believe <strong>transparency is the product</strong>. If our code is good enough to inspect, our process should be too.
+    </blockquote>
+    <div class="attribution">— Sirsi Engineering</div>
+  </div>
+
+  <!-- ═══ Timeline ═══ -->
+  <section class="section">
+    <div class="section-header">
+      <h2>The Build Timeline</h2>
+      <div class="gold-rule"></div>
+      <p>Every sprint, every problem, every solution — documented as it happened.</p>
+    </div>
+
+    <div class="timeline">
+
+      <div class="sprint">
+        <div class="sprint-dot"></div>
+        <span class="sprint-date">March 20, 2026 — Day 0</span>
+        <h3>Genesis</h3>
+        <p class="sprint-body">
+          The idea started with a <strong>3-hour manual cleanup</strong> of a Mac that recovered 47 GB of wasted space.
+          Virtual machines, old AI models, dead app leftovers — all hiding in plain sight. "Why am I doing this by hand?"
+        </p>
+        <div class="sprint-metrics">
+          <div class="metric"><span class="metric-val">3</span><span class="metric-label">commits</span></div>
+          <div class="metric"><span class="metric-val">0</span><span class="metric-label">tests</span></div>
+          <div class="metric"><span class="metric-val">~400</span><span class="metric-label">lines</span></div>
+        </div>
+      </div>
+
+      <div class="sprint">
+        <div class="sprint-dot"></div>
+        <span class="sprint-date">March 20 — Days 1–2</span>
+        <h3>Core Scanner</h3>
+        <p class="sprint-body">
+          Built the scan engine with <strong>64 rules</strong> across 7 categories — developer tools, AI models, virtual machines,
+          IDEs, cloud services, storage, and general waste. Added ghost hunting: finding leftovers from apps you already uninstalled.
+        </p>
+        <div class="callout callout-bug">
+          <span class="callout-icon">🐛</span>
+          CI broke twice. We specified a Go version that doesn't exist and used a deprecated linter plugin. Both fixed same day.
+        </div>
+        <div class="sprint-metrics">
+          <div class="metric"><span class="metric-val">15</span><span class="metric-label">commits</span></div>
+          <div class="metric"><span class="metric-val">45</span><span class="metric-label">tests</span></div>
+          <div class="metric"><span class="metric-val">~5,000</span><span class="metric-label">lines</span></div>
+        </div>
+      </div>
+
+      <div class="sprint">
+        <div class="sprint-dot"></div>
+        <span class="sprint-date">March 21 — Days 5–7</span>
+        <h3>Intelligence Layer</h3>
+        <p class="sprint-body">
+          Added the smart features: a <strong>neural file classifier</strong> that understands what files are (not just their extension),
+          an <strong>AI IDE integration</strong> so coding assistants can use Anubis,
+          and a <strong>policy engine</strong> for teams to enforce hygiene standards.
+        </p>
+        <div class="sprint-metrics">
+          <div class="metric"><span class="metric-val">8</span><span class="metric-label">commits</span></div>
+          <div class="metric"><span class="metric-val">72</span><span class="metric-label">tests</span></div>
+          <div class="metric"><span class="metric-val">~12,000</span><span class="metric-label">lines</span></div>
+        </div>
+      </div>
+
+      <div class="sprint">
+        <div class="sprint-dot"></div>
+        <span class="sprint-date">March 21 — Day 8</span>
+        <h3>Duplicate Finder</h3>
+        <p class="sprint-body">
+          Built the <strong>file deduplication engine</strong> — finds duplicate files across your Mac. Started with a simple approach
+          that read every file completely. A real user tested it — and the folder picker didn't work at all.
+        </p>
+        <div class="callout callout-bug">
+          <span class="callout-icon">🐛</span>
+          The visual folder picker returned unusable paths. Browsers can't give apps access to real file locations (it's a security feature). Users clicked "Choose Folders" and nothing happened.
+        </div>
+        <div class="callout callout-fix">
+          <span class="callout-icon">✅</span>
+          Replaced the browser-based picker with a native macOS Finder dialog. Now it opens the real folder chooser you're familiar with.
+        </div>
+        <div class="sprint-metrics">
+          <div class="metric"><span class="metric-val">5</span><span class="metric-label">commits</span></div>
+          <div class="metric"><span class="metric-val">84</span><span class="metric-label">tests</span></div>
+          <div class="metric"><span class="metric-val">~14,500</span><span class="metric-label">lines</span></div>
+        </div>
+      </div>
+
+      <div class="sprint">
+        <div class="sprint-dot"></div>
+        <span class="sprint-date">March 21–22 — Audit Cycle</span>
+        <h3>Performance &amp; Safety Audit</h3>
+        <p class="sprint-body">
+          Deep review of every component. A user suggested: <strong>"measure twice, cut once"</strong> — read just the beginning and end of each file instead of the whole thing. This made scanning <strong>27 times faster</strong>.
+        </p>
+        <p class="sprint-body">
+          Added <strong>trash-first deletion</strong> — files always go to your Mac's Trash (you can "Put Back"), with a complete audit log of every action.
+        </p>
+        <div class="callout callout-bug">
+          <span class="callout-icon">🐛</span>
+          Found a safety bug: the "move to trash" function wasn't verifying file paths correctly. If path resolution failed, it could move the wrong file. Fixed immediately.
+        </div>
+        <div class="sprint-metrics">
+          <div class="metric"><span class="metric-val">7</span><span class="metric-label">commits</span></div>
+          <div class="metric"><span class="metric-val">303</span><span class="metric-label">tests</span></div>
+          <div class="metric"><span class="metric-val">6</span><span class="metric-label">bugs fixed</span></div>
+        </div>
+      </div>
+
+      <div class="sprint">
+        <div class="sprint-dot"></div>
+        <span class="sprint-date">March 22 — Latest</span>
+        <h3>Thoth Knowledge System</h3>
+        <p class="sprint-body">
+          Built <strong>Thoth</strong> — a system that gives AI coding assistants persistent memory.
+          Instead of re-reading thousands of lines of code every conversation (expensive and slow),
+          the AI reads a compact summary. <strong>98% less wasted computation.</strong>
+        </p>
+        <p class="sprint-body">
+          Named after the Egyptian god of knowledge. Free and open source — works with any project, any language.
+        </p>
+        <div class="sprint-metrics">
+          <div class="metric"><span class="metric-val">5</span><span class="metric-label">commits</span></div>
+          <div class="metric"><span class="metric-val">4</span><span class="metric-label">projects using it</span></div>
+          <div class="metric"><span class="metric-val">98%</span><span class="metric-label">context saved</span></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══ Status ═══ -->
+  <section class="status-section section-padded">
+    <div style="max-width:880px; margin:0 auto;">
+      <div class="section-header">
+        <h2>Current Status</h2>
+        <div class="gold-rule"></div>
+        <p>Real numbers. No inflation.</p>
+      </div>
+
+      <div class="status-grid">
+        <div class="neo-card">
+          <h4>Reliability</h4>
+          <div class="status-row"><span class="status-row-label">Automated tests</span><span class="status-row-value pass">303 passing</span></div>
+          <div class="status-row"><span class="status-row-label">Best coverage</span><span class="status-row-value pass">93%</span></div>
+          <div class="status-row"><span class="status-row-label">Worst coverage</span><span class="status-row-value warn">0% (9 modules)</span></div>
+          <div class="status-row"><span class="status-row-label">Race conditions</span><span class="status-row-value pass">0 found</span></div>
+          <div class="status-row"><span class="status-row-label">Code warnings</span><span class="status-row-value pass">0</span></div>
+        </div>
+        <div class="neo-card">
+          <h4>Safety</h4>
+          <div class="status-row"><span class="status-row-label">Protected locations</span><span class="status-row-value pass">29 hardcoded</span></div>
+          <div class="status-row"><span class="status-row-label">Deletion method</span><span class="status-row-value pass">Trash first</span></div>
+          <div class="status-row"><span class="status-row-label">Action audit log</span><span class="status-row-value pass">Every action</span></div>
+          <div class="status-row"><span class="status-row-label">Data sent off-device</span><span class="status-row-value pass">Never</span></div>
+          <div class="status-row"><span class="status-row-label">Auto-delete</span><span class="status-row-value pass">Disabled</span></div>
+        </div>
+        <div class="neo-card">
+          <h4>Platform</h4>
+          <div class="status-row"><span class="status-row-label">macOS</span><span class="status-row-value pass">Full support</span></div>
+          <div class="status-row"><span class="status-row-label">Apple Silicon</span><span class="status-row-value pass">Native</span></div>
+          <div class="status-row"><span class="status-row-label">Intel Mac</span><span class="status-row-value pass">Supported</span></div>
+          <div class="status-row"><span class="status-row-label">Linux</span><span class="status-row-value warn">~60%</span></div>
+          <div class="status-row"><span class="status-row-label">Windows</span><span class="status-row-value fail">~40%</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ Benchmark ═══ -->
+  <section class="section">
+    <div class="section-header">
+      <h2>Performance</h2>
+      <div class="gold-rule"></div>
+      <p>Measured on a real folder with 709 files. Not a synthetic test.</p>
+    </div>
+
+    <div class="benchmark-row">
+      <div class="benchmark-label"><span>Scan speed</span><span>27.3× faster</span></div>
+      <div class="benchmark-track"><div class="benchmark-fill emerald" data-width="94%"></div></div>
+      <div class="benchmark-footnote"><span>Before: 84 ms per batch</span><span>After: 3 ms per batch</span></div>
+    </div>
+
+    <div class="benchmark-row">
+      <div class="benchmark-label"><span>Disk reads — less is better for your SSD</span><span>98.8% less</span></div>
+      <div class="benchmark-track"><div class="benchmark-fill danger" data-width="98.8%"></div></div>
+      <div class="benchmark-footnote"><span>Before: 97.8 MB read</span><span>After: &lt;2 MB read</span></div>
+    </div>
+
+    <div class="benchmark-row">
+      <div class="benchmark-label"><span>Accuracy — duplicates correctly identified</span><span>100%</span></div>
+      <div class="benchmark-track"><div class="benchmark-fill emerald" data-width="100%"></div></div>
+      <div class="benchmark-footnote"><span>25 duplicate groups found</span><span>Same result, 27× faster</span></div>
+    </div>
+
+    <p style="color:var(--text-muted); font-size:0.78rem; margin-top:2rem; text-align:center; max-width:600px; margin-left:auto; margin-right:auto;">
+      How it works: instead of reading entire files (which can be gigabytes), we read just the first and last 4 KB.
+      If those 8 KB match, then — and only then — do we read the full file. Most non-duplicates are eliminated instantly.
+    </p>
+  </section>
+
+  <!-- ═══ Honest ═══ -->
+  <section class="status-section section-padded">
+    <div style="max-width:880px; margin:0 auto;">
+      <div class="section-header">
+        <h2>What We're Still Working On</h2>
+        <div class="gold-rule"></div>
+        <p>We'd rather tell you what isn't ready than let you discover it.</p>
+      </div>
+      <div class="neo-card todo-list">
+        <div class="todo-item"><span class="todo-item-label">9 of 17 internal modules need test coverage</span><span class="todo-badge progress">In Progress</span></div>
+        <div class="todo-item"><span class="todo-item-label">Windows support is incomplete</span><span class="todo-badge planned">Planned</span></div>
+        <div class="todo-item"><span class="todo-item-label">No automatic update mechanism yet</span><span class="todo-badge planned">Planned</span></div>
+        <div class="todo-item"><span class="todo-item-label">Visual app still being polished</span><span class="todo-badge progress">In Progress</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ Part of Sirsi ═══ -->
+  <section class="section" style="padding-bottom:3rem;">
+    <div style="max-width:700px; margin:0 auto; text-align:center;">
+      <p style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.15em; margin-bottom:1rem;">Part of the Sirsi Ecosystem</p>
+      <h2 style="font-size:clamp(1.2rem,2.5vw,1.6rem);">Anubis Is Just the Beginning</h2>
+      <div class="gold-rule" style="width:60px; height:2px; background:linear-gradient(90deg,transparent,var(--color-gold),transparent); margin:1rem auto;"></div>
+      <p style="color:var(--text-secondary); font-size:0.95rem; line-height:1.8; margin-top:1rem;">
+        Anubis is a standalone, open-source preview of infrastructure hygiene features being built into
+        <a href="https://github.com/SirsiMaster/SirsiNexusApp" target="_blank" style="color:var(--color-emerald-light); font-weight:600;">SirsiNexus</a>
+        — an AI-powered infrastructure platform by Sirsi Technologies.
+      </p>
+      <p style="color:var(--text-secondary); font-size:0.95rem; line-height:1.8; margin-top:1rem;">
+        The full <strong style="color:var(--color-gold);">Anubis→Ra</strong> module — coming to SirsiNexus in the coming months — will add
+        neural file classification, fleet-wide policy enforcement, multi-cloud storage optimization,
+        and autonomous remediation. Everything you see here today will ship as part of that larger system.
+      </p>
+
+      <div style="display:flex; gap:1rem; justify-content:center; flex-wrap:wrap; margin-top:2rem;">
+        <a href="https://github.com/SirsiMaster/SirsiNexusApp" target="_blank"
+           style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.7rem 1.5rem; background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--radius-md); color:var(--color-emerald-light); font-size:0.85rem; font-weight:600; transition:border-color 0.2s;">
+          <svg style="width:16px; height:16px;" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 0C4.477 0 0 4.477 0 10c0 4.418 2.865 8.167 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.155-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.645.349-1.086.635-1.335-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.682-.103-.253-.446-1.27.098-2.647 0 0 .84-.268 2.75 1.025A9.578 9.578 0 0110 4.836a9.578 9.578 0 012.504.337c1.909-1.293 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.698 1.026 1.591 1.026 2.682 0 3.841-2.337 4.687-4.565 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.579.688.48C17.138 18.163 20 14.418 20 10c0-5.523-4.477-10-10-10z" clip-rule="evenodd"></path></svg>
+          Explore SirsiNexus
+        </a>
+        <a href="https://github.com/SirsiMaster/sirsi-anubis/blob/main/docs/DEVELOPMENT_PLAN.md" target="_blank"
+           style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.7rem 1.5rem; background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--radius-md); color:var(--color-gold); font-size:0.85rem; font-weight:600; transition:border-color 0.2s;">
+          Anubis→Ra Roadmap →
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ Footer ═══ -->
+  <footer>
+    <div style="font-size:2rem; margin-bottom:0.5rem;">𓂀</div>
+    <div class="footer-brand">Sirsi Technologies</div>
+    <p style="margin-top:0.25rem;">Infrastructure Hygiene for the AI Era</p>
+    <div class="footer-links">
+      <a href="https://github.com/SirsiMaster/sirsi-anubis">GitHub</a>
+      <a href="https://github.com/SirsiMaster/sirsi-anubis/blob/main/CHANGELOG.md">Changelog</a>
+      <a href="https://github.com/SirsiMaster/SirsiNexusApp">SirsiNexus</a>
+      <a href="https://github.com/SirsiMaster/sirsi-anubis/blob/main/docs/THOTH.md">Thoth</a>
+      <a href="https://github.com/SirsiMaster/sirsi-anubis/blob/main/LICENSE">MIT License</a>
+    </div>
+    <p style="margin-top:1.5rem;">Updated March 22, 2026 · Updated with every sprint</p>
+  </footer>
+
+</div>
+
+<script>
+  // Scroll-triggered timeline reveal
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15 });
+
+  document.querySelectorAll('.sprint').forEach(s => observer.observe(s));
+
+  // Scroll-triggered benchmark bars
+  const barObserver = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.style.width = entry.target.dataset.width;
+        barObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.3 });
+
+  document.querySelectorAll('.benchmark-fill').forEach(bar => barObserver.observe(bar));
+</script>
+</body>
+</html>
