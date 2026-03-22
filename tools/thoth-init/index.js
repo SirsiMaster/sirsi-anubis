@@ -207,10 +207,80 @@ line_count: ~${lineCount.toLocaleString()}
   fs.writeFileSync(path.join(ARTIFACTS_DIR, 'README.md'),
     '# Thoth Artifacts\nBenchmarks, audits, design docs, and deep analysis go here.\n');
   
-  // .gitignore check
+  // ─── IDE Integration: inject "read .thoth/memory.yaml" into rules files ───
+  const thothRule = `
+# 𓁟 Thoth — Persistent Knowledge System
+# At the START of every conversation, read .thoth/memory.yaml before reading any source files.
+# This file is the project's compressed state (~100 lines) and replaces reading thousands of lines of code.
+# When reasoning matters, also read .thoth/journal.md for decision history.
+# After making significant changes, update both files.
+`;
+
+  const ideFiles = [
+    { path: '.cursorrules',           name: 'Cursor' },
+    { path: '.windsurfrules',         name: 'Windsurf' },
+    { path: '.gemini/style.md',       name: 'Gemini', dir: '.gemini' },
+    { path: 'CLAUDE.md',             name: 'Claude Code' },
+    { path: '.github/copilot-instructions.md', name: 'Copilot', dir: '.github' },
+  ];
+
+  const injectedIDEs = [];
+
+  for (const ide of ideFiles) {
+    const exists = fs.existsSync(ide.path);
+    if (exists) {
+      // Check if already injected
+      const content = fs.readFileSync(ide.path, 'utf8');
+      if (content.includes('.thoth/memory.yaml')) {
+        continue; // Already has Thoth
+      }
+      // Append to existing file
+      fs.appendFileSync(ide.path, '\n' + thothRule);
+      injectedIDEs.push(ide.name + ' (appended)');
+    } else {
+      // Create new rules file with Thoth instruction
+      if (ide.dir) fs.mkdirSync(ide.dir, { recursive: true });
+      fs.writeFileSync(ide.path, thothRule.trim() + '\n');
+      injectedIDEs.push(ide.name + ' (created)');
+    }
+  }
+
+  // Also create/update session workflow for Claude Code / Antigravity
+  const workflowDir = '.agent/workflows';
+  const workflowPath = path.join(workflowDir, 'session-start.md');
+  if (!fs.existsSync(workflowPath)) {
+    fs.mkdirSync(workflowDir, { recursive: true });
+    fs.writeFileSync(workflowPath, `---
+description: How to start a new session using the Thoth knowledge system
+---
+
+# 𓁟 Thoth Session Start
+
+## Step 1: Read the Thoth memory file (ALWAYS do this first)
+Read \`.thoth/memory.yaml\` in the project root. This replaces reading source code.
+
+## Step 2: Read the engineering journal (when reasoning matters)
+Read \`.thoth/journal.md\` for timestamped decision entries.
+
+## Step 3: After making significant changes — update Thoth
+1. Update \`.thoth/memory.yaml\` with new stats, decisions, limitations
+2. Add a journal entry to \`.thoth/journal.md\`
+3. Commit Thoth files with your code changes
+`);
+    injectedIDEs.push('Claude Code workflow (created)');
+  }
+
+  // ─── Summary ───
   console.log('\n  ✓ Created .thoth/memory.yaml');
   console.log('  ✓ Created .thoth/journal.md');
   console.log('  ✓ Created .thoth/artifacts/');
+  
+  if (injectedIDEs.length > 0) {
+    console.log('\n  IDE integrations:');
+    for (const ide of injectedIDEs) {
+      console.log(`  ✓ ${ide}`);
+    }
+  }
   
   const tokensSaved = Math.round((1 - 100 / Math.max(lineCount, 100)) * 100);
   console.log(`\n  𓁟 Context reduction: ~${tokensSaved}%`);
