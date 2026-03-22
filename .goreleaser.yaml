@@ -69,14 +69,14 @@ archives:
       - configs/example_policy.yaml
       - configs/workspace_template.yaml
 
-homebrew_casks:
+brews:
   - name: sirsi-anubis
     repository:
       owner: SirsiMaster
       name: homebrew-tools
     directory: Formula
     homepage: https://github.com/SirsiMaster/sirsi-anubis
-    description: "𓀀 Infrastructure hygiene for the AI era"
+    description: "𓂀 Infrastructure hygiene for the AI era"
     license: MIT
     install: |
       bin.install "anubis"
