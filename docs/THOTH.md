@@ -3,6 +3,9 @@
 > *"Thoth invents writing so that knowledge survives the death of the scribe."*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-C8A951?style=flat)](LICENSE)
+[![Standalone Repo](https://img.shields.io/badge/repo-sirsi--thoth-1A1A5E?style=flat&logo=github)](https://github.com/SirsiMaster/sirsi-thoth)
+
+> **Thoth is now a standalone project.** See [github.com/SirsiMaster/sirsi-thoth](https://github.com/SirsiMaster/sirsi-thoth) for the independent repo, npm package, and templates. This document describes the Anubis integration.
 
 ## The Problem
 
