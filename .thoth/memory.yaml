@@ -1,6 +1,6 @@
 # 𓁟 Thoth — Project Memory for Sirsi Anubis
 # Read this FIRST before any source files.
-# Last updated: 2026-03-21T23:45:00-04:00
+# Last updated: 2026-03-22T12:11:00-04:00
 
 ## Identity
 project: sirsi-anubis
@@ -60,15 +60,16 @@ mcp_tools: 5 (scan_workspace, ghost_report, health_check, classify_files, thoth_
 # - Platform-specific code is scattered, not behind a Platform interface
 
 ## Recent Changes (most recent first)
+# 2026-03-22: Build-in-public HTML page (Swiss Neo-Deco, Cinzel+Inter, emerald+gold)
+# 2026-03-22: Cross-linked Anubis ↔ SirsiNexus Portal (Anubis→Ra messaging)
+# 2026-03-22: BUILD_LOG.md sprint chronicle + CHANGELOG v0.3.0 expansion
+# 2026-03-22: README badges (303 tests, building in public)
+# 2026-03-22: Codebase safety audit — 6 bugs fixed (filepath.Abs, moveToTrash)
+# 2026-03-22: thoth-init standalone CLI (npx thoth-init, non-interactive mode)
 # 2026-03-21: Thoth knowledge system canonized — memory, journal, skill, MCP tool
 # 2026-03-21: Graceful shutdown (SIGINT handler) + drag-and-drop UX fix
 # 2026-03-21: GoReleaser CI fix (stale config, brews vs homebrew_casks)
-# 2026-03-21: README rewrite with Mirror benchmarks, updated architecture table
-# 2026-03-21: Guard optimization — pre-lowercased orphanPatterns
-# 2026-03-21: Decision log + CleanFile + /api/browse filesystem browser
-# 2026-03-21: Native macOS folder picker via osascript
 # 2026-03-21: Three-phase partial hashing (27.3x speedup)
-# 2026-03-21: Safety protections for ~/Desktop, ~/Documents, etc.
 
 ## Brand
 # Colors: Gold (#C8A951), Black (#0F0F0F), Deep Lapis (#1A1A5E)
@@ -91,3 +92,6 @@ mcp_tools: 5 (scan_workspace, ghost_report, health_check, classify_files, thoth_
 # .thoth/journal.md             — engineering journal (WHY behind decisions)
 # docs/THOTH.md                 — Thoth specification
 # docs/MIRROR_PERFORMANCE.md    — dedup benchmark data
+# docs/BUILD_LOG.md             — sprint chronicle (markdown, for developers)
+# docs/build-log.html           — build-in-public page (HTML, for everyone)
+# tools/thoth-init/index.js     — standalone thoth-init CLI (npx)
