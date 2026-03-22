@@ -870,6 +870,74 @@
     </p>
   </section>
 
+  <!-- ═══ Thoth ROI — Dogfooding Case Study ═══ -->
+  <section class="section">
+    <div class="section-header">
+      <p style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.15em; margin-bottom:0.5rem;">Case Study · We Eat Our Own Dog Food</p>
+      <h2>𓁟 How Thoth Changed Our Development Process</h2>
+      <div class="gold-rule"></div>
+      <p>We built Thoth because our own AI sessions kept failing. Then we measured the difference.</p>
+    </div>
+
+    <div style="max-width:880px; margin:0 auto;">
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1.5rem; margin-bottom:2.5rem;">
+        <div class="neo-card" style="text-align:center; padding:1.5rem;">
+          <div style="font-size:2.2rem; font-weight:700; color:var(--color-emerald-light);">98.7%</div>
+          <div style="color:var(--text-secondary); font-size:0.8rem; margin-top:0.25rem;">less code to read per session</div>
+          <div style="color:var(--text-muted); font-size:0.7rem; margin-top:0.5rem;">22,958 lines → 297 lines</div>
+        </div>
+        <div class="neo-card" style="text-align:center; padding:1.5rem;">
+          <div style="font-size:2.2rem; font-weight:700; color:var(--color-gold);">~3M</div>
+          <div style="color:var(--text-secondary); font-size:0.8rem; margin-top:0.25rem;">tokens saved (11 sessions)</div>
+          <div style="color:var(--text-muted); font-size:0.7rem; margin-top:0.5rem;">271,932 tokens saved per session</div>
+        </div>
+        <div class="neo-card" style="text-align:center; padding:1.5rem;">
+          <div style="font-size:2.2rem; font-weight:700; color:var(--color-emerald-light);">136%</div>
+          <div style="color:var(--text-secondary); font-size:0.8rem; margin-top:0.25rem;">more context for actual work</div>
+          <div style="color:var(--text-muted); font-size:0.7rem; margin-top:0.5rem;">137.7% of window → 1.7%</div>
+        </div>
+        <div class="neo-card" style="text-align:center; padding:1.5rem;">
+          <div style="font-size:2.2rem; font-weight:700; color:var(--color-gold);">150</div>
+          <div style="color:var(--text-secondary); font-size:0.8rem; margin-top:0.25rem;">tests in one session</div>
+          <div style="color:var(--text-muted); font-size:0.7rem; margin-top:0.5rem;">enabled by context preservation</div>
+        </div>
+      </div>
+
+      <div class="benchmark-row">
+        <div class="benchmark-label"><span>Context window consumed at startup</span><span>98.7% reduction</span></div>
+        <div class="benchmark-track"><div class="benchmark-fill emerald" data-width="98.7%"></div></div>
+        <div class="benchmark-footnote"><span>Without Thoth: 137.7% (doesn't fit!)</span><span>With Thoth: 1.7%</span></div>
+      </div>
+
+      <div class="benchmark-row">
+        <div class="benchmark-label"><span>Cost per session startup</span><span>98.8% less</span></div>
+        <div class="benchmark-track"><div class="benchmark-fill danger" data-width="98.8%"></div></div>
+        <div class="benchmark-footnote"><span>Without Thoth: $4.13</span><span>With Thoth: $0.05</span></div>
+      </div>
+
+      <div style="background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--radius-md); padding:1.5rem; margin-top:2rem;">
+        <p style="color:var(--text-primary); font-size:0.92rem; line-height:1.8; margin:0;">
+          <strong style="color:var(--color-gold);">The problem:</strong> Without Thoth, our 22,958-line codebase consumed
+          <strong>137.7% of the AI's context window</strong> just to read at startup. The source code literally didn't fit.
+          The AI had to read selectively, creating blind spots that caused hallucinated function names,
+          duplicated code, and missed safety rules.
+        </p>
+        <p style="color:var(--text-primary); font-size:0.92rem; line-height:1.8; margin:1rem 0 0 0;">
+          <strong style="color:var(--color-emerald-light);">The result:</strong> Thoth compresses project knowledge into 297 lines of curated facts.
+          The AI starts productive in <strong>10 seconds</strong> instead of 3–5 minutes, with
+          <strong>136% more context</strong> available for real work. In our best session,
+          we wrote <strong>150 tests</strong> and made <strong>11 commits</strong> — impossible without
+          context preservation.
+        </p>
+      </div>
+
+      <p style="color:var(--text-muted); font-size:0.78rem; margin-top:1.5rem; text-align:center;">
+        All metrics from real development sessions, verified via <code>wc -l</code> and <code>git log</code>.
+        <a href="https://github.com/SirsiMaster/sirsi-anubis/blob/main/docs/case-studies/thoth-context-savings.md" style="color:var(--color-emerald-light);">Read the full case study →</a>
+      </p>
+    </div>
+  </section>
+
   <!-- ═══ Honest ═══ -->
   <section class="status-section section-padded">
     <div style="max-width:880px; margin:0 auto;">

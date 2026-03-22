@@ -5,7 +5,7 @@
 [![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go&logoColor=white)](https://go.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-C8A951?style=flat)](LICENSE)
 [![Version](https://img.shields.io/badge/Version-0.3.0--alpha-1A1A5E?style=flat)](VERSION)
-[![Tests](https://img.shields.io/badge/tests-~395%20passing-brightgreen?style=flat)](.github/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-453%20passing-brightgreen?style=flat)](.github/workflows/ci.yml)
 [![MCP](https://img.shields.io/badge/MCP-2025--03--26-purple?style=flat)](https://modelcontextprotocol.io)
 [![Build in Public](https://img.shields.io/badge/building-in%20public-C8A951?style=flat)](docs/BUILD_LOG.md)
 
@@ -195,7 +195,7 @@ anubis mcp    # Start MCP server (stdio)
 
 ## 𓁟 Thoth — Persistent Knowledge System
 
-Thoth gives AI assistants **persistent memory across sessions**. Instead of re-reading 10,000+ lines of source code every time, the AI reads a ~100-line memory file for instant context.
+Thoth gives AI assistants **persistent memory across sessions**. Instead of re-reading thousands of lines of source code every time, the AI reads a ~100-line memory file for instant context.
 
 ```
 .thoth/
@@ -204,9 +204,33 @@ Thoth gives AI assistants **persistent memory across sessions**. Instead of re-r
 └── artifacts/       # Layer 3: DEEP — benchmarks, audits, reviews
 ```
 
-**Measured impact**: 99.3% reduction in context needed to start a session.
+### Measured Impact (Dogfooding on This Repo)
+
+| Metric | Without Thoth | With Thoth | Savings |
+|:-------|:-------------|:-----------|:--------|
+| Lines read at startup | 22,958 | 297 | **98.7% fewer** |
+| Tokens consumed | 275,496 | 3,564 | **271,932 saved** |
+| Context window used | 137.7% (⚠️ doesn't fit) | 1.7% | **136% preserved** |
+| Cost per session (Opus 4) | $4.13 | $0.05 | **$4.08 saved** |
+| Cumulative (11 sessions) | — | — | **~3M tokens, ~$45** |
+
+> We built Thoth because our own AI sessions were failing — the codebase was too large to fit in context. The before/after is measurable. [Read the case study →](docs/case-studies/thoth-context-savings.md)
 
 Thoth is MIT licensed and works with any project, any language, any AI assistant. See [docs/THOTH.md](docs/THOTH.md) for the full specification.
+
+---
+
+## 📊 Case Studies
+
+We build these tools because we need them. Every claim has a case study with measured data:
+
+| Case Study | Key Finding |
+|:-----------|:------------|
+| [𓁟 Thoth Context Savings](docs/case-studies/thoth-context-savings.md) | 98.7% reduction in context needed — 22,958 lines → 297 |
+| 🪩 Mirror Dedup Performance | 27.3x faster than naive hashing, 98.8% less disk I/O |
+| 𓂓 Ka Ghost Detection | 23 GB of Parallels remnants found after "clean uninstall" |
+
+*All metrics verified from real development sessions via `wc -l`, `go test`, and `git log`.*
 
 
 ## ⚖️ Policy Enforcement
