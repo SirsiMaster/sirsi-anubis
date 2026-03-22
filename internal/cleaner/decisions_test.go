@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -307,6 +308,9 @@ func TestDeleteFile_NonExistent(t *testing.T) {
 }
 
 func TestDeleteFile_ProtectedPath(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("protected path test requires macOS")
+	}
 	_, err := DeleteFile("/System/Library/test", false, false)
 	if err == nil {
 		t.Error("DeleteFile on protected path should return error")
@@ -413,6 +417,9 @@ func TestDirSize_EmptyDir(t *testing.T) {
 // ═══════════════════════════════════════════
 
 func TestCleanFile_BlockedPathLogsSkip(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("protected path test requires macOS")
+	}
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
 

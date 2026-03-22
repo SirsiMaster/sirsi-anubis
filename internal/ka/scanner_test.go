@@ -3,6 +3,7 @@ package ka
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -350,6 +351,9 @@ func TestClean_DryRun(t *testing.T) {
 }
 
 func TestClean_ProtectedPathSkipped(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("protected path test requires macOS")
+	}
 	s := NewScanner()
 	ghost := Ghost{
 		BundleID: "com.test.protected",

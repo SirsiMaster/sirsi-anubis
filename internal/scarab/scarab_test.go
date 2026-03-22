@@ -2,6 +2,7 @@ package scarab
 
 import (
 	"net"
+	"runtime"
 	"testing"
 )
 
@@ -10,8 +11,29 @@ import (
 // ═══════════════════════════════════════════
 
 func TestParseARPLine_DarwinFormat(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("Darwin ARP format test requires macOS")
+	}
 	// macOS: ? (192.168.1.1) at aa:bb:cc:dd:ee:ff on en0 ifscope [ethernet]
 	line := "? (192.168.1.1) at aa:bb:cc:dd:ee:ff on en0 ifscope [ethernet]"
+	h := parseARPLine(line)
+	if h == nil {
+		t.Fatal("expected non-nil host")
+	}
+	if h.IP != "192.168.1.1" {
+		t.Errorf("IP = %q, want %q", h.IP, "192.168.1.1")
+	}
+	if h.MAC != "aa:bb:cc:dd:ee:ff" {
+		t.Errorf("MAC = %q, want %q", h.MAC, "aa:bb:cc:dd:ee:ff")
+	}
+}
+
+func TestParseARPLine_LinuxFormat(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("Linux ARP format test requires Linux")
+	}
+	// Linux: 192.168.1.1  ether  aa:bb:cc:dd:ee:ff  C  en0
+	line := "192.168.1.1  ether  aa:bb:cc:dd:ee:ff  C  en0"
 	h := parseARPLine(line)
 	if h == nil {
 		t.Fatal("expected non-nil host")

@@ -3,6 +3,7 @@ package hapi
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -368,6 +369,9 @@ func TestHashFile_NonExistent(t *testing.T) {
 // ═══════════════════════════════════════════
 
 func TestPruneSnapshot_DryRun(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("snapshot pruning requires macOS")
+	}
 	// Dry run should return nil without executing anything
 	err := PruneSnapshot("com.apple.TimeMachine.2026-03-21-120000.local", true)
 	if err != nil {
