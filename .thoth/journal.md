@@ -152,3 +152,21 @@ Added "building in public" badge to README. Linked from CHANGELOG.
 **Voice rule canonized**: Direct verbs only. "Built. Fixed. Refactored." Never "the user wanted" or "the user suggested." The build log describes what was built, not who asked for it.
 
 **Why this matters**: The build-in-public process is no longer something we "happen to do" — it's a structural part of the release pipeline, captured in governance (ADR-003), enforced by workflow (session-start Step 6), and tracked in memory (Design Decision #9). A future contributor or AI session cannot skip it without violating the architecture.
+
+---
+
+## Entry 009 — 2026-03-22 17:45 — "Test everything that matters"
+
+**Context**: 9 out of 17 modules had zero test coverage. The continuation prompt made this Priority 1 — April investor demos require complete product. Testing infrastructure before launch is non-negotiable.
+
+**Approach**: Wrote tests for 7 modules in priority order: ignore → rules → profile → stealth → hapi → scarab → sight. Focused on pure functions and unit tests that don't need real system access (temp dirs, struct validation, parsing). Avoided tests that require network, Docker, or macOS-specific system calls in ways that would break CI.
+
+**Findings**:
+1. **ARP parsing edge case**: macOS `(incomplete)` entries match the same parenthesis-detection logic as IP addresses, causing the IP to get overwritten with "incomplete". Not a bug that affects users (the entry is correctly rejected by `isValidIP`), but documents a fragile parser design.
+2. **Registry comment mismatch**: `darwinRules()` comment says "8 IDEs rules" but only lists 7. Cosmetic discrepancy.
+3. **Rule name inconsistency**: Constructor names don't always match the internal rule name (e.g., `NewRustTargetRule` → `rust_targets`, `NewDockerRule` → `docker_desktop`). Not a bug, but the test caught it.
+4. **All default profiles include "general"** — verified by test, which is good PMF (every scan covers the basics).
+
+**Result**: 303 → ~395 tests. 15/17 modules have tests. Only `mapper` (graph UI) and `output` (terminal rendering) remain untested — both are low priority because they're display-only with no side effects.
+
+**Decision**: Unified Thoth as canonical session manager. Context monitoring is no longer a separate workflow — Thoth owns both project memory and session health tracking.
