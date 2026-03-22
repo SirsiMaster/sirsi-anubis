@@ -1,6 +1,6 @@
 # 𓁟 Thoth — Project Memory for Sirsi Anubis
 # Read this FIRST before any source files.
-# Last updated: 2026-03-22T17:45:00-04:00
+# Last updated: 2026-03-22T18:30:00-04:00
 
 ## Identity
 project: sirsi-anubis
@@ -8,7 +8,7 @@ repo: github.com/SirsiMaster/sirsi-anubis
 language: Go 1.22+
 version: 0.3.0-alpha
 binary_count: 2 (anubis @ 12 MB, anubis-agent @ 3.2 MB)
-test_count: ~395
+test_count: 453
 line_count: ~15,000
 module_count: 17
 command_count: 17
@@ -63,9 +63,11 @@ mcp_tools: 5 (scan_workspace, ghost_report, health_check, classify_files, thoth_
 # - Platform-specific code is scattered, not behind a Platform interface
 
 ## Recent Changes (most recent first)
+# 2026-03-22: Safety-critical coverage sprint — cleaner 49%→77%, ka 19.5%→42.7%
+#   Added: 30 cleaner tests (DecisionLog, DeleteFile, CleanFile, DirSize, constants)
+#   Added: 28 ka tests (isInstalled, countFiles, mergeOrphans, Clean, constants)
+# 2026-03-22: Launch prep — goreleaser verified (12 binaries), launch copy + demo updated
 # 2026-03-22: Test coverage sprint — 303→~395 tests, 15/17 modules tested
-#   Added: ignore(17), rules(11), profile(16), stealth(9), hapi(20), scarab(12), sight(9)
-#   Discovered: ARP parsing edge case with (incomplete) entries
 # 2026-03-22: Thoth unified as canonical session manager (memory + context monitoring)
 # 2026-03-22: Build-in-public HTML page (Swiss Neo-Deco, Cinzel+Inter, emerald+gold)
 # 2026-03-22: Cross-linked Anubis ↔ SirsiNexus Portal (Anubis→Ra messaging)

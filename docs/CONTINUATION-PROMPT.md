@@ -1,5 +1,5 @@
 # ‍‍‍𓂀 Sirsi Anubis — Continuation Prompt
-**Date:** March 22, 2026 (Saturday, 6:15 PM ET)
+**Date:** March 22, 2026 (Saturday, 6:30 PM ET)
 **Session:** Test Coverage Blitz + Launch Preparation
 **Repo:** `github.com/SirsiMaster/sirsi-anubis`
 **Path:** `/Users/thekryptodragon/Development/sirsi-anubis`
@@ -10,7 +10,7 @@
 
 1. **Run `/session-start`** — the Thoth workflow at `.agent/workflows/session-start.md`
 2. **Read `.thoth/memory.yaml`** — compressed project state (~100 lines). This replaces reading source files.
-3. **Read `.thoth/journal.md`** — timestamped reasoning (9 entries).
+3. **Read `.thoth/journal.md`** — timestamped reasoning (10 entries).
 4. **Read `ANUBIS_RULES.md`** — the 12 non-negotiable safety rules.
 5. **Scope**: Cleaner coverage + launch execution. No new features.
 6. **Deadline: Friday March 28** — April investor demos require complete product.
@@ -82,7 +82,7 @@ Thoth tracks session health to prevent context exhaustion. After every sprint:
 - **Version:** 0.3.0-alpha (tagged `v0.3.0-alpha`)
 - **Size:** ~8 MB (macOS arm64), ~2 MB (agent)
 - **Go:** 1.22+, Cobra CLI, lipgloss terminal UI
-- **Tests:** ~395 passing, 15 test suites, 0 lint warnings
+- **Tests:** 453 passing, 15 test suites, 0 lint warnings
 - **GoReleaser:** Verified — 12 binaries across 6 platforms all compile
 
 ### 17 CLI Commands
@@ -114,8 +114,8 @@ Thoth tracks session health to prevent context exhaustion. After every sprint:
 | Module | Coverage | Notes |
 |:-------|:---------|:------|
 | jackal | 93% | Scan engine |
-| cleaner | ~49% | Safety + deletion — **NEEDS MORE** |
-| ka | 19.5% | Ghost detection |
+| cleaner | **77.2%** | Safety + deletion — near target |
+| ka | **42.7%** | Ghost detection (improved this session) |
 | guard | 42 tests | RAM audit |
 | brain | has tests | Neural downloader |
 | mcp | has tests | MCP server |

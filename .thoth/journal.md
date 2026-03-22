@@ -170,3 +170,19 @@ Added "building in public" badge to README. Linked from CHANGELOG.
 **Result**: 303 → ~395 tests. 15/17 modules have tests. Only `mapper` (graph UI) and `output` (terminal rendering) remain untested — both are low priority because they're display-only with no side effects.
 
 **Decision**: Unified Thoth as canonical session manager. Context monitoring is no longer a separate workflow — Thoth owns both project memory and session health tracking.
+
+---
+
+## Entry 010 — 2026-03-22 18:30 — "Safety-critical code deserves the most tests"
+
+**Context**: Cleaner module (the code that actually deletes files) was at 49% coverage. Ka (ghost hunter) was at 19.5%. Both are user-facing modules where bugs have real consequences — a cleaner bug could delete the wrong file, a Ka bug could flag system components as ghosts.
+
+**Approach**: Wrote tests targeting the untested code paths first:
+- **Cleaner**: DecisionLog full lifecycle (create → record → save → load → list), DeleteFile in all modes (dry-run, actual delete, directory, protected, non-existent), CleanFile safety integration, DirSize with real files, and verification that all protected path constants contain the critical entries.
+- **Ka**: isInstalled matching logic (bundle ID, name substring, no match), countFiles with real directories, mergeOrphans (4 scenarios covering filesystem-only, LS-only, combined, empty), Clean dry-run + protected path safety, struct zero-value safety, and residual location/type completeness checks.
+
+**Result**: Cleaner 49% → 77.2%. Ka 19.5% → 42.7%. Total 303 → 453 tests across the session. The remaining uncovered code in both modules requires real system access (macOS Finder for trash, lsregister for Launch Services, brew for cask index) — can't be unit-tested without a Platform interface abstraction, which is P3.
+
+**Launch prep verified**: GoReleaser snapshot builds 12 binaries across 6 platforms, all within size budget. Launch copy, investor demo, and all public-facing stats updated.
+
+**Session total**: 10 commits, 27 files modified, 150 tests written, 4 sprints completed.
