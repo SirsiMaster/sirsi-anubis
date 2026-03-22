@@ -64,11 +64,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 
 ### Stats
 - 17 CLI commands, 64 scan rules, 17 internal modules
-- 303 tests across 8 packages, all passing (with `-race`)
+- ~395 tests across 15 packages, all passing (with `-race`)
 - ~15,000 lines of Go
 - Lint clean (golangci-lint + staticcheck)
-- Test coverage range: 93% (jackal) to 0% (9 untested modules)
-- 6 bugs found and fixed in this audit cycle
+- Test coverage range: 93% (jackal) to 0% (2 untested modules: mapper, output)
+- 6 bugs found and fixed in audit cycle, 7 modules test-covered in test sprint
 
 
 ## [0.2.0-alpha] — 2026-03-25 (Ship Week Day 5)

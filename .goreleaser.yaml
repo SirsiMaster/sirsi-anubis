@@ -116,7 +116,7 @@ release:
     - Neural brain downloader + classifier interface
     - MCP server for AI IDE integration (Claude, Cursor, Windsurf)
     - Scales policy engine for fleet enforcement
-    - 29 hardcoded safety protections, 303 tests
+    - 29 hardcoded safety protections, ~395 tests, 15 test suites
 
     ### Install
     ```bash

@@ -97,3 +97,63 @@ No telemetry. No tracking. Zero footprint.
 Written in Go. Under 10 MB. Ships today.
 
 *The jackal sees everything. Nothing escapes the Weighing.* 𓂀
+
+---
+
+## Key Stats (Updated March 22, 2026)
+
+| Metric | Value |
+|:-------|:------|
+| CLI commands | 17 |
+| Scan rules | 64 across 7 domains |
+| Internal modules | 17 (15 with tests) |
+| Tests | ~395 (15 test suites, 0 failures) |
+| Binary size | anubis: ~8 MB, agent: ~2 MB |
+| Lines of Go | ~15,000 |
+| Dedup speedup | 27.3x vs naive, 98.8% less disk I/O |
+| Protected paths | 29 hardcoded |
+| Telemetry | Zero |
+
+## Competitor Comparison
+
+| Feature | Anubis | CleanMyMac | Mole |
+|:--------|:-------|:-----------|:-----|
+| Price | Free (MIT) | $40/yr | Free |
+| AI/ML caches | ✅ 11 rules | ❌ | ❌ |
+| Ghost app hunter | ✅ 17 locations | Partial | ❌ |
+| File deduplication | ✅ 27x faster | Basic | ❌ |
+| Policy engine | ✅ YAML | ❌ | ❌ |
+| MCP server (AI IDEs) | ✅ 5 tools | ❌ | ❌ |
+| Decision audit log | ✅ per-file | ❌ | ❌ |
+| Protected paths | 29 hardcoded | Configurable | None |
+| Telemetry | Zero | Optional | Unknown |
+| Open source | Yes | No | Yes |
+| GUI | ✅ (web-based) | ✅ (native) | ❌ |
+
+## Quick Demo Commands
+
+```bash
+# Install
+brew tap SirsiMaster/tools && brew install sirsi-anubis
+
+# Scan workstation (64 rules, 7 domains)
+anubis weigh
+
+# Hunt ghost apps
+anubis ka
+
+# Deduplicate files (CLI)
+anubis mirror ~/Documents ~/Downloads --min-size 1MB
+
+# Deduplicate files (GUI — opens browser)
+anubis mirror --gui
+
+# RAM audit — find zombie processes
+anubis guard
+
+# Connect to Claude Code / Cursor
+anubis mcp
+
+# Enforce policies
+anubis scales enforce -f policy.yaml
+```

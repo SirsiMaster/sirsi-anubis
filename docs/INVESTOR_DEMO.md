@@ -56,6 +56,14 @@ anubis scales enforce
 
 "Policy enforcement. Define thresholds — 'fail if waste exceeds 20 GB.' This is how fleet managers keep 1,000 developer workstations clean."
 
+### 2:30 — File Deduplication (30 seconds)
+
+```bash
+anubis mirror --gui
+```
+
+"Mirror finds duplicate files 27x faster than brute force. Three-phase hashing — group by size, partial hash (first + last 4KB), then full SHA-256 only for survivors. 99% less disk I/O. Every cleanup goes to Trash first with a full audit trail."
+
 ### 3:00 — The AI Play (60 seconds)
 
 "Here's the real differentiator. Every AI coding assistant — Claude, Cursor, Windsurf — indexes your workspace before helping you code. They don't know what's junk."
@@ -78,7 +86,7 @@ The agent binary is 2 MB. Deploy to any Linux VM, container, or bare metal serve
 
 ### 4:45 — Closing (15 seconds)
 
-"17 commands. 64 rules. 72 tests. 7.7 MB binary. MIT licensed. Zero telemetry.
+"17 commands. 64 rules. ~395 tests. ~8 MB binary. MIT licensed. Zero telemetry.
 
 We're timing this for Product Hunt and Hacker News in April.
 
@@ -92,7 +100,7 @@ The question isn't whether developers waste space — it's whether anyone else i
 A: Viral distribution. CleanMyMac sells for $90/year. We give away the scanner and charge for fleet management.
 
 **Q: Why Go?**
-A: Single binary, cross-platform, no runtime. The agent is under 3 MB. Deploy anywhere.
+A: Single binary, cross-platform, no runtime. The agent is ~2 MB. Compiles for 6 platforms in 27 seconds. Deploy anywhere.
 
 **Q: Competitive landscape?**
 A: CleanMyMac (consumer), Mole (basic OSS), BleachBit (Linux). None understand developer workstations. None have MCP integration.
