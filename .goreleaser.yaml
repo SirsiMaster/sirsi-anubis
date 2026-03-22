@@ -1,4 +1,4 @@
-# goreleaser config — Sirsi Anubis v0.2.0-alpha
+# goreleaser config — Sirsi Anubis v0.3.0-alpha
 # Docs: https://goreleaser.com
 version: 2
 
@@ -49,7 +49,6 @@ archives:
     builds:
       - anubis
       - anubis-agent
-    format: tar.gz
     name_template: >-
       {{ .ProjectName }}_
       {{- .Version }}_
@@ -58,6 +57,10 @@ archives:
     format_overrides:
       - goos: windows
         format: zip
+      - goos: linux
+        format: tar.gz
+      - goos: darwin
+        format: tar.gz
     files:
       - LICENSE
       - README.md
@@ -66,14 +69,14 @@ archives:
       - configs/example_policy.yaml
       - configs/workspace_template.yaml
 
-brews:
+homebrew_casks:
   - name: sirsi-anubis
     repository:
       owner: SirsiMaster
       name: homebrew-tools
     directory: Formula
     homepage: https://github.com/SirsiMaster/sirsi-anubis
-    description: "𓂀 Infrastructure hygiene for the AI era"
+    description: "𓀀 Infrastructure hygiene for the AI era"
     license: MIT
     install: |
       bin.install "anubis"
@@ -107,11 +110,13 @@ release:
     Infrastructure hygiene for the AI era.
 
     ### Highlights
-    - 17 CLI commands, 64 scan rules, 15 internal modules
+    - 17 CLI commands, 64 scan rules, 17 internal modules
+    - Mirror file deduplication — 27x faster than naive hashing
+    - Trash-first cleaning with per-file decision log
     - Neural brain downloader + classifier interface
     - MCP server for AI IDE integration (Claude, Cursor, Windsurf)
     - Scales policy engine for fleet enforcement
-    - Hardened agent for remote deployment
+    - 29 hardcoded safety protections, 303 tests
 
     ### Install
     ```bash
