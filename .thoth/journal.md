@@ -99,3 +99,26 @@ A future session should read memory (~5 seconds), then only read source files re
 - This means features should be evaluated by user impact, not technical elegance
 - The best code in this project is invisible to the user (partial hashing, safety protections)
 - The worst code is visible to the user (drag-and-drop that doesn't work, misleading labels)
+
+---
+
+## Entry 006 — 2026-03-21 23:45 — "𓁟 Thoth" — naming the knowledge system
+
+**Context**: User saw the three-layer knowledge system (memory → journal → artifacts) and said: "I don't know if that's a global innovation (it seems like it to me based on request for similar solutions on Reddit) but I think it deserves its own naming convention."
+
+**Insight**: The user is right. The problem — AI assistants wasting context re-reading unchanged code — is universal. Every developer using LLMs for coding faces this. The three-layer approach (compressed state → reasoning → deep artifacts) maps cleanly to how human teams share knowledge: briefing → meeting notes → reference docs.
+
+**Decision**: Named it **Thoth** after the Egyptian god of knowledge, writing, and wisdom — the keeper of all records and inventor of hieroglyphics. Built it as:
+
+1. **A specification** (docs/THOTH.md) — standalone document explaining the system
+2. **A project template** (.thoth-template/) — copy into any new project
+3. **A global AI skill** (skills/thoth-knowledge-system/) — applies to ALL repos
+4. **An MCP tool** (thoth_read_memory) — AI IDEs can query it programmatically
+5. **A section in README** — visible to anyone visiting the GitHub page
+
+**Why this matters for Sirsi**: Thoth becomes a differentiator. Every Sirsi product (Anubis, Nexus, future products) ships with Thoth. Developers who adopt Anubis for dedup also get a better AI workflow. This is a Trojan horse — the knowledge system makes people dependent on the Sirsi developer experience even if they don't use the infrastructure hygiene features.
+
+**Why MIT**: The knowledge system should be universally adopted. MIT means no barriers. If it becomes an industry standard, Sirsi benefits from being the origin.
+
+**What I'm proud of**: The 99.3% context reduction is a real number. Reading ~100 lines of YAML instead of ~15,000 lines of Go. This is not a gimmick — it's measurably faster.
+

@@ -187,8 +187,25 @@ anubis mcp    # Start MCP server (stdio)
 | `ghost_report` | Hunt dead app remnants |
 | `health_check` | System health summary with grade |
 | `classify_files` | Semantic file classification |
+| `thoth_read_memory` | 𓁟 Load project context without reading source files |
 
 ---
+
+## 𓁟 Thoth — Persistent Knowledge System
+
+Thoth gives AI assistants **persistent memory across sessions**. Instead of re-reading 10,000+ lines of source code every time, the AI reads a ~100-line memory file for instant context.
+
+```
+.thoth/
+├── memory.yaml      # Layer 1: WHAT — compressed project state
+├── journal.md       # Layer 2: WHY — timestamped reasoning
+└── artifacts/       # Layer 3: DEEP — benchmarks, audits, reviews
+```
+
+**Measured impact**: 99.3% reduction in context needed to start a session.
+
+Thoth is MIT licensed and works with any project, any language, any AI assistant. See [docs/THOTH.md](docs/THOTH.md) for the full specification.
+
 
 ## ⚖️ Policy Enforcement
 

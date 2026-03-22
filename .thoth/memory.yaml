@@ -1,0 +1,93 @@
+# 𓁟 Thoth — Project Memory for Sirsi Anubis
+# Read this FIRST before any source files.
+# Last updated: 2026-03-21T23:45:00-04:00
+
+## Identity
+project: sirsi-anubis
+repo: github.com/SirsiMaster/sirsi-anubis
+language: Go 1.22+
+version: 0.3.0-alpha
+binary_count: 2 (anubis @ 12 MB, anubis-agent @ 3.2 MB)
+test_count: 303
+line_count: ~15,000
+module_count: 17
+command_count: 17
+mcp_tools: 5 (scan_workspace, ghost_report, health_check, classify_files, thoth_read_memory)
+
+## Architecture Quick Reference
+# Modules are named after Egyptian mythology
+# Core scan engine: internal/jackal/ (64 rules across 7 domains)
+# Ghost hunter: internal/ka/ (17 macOS locations)
+# File dedup: internal/mirror/ (3-phase hash, GUI + CLI)
+# RAM audit: internal/guard/ (process grouping, orphan detection)
+# Policy engine: internal/scales/ (YAML enforcement)
+# Neural brain: internal/brain/ (model download + classify)
+# MCP server: internal/mcp/ (AI IDE integration, 5 tools including Thoth)
+# Graph mapper: internal/mapper/ (Canvas kinetic graph)
+# Network: internal/scarab/ (subnet discovery)
+# Safety: internal/cleaner/ (29 protected paths, decision log, trash-first)
+# LaunchServices: internal/sight/ (macOS only)
+# Ephemeral: internal/stealth/ (clean exit)
+# Ignore: internal/ignore/ (.anubisignore support)
+# Output: internal/output/ (terminal rendering, lipgloss)
+# Updater: internal/updater/ (GitHub releases check)
+# Profile: internal/profile/ (machine profiling)
+# Hapi: internal/hapi/ (GPU, dedup, snapshots)
+
+## Critical Design Decisions
+# 1. Three-phase dedup: size grouping → partial hash (first+last 4KB) → full SHA-256
+#    Benchmark: 27.3x faster, 98.8% less disk I/O than naive approach
+# 2. GUI uses Go HTTP server + embedded HTML (not React/Electron)
+#    Folder picker: native macOS Finder via osascript (not browser webkitdirectory)
+#    Filesystem browser: /api/browse endpoint returns real directory listings
+# 3. Cleaning policy: ALWAYS trash first on macOS, per-file decision log, never auto-delete
+#    DecisionLog persists to ~/.config/anubis/mirror/decisions/
+# 4. Safety: 29 hardcoded protected paths including ~/Desktop, ~/Documents, etc.
+# 5. "One Engine, Two Interfaces" — GUI and CLI get identical features
+# 6. Free tier (Ankh): full dedup engine + GUI. Pro tier: ANE neural importance ranking
+# 7. No telemetry (Rule A11). All analysis stays on-device.
+# 8. Thoth knowledge system — three-layer persistent memory for AI sessions.
+#    99.3% reduction in context needed to start working.
+
+## Known Limitations (as of v0.3.0-alpha)
+# - GUI folder picker only works on macOS (needs zenity for Linux, PowerShell for Windows)
+# - Trash integration only works on macOS (needs freedesktop.org spec for Linux)
+# - 9/17 modules have zero test coverage
+# - No structured logging (all fmt.Printf)
+# - Ka ghost hunting is macOS-only (searches .app bundles, LaunchServices)
+# - Scan rules are macOS/Linux only — no Windows AppData paths yet
+# - GoReleaser has asset conflict when force-updating tags (cosmetic)
+# - Platform-specific code is scattered, not behind a Platform interface
+
+## Recent Changes (most recent first)
+# 2026-03-21: Thoth knowledge system canonized — memory, journal, skill, MCP tool
+# 2026-03-21: Graceful shutdown (SIGINT handler) + drag-and-drop UX fix
+# 2026-03-21: GoReleaser CI fix (stale config, brews vs homebrew_casks)
+# 2026-03-21: README rewrite with Mirror benchmarks, updated architecture table
+# 2026-03-21: Guard optimization — pre-lowercased orphanPatterns
+# 2026-03-21: Decision log + CleanFile + /api/browse filesystem browser
+# 2026-03-21: Native macOS folder picker via osascript
+# 2026-03-21: Three-phase partial hashing (27.3x speedup)
+# 2026-03-21: Safety protections for ~/Desktop, ~/Documents, etc.
+
+## Brand
+# Colors: Gold (#C8A951), Black (#0F0F0F), Deep Lapis (#1A1A5E)
+# Theme: Egyptian mythology — Anubis, Ka, Seba, Hapi, Scarab, Scales, Thoth
+# Rules: A1 (safety first), A3 (fixed agent), A10 (brand colors), A11 (no telemetry)
+
+## File Map (most important files)
+# cmd/anubis/main.go            — CLI entry point, cobra commands
+# internal/mirror/scanner.go    — dedup scanner (the revenue-generating feature)
+# internal/mirror/server.go     — GUI web server (~850 lines, embedded HTML)
+# internal/mirror/types.go      — FileEntry, DuplicateGroup, ScanOptions
+# internal/cleaner/safety.go    — path validation, CleanFile, moveToTrash
+# internal/cleaner/decisions.go — DecisionLog, per-file audit trail
+# internal/mcp/tools.go         — MCP tools including thoth_read_memory
+# internal/jackal/engine.go     — scan engine orchestrator
+# internal/ka/scanner.go        — ghost app detection
+# .goreleaser.yaml              — release config (brews, not homebrew_casks)
+# .github/workflows/ci.yml      — CI pipeline (lint + test + build)
+# .thoth/memory.yaml            — THIS FILE
+# .thoth/journal.md             — engineering journal (WHY behind decisions)
+# docs/THOTH.md                 — Thoth specification
+# docs/MIRROR_PERFORMANCE.md    — dedup benchmark data

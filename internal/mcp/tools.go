@@ -72,6 +72,20 @@ func registerTools(s *Server) {
 			Required: []string{"paths"},
 		},
 	}, handleClassifyFiles)
+
+	s.RegisterTool(Tool{
+		Name:        "thoth_read_memory",
+		Description: "𓁟 Read the project's Thoth memory file (.thoth/memory.yaml) for instant project context. Call this at the start of every conversation to understand the project without reading source files. Returns architecture, design decisions, limitations, and file map.",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]SchemaField{
+				"path": {
+					Type:        "string",
+					Description: "Path to the project root. Defaults to current working directory.",
+				},
+			},
+		},
+	}, handleThothReadMemory)
 }
 
 // handleScanWorkspace runs the Jackal scan engine on a workspace.
@@ -308,6 +322,67 @@ func handleClassifyFiles(args map[string]interface{}) (*ToolResult, error) {
 	}
 
 	return textResult(string(data), false), nil
+}
+
+// handleThothReadMemory reads the project's Thoth memory and journal files.
+// This gives AI assistants instant project context without reading source files.
+func handleThothReadMemory(args map[string]interface{}) (*ToolResult, error) {
+	projectPath, _ := args["path"].(string)
+	if projectPath == "" {
+		var err error
+		projectPath, err = os.Getwd()
+		if err != nil {
+			return textResult("Could not determine working directory", true), nil
+		}
+	}
+
+	var sb strings.Builder
+	sb.WriteString("𓁟 Thoth Memory\n\n")
+
+	// Try .thoth/memory.yaml first, then legacy .anubis-memory.yaml
+	memoryPaths := []string{
+		projectPath + "/.thoth/memory.yaml",
+		projectPath + "/.anubis-memory.yaml",
+	}
+
+	found := false
+	for _, mp := range memoryPaths {
+		data, err := os.ReadFile(mp)
+		if err == nil {
+			sb.WriteString("=== Memory ===\n")
+			sb.WriteString(string(data))
+			sb.WriteString("\n")
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		sb.WriteString("No Thoth memory file found.\n")
+		sb.WriteString("Create one: mkdir -p .thoth && touch .thoth/memory.yaml\n")
+		sb.WriteString("See: docs/THOTH.md for the specification.\n")
+		return textResult(sb.String(), false), nil
+	}
+
+	// Try to read journal (optional)
+	journalPaths := []string{
+		projectPath + "/.thoth/journal.md",
+		projectPath + "/.anubis-journal.md",
+	}
+	for _, jp := range journalPaths {
+		data, err := os.ReadFile(jp)
+		if err == nil {
+			sb.WriteString("\n=== Journal (last 2000 chars) ===\n")
+			content := string(data)
+			if len(content) > 2000 {
+				content = content[len(content)-2000:]
+			}
+			sb.WriteString(content)
+			break
+		}
+	}
+
+	return textResult(sb.String(), false), nil
 }
 
 // ---- Helpers ----
