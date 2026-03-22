@@ -85,12 +85,12 @@ Cursor, Windsurf, Zed, Neovim, Codex — all 11 tools have scan rules shipped.
 - [x] Ka Ghost Hunter — 22 rules, Launch Services scanning
 - [x] CI + Quality — 100+ tests, ADRs, docs, portfolio CI fix
 - [x] Guard Module — RAM audit, process slayer, orphan detection
-- [x] Scan Rule Expansion — 34 → 64 rules across all 7 categories
+- [x] Scan Rule Expansion — 34 → 58 rules across all 7 categories
 - [x] Sight Module — Launch Services rebuild, Spotlight reindex
 - [x] Profiles + Config — 4 profiles, YAML config, ~/.config/anubis/
 - [x] Distribution — goreleaser, SCAN_RULE_GUIDE, binary polish (4.1 MB)
 
-**Status: 7 commands working, 64 rules, 100+ tests, CI green**
+**Status: 7 commands working, 58 rules, 100+ tests, CI green**
 
 ---
 

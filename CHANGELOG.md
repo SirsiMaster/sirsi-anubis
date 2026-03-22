@@ -63,7 +63,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 - **GoReleaser CI** — deprecated format, stale config file
 
 ### Stats
-- 17 CLI commands, 64 scan rules, 17 internal modules
+- 17 CLI commands, 58 scan rules, 17 internal modules
 - ~395 tests across 15 packages, all passing (with `-race`)
 - ~15,000 lines of Go
 - Lint clean (golangci-lint + staticcheck)

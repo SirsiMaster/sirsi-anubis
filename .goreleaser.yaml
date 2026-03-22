@@ -110,13 +110,13 @@ release:
     Infrastructure hygiene for the AI era.
 
     ### Highlights
-    - 17 CLI commands, 64 scan rules, 17 internal modules
+    - 17 CLI commands, 58 scan rules, 17 internal modules
     - Mirror file deduplication — 27x faster than naive hashing
     - Trash-first cleaning with per-file decision log
     - Neural brain downloader + classifier interface
     - MCP server for AI IDE integration (Claude, Cursor, Windsurf)
     - Scales policy engine for fleet enforcement
-    - 29 hardcoded safety protections, ~395 tests, 15 test suites
+    - 29 hardcoded safety protections, 453 tests, 15 test suites
 
     ### Install
     ```bash

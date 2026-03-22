@@ -12,7 +12,7 @@ Sirsi Anubis scans, judges, and purges infrastructure waste — from 200 GB of s
 
 Built as an Egyptian-themed CLI toolkit, Anubis speaks the language of judgment:
 
-- `anubis weigh` — discover waste across 7 domains, 64 scan rules
+- `anubis weigh` — discover waste across 7 domains, 58 scan rules
 - `anubis ka` — hunt ghost apps (remnants of uninstalled applications)
 - `anubis mcp` — connect to Claude, Cursor, or Windsurf as a context sanitizer
 - `anubis install-brain` — download neural models for semantic file classification
@@ -47,7 +47,7 @@ I built Anubis because existing Mac cleaners don't understand developer workstat
 - Zombie LSP servers eating 17 GB of RAM
 - Docker containers from projects you abandoned 6 months ago
 
-Anubis has 64 scan rules across 7 domains, a ghost app hunter (Ka), a neural file classifier (Brain), and an MCP server so your AI coding assistant can use it as a context sanitizer.
+Anubis has 58 scan rules across 7 domains, a ghost app hunter (Ka), a neural file classifier (Brain), and an MCP server so your AI coding assistant can use it as a context sanitizer.
 
 Written in Go. Two binaries under 10 MB. No telemetry, no tracking, no analytics. MIT licensed.
 
@@ -67,7 +67,7 @@ GitHub: https://github.com/SirsiMaster/sirsi-anubis
 Every Mac cleaner treats your machine as a consumer device.
 Anubis treats it as a developer workstation.
 
-64 scan rules. Ghost app hunting. Neural classification. MCP server.
+58 scan rules. Ghost app hunting. Neural classification. MCP server.
 Free. Open source. MIT.
 
 github.com/SirsiMaster/sirsi-anubis
@@ -105,9 +105,9 @@ Written in Go. Under 10 MB. Ships today.
 | Metric | Value |
 |:-------|:------|
 | CLI commands | 17 |
-| Scan rules | 64 across 7 domains |
+| Scan rules | 58 across 7 domains |
 | Internal modules | 17 (15 with tests) |
-| Tests | ~395 (15 test suites, 0 failures) |
+| Tests | 453 (15 test suites, 0 failures) |
 | Binary size | anubis: ~8 MB, agent: ~2 MB |
 | Lines of Go | ~15,000 |
 | Dedup speedup | 27.3x vs naive, 98.8% less disk I/O |
@@ -136,7 +136,7 @@ Written in Go. Under 10 MB. Ships today.
 # Install
 brew tap SirsiMaster/tools && brew install sirsi-anubis
 
-# Scan workstation (64 rules, 7 domains)
+# Scan workstation (58 rules, 7 domains)
 anubis weigh
 
 # Hunt ghost apps

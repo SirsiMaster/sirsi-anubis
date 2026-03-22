@@ -16,7 +16,7 @@ mcp_tools: 5 (scan_workspace, ghost_report, health_check, classify_files, thoth_
 
 ## Architecture Quick Reference
 # Modules are named after Egyptian mythology
-# Core scan engine: internal/jackal/ (64 rules across 7 domains)
+# Core scan engine: internal/jackal/ (58 rules across 7 domains)
 # Ghost hunter: internal/ka/ (17 macOS locations)
 # File dedup: internal/mirror/ (3-phase hash, GUI + CLI)
 # RAM audit: internal/guard/ (process grouping, orphan detection)

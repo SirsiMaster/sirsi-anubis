@@ -90,7 +90,7 @@ Thoth tracks session health to prevent context exhaustion. After every sprint:
 
 | Command | Module | Description |
 |:--------|:-------|:-----------|
-| `anubis weigh` | jackal | Scan workstation (64 rules, 7 domains) |
+| `anubis weigh` | jackal | Scan workstation (58 rules, 7 domains) |
 | `anubis judge` | cleaner | Clean with trash-first safety |
 | `anubis ka` | ka | Ghost app hunter |
 | `anubis guard` | guard | RAM audit + process slayer |
@@ -123,7 +123,7 @@ Thoth tracks session health to prevent context exhaustion. After every sprint:
 | mirror | has tests | File dedup |
 | scales | has tests | Policy engine |
 | **ignore** | ✅ 17 tests | .anubisignore (new this session) |
-| **jackal/rules** | ✅ 11 tests | 64 rule registry (new this session) |
+| **jackal/rules** | ✅ 11 tests | 58 rule registry (new this session) |
 | **profile** | ✅ 16 tests | Scan profiles (new this session) |
 | **stealth** | ✅ 9 tests | Ephemeral cleanup (new this session) |
 | **hapi** | ✅ 20 tests | GPU detect, dedup, snapshots (new this session) |

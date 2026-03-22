@@ -98,7 +98,7 @@ Anubis is built on modules named after Egyptian mythology:
 
 | Module | Codename | Role | Status |
 |:-------|:---------|:-----|:-------|
-| 🐺 **Jackal** | The Hunter | Scan engine — 64 rules across 7 domains | ✅ |
+| 🐺 **Jackal** | The Hunter | Scan engine — 58 rules across 7 domains | ✅ |
 | 𓂓 **Ka** | The Spirit | Ghost app detection — 17 macOS locations | ✅ |
 | 🪞 **Mirror** | The Reflection | File deduplication — 27x faster than naive hashing | ✅ |
 | 🛡️ **Guard** | The Guardian | RAM audit, zombie process management | ✅ |

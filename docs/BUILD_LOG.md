@@ -34,9 +34,9 @@ Commits: 3  |  Lines: ~400  |  Tests: 0  |  Version: 0.0.1
 
 ### Sprint 1 — Core Scanner (March 20, Day 1-2)
 
-**What happened**: Built the Jackal scan engine (64 rules across 7 domains), Ka ghost hunter (17 macOS locations), Guard RAM auditor, and Sight LaunchServices scanner. Broke CI twice — go.mod version mismatch and golangci-lint deprecations.
+**What happened**: Built the Jackal scan engine (58 rules across 7 domains), Ka ghost hunter (17 macOS locations), Guard RAM auditor, and Sight LaunchServices scanner. Broke CI twice — go.mod version mismatch and golangci-lint deprecations.
 
-**Built**: 5 internal modules, 22 scan rules expanded to 64, ghost detection engine, RAM process grouping.
+**Built**: 5 internal modules, 22 scan rules expanded to 58, ghost detection engine, RAM process grouping.
 
 **Tested**: First test suite — unit tests for types, safety validation, scanner functions, engine lifecycle. CI went green after 2 hotfixes.
 
@@ -155,13 +155,13 @@ Commits: 2  |  Binaries verified: 12  |  Docs updated: 6
 | Race detector | Clean | ✅ `-race` flag |
 | CI/CD | Green | ✅ GitHub Actions |
 | Binary size | ~8 MB + ~2 MB | ✅ GoReleaser snapshot |
-| Scan rules | 64 across 7 domains | ✅ Counted |
+| Scan rules | 58 across 7 domains | ✅ Counted |
 | Protected paths | 29 hardcoded | ✅ Code review |
 | Cross-compile | 6 platforms (3 OS × 2 arch) | ✅ GoReleaser snapshot |
 | Platform | macOS (100%), Linux (~60%), Windows (~40%) | ✅ Audited |
 
 ### What Works:
-- [x] Scan 64 waste categories across your system
+- [x] Scan 58 waste categories across your system
 - [x] Find & deduplicate files 27.3x faster than naive hashing
 - [x] GUI and CLI with feature parity
 - [x] Hunt ghost apps left by uninstalled software

@@ -101,11 +101,16 @@ echo "│"
 echo "└───────────────────────────────────"
 echo ""
 
-# Session count estimate
+# Session count estimate (gap-based: >2hr gap = new session)
 if [ -d "$REPO/.git" ]; then
-  COMMITS=$(cd "$REPO" && git log --oneline --since="2026-03-20" 2>/dev/null | wc -l | tr -d ' ')
-  SESSIONS=$(echo "scale=0; $COMMITS / 5" | bc)  # ~5 commits per session avg
-  SESSIONS=$((SESSIONS > 1 ? SESSIONS : 1))
+  SESSIONS=$(cd "$REPO" && git log --format='%at' --reverse --since="2026-03-20" 2>/dev/null | awk '
+    BEGIN { sessions=1; prev=0 }
+    {
+      if (prev > 0 && ($1 - prev) > 7200) sessions++
+      prev = $1
+    }
+    END { print sessions }')
+  SESSIONS=${SESSIONS:-1}
 
   TOTAL_TOKENS=$((TOKENS_SAVED * SESSIONS))
   TOTAL_COST=$(echo "scale=2; $COST_SAVED * $SESSIONS" | bc)
@@ -113,6 +118,7 @@ if [ -d "$REPO/.git" ]; then
   echo "┌─ Cumulative (est. $SESSIONS sessions) ──"
   echo "│ Total tokens saved: $(printf '%9d' $TOTAL_TOKENS)"
   echo "│ Total cost saved:   \$${TOTAL_COST}"
+  echo "│ Note: sessions counted by >2hr commit gaps"
   echo "└───────────────────────────────────"
 fi
 
