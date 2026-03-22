@@ -141,3 +141,14 @@ Added "building in public" badge to README. Linked from CHANGELOG.
 
 **Design principle**: Transparency is the product. If our code is good enough to inspect, our process should be too. This is how you compete with established tools that have more marketing budget — you out-trust them.
 
+---
+
+## Entry 008 — 2026-03-22 12:32 — "Canonize the cadence"
+
+**Context**: The build-review-revise-release-in-public cycle had been happening organically — BUILD_LOG, CHANGELOG, Thoth updates — but it wasn't formalized. It was a good habit, not a structural requirement.
+
+**Decision**: Formalized into ADR-003. Every release now *requires* updating seven artifacts: VERSION, CHANGELOG.md, BUILD_LOG.md, build-log.html, memory.yaml, journal.md, and a new ADR when structural decisions are made. Added as Step 6 in the session-start workflow so future AI sessions enforce it automatically.
+
+**Voice rule canonized**: Direct verbs only. "Built. Fixed. Refactored." Never "the user wanted" or "the user suggested." The build log describes what was built, not who asked for it.
+
+**Why this matters**: The build-in-public process is no longer something we "happen to do" — it's a structural part of the release pipeline, captured in governance (ADR-003), enforced by workflow (session-start Step 6), and tracked in memory (Design Decision #9). A future contributor or AI session cannot skip it without violating the architecture.

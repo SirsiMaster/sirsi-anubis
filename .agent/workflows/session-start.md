@@ -43,3 +43,15 @@ go build ./cmd/anubis/ && go test -race -count=1 ./... 2>&1 | grep -E '^(ok|FAIL
 
 ## Step 5: For deep dives — check artifacts
 Look in `.thoth/artifacts/` for benchmark results, platform audits, security reviews, and design documents relevant to your current task.
+
+## Step 6: Before every release — update build-in-public artifacts (ADR-003)
+This is mandatory per [ADR-003](docs/ADR-003-BUILD-IN-PUBLIC.md). Every release must update:
+1. `VERSION` — bump the version
+2. `CHANGELOG.md` — technical changes, migration notes, breaking changes
+3. `docs/BUILD_LOG.md` — sprint narrative with real data (what broke, benchmarks, honest gaps)
+4. `docs/build-log.html` — update the public HTML page stats and timeline
+5. `.thoth/memory.yaml` and `.thoth/journal.md` — already covered in Step 4
+6. New `docs/ADR-XXX-*.md` if the change involves a structural decision
+
+**Voice rules**: Use direct verbs (built, fixed, refactored). Never "the user wanted." Include mistakes, real benchmarks, and honest disclaimers about what isn't ready.
+
