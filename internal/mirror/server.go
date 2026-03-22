@@ -1,17 +1,20 @@
 package mirror
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
 	"sync"
+	"syscall"
 )
 
 // Server runs a local web UI for the Mirror dedup scanner.
@@ -51,7 +54,7 @@ func (s *Server) OpenBrowser() error {
 	}
 }
 
-// Serve starts the HTTP server (blocking).
+// Serve starts the HTTP server with graceful shutdown on SIGINT/SIGTERM.
 func (s *Server) Serve() error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", s.handleUI)
@@ -60,7 +63,23 @@ func (s *Server) Serve() error {
 	mux.HandleFunc("/api/result", s.handleResult)
 	mux.HandleFunc("/api/pick-folder", s.handlePickFolder)
 	mux.HandleFunc("/api/browse", s.handleBrowse)
-	return http.Serve(s.listener, mux)
+
+	srv := &http.Server{Handler: mux}
+
+	// Graceful shutdown on Ctrl+C
+	go func() {
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+		<-sig
+		fmt.Fprintf(os.Stderr, "\n  𓂀 Mirror shutting down...\n")
+		_ = srv.Shutdown(context.Background())
+	}()
+
+	err := srv.Serve(s.listener)
+	if err == http.ErrServerClosed {
+		return nil // Clean shutdown
+	}
+	return err
 }
 
 // handleBrowse returns a directory listing for a given path.
@@ -497,8 +516,8 @@ footer {
   <div id="step-select">
     <div id="drop-zone" onclick="selectFolders()">
       <span class="icon">🪞</span>
-      <div class="title">Drop folders here</div>
-      <div class="subtitle">or click to browse — Mirror will scan for duplicates</div>
+      <div class="title">Select folders to scan</div>
+      <div class="subtitle">Opens a native Finder dialog — Mirror will find your duplicates</div>
       <div class="browse-btn">Choose Folders</div>
     </div>
     <div id="folder-list"></div>
@@ -567,25 +586,17 @@ const protectDirs = [];
 let activeFilter = '';
 
 
-// Drag & drop
+// Click zone opens native macOS Finder picker
 const dz = document.getElementById('drop-zone');
+// Visual feedback for hover
 ['dragenter','dragover'].forEach(e => dz.addEventListener(e, ev => {
   ev.preventDefault(); dz.classList.add('drag-over');
 }));
 ['dragleave','drop'].forEach(e => dz.addEventListener(e, ev => {
   ev.preventDefault(); dz.classList.remove('drag-over');
 }));
-dz.addEventListener('drop', ev => {
-  const items = ev.dataTransfer.items;
-  if (items) {
-    for (let i = 0; i < items.length; i++) {
-      const entry = items[i].webkitGetAsEntry && items[i].webkitGetAsEntry();
-      if (entry && entry.isDirectory) {
-        addFolder(entry.fullPath || entry.name);
-      }
-    }
-  }
-});
+// Drag-and-drop can't give absolute paths — redirect to native picker
+dz.addEventListener('drop', () => selectFolders());
 
 async function selectFolders() {
   // Use native macOS Finder dialog via the Go backend.
