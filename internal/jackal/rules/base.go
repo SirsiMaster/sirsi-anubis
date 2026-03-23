@@ -43,10 +43,16 @@ func (r *baseScanRule) Scan(ctx context.Context, opts jackal.ScanOptions) ([]jac
 	for _, pattern := range r.paths {
 		expanded := jackal.ExpandPath(pattern, homeDir)
 
-		// Handle glob patterns
-		matches, err := filepath.Glob(expanded)
-		if err != nil {
-			continue
+		// Resolve glob — use Horus index if available, else filesystem.
+		var matches []string
+		if opts.Manifest != nil {
+			matches = opts.Manifest.Glob(expanded)
+		} else {
+			var err error
+			matches, err = filepath.Glob(expanded)
+			if err != nil {
+				continue
+			}
 		}
 
 		for _, match := range matches {
@@ -55,8 +61,27 @@ func (r *baseScanRule) Scan(ctx context.Context, opts jackal.ScanOptions) ([]jac
 				continue
 			}
 
+			// Get file info — use Horus Exists for quick check, then Lstat for age.
+			// Age filtering still needs real stat (manifest doesn't store modtime).
 			info, err := os.Lstat(match)
 			if err != nil {
+				// If Lstat fails but manifest says it exists, it might be permission-denied.
+				if opts.Manifest != nil && opts.Manifest.Exists(match) {
+					// Use manifest data instead.
+					size, fileCount := opts.Manifest.DirSizeAndCount(match)
+					if size > 0 {
+						findings = append(findings, jackal.Finding{
+							RuleName:    r.name,
+							Category:    r.category,
+							Description: r.displayName,
+							Path:        match,
+							SizeBytes:   size,
+							FileCount:   fileCount,
+							Severity:    jackal.SeveritySafe,
+							IsDir:       true,
+						})
+					}
+				}
 				continue
 			}
 
@@ -73,10 +98,10 @@ func (r *baseScanRule) Scan(ctx context.Context, opts jackal.ScanOptions) ([]jac
 			fileCount := 1
 			if isDir {
 				if opts.Manifest != nil {
-					// Horus index: instant lookup (~5ms) instead of filesystem walk
+					// Horus: O(1) hash lookup
 					size, fileCount = opts.Manifest.DirSizeAndCount(match)
 				} else {
-					// Fallback: combined walk (was two separate walks)
+					// Fallback: combined filesystem walk
 					size, fileCount = dirSizeAndCount(match)
 				}
 			}

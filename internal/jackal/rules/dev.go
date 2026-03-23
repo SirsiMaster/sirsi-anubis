@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/cleaner"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal"
@@ -152,51 +153,47 @@ func (r *findRule) Scan(ctx context.Context, opts jackal.ScanOptions) ([]jackal.
 			continue
 		}
 
-		err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
-			if err != nil {
-				return filepath.SkipDir
-			}
-
-			// Check context cancellation
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
-			}
-
-			// Skip hidden directories at root level
-			if d.IsDir() && d.Name() != r.targetName {
-				// Depth check
-				rel, _ := filepath.Rel(root, path)
-				depth := len(filepath.SplitList(rel))
-				if depth > r.maxDepth {
-					return filepath.SkipDir
-				}
-			}
-
-			if d.IsDir() && d.Name() == r.targetName {
-				// Check matchFile if specified
+		// Horus path: find directories by name from in-memory index.
+		if opts.Manifest != nil {
+			matches := opts.Manifest.FindDirsNamed(root, r.targetName, r.maxDepth)
+			for _, path := range matches {
+				// matchFile check
 				if r.matchFile != "" {
 					parentDir := filepath.Dir(path)
 					if _, err := os.Stat(filepath.Join(parentDir, r.matchFile)); os.IsNotExist(err) {
-						return filepath.SkipDir
+						continue
 					}
 				}
 
-				// Get size AND count — Horus index or filesystem walk
-				var size int64
-				var fileCount int
-				if opts.Manifest != nil {
-					size, fileCount = opts.Manifest.DirSizeAndCount(path)
-				} else {
-					size, fileCount = dirSizeAndCount(path)
-				}
+				size, fileCount := opts.Manifest.DirSizeAndCount(path)
 				if size == 0 {
-					return filepath.SkipDir
+					continue
 				}
 
-				info, _ := d.Info()
-				var modTime = info.ModTime()
+				// Get modtime from stat (needed for age filtering).
+				info, err := os.Stat(path)
+				if err != nil {
+					// Permission denied — use manifest data.
+					findings = append(findings, jackal.Finding{
+						RuleName:    r.name,
+						Category:    r.category,
+						Description: r.displayName,
+						Path:        path,
+						SizeBytes:   size,
+						FileCount:   fileCount,
+						Severity:    jackal.SeveritySafe,
+						IsDir:       true,
+					})
+					continue
+				}
+
+				// Age filter
+				if r.minAgeDays > 0 {
+					cutoff := time.Now().AddDate(0, 0, -r.minAgeDays)
+					if info.ModTime().After(cutoff) {
+						continue
+					}
+				}
 
 				findings = append(findings, jackal.Finding{
 					RuleName:     r.name,
@@ -206,11 +203,61 @@ func (r *findRule) Scan(ctx context.Context, opts jackal.ScanOptions) ([]jackal.
 					SizeBytes:    size,
 					FileCount:    fileCount,
 					Severity:     jackal.SeveritySafe,
-					LastModified: modTime,
+					LastModified: info.ModTime(),
+					IsDir:        true,
+				})
+			}
+			continue // skip filesystem walk for this root
+		}
+
+		// Fallback: filesystem walk (no manifest available).
+		err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				return filepath.SkipDir
+			}
+
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
+
+			if d.IsDir() && d.Name() != r.targetName {
+				rel, _ := filepath.Rel(root, path)
+				depth := len(filepath.SplitList(rel))
+				if depth > r.maxDepth {
+					return filepath.SkipDir
+				}
+			}
+
+			if d.IsDir() && d.Name() == r.targetName {
+				if r.matchFile != "" {
+					parentDir := filepath.Dir(path)
+					if _, err := os.Stat(filepath.Join(parentDir, r.matchFile)); os.IsNotExist(err) {
+						return filepath.SkipDir
+					}
+				}
+
+				size, fileCount := dirSizeAndCount(path)
+				if size == 0 {
+					return filepath.SkipDir
+				}
+
+				info, _ := d.Info()
+
+				findings = append(findings, jackal.Finding{
+					RuleName:     r.name,
+					Category:     r.category,
+					Description:  r.displayName,
+					Path:         path,
+					SizeBytes:    size,
+					FileCount:    fileCount,
+					Severity:     jackal.SeveritySafe,
+					LastModified: info.ModTime(),
 					IsDir:        true,
 				})
 
-				return filepath.SkipDir // Don't recurse into found target
+				return filepath.SkipDir
 			}
 
 			return nil

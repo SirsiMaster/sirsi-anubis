@@ -382,6 +382,32 @@ func (m *Manifest) EntriesUnder(dir string) map[string]DirSummary {
 	return result
 }
 
+// FindDirsNamed returns all directory paths under root that have the given
+// basename (e.g., "node_modules", "target"). Respects maxDepth.
+// This replaces filepath.WalkDir in findRule — in-memory scan instead of I/O.
+func (m *Manifest) FindDirsNamed(root, name string, maxDepth int) []string {
+	prefix := root + string(filepath.Separator)
+	var results []string
+	for path := range m.Dirs {
+		if !strings.HasPrefix(path, prefix) {
+			continue
+		}
+		if filepath.Base(path) != name {
+			continue
+		}
+		// Depth check
+		if maxDepth > 0 {
+			rel, _ := filepath.Rel(root, path)
+			depth := strings.Count(rel, string(filepath.Separator))
+			if depth > maxDepth {
+				continue
+			}
+		}
+		results = append(results, path)
+	}
+	return results
+}
+
 // ─── Persistence ─────────────────────────────────────────────────────────
 
 // SaveManifest persists the manifest to disk using gob encoding.

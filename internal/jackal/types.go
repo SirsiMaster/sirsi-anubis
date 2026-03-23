@@ -99,7 +99,10 @@ type ScanOptions struct {
 	// This enables the "walk once, share many" optimization (ADR-008).
 	Manifest interface {
 		DirSizeAndCount(dir string) (int64, int)
+		DirSize(dir string) int64
 		Exists(path string) bool
+		Glob(pattern string) []string
+		FindDirsNamed(root, name string, maxDepth int) []string
 	}
 }
 
