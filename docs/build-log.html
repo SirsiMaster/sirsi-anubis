@@ -856,7 +856,7 @@
         </div>
         <div class="sprint-metrics">
           <div class="metric"><span class="metric-val">3,667×</span><span class="metric-label">Ma'at speedup</span></div>
-          <div class="metric"><span class="metric-val">2.2×</span><span class="metric-label">Weigh speedup</span></div>
+          <div class="metric"><span class="metric-val">18.7×</span><span class="metric-label">Weigh speedup</span></div>
           <div class="metric"><span class="metric-val">8</span><span class="metric-label">ADRs</span></div>
           <div class="metric"><span class="metric-val">81</span><span class="metric-label">Feather Weight</span></div>
         </div>
@@ -919,9 +919,9 @@
     </div>
 
     <div class="benchmark-row">
-      <div class="benchmark-label"><span>Weigh scan (Horus cached)</span><span>2.2× faster</span></div>
-      <div class="benchmark-track"><div class="benchmark-fill emerald" data-width="54%"></div></div>
-      <div class="benchmark-footnote"><span>Before: 15.6 seconds</span><span>After: 7.2 seconds</span></div>
+      <div class="benchmark-label"><span>Weigh scan (Horus cached)</span><span>18.7× faster</span></div>
+      <div class="benchmark-track"><div class="benchmark-fill emerald" data-width="95%"></div></div>
+      <div class="benchmark-footnote"><span>Before: 15.6 seconds</span><span>After: 833 milliseconds</span></div>
     </div>
 
     <div class="benchmark-row">
@@ -1100,14 +1100,14 @@
     <div style="max-width:880px; margin:0 auto;">
       <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:1.5rem; margin-bottom:2.5rem;">
         <div class="neo-card" style="text-align:center; padding:1.5rem;">
-          <div style="font-size:2.2rem; font-weight:700; color:var(--color-emerald-light);">7.2s</div>
+          <div style="font-size:2.2rem; font-weight:700; color:var(--color-emerald-light);">833ms</div>
           <div style="color:var(--text-secondary); font-size:0.8rem; margin-top:0.25rem;">Weigh scan (cached)</div>
-          <div style="color:var(--text-muted); font-size:0.7rem; margin-top:0.5rem;">was 15.6 seconds</div>
+          <div style="color:var(--text-muted); font-size:0.7rem; margin-top:0.5rem;">was 15.6 seconds — 18.7× faster</div>
         </div>
         <div class="neo-card" style="text-align:center; padding:1.5rem;">
-          <div style="font-size:2.2rem; font-weight:700; color:var(--color-gold);">5ms</div>
+          <div style="font-size:2.2rem; font-weight:700; color:var(--color-gold);">541ns</div>
           <div style="color:var(--text-secondary); font-size:0.8rem; margin-top:0.25rem;">per directory query</div>
-          <div style="color:var(--text-muted); font-size:0.7rem; margin-top:0.5rem;">in-memory index lookup</div>
+          <div style="color:var(--text-muted); font-size:0.7rem; margin-top:0.5rem;">O(1) hash lookup</div>
         </div>
         <div class="neo-card" style="text-align:center; padding:1.5rem;">
           <div style="font-size:2.2rem; font-weight:700; color:var(--color-emerald-light);">1 walk</div>

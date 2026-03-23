@@ -2,7 +2,7 @@
 
 **Date:** 2026-03-23 (Session 12)
 **Category:** Architecture / Performance / Process Improvement
-**Impact:** Weigh 15.6s → 7.2s (Phase 1), Ma'at 55s → 15ms, pre-push 65s → 5s
+**Impact:** Weigh 15.6s → 833ms (18.7×), Ma'at 55s → 12ms (4,583×), pre-push 65s → 5s (13×)
 **Rule:** A14 (Statistics Integrity) — all numbers measured, not projected
 
 ---
@@ -62,9 +62,11 @@ Horus Index (parallel goroutine walk)
 
 | Optimization | Target | Before → After |
 |-------------|--------|----------------|
-| **Diff-based coverage** | Ma'at | 55s → 15ms (3,667×) |
+| **Diff-based coverage** | Ma'at | 55s → 12ms (4,583×) |
 | **WalkDir + combined pass** | Jackal rules | 2 walks → 1, no stat/file |
-| **Horus shared index** | All filesystem deities | walk once, query in 5ms |
+| **Pre-aggregated dir summaries** | Horus index | 856K entries → 50K dirs, O(1) lookup |
+| **Gob encoding** | Horus cache | 110MB/936ms → 31MB/2ms |
+| **FindDirsNamed** | Jackal findRule | walk ~/Development → in-memory scan |
 
 ### Key Design Decisions
 
@@ -75,13 +77,17 @@ Horus Index (parallel goroutine walk)
 2. **Graceful degradation.** If Horus index is unavailable (first run, error),
    rules fall back to direct filesystem walks. No breakage, no panics.
 
-3. **Scoped roots.** The initial implementation naively indexed all of
-   `~/Library` and `/private/var/folders`, producing a 476MB manifest.
-   Scoping to deity-relevant subdirectories reduced it to 110MB.
+3. **Pre-aggregated directory summaries.** Instead of storing 856K file
+   entries, Horus stores ~50K directory summaries with pre-computed
+   TotalSize and FileCount. DirSizeAndCount is O(1) hash lookup (541ns)
+   instead of O(n) scan.
 
-4. **Compact JSON.** Entry fields use short keys (`s`, `d`, `m` vs
-   `size`, `is_dir`, `mode`). ModTime stripped from cache — not needed
-   for size/count queries.
+4. **Gob encoding.** Binary gob format replaces JSON for the cache file.
+   110MB JSON / 936ms parse → 31MB gob / 2ms parse (468× faster).
+
+5. **FindDirsNamed.** Instead of walking ~/Development to find `node_modules`
+   directories, findRule queries the in-memory index. This single change
+   took weigh from 6.3s to 833ms.
 
 ## Results
 
@@ -98,19 +104,29 @@ Horus Index (parallel goroutine walk)
 
 | Metric | Before | After (cached) | Improvement |
 |--------|--------|----------------|-------------|
-| Full scan | 15.6s | 7.2s | **2.2×** |
-| DirSizeAndCount | ~500ms/dir | 5ms/dir | **100×** |
-| Manifest size | N/A | 110MB | — |
-| Cache load | N/A | ~1s | — |
+| Full scan | 15.6s | **833ms** | **18.7×** |
+| DirSizeAndCount | ~500ms/dir | 541ns/dir | **924,000×** |
+| Manifest size | N/A | 31MB (gob) | — |
+| Cache load | N/A | 2ms | — |
+
+### Quality Verification
+
+| | Horus (833ms) | No Horus (baseline) |
+|---|---|---|
+| Findings | **341** | **341** |
+| Total Size | **65.6 GB** | **65.6 GB** |
+| Rules Ran | **58** | **58** |
+
+**Verdict: identical results, 18.7× faster.**
 
 ### System-Wide
 
 | Deity | Before | After | Status |
 |-------|--------|-------|--------|
 | `profile` | 6ms | 6ms | ✅ Already instant |
-| `maat` | 55,000ms | 15ms | ✅ **3,667× faster** |
+| `maat` | 55,000ms | 12ms | ✅ **4,583× faster** |
 | `guard` | 140ms | 140ms | ✅ Already fast |
-| `weigh` | 15,600ms | 7,200ms | ✅ **2.2× faster** |
+| `weigh` | 15,600ms | 833ms | ✅ **18.7× faster** |
 | `ka` | 10,900ms | 10,900ms | 🔜 Horus wiring next |
 | Pre-push | ~65,000ms | ~5,000ms | ✅ **13× faster** |
 
@@ -143,13 +159,15 @@ flow where improvements compound: Horus makes Jackal faster, which makes
 the pre-push gate faster, which lets us push more, which dogfoods more
 issues, which produces more fixes.
 
-## Phase Roadmap
+## Benchmark Progression
 
-| Phase | Status | Target |
-|-------|--------|--------|
-| **Phase 1:** WalkDir + Horus index + caching | ✅ Done | 15.6s → 7.2s |
-| **Phase 2:** FSEvents/fanotify/USN Journal | 🔜 Next | 7.2s → 200-500ms |
-| **Phase 3:** Persistent daemon + push notifications | 📋 Planned | <50ms |
+```
+Phase 0 (baseline):         15,600 ms
+Phase 1 (WalkDir):           9,200 ms  (1.7×)
+Phase 1.5 (Horus cache):    7,200 ms  (2.2×)
+Phase 2 (gob+preaggreg):    6,300 ms  (2.5×)
+Phase 2.5 (FindDirsNamed):    833 ms  (18.7×)  ← FINAL
+```
 
 ## Files Changed
 
