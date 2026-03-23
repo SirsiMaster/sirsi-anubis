@@ -300,3 +300,22 @@ Canonized as ADR-005. Key principles:
 - Wired structured logging into all core modules.
 
 **Result**: Architectural clarity. The Pantheon is now both a unified brand and a modular toolkit. Seba is no longer a generic 'mapper' but a designated deity with a focused research path.
+
+---
+
+## Entry 016 — 2026-03-23 16:25 — "First, Do No Harm"
+
+**Context**: Session 11 — experienced IDE degradation firsthand during a multi-hour agent session.
+
+**Insight**: Three Antigravity IDE plugin workers consumed 219% CPU (99.1% + 74.3% + 45.4%), starving the UI renderer and making buttons unclickable. System had 88% free RAM — this was purely CPU contention, not memory pressure. Pantheon's Guard module cannot currently detect CPU pressure or IDE degradation.
+
+**Decision**: Created ADR-006 (Self-Aware Resource Governance) with five key components:
+1. Guard gets CPU pressure awareness (not just RAM)
+2. Self-limiting execution ('Yield Mode') — check load before heavy ops
+3. IDE Health Check MCP tool — agents self-diagnose their own impact
+4. Inter-deity referral for resource issues (ADR-005 principle #7)
+5. New Rule A16: Pantheon tools MUST NOT make a bad situation worse
+
+**Implementation**: Built `internal/yield/` module with `ShouldYield()` and `WarnIfHeavy()`. Uses load average vs core count ratio. 4 tests passing. Ready to wire into all heavy commands.
+
+**Learning**: We discovered this by dogfooding. If we hadn't experienced it ourselves, users would have. This is why dogfooding matters.
