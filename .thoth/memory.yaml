@@ -92,12 +92,20 @@ mcp_tools: 5 (scan_workspace, ghost_report, health_check, classify_files, thoth_
 #   ADR-008 Shared Filesystem Index accepted (Horus architecture).
 #   .gitignore collision fix: unanchored 'pantheon' → '/pantheon'.
 #   PERFORMANCE (dogfooding-driven):
-#     Ma'at diff-based coverage: 55s → 15ms (3,667× speedup)
+#     Ma'at diff-based coverage: 55s → 12ms (4,583× speedup)
 #     Horus shared filesystem index: walk once, all deities query
-#     Weigh (Jackal) optimized: 15.6s → 7.2s (2.2× speedup)
+#     Horus Phase 2: pre-aggregated dirs + gob encoding (110MB → 31MB, 936ms → 2ms)
+#     Horus Phase 2.5: FindDirsNamed eliminates dev walk
+#     Weigh (Jackal) optimized: 15.6s → 833ms (18.7× speedup)
+#     Quality verified: identical results (341 findings, 65.6 GB, 58 rules)
 #     Pre-push gate: 65s → 5s (13× faster)
 #     Feather Weight: 69/100 → 81/100
 #     Canon linkage: 60% → 100% (10/10 commits)
+#   DOGFOODING DISCOVERY:
+#     Docker Desktop ghost: 64 GB unused VM images + cached layers
+#     Investigation: zero Docker references in build/CI/deploy pipeline
+#     Cleanup: Docker Desktop fully uninstalled, 65.6 GB → 1.6 GB total findings
+#     Product thesis validated: founder didn't know until Pantheon told him
 # 2026-03-23: Session 11 — Full Pantheon Audit + Modular Deities (v2.1.0)
 #   Walkthrough of every conversation since genesis (completion audit).
 #   Fixed phantom domain sirsinexus.dev → sirsi.ai in SirsiNexusApp.
