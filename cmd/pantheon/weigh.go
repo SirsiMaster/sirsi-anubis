@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/SirsiMaster/sirsi-pantheon/internal/horus"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal/rules"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
@@ -24,6 +25,7 @@ var (
 	weighCloud   bool
 	weighStorage bool
 	weighAll     bool
+	weighFresh   bool
 )
 
 // weighCmd implements `pantheon weigh` — the scanning command.
@@ -50,6 +52,7 @@ func init() {
 	weighCmd.Flags().BoolVar(&weighCloud, "cloud", false, "Scan cloud/infra (K8s, Terraform, gcloud)")
 	weighCmd.Flags().BoolVar(&weighStorage, "storage", false, "Scan cloud storage (OneDrive, GDrive, iCloud)")
 	weighCmd.Flags().BoolVar(&weighAll, "all", false, "Scan all categories")
+	weighCmd.Flags().BoolVar(&weighFresh, "fresh", false, "Force fresh filesystem index (ignore Horus cache)")
 }
 
 func runWeigh() error {
@@ -76,14 +79,33 @@ func runWeigh() error {
 		fmt.Fprintln(os.Stderr)
 	}
 
+	// Build Horus index (shared filesystem manifest)
+	if !quietMode {
+		output.Dim("  👁️ Building Horus index...")
+	}
+	manifest, err := horus.Index(horus.IndexOptions{
+		ForceRefresh: weighFresh,
+	})
+	if err != nil {
+		// Non-fatal: fall back to per-rule filesystem walks
+		if !quietMode {
+			output.Warn("Horus index unavailable, using direct filesystem scan: %v", err)
+		}
+	}
+	if manifest != nil && !quietMode {
+		output.Dim("  %s", manifest.Summary())
+		fmt.Fprintln(os.Stderr)
+	}
+
 	// Create engine and register all built-in rules
 	engine := jackal.NewEngine()
 	engine.RegisterAll(rules.AllRules()...)
 
-	// Run scan
+	// Run scan with Horus index
 	ctx := context.Background()
 	opts := jackal.ScanOptions{
 		Categories: categories,
+		Manifest:   manifest,
 	}
 
 	result, err := engine.Scan(ctx, opts)

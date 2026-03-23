@@ -72,8 +72,13 @@ func (r *baseScanRule) Scan(ctx context.Context, opts jackal.ScanOptions) ([]jac
 			isDir := info.IsDir()
 			fileCount := 1
 			if isDir {
-				// Combined walk: get size AND count in one pass (was two separate walks)
-				size, fileCount = dirSizeAndCount(match)
+				if opts.Manifest != nil {
+					// Horus index: instant lookup (~5ms) instead of filesystem walk
+					size, fileCount = opts.Manifest.DirSizeAndCount(match)
+				} else {
+					// Fallback: combined walk (was two separate walks)
+					size, fileCount = dirSizeAndCount(match)
+				}
 			}
 
 			// Skip empty directories/files

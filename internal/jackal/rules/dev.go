@@ -183,8 +183,14 @@ func (r *findRule) Scan(ctx context.Context, opts jackal.ScanOptions) ([]jackal.
 					}
 				}
 
-				// Combined walk: get size AND count in one pass
-				size, fileCount := dirSizeAndCount(path)
+				// Get size AND count — Horus index or filesystem walk
+				var size int64
+				var fileCount int
+				if opts.Manifest != nil {
+					size, fileCount = opts.Manifest.DirSizeAndCount(path)
+				} else {
+					size, fileCount = dirSizeAndCount(path)
+				}
 				if size == 0 {
 					return filepath.SkipDir
 				}

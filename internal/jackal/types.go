@@ -93,6 +93,14 @@ type ScanOptions struct {
 
 	// Home directory override (for testing)
 	HomeDir string
+
+	// Manifest is the shared Horus filesystem index.
+	// When set, rules query the index instead of walking the filesystem.
+	// This enables the "walk once, share many" optimization (ADR-008).
+	Manifest interface {
+		DirSizeAndCount(dir string) (int64, int)
+		Exists(path string) bool
+	}
 }
 
 // CleanOptions controls how cleaning behaves.

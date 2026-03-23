@@ -33,11 +33,11 @@ type Manifest struct {
 }
 
 // Entry is a single filesystem entry in the index.
+// ModTime is omitted from JSON to keep the manifest compact (<10MB vs 476MB).
 type Entry struct {
-	Size    int64     `json:"size"`
-	ModTime time.Time `json:"mod_time"`
-	IsDir   bool      `json:"is_dir"`
-	Mode    uint32    `json:"mode"`
+	Size  int64  `json:"s"`
+	IsDir bool   `json:"d,omitempty"`
+	Mode  uint32 `json:"m,omitempty"`
 }
 
 // WalkStats records performance metrics for the walk.
@@ -79,17 +79,20 @@ type IndexOptions struct {
 }
 
 // DefaultRoots returns the standard filesystem roots that deities care about.
+// Scoped to paths that Jackal/Ka/Seba actually scan — not the entire filesystem.
 func DefaultRoots() []string {
 	home, _ := os.UserHomeDir()
 	roots := []string{
-		filepath.Join(home, "Library"),
+		filepath.Join(home, "Library", "Caches"),
+		filepath.Join(home, "Library", "Logs"),
+		filepath.Join(home, "Library", "Application Support"),
+		filepath.Join(home, "Library", "Containers"),
+		filepath.Join(home, "Library", "Developer"),
+		filepath.Join(home, "Library", "Group Containers"),
 		filepath.Join(home, ".cache"),
 		filepath.Join(home, ".local"),
 		filepath.Join(home, "Development"),
-		filepath.Join(home, "code"),
-		filepath.Join(home, "projects"),
-		filepath.Join(home, "src"),
-		filepath.Join(home, "go"),
+		filepath.Join(home, "go", "pkg"),
 	}
 
 	switch runtime.GOOS {
@@ -99,13 +102,11 @@ func DefaultRoots() []string {
 			"/Applications",
 			"/usr/local",
 			"/opt/homebrew",
-			"/private/var/folders",
 		)
 	case "linux":
 		roots = append(roots,
 			"/var/cache",
 			"/var/tmp",
-			"/tmp",
 			"/opt",
 			"/snap",
 		)
@@ -113,12 +114,14 @@ func DefaultRoots() []string {
 		roots = append(roots,
 			filepath.Join(home, "AppData", "Local"),
 			filepath.Join(home, "AppData", "Roaming"),
-			`C:\ProgramData`,
 		)
 	}
 
 	return roots
 }
+
+// DefaultMaxDepth prevents runaway indexing.
+const DefaultMaxDepth = 6
 
 // Index builds or loads the shared filesystem manifest.
 // If a fresh cache exists, returns it. Otherwise, walks the filesystem.
@@ -163,6 +166,11 @@ func buildIndex(opts IndexOptions) (*Manifest, error) {
 		roots = DefaultRoots()
 	}
 
+	maxDepth := opts.MaxDepth
+	if maxDepth <= 0 {
+		maxDepth = DefaultMaxDepth
+	}
+
 	parallelism := opts.Parallelism
 	if parallelism <= 0 {
 		parallelism = runtime.GOMAXPROCS(0)
@@ -197,10 +205,10 @@ func buildIndex(opts IndexOptions) (*Manifest, error) {
 				}
 
 				// Depth limit
-				if opts.MaxDepth > 0 {
+				if maxDepth > 0 {
 					rel, _ := filepath.Rel(root, path)
 					depth := strings.Count(rel, string(filepath.Separator))
-					if depth > opts.MaxDepth {
+					if depth > maxDepth {
 						if d.IsDir() {
 							return filepath.SkipDir
 						}
@@ -214,10 +222,9 @@ func buildIndex(opts IndexOptions) (*Manifest, error) {
 				}
 
 				localEntries[path] = Entry{
-					Size:    info.Size(),
-					ModTime: info.ModTime(),
-					IsDir:   d.IsDir(),
-					Mode:    uint32(info.Mode()),
+					Size:  info.Size(),
+					IsDir: d.IsDir(),
+					Mode:  uint32(info.Mode()),
 				}
 
 				if d.IsDir() {
