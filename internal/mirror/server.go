@@ -7,14 +7,14 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"sync"
 	"syscall"
+
+	"github.com/SirsiMaster/sirsi-anubis/internal/platform"
 )
 
 // Server runs a local web UI for the Mirror dedup scanner.
@@ -43,15 +43,7 @@ func (s *Server) URL() string {
 
 // OpenBrowser opens the default browser to the web UI.
 func (s *Server) OpenBrowser() error {
-	url := s.URL()
-	switch runtime.GOOS {
-	case "darwin":
-		return exec.Command("open", url).Start()
-	case "linux":
-		return exec.Command("xdg-open", url).Start()
-	default:
-		return fmt.Errorf("unsupported OS: %s", runtime.GOOS)
-	}
+	return platform.Current().OpenBrowser(s.URL())
 }
 
 // Serve starts the HTTP server with graceful shutdown on SIGINT/SIGTERM.
@@ -130,24 +122,17 @@ func (s *Server) handleBrowse(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handlePickFolder(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	// Use macOS native Finder dialog to pick a folder.
+	// Use platform-native folder picker dialog.
 	// This gets us the real absolute path that browsers can't provide.
-	if runtime.GOOS != "darwin" {
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": "folder picker requires macOS"})
-		return
-	}
-
-	script := `tell application "System Events" to return POSIX path of (choose folder with prompt "Select a folder to scan for duplicates")`
-	cmd := exec.Command("osascript", "-e", script)
-	out, err := cmd.Output()
-	if err != nil {
-		// User canceled the dialog or other error
+	path, err := platform.Current().PickFolder()
+	if err != nil || path == "" {
+		// User canceled the dialog or platform doesn't support it
 		_ = json.NewEncoder(w).Encode(map[string]string{"error": "canceled"})
 		return
 	}
 
-	path := strings.TrimSpace(string(out))
-	// Remove trailing slash from osascript output
+	path = strings.TrimSpace(path)
+	// Remove trailing slash from native dialog output
 	path = strings.TrimRight(path, "/")
 	_ = json.NewEncoder(w).Encode(map[string]string{"path": path})
 }

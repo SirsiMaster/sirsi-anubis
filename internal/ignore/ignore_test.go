@@ -193,9 +193,9 @@ func TestShouldIgnore_Negation(t *testing.T) {
 		path string
 		want bool
 	}{
-		{"debug.log", true},           // matches *.log
-		{"important.log", false},       // matched *.log, then un-ignored by negation
-		{"app.txt", false},             // no match
+		{"debug.log", true},      // matches *.log
+		{"important.log", false}, // matched *.log, then un-ignored by negation
+		{"app.txt", false},       // no match
 	}
 
 	for _, tt := range tests {
@@ -211,7 +211,7 @@ func TestShouldIgnore_NegationOrderMatters(t *testing.T) {
 	list := &IgnoreList{
 		patterns: []pattern{
 			{glob: "important.log", negate: true}, // un-ignore first (has no effect if not yet ignored)
-			{glob: "*.log", negate: false},          // ignore all .log
+			{glob: "*.log", negate: false},        // ignore all .log
 		},
 	}
 
@@ -260,7 +260,7 @@ func TestShouldIgnore_SubstringContains(t *testing.T) {
 		path string
 		want bool
 	}{
-		{"/home/user/.cache/app", true},   // contains ".cache"
+		{"/home/user/.cache/app", true}, // contains ".cache"
 		{"/home/user/.config/app", false},
 	}
 

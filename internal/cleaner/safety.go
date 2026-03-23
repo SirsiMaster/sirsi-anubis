@@ -10,40 +10,16 @@ package cleaner
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
+
+	"github.com/SirsiMaster/sirsi-anubis/internal/platform"
 )
 
-// protectedPrefixes are paths that MUST NEVER be deleted.
-// This list is HARDCODED and CANNOT be overridden by configuration,
-// flags, CLI arguments, or user input. (Rule A1)
-var protectedPrefixes = map[string][]string{
-	"darwin": {
-		"/System/",
-		"/usr/",
-		"/bin/",
-		"/sbin/",
-		"/private/var/db/",
-		"/Library/Extensions/",
-		"/Library/Frameworks/",
-	},
-	"linux": {
-		"/boot/",
-		"/etc/",
-		"/usr/",
-		"/bin/",
-		"/sbin/",
-		"/lib/",
-		"/lib64/",
-		"/proc/",
-		"/sys/",
-		"/dev/",
-		"/var/lib/dpkg/",
-		"/var/lib/rpm/",
-	},
-}
+// protectedPrefixes are now provided by platform.Current().ProtectedPrefixes().
+// Each platform implementation (Darwin, Linux, Mock) defines its own list.
+// This ensures protected paths are always correct for the running OS
+// and can be overridden in tests via platform.Set(&Mock{}).
 
 // protectedSuffixes are file patterns that MUST NEVER be deleted.
 var protectedSuffixes = []string{
@@ -92,11 +68,9 @@ func ValidatePath(path string) error {
 	}
 
 	// Check platform-specific protected prefixes
-	if prefixes, ok := protectedPrefixes[runtime.GOOS]; ok {
-		for _, prefix := range prefixes {
-			if strings.HasPrefix(absPath, prefix) {
-				return fmt.Errorf("BLOCKED: %q is under protected path %q", absPath, prefix)
-			}
+	for _, prefix := range platform.Current().ProtectedPrefixes() {
+		if strings.HasPrefix(absPath, prefix) {
+			return fmt.Errorf("BLOCKED: %q is under protected path %q", absPath, prefix)
 		}
 	}
 
@@ -166,9 +140,9 @@ func DeleteFile(path string, dryRun bool, useTrash bool) (int64, error) {
 		return size, nil
 	}
 
-	// Trash mode (macOS) — always prefer this
-	if useTrash && runtime.GOOS == "darwin" {
-		return size, moveToTrash(path)
+	// Trash mode — always prefer on platforms that support it
+	if useTrash && platform.Current().SupportsTrash() {
+		return size, platform.Current().MoveToTrash(path)
 	}
 
 	// Direct delete
@@ -205,9 +179,9 @@ func CleanFile(path string, reason string, groupID string, hash string, log *Dec
 	}
 	size := info.Size()
 
-	// Always trash on macOS (reversible)
-	if runtime.GOOS == "darwin" {
-		if err := moveToTrash(path); err != nil {
+	// Always trash on platforms that support it (reversible)
+	if platform.Current().SupportsTrash() {
+		if err := platform.Current().MoveToTrash(path); err != nil {
 			return 0, fmt.Errorf("move to trash: %w", err)
 		}
 		_ = log.Record(Decision{
@@ -253,17 +227,5 @@ func DirSize(path string) int64 {
 	return size
 }
 
-// moveToTrash uses macOS Finder to move a file to Trash.
-// This preserves the "Put Back" functionality.
-func moveToTrash(path string) error {
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return fmt.Errorf("resolve path for trash: %w", err)
-	}
-	script := fmt.Sprintf(
-		`tell application "Finder" to delete POSIX file %q`,
-		absPath,
-	)
-	cmd := exec.Command("osascript", "-e", script)
-	return cmd.Run()
-}
+// moveToTrash is now handled by platform.Current().MoveToTrash().
+// See internal/platform/darwin.go for the macOS implementation.

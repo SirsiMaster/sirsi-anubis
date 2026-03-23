@@ -169,6 +169,15 @@ func TestHost_Struct(t *testing.T) {
 	if h.IP != "10.0.0.1" {
 		t.Error("Host struct field access failed")
 	}
+	if h.MAC != "aa:bb:cc:dd:ee:ff" {
+		t.Errorf("MAC = %q, want %q", h.MAC, "aa:bb:cc:dd:ee:ff")
+	}
+	if h.Hostname != "test-host" {
+		t.Errorf("Hostname = %q, want %q", h.Hostname, "test-host")
+	}
+	if !h.Alive {
+		t.Error("Alive should be true")
+	}
 	if len(h.OpenPorts) != 2 {
 		t.Errorf("expected 2 open ports, got %d", len(h.OpenPorts))
 	}

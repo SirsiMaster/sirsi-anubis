@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 	"time"
+
+	"github.com/SirsiMaster/sirsi-anubis/internal/platform"
 )
 
 // ═══════════════════════════════════════════
@@ -308,9 +309,10 @@ func TestDeleteFile_NonExistent(t *testing.T) {
 }
 
 func TestDeleteFile_ProtectedPath(t *testing.T) {
-	if runtime.GOOS != "darwin" {
-		t.Skip("protected path test requires macOS")
-	}
+	// Use mock platform to test protected path logic on any OS
+	platform.Set(&platform.Mock{})
+	defer platform.Reset()
+
 	_, err := DeleteFile("/System/Library/test", false, false)
 	if err == nil {
 		t.Error("DeleteFile on protected path should return error")
@@ -417,9 +419,10 @@ func TestDirSize_EmptyDir(t *testing.T) {
 // ═══════════════════════════════════════════
 
 func TestCleanFile_BlockedPathLogsSkip(t *testing.T) {
-	if runtime.GOOS != "darwin" {
-		t.Skip("protected path test requires macOS")
-	}
+	// Use mock platform to test protected path logic on any OS
+	platform.Set(&platform.Mock{})
+	defer platform.Reset()
+
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
 
@@ -428,7 +431,7 @@ func TestCleanFile_BlockedPathLogsSkip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Try to clean a protected path
+	// Try to clean a protected path (/System/ is in Mock's protected prefixes)
 	_, err = CleanFile("/System/Library/something", "test", "grp", "hash", dl)
 	if err == nil {
 		t.Error("CleanFile on protected path should return error")
@@ -509,8 +512,9 @@ func TestDecision_JSONRoundTrip(t *testing.T) {
 // ═══════════════════════════════════════════
 
 func TestProtectedPrefixesContainCriticalPaths(t *testing.T) {
-	darwinPrefixes := protectedPrefixes["darwin"]
-	linuxPrefixes := protectedPrefixes["linux"]
+	// Test via the platform interface instead of the removed map
+	darwin := &platform.Darwin{}
+	linux := &platform.Linux{}
 
 	mustContain := func(list []string, item string) {
 		for _, p := range list {
@@ -521,16 +525,16 @@ func TestProtectedPrefixesContainCriticalPaths(t *testing.T) {
 		t.Errorf("protected prefixes missing critical path %q", item)
 	}
 
-	mustContain(darwinPrefixes, "/System/")
-	mustContain(darwinPrefixes, "/usr/")
-	mustContain(darwinPrefixes, "/bin/")
-	mustContain(darwinPrefixes, "/sbin/")
+	mustContain(darwin.ProtectedPrefixes(), "/System/")
+	mustContain(darwin.ProtectedPrefixes(), "/usr/")
+	mustContain(darwin.ProtectedPrefixes(), "/bin/")
+	mustContain(darwin.ProtectedPrefixes(), "/sbin/")
 
-	mustContain(linuxPrefixes, "/boot/")
-	mustContain(linuxPrefixes, "/etc/")
-	mustContain(linuxPrefixes, "/proc/")
-	mustContain(linuxPrefixes, "/sys/")
-	mustContain(linuxPrefixes, "/dev/")
+	mustContain(linux.ProtectedPrefixes(), "/boot/")
+	mustContain(linux.ProtectedPrefixes(), "/etc/")
+	mustContain(linux.ProtectedPrefixes(), "/proc/")
+	mustContain(linux.ProtectedPrefixes(), "/sys/")
+	mustContain(linux.ProtectedPrefixes(), "/dev/")
 }
 
 func TestProtectedNamesContainSensitiveFiles(t *testing.T) {

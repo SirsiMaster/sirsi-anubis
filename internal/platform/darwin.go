@@ -43,7 +43,7 @@ func (d *Darwin) PickFolder() (string, error) {
 		`POSIX path of (choose folder with prompt "Select a folder to scan:")`)
 	out, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("folder picker cancelled or failed: %w", err)
+		return "", fmt.Errorf("folder picker canceled or failed: %w", err)
 	}
 	return filepath.Clean(string(out)), nil
 }

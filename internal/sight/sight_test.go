@@ -94,6 +94,9 @@ func TestGhostRegistration_Struct(t *testing.T) {
 	if g.Path == "" {
 		t.Error("Path should not be empty")
 	}
+	if g.Name != "Parallels Desktop" {
+		t.Errorf("Name = %q, want %q", g.Name, "Parallels Desktop")
+	}
 }
 
 func TestSightResult_Defaults(t *testing.T) {

@@ -23,7 +23,7 @@ type Platform interface {
 	ProtectedPrefixes() []string
 
 	// PickFolder opens a native folder-picker dialog and returns
-	// the selected absolute path. Returns empty string if cancelled.
+	// the selected absolute path. Returns empty string if canceled.
 	PickFolder() (string, error)
 
 	// OpenBrowser opens a URL in the system default browser.
