@@ -205,3 +205,21 @@ Added "building in public" badge to README. Linked from CHANGELOG.
 - **Rule A15 (Session Definition)**: A session = one AI conversation between continuation prompts. Not time gaps, not commit counts.
 
 **Why this matters**: The per-session savings are genuinely impressive ($4.12, 98.7% context reduction). Inflating the cumulative numbers cheapens the real achievement and destroys trust with technical users who will verify claims. Build-in-public means the audit trail is visible — the correction is as much a part of the story as the original error. Transparency IS the product.
+
+---
+
+## Entry 012 — 2026-03-22 21:25 — "Polish before launch"
+
+**Context**: Session 7 — continuation from entry 011. After the statistics audit, shifted to launch execution and production polish.
+
+**Key decisions**:
+
+1. **Structured logging (slog, not zerolog)**: Chose Go's built-in `log/slog` (Go 1.21+) over third-party loggers. Rationale: zero dependencies, same API as stdlib, structured key-value pairs, and the leveled handler architecture means we can switch between text and JSON output with a single flag. CLI output (fmt.Printf to stdout) remains untouched — slog goes to stderr for diagnostics only.
+
+2. **Platform interface — interface, not build tags**: Considered using `//go:build darwin` build tags to separate platform code. Chose an explicit `Platform` interface instead because: (a) build tags prevent compilation on other platforms, making CI harder; (b) an interface allows test injection via `Mock`; (c) the implementations are small enough that the overhead of carrying unused code is negligible. The cleaner module still uses direct `runtime.GOOS` checks — wiring it through `platform.Current()` is the next step.
+
+3. **Case studies — anecdotal vs measured**: The Ka case study was tricky. The "23 GB Parallels" number from the origin story couldn't be re-measured (it was a manual cleanup). Per Rule A14, labeled it as anecdotal rather than fabricating a benchmark. The Mirror case study's 27.3x number came from journal entry 001 — real benchmark, reproducible.
+
+**Release**: v0.3.0-alpha published on GitHub with 6 binaries (darwin/linux × amd64/arm64, windows × amd64/arm64). Tests pass on macOS locally and Linux CI after adding platform skip guards.
+
+**Session total**: 10 commits, 30+ files modified, 17 new tests (6 logging + 11 platform), 3 case studies, 2 rules canonized.

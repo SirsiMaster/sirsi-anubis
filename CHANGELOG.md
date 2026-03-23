@@ -10,8 +10,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 ### Planned
 - P0: Cleaner test coverage to 80%+ (safety-critical)
 - P0: Scanner edge case tests (permissions, symlink loops)
-- P1: Linux folder picker (zenity), Platform interface abstraction
-- P1: Structured logging (replace fmt.Printf)
+- P1: Wire Platform interface into cleaner module (replace runtime.GOOS checks)
+- P1: Homebrew tap (needs PAT for cross-repo access)
 - P2: npm publish thoth-init, VS Code extension
 
 ---
@@ -63,12 +63,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 - **GoReleaser CI** — deprecated format, stale config file
 
 ### Stats
-- 17 CLI commands, 58 scan rules, 17 internal modules
-- ~395 tests across 15 packages, all passing (with `-race`)
-- ~15,000 lines of Go
+- 17 CLI commands, 58 scan rules, 19 internal modules
+- 470 tests across 17 packages, all passing (with `-race`)
+- ~17,000 lines of Go
 - Lint clean (golangci-lint + staticcheck)
 - Test coverage range: 93% (jackal) to 0% (2 untested modules: mapper, output)
 - 6 bugs found and fixed in audit cycle, 7 modules test-covered in test sprint
+
+### Session 7 (2026-03-22)
+- **Statistics audit** — corrected 5 categories of inflated claims across 12 files
+  - Scan rules: 64→58 (verified). Tests: ~395→470 (verified).
+  - Removed fabricated cross-repo savings and "3M tokens in 11 sessions" claim.
+- **Structured logging** (`internal/logging/`) — Go 1.21+ slog to stderr
+  - `--verbose` (debug), `--quiet` (error-only), `--json` (structured) modes
+  - Instrumented mirror and ka scanners with debug points
+- **Platform abstraction** (`internal/platform/`) — cross-platform interface
+  - Darwin, Linux, Mock implementations
+  - MoveToTrash, ProtectedPrefixes, PickFolder, OpenBrowser, SupportsTrash
+  - Mock enables testing platform-specific code without system calls
+- **Case studies** — 3 verified studies in `docs/case-studies/`
+  - Thoth Context Savings, Mirror Dedup Performance, Ka Ghost Detection
+- **CI fixes** — platform skip guards for macOS-only tests, homebrew tap disabled
+- **Rules canonized** — A14 (Statistics Integrity), A15 (Session Definition)
+- **GitHub Release** — v0.3.0-alpha published with 6 binaries
+- **`SirsiMaster/homebrew-tools`** repo created (pending PAT setup)
 
 
 ## [0.2.0-alpha] — 2026-03-25 (Ship Week Day 5)

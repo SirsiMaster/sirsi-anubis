@@ -1,6 +1,6 @@
 # 𓁟 Thoth — Project Memory for Sirsi Anubis
 # Read this FIRST before any source files.
-# Last updated: 2026-03-22T19:20:00-04:00
+# Last updated: 2026-03-22T21:25:00-04:00
 
 ## Identity
 project: sirsi-anubis
@@ -8,9 +8,9 @@ repo: github.com/SirsiMaster/sirsi-anubis
 language: Go 1.22+
 version: 0.3.0-alpha
 binary_count: 2 (anubis @ 12 MB, anubis-agent @ 3.2 MB)
-test_count: 453
-line_count: ~15,000
-module_count: 17
+test_count: 470
+line_count: ~17,000
+module_count: 19
 command_count: 17
 mcp_tools: 5 (scan_workspace, ghost_report, health_check, classify_files, thoth_read_memory)
 
@@ -57,16 +57,21 @@ mcp_tools: 5 (scan_workspace, ghost_report, health_check, classify_files, thoth_
 #     continuation prompts. Not time gaps, not commit clusters.
 
 ## Known Limitations (as of v0.3.0-alpha)
-# - GUI folder picker only works on macOS (needs zenity for Linux, PowerShell for Windows)
-# - Trash integration only works on macOS (needs freedesktop.org spec for Linux)
-# - 2/17 modules have zero test coverage (mapper, output — low priority)
-# - No structured logging (all fmt.Printf)
+# - GUI folder picker only works on macOS (Linux: zenity/kdialog in platform/linux.go)
+# - Trash integration only works on macOS (Linux: gio trash in platform/linux.go)
+# - 2/19 modules have zero test coverage (mapper, output — low priority)
 # - Ka ghost hunting is macOS-only (searches .app bundles, LaunchServices)
 # - Scan rules are macOS/Linux only — no Windows AppData paths yet
-# - GoReleaser has asset conflict when force-updating tags (cosmetic)
-# - Platform-specific code is scattered, not behind a Platform interface
+# - Homebrew tap disabled (needs PAT for cross-repo access)
+# - Platform interface exists but not yet wired into cleaner module
 
 ## Recent Changes (most recent first)
+# 2026-03-22: Session 7 — statistics audit + production polish
+#   Structured logging: internal/logging/ (slog, --verbose, --quiet, --json)
+#   Platform abstraction: internal/platform/ (Darwin, Linux, Mock)
+#   3 case studies: Thoth, Mirror, Ka (all verified data per Rule A14)
+#   CI fixes: 4 platform skip guards, homebrew tap disabled
+#   v0.3.0-alpha released on GitHub (6 binaries + checksums)
 # 2026-03-22: Statistics audit — corrected all inflated claims across 12 files
 #   Scan rules: 64→58 (verified). Tests: ~395→453 (verified).
 #   Removed fabricated cross-repo savings. Removed "3M tokens in 11 sessions."
