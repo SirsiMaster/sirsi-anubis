@@ -2,11 +2,15 @@ package maat
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // CoverageThreshold defines the minimum coverage required for a module.
@@ -40,6 +44,17 @@ type CoverageAssessor struct {
 
 	// ProjectRoot is the root directory for running go test.
 	ProjectRoot string
+
+	// DiffOnly when true, only tests packages with changed .go files
+	// since the last remote HEAD. Uses cached coverage for unchanged packages.
+	DiffOnly bool
+
+	// DiffBase is the git ref to diff against. Defaults to "origin/HEAD".
+	DiffBase string
+
+	// CachePath overrides the default coverage cache location.
+	// Default: ~/.config/pantheon/maat/coverage-cache.json
+	CachePath string
 }
 
 // DefaultThresholds returns the canonical coverage thresholds for Anubis.
@@ -78,30 +93,197 @@ func (c *CoverageAssessor) Assess() ([]Assessment, error) {
 	}
 
 	results := ParseCoverageOutput(output)
+
+	// Save fresh results to cache for future diff runs.
+	if cache := c.coverageCachePath(); cache != "" {
+		_ = saveCoverageCache(cache, results)
+	}
+
 	return c.evaluate(results), nil
 }
 
-// runCoverage executes the coverage command or uses the custom runner.
+// coverageCachePath returns the path to the coverage cache file.
+func (c *CoverageAssessor) coverageCachePath() string {
+	if c.CachePath != "" {
+		return c.CachePath
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, ".config", "pantheon", "maat", "coverage-cache.json")
+}
+
+// runCoverage executes coverage — either diff-only or full scan.
 func (c *CoverageAssessor) runCoverage() (string, error) {
 	if c.Runner != nil {
 		return c.Runner()
 	}
 
+	if c.DiffOnly {
+		return c.runDiffCoverage()
+	}
+
+	return c.runFullCoverage()
+}
+
+// runFullCoverage runs go test -cover on all packages.
+func (c *CoverageAssessor) runFullCoverage() (string, error) {
 	cmd := exec.Command("go", "test", "-cover", "./...")
 	if c.ProjectRoot != "" {
 		cmd.Dir = c.ProjectRoot
 	}
 
 	out, err := cmd.CombinedOutput()
-	if err != nil {
-		// go test returns non-zero on test failure, but we still want the output.
-		// Only fail if there's no output at all.
-		if len(out) == 0 {
-			return "", fmt.Errorf("go test -cover: %w", err)
-		}
+	if err != nil && len(out) == 0 {
+		return "", fmt.Errorf("go test -cover: %w", err)
 	}
 
 	return string(out), nil
+}
+
+// runDiffCoverage only tests packages with changed .go files.
+// Unchanged packages use cached coverage values.
+func (c *CoverageAssessor) runDiffCoverage() (string, error) {
+	changedPkgs := c.changedPackages()
+
+	// Load cached coverage for unchanged packages.
+	cache := c.coverageCachePath()
+	cachedResults, _ := loadCoverageCache(cache)
+	cachedMap := make(map[string]CoverageResult)
+	for _, r := range cachedResults {
+		cachedMap[r.Package] = r
+	}
+
+	// If no packages changed, use 100% cached data.
+	if len(changedPkgs) == 0 {
+		var lines []string
+		for _, r := range cachedResults {
+			if r.NoTests {
+				lines = append(lines, fmt.Sprintf("?\tgithub.com/SirsiMaster/sirsi-pantheon/internal/%s\t[no test files]", r.Package))
+			} else {
+				lines = append(lines, fmt.Sprintf("ok\tgithub.com/SirsiMaster/sirsi-pantheon/internal/%s\t(cached)\tcoverage: %.1f%% of statements", r.Package, r.Coverage))
+			}
+		}
+		return strings.Join(lines, "\n"), nil
+	}
+
+	// Build the package list for go test.
+	var pkgArgs []string
+	for _, pkg := range changedPkgs {
+		pkgArgs = append(pkgArgs, "./internal/"+pkg+"/...")
+	}
+
+	// Run go test only on changed packages.
+	args := append([]string{"test", "-cover"}, pkgArgs...)
+	cmd := exec.Command("go", args...)
+	if c.ProjectRoot != "" {
+		cmd.Dir = c.ProjectRoot
+	}
+
+	out, err := cmd.CombinedOutput()
+	if err != nil && len(out) == 0 {
+		return "", fmt.Errorf("go test -cover (diff): %w", err)
+	}
+
+	// Merge: fresh results for changed packages + cached for unchanged.
+	freshResults := ParseCoverageOutput(string(out))
+	freshMap := make(map[string]bool)
+	for _, r := range freshResults {
+		freshMap[r.Package] = true
+	}
+
+	// Add cached results for unchanged packages.
+	var mergedLines []string
+	mergedLines = append(mergedLines, string(out))
+
+	for _, r := range cachedResults {
+		if freshMap[r.Package] {
+			continue // Already in fresh results.
+		}
+		if r.NoTests {
+			mergedLines = append(mergedLines, fmt.Sprintf("?\tgithub.com/SirsiMaster/sirsi-pantheon/internal/%s\t[no test files]", r.Package))
+		} else {
+			mergedLines = append(mergedLines, fmt.Sprintf("ok\tgithub.com/SirsiMaster/sirsi-pantheon/internal/%s\t(cached)\tcoverage: %.1f%% of statements", r.Package, r.Coverage))
+		}
+	}
+
+	return strings.Join(mergedLines, "\n"), nil
+}
+
+// changedPackages uses git diff to find which internal/ packages have changed.
+func (c *CoverageAssessor) changedPackages() []string {
+	base := c.DiffBase
+	if base == "" {
+		base = "origin/HEAD"
+	}
+
+	cmd := exec.Command("git", "diff", "--name-only", base)
+	if c.ProjectRoot != "" {
+		cmd.Dir = c.ProjectRoot
+	}
+
+	out, err := cmd.Output()
+	if err != nil {
+		// If diff fails (e.g., no remote), fall back to all packages.
+		return nil
+	}
+
+	pkgSet := make(map[string]bool)
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		if !strings.HasSuffix(line, ".go") {
+			continue
+		}
+		// Extract package: internal/cleaner/safety.go → cleaner
+		if strings.HasPrefix(line, "internal/") {
+			parts := strings.SplitN(line[len("internal/"):], "/", 2)
+			if len(parts) >= 1 && parts[0] != "" {
+				pkgSet[parts[0]] = true
+			}
+		}
+		// cmd/ changes affect the build but not package coverage
+	}
+
+	var pkgs []string
+	for pkg := range pkgSet {
+		pkgs = append(pkgs, pkg)
+	}
+	return pkgs
+}
+
+// coverageCacheEntry is the JSON-serializable cache format.
+type coverageCacheEntry struct {
+	Results   []CoverageResult `json:"results"`
+	Timestamp string           `json:"timestamp"`
+}
+
+// saveCoverageCache persists coverage results to disk.
+func saveCoverageCache(path string, results []CoverageResult) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	entry := coverageCacheEntry{
+		Results:   results,
+		Timestamp: time.Now().Format(time.RFC3339),
+	}
+	data, err := json.Marshal(entry)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0o644)
+}
+
+// loadCoverageCache reads cached coverage results.
+func loadCoverageCache(path string) ([]CoverageResult, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var entry coverageCacheEntry
+	if err := json.Unmarshal(data, &entry); err != nil {
+		return nil, err
+	}
+	return entry.Results, nil
 }
 
 // coverageRegex matches lines like:

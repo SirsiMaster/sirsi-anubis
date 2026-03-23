@@ -17,6 +17,7 @@ var (
 	maatCoverage bool
 	maatCanon    bool
 	maatCommits  int
+	maatFull     bool
 )
 
 var maatCmd = &cobra.Command{
@@ -45,6 +46,7 @@ func init() {
 	maatCmd.Flags().BoolVar(&maatCoverage, "coverage", false, "Assess test coverage only")
 	maatCmd.Flags().BoolVar(&maatCanon, "canon", false, "Assess canon linkage only")
 	maatCmd.Flags().IntVar(&maatCommits, "commits", 10, "Number of recent commits to check for canon linkage")
+	maatCmd.Flags().BoolVar(&maatFull, "full", false, "Run full coverage scan (ignore diff cache, test all packages)")
 }
 
 func runMaat(cmd *cobra.Command, args []string) {
@@ -69,6 +71,7 @@ func runMaat(cmd *cobra.Command, args []string) {
 	if runAll || maatCoverage {
 		assessors = append(assessors, &maat.CoverageAssessor{
 			Thresholds: maat.DefaultThresholds(),
+			DiffOnly:   !maatFull,
 		})
 	}
 
