@@ -51,11 +51,10 @@ Sirsi Technologies (super-repo / company)
     ├── ⚖️ Scales    — Policy (Go)         — within Anubis
     ├── 🪲 Scarab    — Network (Go)        — within Anubis
     ├── 🌊 Hapi      — Resources (Go)      — within Anubis
-    ├── 🛡️ Guard     — Memory (Go)         — within Anubis
+    ├── 𓅓 Horus     — System Sentinel (Go) — within Anubis (was Guard)
     ├── 🪞 Mirror    — Dedup (Go)          — within Anubis
     ├── 𓂓 Ka         — Ghost Hunting (Go)  — within Anubis
     ├── 👁️ Sight     — LaunchServices (Go) — within Anubis
-    ├── 𓅓 Horus     — [Undesignated]      — (pending)
     ├── 𓄿 Isis      — [Undesignated]      — (pending)
     ├── 𓀭 Osiris    — [Undesignated]      — (pending)
     └── [future deities as needed]

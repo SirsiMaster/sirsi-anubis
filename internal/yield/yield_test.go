@@ -44,9 +44,9 @@ func TestShouldYield(t *testing.T) {
 
 func TestVerdictThresholds(t *testing.T) {
 	tests := []struct {
-		name    string
-		ratio   float64
-		want    string
+		name  string
+		ratio float64
+		want  string
 	}{
 		{"idle", 0.1, VerdictHealthy},
 		{"light", 0.4, VerdictHealthy},
