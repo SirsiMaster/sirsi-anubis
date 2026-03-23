@@ -1,6 +1,6 @@
 # 𓁟 Thoth — Project Memory for Sirsi Pantheon
 # Read this FIRST before any source files.
-# Last updated: 2026-03-23T18:20:00-04:00
+# Last updated: 2026-03-23T19:50:00-04:00
 
 ## Identity
 project: sirsi-pantheon
@@ -8,7 +8,7 @@ repo: github.com/SirsiMaster/sirsi-pantheon
 language: Go 1.22+
 version: 0.4.0-alpha
 binary_count: 2 (pantheon @ 12 MB, pantheon-agent @ 3.2 MB)
-test_count: 522
+test_count: 575+
 line_count: ~19,300
 module_count: 21
 command_count: 18
@@ -73,7 +73,7 @@ mcp_tools: 5 (scan_workspace, ghost_report, health_check, classify_files, thoth_
 # - 2/19 modules have zero test coverage (mapper, output — low priority)
 # - Ka ghost hunting is macOS-only (searches .app bundles, LaunchServices)
 # - Scan rules are macOS/Linux only — no Windows AppData paths yet
-# - Homebrew tap: ENABLED (HOMEBREW_TAP_TOKEN secret set, GoReleaser brews active)
+# - Homebrew tap: VERIFIED (brew install sirsi-pantheon works end-to-end)
 # - Ma'at remediation gap: Ma'at observes, but does not yet remediate
 # - Seba mapping depth: Current "map" is a kinetic graph, needs more depth
 # - Horus: Phase 1 implemented (shared index, parallel walks, manifest cache)
@@ -82,6 +82,16 @@ mcp_tools: 5 (scan_workspace, ghost_report, health_check, classify_files, thoth_
 # - ADR count: 8 (001-founding, 002-ka, 003-build-in-public, 004-maat, 005-pantheon, 006-resource-gov, 007-findings-portal, 008-shared-filesystem-index)
 
 ## Recent Changes (most recent first)
+# 2026-03-23: Session 14 — Brain Coverage + Homebrew Verification
+#   Brain coverage sprint: 40.4% → 55.9% (exceeds 50% Ma'at threshold).
+#   New tests: downloadFile (httptest), selectPlatformModel, classifyByHeuristic
+#   (all branches), manifest JSON round-trips, containsSegment edge cases.
+#   Found: splitPath infinite loop on relative '.' paths (documented, not fixed).
+#   Homebrew verified end-to-end: brew tap SirsiMaster/tools && brew install sirsi-pantheon ✅
+#   Both binaries (pantheon + pantheon-agent) installed to /opt/homebrew/bin/.
+#   Case study updated: Ka 8.5s → 1.08s benchmarks added (Sessions 12–13).
+#   Build log updated: Ka benchmark bar, pre-push gate 5s → 2s, Horus recursive win.
+#   Note: update checker shows false upgrade (0.4.0 → 0.2.0) — version compare bug.
 # 2026-03-23: Session 12 — Launch Execution + Performance Optimization (v0.4.0-alpha)
 #   Homebrew PAT setup: HOMEBREW_TAP_TOKEN secret set in sirsi-pantheon repo.
 #   homebrew-tools repo initialized with README.md + Formula/ directory.
