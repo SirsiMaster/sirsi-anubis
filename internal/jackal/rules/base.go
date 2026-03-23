@@ -72,8 +72,8 @@ func (r *baseScanRule) Scan(ctx context.Context, opts jackal.ScanOptions) ([]jac
 			isDir := info.IsDir()
 			fileCount := 1
 			if isDir {
-				size = cleaner.DirSize(match)
-				fileCount = countFiles(match)
+				// Combined walk: get size AND count in one pass (was two separate walks)
+				size, fileCount = dirSizeAndCount(match)
 			}
 
 			// Skip empty directories/files
@@ -136,16 +136,23 @@ func (r *baseScanRule) isExcluded(path string, homeDir string) bool {
 	return false
 }
 
-func countFiles(dir string) int {
+// dirSizeAndCount walks a directory once and returns total size and file count.
+// Uses filepath.WalkDir (Go 1.16+) which avoids os.Stat per entry — significantly
+// faster than filepath.Walk on directories with thousands of files.
+func dirSizeAndCount(dir string) (int64, int) {
+	var totalSize int64
 	count := 0
-	_ = filepath.Walk(dir, func(_ string, info os.FileInfo, err error) error {
+	_ = filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
-		if !info.IsDir() {
+		if !d.IsDir() {
 			count++
+			if info, err := d.Info(); err == nil {
+				totalSize += info.Size()
+			}
 		}
 		return nil
 	})
-	return count
+	return totalSize, count
 }

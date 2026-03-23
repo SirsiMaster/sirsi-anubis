@@ -152,7 +152,7 @@ func (r *findRule) Scan(ctx context.Context, opts jackal.ScanOptions) ([]jackal.
 			continue
 		}
 
-		err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 			if err != nil {
 				return filepath.SkipDir
 			}
@@ -165,7 +165,7 @@ func (r *findRule) Scan(ctx context.Context, opts jackal.ScanOptions) ([]jackal.
 			}
 
 			// Skip hidden directories at root level
-			if info.IsDir() && info.Name() != r.targetName {
+			if d.IsDir() && d.Name() != r.targetName {
 				// Depth check
 				rel, _ := filepath.Rel(root, path)
 				depth := len(filepath.SplitList(rel))
@@ -174,7 +174,7 @@ func (r *findRule) Scan(ctx context.Context, opts jackal.ScanOptions) ([]jackal.
 				}
 			}
 
-			if info.IsDir() && info.Name() == r.targetName {
+			if d.IsDir() && d.Name() == r.targetName {
 				// Check matchFile if specified
 				if r.matchFile != "" {
 					parentDir := filepath.Dir(path)
@@ -183,10 +183,14 @@ func (r *findRule) Scan(ctx context.Context, opts jackal.ScanOptions) ([]jackal.
 					}
 				}
 
-				size := cleaner.DirSize(path)
+				// Combined walk: get size AND count in one pass
+				size, fileCount := dirSizeAndCount(path)
 				if size == 0 {
 					return filepath.SkipDir
 				}
+
+				info, _ := d.Info()
+				var modTime = info.ModTime()
 
 				findings = append(findings, jackal.Finding{
 					RuleName:     r.name,
@@ -194,9 +198,9 @@ func (r *findRule) Scan(ctx context.Context, opts jackal.ScanOptions) ([]jackal.
 					Description:  r.displayName,
 					Path:         path,
 					SizeBytes:    size,
-					FileCount:    countFiles(path),
+					FileCount:    fileCount,
 					Severity:     jackal.SeveritySafe,
-					LastModified: info.ModTime(),
+					LastModified: modTime,
 					IsDir:        true,
 				})
 
