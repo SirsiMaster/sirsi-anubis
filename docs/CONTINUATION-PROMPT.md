@@ -1,17 +1,17 @@
 # ‍‍‍𓂀 Sirsi Anubis — Continuation Prompt
-**Date:** March 23, 2026 (Sunday, 4:08 AM ET)
-**Session:** Platform Wiring + CI Fix + Pipeline Governance
+**Date:** March 23, 2026 (Sunday, 4:24 AM ET)
+**Session:** Session 9 — Ma'at Foundation + Coverage Sprint
 **Repo:** `github.com/SirsiMaster/sirsi-anubis`
 **Path:** `/Users/thekryptodragon/Development/sirsi-anubis`
-**CI Status:** ✅ Green (first passing run after 5 consecutive failures)
+**CI Status:** ✅ Green (pre-push hook active since session 8)
 
 ---
 
 ## CRITICAL: Read Before Starting
 
 1. **Run `/session-start`** — the Thoth workflow at `.agent/workflows/session-start.md`
-2. **Read `.thoth/memory.yaml`** — compressed project state (~125 lines). This replaces reading source files.
-3. **Read `.thoth/journal.md`** — timestamped reasoning (12 entries).
+2. **Read `.thoth/memory.yaml`** — compressed project state (~135 lines). This replaces reading source files.
+3. **Read `.thoth/journal.md`** — timestamped reasoning (13 entries).
 4. **Read `ANUBIS_RULES.md`** — the 15 non-negotiable safety rules (includes A14, A15).
 5. **Deadline: Friday March 28** — April investor demos require complete product.
 6. **All code compiles and 470 tests pass** — do NOT break the build.
@@ -30,7 +30,7 @@ Thoth is the project's persistent knowledge system. Two responsibilities:
 | Layer | File | When |
 |:------|:-----|:-----|
 | Memory | `.thoth/memory.yaml` | **ALWAYS first** — architecture, decisions, limitations |
-| Journal | `.thoth/journal.md` | When WHY matters — 12 timestamped entries |
+| Journal | `.thoth/journal.md` | When WHY matters — 13 timestamped entries |
 | Artifacts | `.thoth/artifacts/` | Deep dives — benchmarks, audits, **roi-metrics.md** |
 
 ### 2. Context Window Monitoring (Track throughout session)
@@ -60,8 +60,8 @@ If truncation detected, wrap immediately.
 | Profile | `internal/profile/` | Scan profiles (quick/full/custom) |
 | Stealth | `internal/stealth/` | Ephemeral execution + post-run cleanup |
 | Ignore | `internal/ignore/` | .anubisignore file support |
-| **Logging** | `internal/logging/` | **slog-based structured logging (NEW)** |
-| **Platform** | `internal/platform/` | **OS abstraction: Darwin, Linux, Mock (NEW)** |
+| Logging | `internal/logging/` | slog-based structured logging |
+| Platform | `internal/platform/` | OS abstraction: Darwin, Linux, Mock |
 | Mapper | `internal/mapper/` | Filesystem mapper (no tests) |
 | Output | `internal/output/` | Terminal rendering (no tests) |
 | Updater | `internal/updater/` | Version check + advisory system |
@@ -87,7 +87,7 @@ If truncation detected, wrap immediately.
 | `anubis profile` | profile | Manage scan profiles |
 | `anubis version` | updater | Version + update check |
 
-### Global Flags (NEW)
+### Global Flags
 - `--json` — JSON output
 - `--quiet` — suppress non-error output
 - `--verbose` / `-v` — enable debug logging (slog to stderr)
@@ -103,10 +103,10 @@ If truncation detected, wrap immediately.
 | ignore | 17 | Pattern matching |
 | jackal/rules | 11 | Rule registry |
 | ka | 28 | 42.7% — ghost detection |
-| **logging** | **6** | **Level modes (NEW)** |
+| logging | 6 | Level modes |
 | mcp | 5 | Server lifecycle |
 | mirror | 12 | Dedup engine |
-| **platform** | **11** | **All implementations (NEW)** |
+| platform | 11 | All implementations |
 | profile | 16 | Scan profiles |
 | scales | varies | Policy engine |
 | scarab | 18 | Network + ARP parsing |
@@ -129,20 +129,81 @@ If truncation detected, wrap immediately.
 - `docs/case-studies/ka-ghost-detection.md` — 5-step algorithm, 17 locations
 
 ### Sirsi Pantheon (Repos)
-| Repo | Deity | Version |
-|:-----|:------|:--------|
-| `sirsi-anubis` | 𓂀 Anubis | v0.3.0-alpha |
-| `sirsi-thoth` | 𓁟 Thoth | v1.0.0 |
-| `SirsiNexusApp` | ☀️ Ra (coming) | In development |
+| Repo | Deity | Role | Version |
+|:-----|:------|:-----|:--------|
+| `sirsi-anubis` | 𓂀 Anubis | Judgment — workstation hygiene | v0.3.0-alpha |
+| `sirsi-thoth` | 𓁟 Thoth | Knowledge — persistent AI memory | v1.0.0 |
+| `SirsiNexusApp` | ☀️ Ra | Portal — client platform | In development |
+| *new* | 🪶 Ma'at | Truth — QA/QC governance agent | **Build this session** |
 
 ---
 
 ## What's Next
 
-### Priority 1: ✅ DONE — Platform Interface Wired (Session 8)
-Completed in session 8. Cleaner and mirror now use `platform.Current()` instead of `runtime.GOOS`.
+### Priority 1: 🪶 Ma'at — QA/QC Governance Agent
 
-### Priority 2: Homebrew Tap
+**Ma'at** is the Egyptian goddess of truth, justice, balance, and cosmic order. Her feather was the standard against which hearts were weighed. She is not a judge — she IS the standard.
+
+**Ma'at's role in the Pantheon:** Every feature must be justified against canon before it exists. Ma'at weighs plans against execution and determines worthiness. She is the QA/QC deity — an embodied, empowered agent that constantly weighs, constantly checks, constantly assesses.
+
+**This is the prototype for the future agent architecture.** In a later phase, all deities (Anubis, Thoth, Ka, Scarab, Guard) become autonomous agents. Ma'at goes first because she governs the others.
+
+#### Phase 1: Foundation (this session)
+```
+1. ADR-004: Ma'at Architecture Decision Record
+   - Role: QA/QC governance agent for the Sirsi Pantheon
+   - Scope: plan verification, code quality, pipeline, test governance, release QA
+   - Agent model: observe → assess → weigh → report/act
+   - Canon linkage: no feature ships without plan linked to ADR/rule/priority
+
+2. internal/maat/maat.go — core types + Verdict system
+   - Verdict: Pass / Warning / Fail (with Feather weight score 0-100)
+   - Assessment: what was weighed, against what standard, the verdict
+   - CanonLink: ties a feature to its justification (ADR, rule, priority)
+
+3. internal/maat/pipeline.go — CI pipeline monitoring
+   - Poll gh run list for failures
+   - Parse failure logs (gh run view --log-failed)
+   - Categorize: lint → auto-fixable, test → report, build → report, infra → retry
+   - Auto-fix lint issues (gofmt, misspell, goimports) + commit
+
+4. internal/maat/coverage.go — test coverage governance
+   - Per-module coverage thresholds (safety-critical = 80%+)
+   - Compares current coverage against declared thresholds
+   - Reports gaps with actionable context
+
+5. internal/maat/canon.go — plan verification
+   - Validates that features link to canon (ADR, ANUBIS_RULES, continuation prompt)
+   - Scans commit messages for canon references
+   - Reports unlinked changes as warnings
+
+6. cmd/anubis/maat.go — CLI command
+   - anubis maat              — full assessment (pipeline + coverage + canon)
+   - anubis maat --pipeline   — CI status only
+   - anubis maat --coverage   — test coverage audit
+   - anubis maat --canon      — plan verification
+   - anubis maat --watch      — daemon mode (future Phase 2)
+
+7. Tests for all maat packages
+```
+
+#### Phase 2: Agent Mode (future session)
+```
+- Ma'at runs as background agent (--watch / daemon)
+- Observes file changes, correlates with plans
+- Posts quality scores (not just pass/fail)
+- Blocks releases that don't meet the feather standard
+- Pattern for converting all deities to agents
+```
+
+### Priority 2: Remaining Test Coverage
+```
+- Cleaner: 77% → 90% (safety-critical, Ma'at will enforce this threshold)
+- Ka: 42.7% → 60% (test Clean with real file cleanup)
+- Scanner edge cases: permission errors, symlink loops
+```
+
+### Priority 3: Homebrew Tap
 ```
 - Create a GitHub PAT with repo:write scope for SirsiMaster/homebrew-tools
 - Add it as HOMEBREW_TAP_TOKEN secret in sirsi-anubis settings
@@ -150,31 +211,14 @@ Completed in session 8. Cleaner and mirror now use `platform.Current()` instead 
 - Test with a new tag push
 ```
 
-### Priority 3: Remaining Coverage
-```
-- Cleaner: 77% → 90% (safety-critical module)
-- Ka: 42.7% → 60% (test Clean with real file cleanup)
-- Scanner edge cases: permission errors, symlink loops
-```
-
-### Priority 4: Anubis Maat — Pipeline Purifier (NEW)
-```
-- internal/maat/monitor.go — poll gh run list for failures
-- internal/maat/diagnose.go — parse failure logs, categorize errors
-- internal/maat/fix.go — auto-fix lint (gofmt, misspell, goimports)
-- internal/maat/report.go — format actionable reports
-- cmd/anubis/maat.go — CLI command
-- Modes: --check (diagnose), --fix (auto-remediate), --watch (daemon)
-```
-
-### Priority 5: Launch Execution
+### Priority 4: Launch Execution
 ```
 - Product Hunt submission (copy in docs/LAUNCH_COPY.md)
 - Hacker News Show HN (copy in docs/LAUNCH_COPY.md)
 - Investor demo rehearsal (script in docs/INVESTOR_DEMO.md)
 ```
 
-### Priority 6: Production Polish
+### Priority 5: Production Polish
 ```
 - Convert pitch deck stub to full HTML slide
 - VS Code extension completion
@@ -186,14 +230,27 @@ Completed in session 8. Cleaner and mirror now use `platform.Current()` instead 
 ## Key Context
 
 1. **"Weigh. Judge. Purify."** — canonical tagline
-2. **Sirsi Pantheon** — Egyptian-themed tools: Anubis, Thoth, Ka, Ra, Seba, Hapi, Scarab
-3. **Thoth is independent** — standalone repo, works without Anubis or MCP
-4. **ADR-003** — build-in-public is mandatory
-5. **Rule A14** — every public number must be verifiable. No projections as measurements.
-6. **Rule A15** — a session = one AI conversation between continuation prompts.
-7. **Voice rule**: Never "the user wanted/suggested." Use direct verbs.
-8. **April investor demos** — product must be complete by March 28
-9. **v0.3.0-alpha is LIVE** — GitHub Release with 6 binaries
+2. **Sirsi Pantheon** — Egyptian-themed tools: Anubis, Thoth, Ma'at, Ka, Ra, Seba, Hapi, Scarab
+3. **Ma'at is the QA/QC deity** — she weighs plans against execution, constantly assessing
+4. **Agent architecture** — Ma'at is the first deity to become an agent. All others follow.
+5. **Thoth is independent** — standalone repo, works without Anubis or MCP
+6. **ADR-003** — build-in-public is mandatory
+7. **Rule A14** — every public number must be verifiable. No projections as measurements.
+8. **Rule A15** — a session = one AI conversation between continuation prompts.
+9. **Voice rule**: Never "the user wanted/suggested." Use direct verbs.
+10. **April investor demos** — product must be complete by March 28
+11. **v0.3.0-alpha is LIVE** — GitHub Release with 6 binaries
+12. **Pre-push hook is active** — `.githooks/pre-push` gates every push with lint checks
+
+---
+
+## Session 8 Completed Work (for context)
+
+- ✅ Platform interface wired into cleaner + mirror (replaced runtime.GOOS → platform.Current())
+- ✅ CI lint fixes — 8 errors across 5 files (gofmt, govet/unusedwrite, misspell)
+- ✅ Pre-push hook installed (.githooks/pre-push)
+- ✅ CI green after 5 consecutive failures
+- ✅ All artifacts canonized (CHANGELOG, memory, journal, continuation prompt)
 
 ---
 
@@ -219,6 +276,7 @@ Completed in session 8. Cleaner and mirror now use `platform.Current()` instead 
 8. **Voice**: Direct verbs only. No "the user wanted."
 9. **Thoth manages the session** — memory for context, monitoring for health.
 10. **Rule A14**: Include the command to reproduce any public number.
+11. **Ma'at governs quality** — every feature must link to canon. No unjustified code.
 
 ---
 
@@ -230,4 +288,4 @@ cat .thoth/memory.yaml
 go build ./cmd/anubis/ && go test ./... && echo "✓ Ready"
 ```
 
-Then begin Priority 1: Wire Platform interface into cleaner module.
+Then begin Priority 1: Build Ma'at — the QA/QC governance agent.
