@@ -30,12 +30,21 @@ The question: what if the product isn't any individual deity — it's the **Pant
 4. **Pantheon is the monorepo and web presence.** Individual deity repos are sub-repos of Pantheon. Sirsi is the super-repo (the company). Hierarchy: `Sirsi > Pantheon > [Anubis, Thoth, Ma'at, ...]`
 
 5. **The name covers all current and future deity agents.** New deities are added as they're created and matured. The Pantheon grows organically.
+    - **𓇳 Ra**: Hypervisor service manager and all-seeing overseer. Oversees all deities, nodes, services, agents, networks, subnets, vlans, vms, containers, processes, and users.
+    - **𓏞 Seba**: Powerful mapping feature (active research/focus).
+    - **𓆄 Ma'at**: Observation and assessment (remediation passed to other acting deities).
+
+6. **Independent Operation & Deployment.** All deities CAN and SHOULD operate independently. Users from the public can download any single deity (e.g., `npx thoth-init` or `brew install anubis`) without requiring the entire Pantheon. Deities can also be deployed to repositories individually without "platooning" the entire suite.
+
+7. **Inter-Deity Referencing (Referral Logic).** Findings offered by any deity should allude to whether another deity can provide the necessary action to create a result or mitigate a finding. This creates a cross-referenced ecosystem while maintaining modular independence.
 
 ### Architecture
 
 ```
 Sirsi Technologies (super-repo / company)
 └── Pantheon (product / monorepo / brand)
+    ├── 𓇳 Ra        — Hypervisor (future) — v0.1.0-alpha
+    ├── 𓏞 Seba      — Mapping (Go)        — within Anubis
     ├── 𓂀 Anubis    — Hygiene (Go)        — v0.3.0-alpha
     ├── 𓁟 Thoth     — Knowledge (JS/Go)   — v1.0.0
     ├── 🪶 Ma'at     — Governance (Go)     — v0.1.0
@@ -46,7 +55,11 @@ Sirsi Technologies (super-repo / company)
     ├── 🪞 Mirror    — Dedup (Go)          — within Anubis
     ├── 𓂓 Ka         — Ghost Hunting (Go)  — within Anubis
     ├── 👁️ Sight     — LaunchServices (Go) — within Anubis
+    ├── 𓅓 Horus     — [Undesignated]      — (pending)
+    ├── 𓄿 Isis      — [Undesignated]      — (pending)
+    ├── 𓀭 Osiris    — [Undesignated]      — (pending)
     └── [future deities as needed]
+
 ```
 
 ### What Pantheon manages

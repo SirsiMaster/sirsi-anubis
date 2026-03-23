@@ -17,9 +17,9 @@ var profileCmd = &cobra.Command{
 
 Profiles define which scan categories are active for your workflow.
 
-  anubis profile list           Show all available profiles
-  anubis profile use <name>     Set the active profile
-  anubis profile show <name>    Show profile details
+  pantheon profile list           Show all available profiles
+  pantheon profile use <name>     Set the active profile
+  pantheon profile show <name>    Show profile details
 
 Built-in profiles: general, developer, ai-engineer, devops`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -75,7 +75,7 @@ func runProfileList(cmd *cobra.Command, args []string) {
 	}
 	fmt.Println()
 	output.Info(fmt.Sprintf("Active: %s", active))
-	output.Info("Change with: anubis profile use <name>")
+	output.Info("Change with: pantheon profile use <name>")
 	fmt.Println()
 }
 
@@ -86,7 +86,7 @@ func runProfileUse(cmd *cobra.Command, args []string) {
 	_, err := profile.LoadProfile(name)
 	if err != nil {
 		output.Error(fmt.Sprintf("Profile not found: %s", name))
-		output.Info("Run: anubis profile list")
+		output.Info("Run: pantheon profile list")
 		os.Exit(1)
 	}
 

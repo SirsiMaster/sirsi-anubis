@@ -20,7 +20,7 @@ var (
 	judgeTrash   bool
 )
 
-// judgeCmd implements `anubis judge` — the cleaning command.
+// judgeCmd implements `pantheon judge` — the cleaning command.
 var judgeCmd = &cobra.Command{
 	Use:   "judge",
 	Short: "𓂀 Clean artifacts (The Judgment)",
@@ -29,9 +29,9 @@ var judgeCmd = &cobra.Command{
 Scans first, then cleans the findings. This IS a destructive operation.
 You MUST specify either --dry-run or --confirm.
 
-  anubis judge --dry-run      Preview what would be cleaned
-  anubis judge --confirm      Actually clean (moves to Trash by default)
-  anubis judge --confirm --permanent  Actually delete (no Trash)`,
+  pantheon judge --dry-run      Preview what would be cleaned
+  pantheon judge --confirm      Actually clean (moves to Trash by default)
+  pantheon judge --confirm --permanent  Actually delete (no Trash)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runJudge()
 	},
@@ -48,8 +48,8 @@ func runJudge() error {
 	if !judgeDryRun && !judgeConfirm {
 		output.Error("You must specify --dry-run or --confirm")
 		output.Info("")
-		output.Info("  anubis judge --dry-run      Preview what would be cleaned")
-		output.Info("  anubis judge --confirm      Actually clean")
+		output.Info("  pantheon judge --dry-run      Preview what would be cleaned")
+		output.Info("  pantheon judge --confirm      Actually clean")
 		output.Info("")
 		output.Dim("Safety first. Anubis never deletes without your explicit command.")
 		return fmt.Errorf("missing required flag: --dry-run or --confirm")
@@ -121,7 +121,7 @@ func runJudge() error {
 		}
 		fmt.Fprintln(os.Stderr)
 		output.Info("Run %s to actually clean.",
-			output.SizeStyle.Render("anubis judge --confirm"))
+			output.SizeStyle.Render("pantheon judge --confirm"))
 	} else {
 		output.Header("JUDGMENT RENDERED")
 		output.Success("Cleaned %d items", cleanResult.Cleaned)

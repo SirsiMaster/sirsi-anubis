@@ -7,8 +7,17 @@
 set -e
 
 echo ""
-echo "  𓂀 Pantheon pre-push gate..."
+echo "  𓇳 Pantheon pre-push gate..."
 echo ""
+
+# 0. Ma'at Quality Assessment
+if [ -x "./pantheon" ]; then
+    echo "  𓆄 Ma'at quality assessment..."
+    ./pantheon maat --coverage --canon || {
+        echo "  ❌ Ma'at assessment failed — quality standards not met"
+        exit 1
+    }
+fi
 
 # 1. gofmt — formatting must be canonical
 BAD_FMT=$(gofmt -l ./internal/ ./cmd/ 2>/dev/null || true)
@@ -50,5 +59,14 @@ if ! go build ./... 2>/dev/null; then
     exit 1
 fi
 
-echo "  ✅ Pipeline gate passed — pushing"
+# 5. IDE / Agent Health Check
+echo "  👁️ Checking Agent health..."
+if [ -f ".thoth/memory.yaml" ]; then
+    if ! grep -q "project: sirsi-pantheon" .thoth/memory.yaml; then
+        echo "  ❌ Thoth memory corrupted or mismatched"
+        exit 1
+    fi
+fi
+
+echo "  ✅ Pipeline gate passed — pushing to the Pantheon"
 echo ""

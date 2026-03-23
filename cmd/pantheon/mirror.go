@@ -31,12 +31,12 @@ Egyptian copper mirrors reveal truth — what is real and what is merely
 a reflection. Mirror scans your files and finds duplicates, recommending
 which copy to keep based on location, age, and context.
 
-  anubis mirror                           Launch the visual GUI
-  anubis mirror ~/Photos ~/Downloads      CLI scan across directories
-  anubis mirror --photos ~/Pictures       Photo-specific scan (jpg, heic, png...)
-  anubis mirror --music ~/Music           Music-specific scan (mp3, flac, m4a...)
-  anubis mirror --min-size 1MB            Skip files smaller than 1MB
-  anubis mirror --protect ~/Originals     Never suggest deleting from this dir
+  pantheon mirror                           Launch the visual GUI
+  pantheon mirror ~/Photos ~/Downloads      CLI scan across directories
+  pantheon mirror --photos ~/Pictures       Photo-specific scan (jpg, heic, png...)
+  pantheon mirror --music ~/Music           Music-specific scan (mp3, flac, m4a...)
+  pantheon mirror --min-size 1MB            Skip files smaller than 1MB
+  pantheon mirror --protect ~/Originals     Never suggest deleting from this dir
 
 How it works:
   1. Groups files by size (instant pre-filter)
@@ -214,7 +214,7 @@ func renderMirrorResult(r *mirror.MirrorResult) {
 	output.Info("  🔒 = in protected directory")
 	fmt.Println()
 	output.Info("💡 Pro tier: importance ranking with on-device neural analysis")
-	output.Info("   → anubis install-brain && anubis mirror --rank")
+	output.Info("   → pantheon install-brain && pantheon mirror --rank")
 	fmt.Println()
 }
 

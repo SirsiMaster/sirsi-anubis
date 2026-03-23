@@ -23,13 +23,13 @@ var installBrainCmd = &cobra.Command{
 	Short: "🧠 Download neural weights for Anubis Pro",
 	Long: `🧠 Install Brain — Neural Weight Manager
 
-Downloads on-demand CoreML/ONNX model weights to ~/.anubis/weights/.
+Downloads on-demand CoreML/ONNX model weights to ~/.pantheon/weights/.
 The base Anubis binary ships without models — install-brain adds
 neural capabilities for semantic file classification.
 
-  anubis install-brain             Install default model
-  anubis install-brain --update    Fetch latest model version
-  anubis install-brain --remove    Delete installed weights
+  pantheon install-brain             Install default model
+  pantheon install-brain --update    Fetch latest model version
+  pantheon install-brain --remove    Delete installed weights
 
 Pro tier feature: Enables semantic search, neural dedup, and
 context sanitization for AI development environments.
@@ -43,7 +43,7 @@ var uninstallBrainCmd = &cobra.Command{
 	Short: "🧠 Remove neural weights",
 	Long: `🧠 Uninstall Brain — Remove Neural Weights
 
-Completely removes all downloaded model weights from ~/.anubis/weights/.
+Completely removes all downloaded model weights from ~/.pantheon/weights/.
 The base Anubis CLI continues to work without neural capabilities.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		brainRemove = true
@@ -282,7 +282,7 @@ func runBrainRemove() {
 	output.Info(fmt.Sprintf("Deleted: %s", weightsLocation()))
 	fmt.Println()
 	output.Dim("Anubis CLI continues to work fully without neural weights.")
-	output.Dim("Run 'anubis install-brain' to re-install anytime.")
+	output.Dim("Run 'pantheon install-brain' to re-install anytime.")
 }
 
 // renderProgressBar creates an ASCII progress bar.
@@ -305,7 +305,7 @@ func truncateHash(hash string) string {
 func weightsLocation() string {
 	dir, err := brain.WeightsDir()
 	if err != nil {
-		return "~/.anubis/weights/"
+		return "~/.pantheon/weights/"
 	}
 	return dir
 }

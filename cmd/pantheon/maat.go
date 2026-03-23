@@ -27,10 +27,10 @@ var maatCmd = &cobra.Command{
 Assess development quality across pipeline, coverage, and canon linkage.
 Ma'at weighs your project against the standard and reports verdicts.
 
-  anubis maat              Full assessment (pipeline + coverage + canon)
-  anubis maat --pipeline   CI pipeline status only
-  anubis maat --coverage   Test coverage audit only
-  anubis maat --canon      Commit canon linkage only
+  pantheon maat              Full assessment (pipeline + coverage + canon)
+  pantheon maat --pipeline   CI pipeline status only
+  pantheon maat --coverage   Test coverage audit only
+  pantheon maat --canon      Commit canon linkage only
 
 Ma'at uses the Feather weight system (0-100):
   100 = perfect (light as a feather)

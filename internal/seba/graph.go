@@ -1,10 +1,5 @@
-// Package mapper generates infrastructure graph visualizations.
-// Produces a self-contained HTML file with a kinetic, interactive
-// network graph using Canvas 2D + force simulation.
-//
-// No external dependencies — the HTML file includes all JavaScript
-// inline and opens in any browser, even from file:// protocol.
-package mapper
+// Seba is the keeper of stars and the mapper of the celestial/digital vault.
+package seba
 
 import (
 	"encoding/json"

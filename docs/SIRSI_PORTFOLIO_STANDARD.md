@@ -1,6 +1,6 @@
 # SIRSI_PORTFOLIO_STANDARD.md
 **Universal Governance Standard for All Sirsi Technologies Repositories**
-**Version:** 2.0.0 (Pantheon Unified)
+**Version:** 2.1.0 (Independent Deities)
 **Date:** March 23, 2026
 
 ---
@@ -58,6 +58,8 @@ Every AI agent (Gemini, Claude, Antigravity) and every developer can navigate an
 24. **🪶 Ma'at Governs Quality**: Every feature must link to canon. Canon linkage, coverage thresholds, and pipeline health are assessed. No unjustified code.
 25. **Context Monitoring** (Rule A9): After every sprint, report context health (🟢/🟡/🔴). When 🟡 or 🔴: commit all, update CHANGELOG, generate fresh continuation prompt.
 26. **Build-in-Public** (ADR-003 graduated): Every release updates VERSION, CHANGELOG, BUILD_LOG (if applicable), Thoth memory, and journal. Mistakes stay in the record.
+27. **Independent Deity Deployment**: Every deity (Anubis, Thoth, Ma'at, etc.) MUST be deployable as a standalone agent. Users can install any single deity or combination without requiring the entire Pantheon.
+28. **Cross-Agent Referral Logic**: Findings produced by any deity should allude to whether another deity can provide the necessary action to mitigate or remediate the finding. This creates a cohesive ecosystem without forced dependencies.
 
 ---
 
@@ -157,13 +159,13 @@ Every AI agent (Gemini, Claude, Antigravity) and every developer can navigate an
 | Document | sirsi-pantheon | SirsiNexusApp | FinalWishes | assiduous | sirsi-thoth |
 |:---------|:------------|:--------------|:------------|:----------|:------------|
 | Rules file | ✅ ANUBIS_RULES | ✅ SIRSI_RULES | ✅ GEMINI.md | ❌ | ❌ |
-| GEMINI.md | ✅ | ✅ | ✅ | ❌ | ❌ |
-| CLAUDE.md | ✅ | ✅ | ✅ | ❌ | ❌ |
+| GEMINI.md | ✅ | ✅ | ✅ | ✅ | ✅ |
+| CLAUDE.md | ✅ | ✅ | ✅ | ✅ | ✅ |
 | README.md | ✅ | ✅ | ✅ | ✅ | ✅ |
-| SECURITY.md | ✅ | ✅ | ❌ | ❌ | ❌ |
-| CONTRIBUTING.md | ✅ | ✅ | ❌ | ❌ | ❌ |
-| CHANGELOG.md | ✅ | ❌ | ✅ | ❌ | ❌ |
-| VERSION | ❌ | ❌ | ❌ | ❌ | ❌ |
+| SECURITY.md | ✅ | ✅ | ✅ | ✅ | ✅ |
+| CONTRIBUTING.md | ✅ | ✅ | ✅ | ✅ | ✅ |
+| CHANGELOG.md | ✅ | ✅ | ✅ | ✅ | ✅ |
+| VERSION | ✅ | ✅ | ✅ | ✅ | ✅ |
 | ARCHITECTURE_DESIGN | ✅ | ✅ | ✅ | ❌ | ❌ |
 | ADR-INDEX | ✅ | ✅ | ✅ | ❌ | ❌ |
 | ADR-TEMPLATE | ✅ | ✅ | ✅ | ❌ | ❌ |
@@ -171,7 +173,8 @@ Every AI agent (Gemini, Claude, Antigravity) and every developer can navigate an
 | .thoth/memory.yaml | ✅ full | ⚠️ skeleton | ⚠️ skeleton | ⚠️ skeleton | ⚠️ minimal |
 | .thoth/journal.md | ✅ | ❌ | ❌ | ❌ | ❌ |
 | .agent/workflows | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Pre-push hook | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Pre-push hook | ✅ | ✅ | ✅ | ✅ | ✅ |
+
 
 ---
 

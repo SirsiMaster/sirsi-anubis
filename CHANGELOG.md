@@ -14,6 +14,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 - P1: `anubis maat` — pipeline purifier (CI monitoring + auto-fix + reporting)
 - P2: npm publish thoth-init, VS Code extension
 
+## [0.4.0-alpha] — 2026-03-23 (Launch Execution + Modular Deities)
+
+### Added
+- **Homebrew Tap Integration** — Automated formula updates via `HOMEBREW_TAP_TOKEN`
+- **Modular Deities (v2.1.0)** — ADR-005 updated with independent deployment standards
+- **Ra (Hypervisor)** — v0.1.0-alpha overseer added to Pantheon architecture
+- **Seba Rebrand** — `internal/mapper/` → `internal/seba/` (high-performance mapping)
+- **Cross-Agent Referral Logic** — Initial implementation of inter-deity remediation referrals
+- **Independent Deployment** — Support for standalone deity installation (e.g., `npx thoth-init`)
+
+### Changed
+- **Pantheon Unification** — Standardized GEMINI.md, CLAUDE.md, and Portfolio Standard across all 5 repos
+- **Ma'at Governance** — Integrated pipeline monitoring and automated health checks
+- **Improved Logging** — Wired Go 1.21 `slog` into `ka` and `cleaner` cores for better diagnostics
+
+### Fixed
+- **Missing Imports** — Resolved `undefined: logging` error in `internal/cleaner/safety.go`
+- **Domain Purge** — Replaced all instances of `sirsinexus.dev` with `sirsi.ai` in SirsiNexusApp
+- **MCP Versioning** — Corrected version reporting to match release tags
+
 ---
 
 ## [0.3.0-alpha] — 2026-03-21/22 (Ship Week — Mirror + Audit + Thoth)

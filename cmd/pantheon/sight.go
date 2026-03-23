@@ -26,9 +26,9 @@ var sightCmd = &cobra.Command{
 Detect and remove phantom app registrations from macOS Launch Services.
 Ghost apps pollute Spotlight search results and waste index space.
 
-  anubis sight                Scan for ghost app registrations
-  anubis sight --fix          Rebuild Launch Services database (removes all ghosts)
-  anubis sight --reindex      Trigger Spotlight re-index after cleanup
+  pantheon sight                Scan for ghost app registrations
+  pantheon sight --fix          Rebuild Launch Services database (removes all ghosts)
+  pantheon sight --reindex      Trigger Spotlight re-index after cleanup
 
 Safety: --fix requires --dry-run or --confirm flag.
         Rebuilding Launch Services resets ALL file associations.`,
@@ -54,7 +54,7 @@ func runSight(cmd *cobra.Command, args []string) {
 	if sightFix {
 		if !sightDryRun && !sightConfirm {
 			output.Error("--fix requires --dry-run or --confirm flag")
-			output.Warn("Try: anubis sight --fix --dry-run")
+			output.Warn("Try: pantheon sight --fix --dry-run")
 			os.Exit(1)
 		}
 
@@ -79,7 +79,7 @@ func runSight(cmd *cobra.Command, args []string) {
 				output.Info("Would trigger Spotlight re-index")
 			}
 			fmt.Println()
-			output.Warn("To actually fix: anubis sight --fix --confirm")
+			output.Warn("To actually fix: pantheon sight --fix --confirm")
 		} else {
 			output.Header("👁️ Sight — Fix Complete")
 			fmt.Println()
@@ -127,6 +127,6 @@ func renderSightResult(result *sight.SightResult) {
 		fmt.Println()
 	}
 
-	output.Info("To fix: anubis sight --fix --dry-run")
+	output.Info("To fix: pantheon sight --fix --dry-run")
 	fmt.Println()
 }

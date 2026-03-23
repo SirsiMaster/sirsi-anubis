@@ -23,7 +23,7 @@ var (
 	kaTarget  string
 )
 
-// kaCmd implements `anubis ka` — the Ghost Hunter.
+// kaCmd implements `pantheon ka` — the Ghost Hunter.
 var kaCmd = &cobra.Command{
 	Use:   "ka",
 	Short: "𓂓 Hunt ghost apps — find the spirits of the dead",
@@ -36,11 +36,11 @@ resources and haunting your system.
 
 Anubis Ka finds these spirits and releases them.
 
-  anubis ka                     Scan for all ghosts
-  anubis ka --sudo              Include system-level ghosts (requires sudo)
-  anubis ka --clean --dry-run   Preview ghost cleanup
-  anubis ka --clean --confirm   Release the spirits (delete residuals)
-  anubis ka --target "Parallels"  Hunt a specific ghost by name`,
+  pantheon ka                     Scan for all ghosts
+  pantheon ka --sudo              Include system-level ghosts (requires sudo)
+  pantheon ka --clean --dry-run   Preview ghost cleanup
+  pantheon ka --clean --confirm   Release the spirits (delete residuals)
+  pantheon ka --target "Parallels"  Hunt a specific ghost by name`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runKa()
 	},
@@ -58,8 +58,8 @@ func runKa() error {
 	if kaClean && !kaDryRun && !kaConfirm {
 		output.Error("You must specify --dry-run or --confirm with --clean")
 		output.Info("")
-		output.Info("  anubis ka --clean --dry-run    Preview ghost cleanup")
-		output.Info("  anubis ka --clean --confirm    Release the spirits")
+		output.Info("  pantheon ka --clean --dry-run    Preview ghost cleanup")
+		output.Info("  pantheon ka --clean --confirm    Release the spirits")
 		return fmt.Errorf("missing required flag: --dry-run or --confirm")
 	}
 
@@ -200,7 +200,7 @@ func runKa() error {
 			output.Info("Would free %s across %d residuals",
 				jackal.FormatSize(totalFreed), totalCleaned)
 			output.Info("Run %s to release the spirits.",
-				output.SizeStyle.Render("anubis ka --clean --confirm"))
+				output.SizeStyle.Render("pantheon ka --clean --confirm"))
 		} else {
 			output.Success("Freed %s across %d residuals. The spirits are at rest. 𓂓",
 				jackal.FormatSize(totalFreed), totalCleaned)
@@ -208,7 +208,7 @@ func runKa() error {
 	} else {
 		fmt.Fprintln(os.Stderr)
 		output.Info("Run %s to preview cleanup.",
-			output.SizeStyle.Render("anubis ka --clean --dry-run"))
+			output.SizeStyle.Render("pantheon ka --clean --dry-run"))
 	}
 
 	return nil

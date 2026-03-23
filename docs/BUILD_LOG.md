@@ -2,7 +2,7 @@
 
 > A transparent record of how Sirsi Anubis was designed, built, tested, broken, fixed, and shipped. No cherry-picking — the mistakes stay in.
 
-[![Version](https://img.shields.io/badge/version-0.3.0--alpha-C8A951?style=flat)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.4.0--alpha-C8A951?style=flat)](CHANGELOG.md)
 [![Tests](https://img.shields.io/badge/tests-~395%20passing-brightgreen?style=flat)](.github/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat)](LICENSE)
 
@@ -140,9 +140,23 @@ Commits: 3  |  Tests written: 94  |  Total: ~395  |  Suites: 15/17
 Commits: 2  |  Binaries verified: 12  |  Docs updated: 6
 ```
 
+### Sprint 8 — Launch Execution (March 23, Session 12)
+
+**What happened**: Moved the entire Pantheon ecosystem to v0.4.0-alpha. Standardized modular deity deployment (ADR-005 v2.1.0) and established the Homebrew tap integration. Fixed a critical build failure in cleaner safety logic.
+
+**Built**: Automated Homebrew tap update workflow (requires `HOMEBREW_TAP_TOKEN`), updated Pantheon architecture for Ra (Hypervisor) and Seba (Mapping) modularity.
+
+**Tested**: Full portfolio health check across 5 repos. Verified version consistency in MCP server and documentation. 522 tests all passing.
+
+**Fixed**: Missing `internal/logging` import in `internal/cleaner/safety.go` that broke the build after the Session 11 logging sprint.
+
+```
+Commits: 4  |  Lines: ~19,300  |  Tests: 522  |  Version: 0.4.0-alpha
+```
+
 ---
 
-## Current State — v0.3.0-alpha
+## Current State — v0.4.0-alpha
 
 | Metric | Value | Verified |
 |:-------|:------|:--------:|
@@ -219,6 +233,6 @@ find . -name '*.go' | grep -v _test | xargs wc -l | tail -1
 
 ---
 
-*Last updated: March 22, 2026 (Sprint 7). This document is updated with every sprint.*
+*Last updated: March 23, 2026 (Sprint 8). This document is updated with every sprint.*
 
 *See [CHANGELOG.md](CHANGELOG.md) for detailed changes. See [.thoth/journal.md](.thoth/journal.md) for design reasoning.*

@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -139,6 +140,54 @@ func TestNewScanner(t *testing.T) {
 	if s.knownBundleIDs == nil {
 		t.Error("knownBundleIDs map not initialized")
 	}
+	if s.readBundleID == nil {
+		t.Error("readBundleID function not initialized")
+	}
+}
+
+func TestScanner_BuildInstalledAppIndex(t *testing.T) {
+	tmp := t.TempDir()
+	appDir := filepath.Join(tmp, "Applications")
+	os.MkdirAll(appDir, 0755)
+
+	// Create a fake .app
+	os.MkdirAll(filepath.Join(appDir, "Test.app"), 0755)
+	
+	s := NewScanner()
+	s.appDirs = []string{appDir}
+	s.skipBrew = true // Don't try to call brew
+	s.readBundleID = func(path string) string {
+		if strings.HasSuffix(path, "Test.app") {
+			return "com.test.app"
+		}
+		return ""
+	}
+
+	err := s.buildInstalledAppIndex()
+	if err != nil {
+		t.Fatalf("buildInstalledAppIndex() error: %v", err)
+	}
+
+	if !s.installedApps["com.test.app"] {
+		t.Error("expected com.test.app to be indexed")
+	}
+	if !s.installedNames["test"] {
+		t.Error("expected 'test' name to be indexed")
+	}
+}
+
+func TestScanner_IndexHomebrewCasks_Skip(t *testing.T) {
+	s := NewScanner()
+	s.appDirs = []string{}
+	s.skipBrew = true
+	
+	err := s.buildInstalledAppIndex() // Should skip brew list
+	if err != nil {
+		t.Fatalf("buildInstalledAppIndex with skipBrew=true error: %v", err)
+	}
+	if len(s.installedNames) != 0 {
+		t.Errorf("expected 0 installed names, got %d", len(s.installedNames))
+	}
 }
 
 // ═══════════════════════════════════════════
@@ -178,6 +227,45 @@ func TestIsInstalled_NoMatch(t *testing.T) {
 
 	if s.isInstalled("com.parallels.desktop", "com.parallels.desktop.plist") {
 		t.Error("should NOT match — parallels is not installed")
+	}
+}
+
+func TestScanner_ScanForOrphans(t *testing.T) {
+	tmp := t.TempDir()
+	home := filepath.Join(tmp, "home")
+	prefsDir := filepath.Join(home, "Library/Preferences")
+	os.MkdirAll(prefsDir, 0755)
+
+	// Create a residual for an app that is NOT installed
+	residualFile := filepath.Join(prefsDir, "com.dead.app.plist")
+	os.WriteFile(residualFile, []byte("junk"), 0644)
+
+	// Create a residual for an app that IS installed
+	installedFile := filepath.Join(prefsDir, "com.live.app.plist")
+	os.WriteFile(installedFile, []byte("live"), 0644)
+
+	s := NewScanner()
+	s.homeDir = home
+	s.installedApps["com.live.app"] = true
+
+	// Mock locations to only look in our temp dir
+	// Save current locations to restore later
+	originalLocations := userResidualLocations
+	userResidualLocations = []residualLocation{
+		{ResidualPreferences, "~/Library/Preferences", false},
+	}
+	defer func() { userResidualLocations = originalLocations }()
+
+	orphans := s.scanForOrphans(false)
+	
+	if len(orphans) != 1 {
+		t.Fatalf("expected 1 orphan bundle ID, got %d", len(orphans))
+	}
+	if _, ok := orphans["com.dead.app"]; !ok {
+		t.Error("expected com.dead.app to be an orphan")
+	}
+	if _, ok := orphans["com.live.app"]; ok {
+		t.Error("com.live.app should NOT be an orphan")
 	}
 }
 

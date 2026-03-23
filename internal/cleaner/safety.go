@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/SirsiMaster/sirsi-pantheon/internal/logging"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
 )
 
@@ -137,6 +138,7 @@ func DeleteFile(path string, dryRun bool, useTrash bool) (int64, error) {
 
 	// Dry-run: report what would happen
 	if dryRun {
+		logging.Debug("Dry-run: would delete", "path", path, "size", size)
 		return size, nil
 	}
 
@@ -147,8 +149,10 @@ func DeleteFile(path string, dryRun bool, useTrash bool) (int64, error) {
 
 	// Direct delete
 	if info.IsDir() {
+		logging.Warn("Deleting directory permanently", "path", path, "size", size)
 		return size, os.RemoveAll(path)
 	}
+	logging.Warn("Deleting file permanently", "path", path, "size", size)
 	return size, os.Remove(path)
 }
 
@@ -182,8 +186,10 @@ func CleanFile(path string, reason string, groupID string, hash string, log *Dec
 	// Always trash on platforms that support it (reversible)
 	if platform.Current().SupportsTrash() {
 		if err := platform.Current().MoveToTrash(path); err != nil {
+			logging.Error("Failed to move to trash", "path", path, "error", err)
 			return 0, fmt.Errorf("move to trash: %w", err)
 		}
+		logging.Info("Moved to trash", "path", path, "size", size)
 		_ = log.Record(Decision{
 			Path:       path,
 			Size:       size,

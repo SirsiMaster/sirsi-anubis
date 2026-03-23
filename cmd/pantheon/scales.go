@@ -24,10 +24,10 @@ var scalesCmd = &cobra.Command{
 Evaluate your infrastructure against defined policies.
 Policies define thresholds for waste, ghost apps, and findings.
 
-  anubis scales enforce           Run default policies against current state
-  anubis scales enforce -f pol.yaml  Run custom policy file
-  anubis scales validate -f pol.yaml Validate a policy file
-  anubis scales verdicts          Show last enforcement results
+  pantheon scales enforce           Run default policies against current state
+  pantheon scales enforce -f pol.yaml  Run custom policy file
+  pantheon scales validate -f pol.yaml Validate a policy file
+  pantheon scales verdicts          Show last enforcement results
 
 Policies can define:
   - Maximum waste thresholds (e.g., fail if > 20 GB)
@@ -172,7 +172,7 @@ func runScalesEnforce(cmd *cobra.Command, args []string) {
 
 func runScalesValidate(cmd *cobra.Command, args []string) {
 	if scalesPolicyFile == "" {
-		output.Error("Policy file required: anubis scales validate -f policy.yaml")
+		output.Error("Policy file required: pantheon scales validate -f policy.yaml")
 		os.Exit(1)
 	}
 

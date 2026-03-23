@@ -26,15 +26,15 @@ MCP Tools:
   classify_files    Classify files semantically (junk, project, etc)
 
 MCP Resources:
-  anubis://health-status    System health as JSON
-  anubis://capabilities     Available modules and commands
-  anubis://brain-status     Neural brain installation status
+  pantheon://health-status    System health as JSON
+  pantheon://capabilities     Available modules and commands
+  pantheon://brain-status     Neural brain installation status
 
 Configuration for Claude Code (~/.claude/claude_desktop_config.json):
   {
     "mcpServers": {
-      "anubis": {
-        "command": "anubis",
+      "pantheon": {
+        "command": "pantheon",
         "args": ["mcp"]
       }
     }
@@ -43,8 +43,8 @@ Configuration for Claude Code (~/.claude/claude_desktop_config.json):
 Configuration for Cursor/Windsurf (.cursor/mcp.json):
   {
     "mcpServers": {
-      "anubis": {
-        "command": "anubis",
+      "pantheon": {
+        "command": "pantheon",
         "args": ["mcp"]
       }
     }

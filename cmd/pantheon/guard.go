@@ -27,14 +27,14 @@ var guardCmd = &cobra.Command{
 Audit running processes and identify memory-hungry orphans.
 Slay zombie Node processes, stale LSP servers, and runaway builds.
 
-  anubis guard                    Audit RAM usage and show process groups
-  anubis guard --slay node        Kill orphaned Node.js processes
-  anubis guard --slay lsp         Kill stale language servers
-  anubis guard --slay docker      Kill Docker Desktop helpers
-  anubis guard --slay electron    Kill Electron helper renderers
-  anubis guard --slay build       Kill stale build processes
-  anubis guard --slay ai          Kill orphaned AI/ML processes
-  anubis guard --slay all         Kill all known orphan types
+  pantheon guard                    Audit RAM usage and show process groups
+  pantheon guard --slay node        Kill orphaned Node.js processes
+  pantheon guard --slay lsp         Kill stale language servers
+  pantheon guard --slay docker      Kill Docker Desktop helpers
+  pantheon guard --slay electron    Kill Electron helper renderers
+  pantheon guard --slay build       Kill stale build processes
+  pantheon guard --slay ai          Kill orphaned AI/ML processes
+  pantheon guard --slay all         Kill all known orphan types
 
 Safety: --dry-run is the default. Use --confirm to actually kill processes.
         SIGTERM is sent first; SIGKILL only after 5s grace period.
@@ -66,7 +66,7 @@ func runGuard(cmd *cobra.Command, args []string) {
 
 		if !guardDryRun && !guardConfirm {
 			output.Error("Slay requires --dry-run or --confirm flag")
-			output.Warn("Try: anubis guard --slay " + guardSlayTarget + " --dry-run")
+			output.Warn("Try: pantheon guard --slay " + guardSlayTarget + " --dry-run")
 			os.Exit(1)
 		}
 
@@ -154,7 +154,7 @@ func renderAuditResult(result *guard.AuditResult) {
 			fmt.Printf("    ... and %d more\n", result.TotalOrphans-limit)
 		}
 		fmt.Println()
-		output.Info("Run: anubis guard --slay <target> --dry-run")
+		output.Info("Run: pantheon guard --slay <target> --dry-run")
 	} else {
 		output.Info("✅ No significant orphan processes detected")
 	}
@@ -186,7 +186,7 @@ func renderSlayResult(result *guard.SlayResult) {
 	if result.DryRun {
 		fmt.Println()
 		output.Warn("This was a dry run. To actually kill processes:")
-		output.Info(fmt.Sprintf("  anubis guard --slay %s --confirm", result.Target))
+		output.Info(fmt.Sprintf("  pantheon guard --slay %s --confirm", result.Target))
 	}
 	fmt.Println()
 }

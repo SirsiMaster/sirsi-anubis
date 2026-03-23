@@ -26,7 +26,7 @@ var (
 	weighAll     bool
 )
 
-// weighCmd implements `anubis weigh` — the scanning command.
+// weighCmd implements `pantheon weigh` — the scanning command.
 var weighCmd = &cobra.Command{
 	Use:   "weigh",
 	Short: "𓂀 Scan your workstation (The Weighing)",
@@ -36,7 +36,7 @@ Discovers infrastructure waste across your machine: stale caches,
 orphaned build artifacts, unused dependencies, and more.
 
 This command is READ-ONLY — it never deletes anything.
-Use 'anubis judge' to clean what was found.`,
+Use 'pantheon judge' to clean what was found.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runWeigh()
 	},
@@ -165,7 +165,7 @@ func runWeigh() error {
 	output.Dim("  Scanned in %s", elapsed.Round(time.Millisecond))
 	fmt.Fprintln(os.Stderr)
 	output.Info("Run %s to clean these artifacts.",
-		output.SizeStyle.Render("anubis judge --dry-run"))
+		output.SizeStyle.Render("pantheon judge --dry-run"))
 
 	return nil
 }

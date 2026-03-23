@@ -26,8 +26,8 @@ const (
 	// ServerName is our MCP server identity.
 	ServerName = "sirsi-pantheon"
 
-	// ServerVersion is the current Anubis version.
-	ServerVersion = "0.2.0-alpha"
+	// ServerVersion is the current Pantheon version.
+	ServerVersion = "0.4.0-alpha"
 )
 
 // ---- JSON-RPC 2.0 Types ----

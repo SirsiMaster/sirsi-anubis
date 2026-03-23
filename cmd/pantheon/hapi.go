@@ -28,10 +28,10 @@ var hapiCmd = &cobra.Command{
 Named after the Egyptian god of the Nile's annual flood.
 Hapi manages the flow of compute, storage, and memory resources.
 
-  anubis hapi                  Full resource audit (hardware + storage)
-  anubis hapi --gpu            GPU/accelerator detection only
-  anubis hapi --dedup          Find duplicate files
-  anubis hapi --snapshots      List APFS/Time Machine snapshots
+  pantheon hapi                  Full resource audit (hardware + storage)
+  pantheon hapi --gpu            GPU/accelerator detection only
+  pantheon hapi --dedup          Find duplicate files
+  pantheon hapi --snapshots      List APFS/Time Machine snapshots
 
 GPU Detection:
   Apple Metal/MLX (Neural Engine), NVIDIA CUDA, AMD ROCm, Intel`,

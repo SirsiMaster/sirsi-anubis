@@ -1,13 +1,13 @@
-# 𓁟 Thoth — Project Memory for Sirsi Anubis
+# 𓁟 Thoth — Project Memory for Sirsi Pantheon
 # Read this FIRST before any source files.
-# Last updated: 2026-03-23T05:33:00-04:00
+# Last updated: 2026-03-23T06:45:00-04:00
 
 ## Identity
 project: sirsi-pantheon
 repo: github.com/SirsiMaster/sirsi-pantheon
 language: Go 1.22+
-version: 0.3.0-alpha
-binary_count: 2 (anubis @ 12 MB, anubis-agent @ 3.2 MB)
+version: 0.4.0-alpha
+binary_count: 2 (pantheon @ 12 MB, pantheon-agent @ 3.2 MB)
 test_count: 522
 line_count: ~19,300
 module_count: 20
@@ -34,6 +34,8 @@ mcp_tools: 5 (scan_workspace, ghost_report, health_check, classify_files, thoth_
 # Profile: internal/profile/ (machine profiling)
 # Hapi: internal/hapi/ (GPU, dedup, snapshots)
 # Ma'at: internal/maat/ (QA/QC governance — coverage, canon, pipeline)
+# Ra: internal/ra/ (hypervisor, service manager, all-seeing eye — future)
+# Seba: internal/seba/ (powerful mapping feature — active focus)
 
 ## Critical Design Decisions
 # 1. Three-phase dedup: size grouping → partial hash (first+last 4KB) → full SHA-256
@@ -58,19 +60,43 @@ mcp_tools: 5 (scan_workspace, ghost_report, health_check, classify_files, thoth_
 #     continuation prompts. Not time gaps, not commit clusters.
 # 12. Pantheon is the product (ADR-005): all deities are sub-systems.
 #     Deities keep repos and versions. Polyglot. Single install, single brand.
-# 13. Portfolio Standard v2.0.0: 26 universal rules deployed to all 5 repos.
+# 13. Portfolio Standard v2.1.0: 28 universal rules deployed to all 5 repos.
+# 14. Independent Deity Deployment: deities can be installed standalone
+#     (e.g., npx thoth-init) without platooning the entire Pantheon.
+# 15. Cross-Agent Referral Logic: deities allude to other deities that
+#     can act upon their findings (cohesive ecosystem, modular design).
 
-## Known Limitations (as of v0.3.0-alpha)
+## Known Limitations (as of v0.4.0-alpha)
 # - GUI folder picker only works on macOS (Linux: zenity/kdialog in platform/linux.go)
 # - Trash integration only works on macOS (Linux: gio trash in platform/linux.go)
 # - 2/19 modules have zero test coverage (mapper, output — low priority)
 # - Ka ghost hunting is macOS-only (searches .app bundles, LaunchServices)
 # - Scan rules are macOS/Linux only — no Windows AppData paths yet
 # - Homebrew tap disabled (needs PAT for cross-repo access)
+# - Ma'at remediation gap: Ma'at observes, but does not yet remediate
+# - Seba mapping depth: Current "map" is a kinetic graph, needs more depth
+# - Horus, Isis, Osiris: Designated deities but have no tool mapping yet
 # - ADR count: 5 (001-founding, 002-ka, 003-build-in-public, 004-maat, 005-pantheon)
 
 ## Recent Changes (most recent first)
-# 2026-03-23: Session 9 — Ma'at built + Pantheon unification
+# 2026-03-23: Session 12 — Launch Execution (v0.4.0-alpha)
+#   Bumped Pantheon version to v0.4.0-alpha.
+#   Updated internal/mcp/server.go version to match release tag.
+#   Fixed build error in internal/cleaner/safety.go (missing logging import).
+#   Added v0.4.0-alpha section to CHANGELOG.md.
+#   Modular Deity Deployment (v2.1.0) standards implemented in ADR-005.
+#   Ra (Hypervisor) and Seba (Mapping) roles formally defined.
+# 2026-03-23: Session 11 — Full Pantheon Audit + Modular Deities (v2.1.0)
+#   Walkthrough of every conversation since genesis (completion audit).
+#   Fixed phantom domain sirsinexus.dev → sirsi.ai in SirsiNexusApp.
+#   Wired structured logging (slog) into ka and cleaner cores.
+#   Updated ADR-005: Ra as Hypervisor, Seba as Mapping Focus.
+#   Portfolio Standard v2.1.0: added modular deployment + referral rules.
+#   Canon sync: SECURITY, CONTRIBUTING, CHANGELOG, VERSION in all 5 repos.
+#   Ka coverage sprint: 41.9% → 65.3% (exceeding 60% goal).
+#   Pre-push hook updated: added Ma'at diagnostics + Agent health checks.
+#   MCP version fix: v0.2.0-alpha → v0.3.0-alpha in code.
+# 2026-03-23: Session 10 — Ma'at built + Pantheon unification
 #   Built Ma'at QA/QC governance agent (internal/maat/): 4 source files, 57 tests
 #   Core types: Verdict, Assessment, CanonLink, Report, Assessor, Weigh()
 #   Three domains: coverage (go test -cover), canon (git log), pipeline (gh CLI)

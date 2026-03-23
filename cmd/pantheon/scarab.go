@@ -24,9 +24,9 @@ var scarabCmd = &cobra.Command{
 Named after the sacred Egyptian beetle that rolls across the landscape,
 discovering and transforming everything it touches.
 
-  anubis scarab                    Discover hosts on local subnet
-  anubis scarab --containers       Audit Docker containers
-  anubis scarab --confirm-network  Required for active network scanning
+  pantheon scarab                    Discover hosts on local subnet
+  pantheon scarab --containers       Audit Docker containers
+  pantheon scarab --confirm-network  Required for active network scanning
 
 Network discovery uses ARP cache (passive) and ping sweep (active).
 Container audit scans Docker for stopped containers, dangling images,
@@ -54,7 +54,7 @@ func runScarabDiscover() {
 	if !scarabConfirmNet {
 		output.Warn("⚠️  Active network scanning requires --confirm-network flag")
 		output.Info("   This sends ICMP pings across your local subnet.")
-		output.Info("   Use: anubis scarab --confirm-network")
+		output.Info("   Use: pantheon scarab --confirm-network")
 		fmt.Println()
 		output.Info("Showing passive ARP cache only...")
 		fmt.Println()

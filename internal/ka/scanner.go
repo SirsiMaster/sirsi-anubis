@@ -18,6 +18,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/cleaner"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/logging"
@@ -123,25 +124,36 @@ var systemResidualLocations = []residualLocation{
 // Scanner is the Ka ghost detection engine.
 type Scanner struct {
 	homeDir        string
+	appDirs        []string          // Directories to scan for .app bundles
 	installedApps  map[string]bool   // Bundle IDs of currently installed apps
 	installedNames map[string]bool   // Names of currently installed apps (lowercase)
 	knownBundleIDs map[string]string // Bundle ID → app name mapping
+	skipBrew       bool              // Whether to skip Homebrew cask indexing (for testing)
+	readBundleID   func(string) string
 }
 
 // NewScanner creates a new Ka scanner.
 func NewScanner() *Scanner {
 	homeDir, _ := os.UserHomeDir()
 	return &Scanner{
-		homeDir:        homeDir,
+		homeDir: homeDir,
+		appDirs: []string{
+			"/Applications",
+			filepath.Join(homeDir, "Applications"),
+		},
 		installedApps:  make(map[string]bool),
 		installedNames: make(map[string]bool),
 		knownBundleIDs: make(map[string]string),
+		readBundleID:   readBundleID, // Default implementation
 	}
 }
 
 // Scan discovers all ghosts (Kas) on the system.
 // This method has ZERO side effects — it only reads.
 func (s *Scanner) Scan(includeSudo bool) ([]Ghost, error) {
+	logging.Info("Ka: starting ghost scan", "sudo", includeSudo)
+	start := time.Now()
+
 	// Step 1: Build inventory of currently installed apps
 	logging.Debug("ka scan starting", "includeSudo", includeSudo)
 	if err := s.buildInstalledAppIndex(); err != nil {
@@ -159,6 +171,7 @@ func (s *Scanner) Scan(includeSudo bool) ([]Ghost, error) {
 	ghosts := s.mergeOrphans(orphans, lsGhosts)
 	logging.Debug("ka scan complete", "ghosts", len(ghosts), "orphans", len(orphans), "lsGhosts", len(lsGhosts))
 
+	logging.Info("Ka: scan complete", "ghosts", len(ghosts), "duration", time.Since(start))
 	return ghosts, nil
 }
 
@@ -179,14 +192,9 @@ func (s *Scanner) Clean(ghost Ghost, dryRun bool, useTrash bool) (int64, int, er
 	return totalFreed, totalCleaned, nil
 }
 
-// buildInstalledAppIndex scans /Applications and ~/Applications for .app bundles.
+// buildInstalledAppIndex scans configured app directories for .app bundles.
 func (s *Scanner) buildInstalledAppIndex() error {
-	appDirs := []string{
-		"/Applications",
-		filepath.Join(s.homeDir, "Applications"),
-	}
-
-	for _, dir := range appDirs {
+	for _, dir := range s.appDirs {
 		entries, err := os.ReadDir(dir)
 		if err != nil {
 			continue
@@ -202,7 +210,7 @@ func (s *Scanner) buildInstalledAppIndex() error {
 			s.installedNames[strings.ToLower(appName)] = true
 
 			// Read bundle ID from Info.plist
-			bundleID := readBundleID(appPath)
+			bundleID := s.readBundleID(appPath)
 			if bundleID != "" {
 				s.installedApps[bundleID] = true
 				s.knownBundleIDs[bundleID] = appName
@@ -210,8 +218,10 @@ func (s *Scanner) buildInstalledAppIndex() error {
 		}
 	}
 
-	// Also index Homebrew casks
-	s.indexHomebrewCasks()
+	// Also index Homebrew casks if not skipped
+	if !s.skipBrew {
+		s.indexHomebrewCasks()
+	}
 
 	return nil
 }
