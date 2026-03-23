@@ -47,7 +47,7 @@ Named after Egyptian/Kemetic/Nubian mythology:
 Free and open source forever. Revenue (if pursued) comes from a future GUI product, not the CLI engine.
 
 ### 6. Distribution: Homebrew + goreleaser
-- `brew tap SirsiMaster/tools && brew install sirsi-anubis`
+- `brew tap SirsiMaster/tools && brew install sirsi-pantheon`
 - GitHub Releases with pre-built binaries for all platforms
 - Docker Hub image for agent deployment
 

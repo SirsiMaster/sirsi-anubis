@@ -9,7 +9,7 @@ Sirsi Technologies has built multiple deity-themed tools independently:
 - **Thoth** (JavaScript) — persistent AI knowledge system (memory, journal, context savings)
 - **Ma'at** (Go, within Anubis) — QA/QC governance (coverage, canon, pipeline)
 
-Each tool solves a real problem, but they're deployed separately: `brew install sirsi-anubis`, `npx thoth-init`, and Ma'at only exists within Anubis. Users need to know about each tool individually. There's no single install, no unified brand, and no shared runtime.
+Each tool solves a real problem, but they're deployed separately: `brew install sirsi-pantheon`, `npx thoth-init`, and Ma'at only exists within Anubis. Users need to know about each tool individually. There's no single install, no unified brand, and no shared runtime.
 
 Meanwhile, every repo in the Sirsi portfolio needs ALL of these tools — not just one. Session 9 proved this: deploying Thoth and Ma'at governance across 5 repos required manual work per repo.
 

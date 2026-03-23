@@ -1,8 +1,8 @@
 # 𓂀 Sirsi Anubis — Continuation Prompt
 **Date:** March 23, 2026 (Sunday, 5:33 AM ET)
 **Session:** Session 10 — Pantheon Consolidation
-**Repo:** `github.com/SirsiMaster/sirsi-anubis`
-**Path:** `/Users/thekryptodragon/Development/sirsi-anubis`
+**Repo:** `github.com/SirsiMaster/sirsi-pantheon`
+**Path:** `/Users/thekryptodragon/Development/sirsi-pantheon`
 **CI Status:** ✅ Green (pre-push hook active since session 8)
 
 ---
@@ -155,7 +155,7 @@ cmd/anubis/maat.go         — CLI: anubis maat [--pipeline] [--coverage] [--can
 ### Portfolio-Wide Pantheon Deployment (Session 9)
 | Repo | Thoth Memory | GEMINI/CLAUDE | Portfolio Standard | Session Workflow |
 |:-----|:------------|:-------------|:------------------|:----------------|
-| sirsi-anubis | ✅ Full (133 lines) | ✅ | ✅ | ✅ |
+| sirsi-pantheon | ✅ Full (133 lines) | ✅ | ✅ | ✅ |
 | SirsiNexusApp | ✅ Real (85 lines) | ✅ | ✅ | ✅ |
 | FinalWishes | ✅ Real (93 lines) | ✅ | ✅ | ✅ |
 | assiduous | ✅ Real (66 lines) | ✅ | ✅ | ✅ |
@@ -183,7 +183,7 @@ cmd/anubis/maat.go         — CLI: anubis maat [--pipeline] [--coverage] [--can
 ### Priority 3: Homebrew Tap
 ```
 - Create a GitHub PAT with repo:write scope for SirsiMaster/homebrew-tools
-- Add it as HOMEBREW_TAP_TOKEN secret in sirsi-anubis settings
+- Add it as HOMEBREW_TAP_TOKEN secret in sirsi-pantheon settings
 - Uncomment the brews section in .goreleaser.yaml
 - Test with a new tag push
 ```
@@ -209,7 +209,7 @@ cmd/anubis/maat.go         — CLI: anubis maat [--pipeline] [--coverage] [--can
 - SECURITY.md: FinalWishes, assiduous, sirsi-thoth
 - CONTRIBUTING.md: FinalWishes, assiduous, sirsi-thoth
 - CHANGELOG.md: SirsiNexusApp, assiduous, sirsi-thoth
-- VERSION file: SirsiNexusApp, FinalWishes, sirsi-anubis
+- VERSION file: SirsiNexusApp, FinalWishes, sirsi-pantheon
 - ADRs: assiduous (0 ADRs), sirsi-thoth (0 ADRs)
 ```
 
@@ -278,7 +278,7 @@ cmd/anubis/maat.go         — CLI: anubis maat [--pipeline] [--coverage] [--can
 ## Start Command
 
 ```bash
-cd /Users/thekryptodragon/Development/sirsi-anubis
+cd /Users/thekryptodragon/Development/sirsi-pantheon
 cat .thoth/memory.yaml
 go build ./cmd/anubis/ && go test ./... && echo "✓ Ready"
 ```

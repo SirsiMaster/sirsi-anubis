@@ -3,7 +3,7 @@ package rules
 import (
 	"testing"
 
-	"github.com/SirsiMaster/sirsi-anubis/internal/jackal"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal"
 )
 
 // ─────────────────────────────────────────────────

@@ -1,19 +1,59 @@
-# 𓂀 Sirsi Anubis
+# 🏛️ Sirsi Pantheon
 
-**Infrastructure Hygiene for the AI Era**
+**Unified DevOps Intelligence Platform — One Install, All Deities.**
 
 [![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go&logoColor=white)](https://go.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-C8A951?style=flat)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-0.3.0--alpha-1A1A5E?style=flat)](VERSION)
-[![Tests](https://img.shields.io/badge/tests-453%20passing-brightgreen?style=flat)](.github/workflows/ci.yml)
+[![Version](https://img.shields.io/badge/Version-0.4.0--alpha-1A1A5E?style=flat)](VERSION)
+[![Tests](https://img.shields.io/badge/tests-522%20passing-brightgreen?style=flat)](.github/workflows/ci.yml)
 [![MCP](https://img.shields.io/badge/MCP-2025--03--26-purple?style=flat)](https://modelcontextprotocol.io)
 [![Build in Public](https://img.shields.io/badge/building-in%20public-C8A951?style=flat)](docs/BUILD_LOG.md)
 
-> *"Weigh. Judge. Purify."*
+> *"One Install. All Deities."*
 
-Sirsi Anubis is a free, open-source infrastructure hygiene platform. It scans, judges, and purges waste across workstations, containers, VMs, and networks — with duplicate file detection, a neural classification brain, and MCP server for AI IDE integration.
+**Sirsi Pantheon** is a unified DevOps intelligence platform that brings together every deity in the Sirsi ecosystem into a single, lightweight binary. Install once, get infrastructure hygiene, QA/QC governance, persistent AI knowledge, and more.
 
-**No cleaning tool understands what developers and AI engineers leave behind.** Anubis does — with 64+ scan rules across 7 domains, ghost app detection, file deduplication that's **27x faster** than naive hashing, and a policy engine for fleet enforcement.
+### The Deities
+
+| Deity | Domain | Description |
+|:------|:-------|:------------|
+| 𓂀 **Anubis** | Infrastructure Hygiene | Scan, judge, and purge waste — the foundational module |
+| 🪶 **Ma'at** | QA/QC Governance | Coverage, canon verification, pipeline monitoring |
+| 𓁟 **Thoth** | Persistent Knowledge | AI session memory that saves 98.7% of context |
+
+Anubis is the **foundational module** — the reason Pantheon exists. It's not being replaced, it's being elevated. Every scan rule, every safety protection, every feature you see here started with Anubis. Pantheon is what happens when one deity proves the architecture works and the others join in.
+
+---
+
+## 🏗️ Why the Rebrand: Binary Size Tells the Story
+
+We analyzed exactly what's inside the binary and discovered something remarkable:
+
+| Component | Size |
+|:----------|-----:|
+| Go runtime + stdlib | ~10 MB |
+| **All 20 Sirsi modules combined** | **~186 KB** |
+| Total binary (stripped) | 8.3 MB |
+
+**All application code — 20 modules, 18 commands, 13,813 lines — compiles to just 186 KB.** That's 1.5% of the binary. The other 98.5% is Go's runtime, which is paid once regardless of module count.
+
+Adding a new deity module costs **2-30 KB**. We could double the module count and the binary would grow by ~100 KB. Pantheon isn't a monolith — it's a composable platform that happens to ship as a single file.
+
+**The rename reflects reality:** the binary already contained every deity. Calling it "Anubis" was limiting what it actually is. Pantheon gives every deity equal standing under one roof while honoring Anubis as the foundation.
+
+### Size Per Deity Module (compiled)
+
+| Module | Compiled Size | Role |
+|:-------|-------------:|:-----|
+| mcp | 31.1 KB | AI IDE integration |
+| jackal | 26.6 KB | Scan engine (58 rules) |
+| mirror | 19.3 KB | File dedup (27x faster) |
+| maat | 18.9 KB | QA/QC governance |
+| brain | 15.6 KB | Neural classifier |
+| guard | 8.8 KB | RAM audit |
+| ka | 7.3 KB | Ghost app detection |
+| *...12 more* | *2-10 KB each* | |
+| **Total** | **~186 KB** | **1.5% of binary** |
 
 ---
 
@@ -22,105 +62,113 @@ Sirsi Anubis is a free, open-source infrastructure hygiene platform. It scans, j
 ### Install
 ```bash
 # From source
-go install github.com/SirsiMaster/sirsi-anubis/cmd/anubis@latest
+go install github.com/SirsiMaster/sirsi-pantheon/cmd/pantheon@latest
 
 # Or clone and build
-git clone https://github.com/SirsiMaster/sirsi-anubis.git
-cd sirsi-anubis && go build -o anubis ./cmd/anubis/
+git clone https://github.com/SirsiMaster/sirsi-pantheon.git
+cd sirsi-pantheon && go build -o pantheon ./cmd/pantheon/
 ```
 
 ### Scan Your Machine
 ```bash
-anubis weigh                   # Full scan — discover all waste
-anubis weigh --dev             # Developer frameworks only
-anubis weigh --ai              # AI/ML caches only
-anubis weigh --json            # Machine-readable output
+pantheon weigh                   # Full scan — discover all waste
+pantheon weigh --dev             # Developer frameworks only
+pantheon weigh --ai              # AI/ML caches only
+pantheon weigh --json            # Machine-readable output
 ```
 
 ### Clean What Was Found
 ```bash
-anubis judge --dry-run         # Preview cleanup
-anubis judge --confirm         # Execute cleanup
+pantheon judge --dry-run         # Preview cleanup
+pantheon judge --confirm         # Execute cleanup
 ```
 
 ### Hunt Ghost Apps
 ```bash
-anubis ka                      # Find remnants of uninstalled apps
-anubis ka --target "Parallels" # Hunt specific ghost
-anubis ka --clean --dry-run    # Preview ghost cleanup
-anubis ka --clean --confirm    # Release the spirits
+pantheon ka                      # Find remnants of uninstalled apps
+pantheon ka --target "Parallels" # Hunt specific ghost
+pantheon ka --clean --dry-run    # Preview ghost cleanup
+pantheon ka --clean --confirm    # Release the spirits
 ```
 
 ### Find Duplicate Files
 ```bash
-anubis mirror ~/Downloads ~/Desktop  # Scan directories for duplicates
-anubis mirror --photos --min-size 1MB # Large photo duplicates only
-anubis mirror --json > report.json   # Export results
-anubis mirror                        # Launch GUI (browser-based)
+pantheon mirror ~/Downloads ~/Desktop  # Scan directories for duplicates
+pantheon mirror --photos --min-size 1MB # Large photo duplicates only
+pantheon mirror --json > report.json   # Export results
+pantheon mirror                        # Launch GUI (browser-based)
+```
+
+### Run QA/QC Governance
+```bash
+pantheon maat                    # Full governance assessment
+pantheon maat --coverage         # Test coverage governance
+pantheon maat --canon            # Canon document verification
+pantheon maat --pipeline         # CI pipeline monitoring
 ```
 
 ---
 
 ## 📋 All Commands
 
-| Command | Description |
-|:--------|:-----------|
-| `anubis weigh` | 𓂀 Scan workstation for infrastructure waste |
-| `anubis judge` | ⚖️ Clean artifacts found by weigh |
-| `anubis ka` | 𓂓 Hunt ghost apps — find spirits of the dead |
-| `anubis guard` | 🛡️ RAM audit, zombie process management |
-| `anubis sight` | 👁️ Launch Services / Spotlight repair |
-| `anubis profile` | 📊 Machine profiling and system info |
-| `anubis seba` | 𓇼 Dependency graph mapper |
-| `anubis hapi` | 🌊 Resource optimizer (GPU, dedup, snapshots) |
-| `anubis scarab` | 🪲 Network discovery + container audit |
-| `anubis install-brain` | 🧠 Download neural classification model |
-| `anubis uninstall-brain` | 🧠 Remove neural weights |
-| `anubis mcp` | 🔌 Start MCP server for AI IDE integration |
-| `anubis scales enforce` | ⚖️ Run hygiene policy enforcement |
-| `anubis scales validate` | ⚖️ Validate policy YAML |
-| `anubis mirror` | 🪞 Duplicate file scanner (GUI + CLI) |
-| `anubis book-of-the-dead` | 📜 Deep system autopsy |
-| `anubis initiate` | 🔑 Grant macOS permissions |
+| Command | Deity | Description |
+|:--------|:------|:-----------|
+| `pantheon weigh` | 𓂀 Anubis | Scan workstation for infrastructure waste |
+| `pantheon judge` | 𓂀 Anubis | Clean artifacts found by weigh |
+| `pantheon ka` | 𓂀 Anubis | Hunt ghost apps — find spirits of the dead |
+| `pantheon guard` | 𓂀 Anubis | RAM audit, zombie process management |
+| `pantheon sight` | 𓂀 Anubis | Launch Services / Spotlight repair |
+| `pantheon profile` | 𓂀 Anubis | Machine profiling and system info |
+| `pantheon seba` | 𓂀 Anubis | Dependency graph mapper |
+| `pantheon hapi` | 𓂀 Anubis | Resource optimizer (GPU, dedup, snapshots) |
+| `pantheon scarab` | 𓂀 Anubis | Network discovery + container audit |
+| `pantheon install-brain` | 𓂀 Anubis | Download neural classification model |
+| `pantheon uninstall-brain` | 𓂀 Anubis | Remove neural weights |
+| `pantheon mirror` | 𓂀 Anubis | Duplicate file scanner (GUI + CLI) |
+| `pantheon scales enforce` | 𓂀 Anubis | Run hygiene policy enforcement |
+| `pantheon book-of-the-dead` | 𓂀 Anubis | Deep system autopsy |
+| `pantheon initiate` | 𓂀 Anubis | Grant macOS permissions |
+| `pantheon mcp` | 𓁟 Thoth | Start MCP server for AI IDE integration |
+| `pantheon maat` | 🪶 Ma'at | QA/QC governance assessment |
+| `pantheon version` | — | Show version and deity roster |
 
 ### Global Flags
 ```bash
 --json      # JSON output for scripting
 --quiet     # Suppress non-essential output
---stealth   # Ephemeral mode — delete all Anubis data after execution
+--stealth   # Ephemeral mode — delete all Pantheon data after execution
 ```
 
 ---
 
 ## 🏛 Architecture
 
-Anubis is built on modules named after Egyptian mythology:
+Pantheon is built on modules named after Egyptian mythology. Every deity maintains its identity while sharing a unified runtime:
 
-| Module | Codename | Role | Status |
-|:-------|:---------|:-----|:-------|
-| 🐺 **Jackal** | The Hunter | Scan engine — 58 rules across 7 domains | ✅ |
-| 𓂓 **Ka** | The Spirit | Ghost app detection — 17 macOS locations | ✅ |
-| 🪞 **Mirror** | The Reflection | File deduplication — 27x faster than naive hashing | ✅ |
-| 🛡️ **Guard** | The Guardian | RAM audit, zombie process management | ✅ |
-| 👁️ **Sight** | The Sight | Launch Services + Spotlight repair | ✅ |
-| 📊 **Profile** | The Record | Machine profiling and system info | ✅ |
-| 𓇼 **Seba** | The Gateway | Dependency graph mapper | ✅ |
-| 🌊 **Hapi** | The Flow | GPU detection, dedup, APFS snapshots | ✅ |
-| 🪲 **Scarab** | The Transformer | Network discovery + container audit | ✅ |
-| 🧠 **Brain** | Neural | On-demand model downloader + classifier | ✅ |
-| 🔌 **MCP** | Context Sanitizer | MCP server for AI IDE integration | ✅ |
-| ⚖️ **Scales** | The Judgment | YAML policy engine + enforcement | ✅ |
+| Module | Deity | Codename | Role | Status |
+|:-------|:------|:---------|:-----|:-------|
+| 🐺 **Jackal** | Anubis | The Hunter | Scan engine — 58 rules across 7 domains | ✅ |
+| 𓂓 **Ka** | Anubis | The Spirit | Ghost app detection — 17 macOS locations | ✅ |
+| 🪞 **Mirror** | Anubis | The Reflection | File dedup — 27x faster than naive hashing | ✅ |
+| 🛡️ **Guard** | Anubis | The Guardian | RAM audit, zombie process management | ✅ |
+| 👁️ **Sight** | Anubis | The Sight | Launch Services + Spotlight repair | ✅ |
+| 🌊 **Hapi** | Anubis | The Flow | GPU detection, dedup, APFS snapshots | ✅ |
+| 🪲 **Scarab** | Anubis | The Transformer | Network discovery + container audit | ✅ |
+| 🧠 **Brain** | Anubis | Neural | On-demand model downloader + classifier | ✅ |
+| 🔌 **MCP** | Thoth | Context | MCP server for AI IDE integration | ✅ |
+| ⚖️ **Scales** | Anubis | The Judgment | YAML policy engine + enforcement | ✅ |
+| 🪶 **Ma'at** | Ma'at | Governance | Coverage, canon, pipeline assessments | ✅ |
 
 ### Two Binaries
 
-| Binary | Size | Purpose |
-|:-------|:-----|:--------|
-| `anubis` | 12 MB | Full CLI controller + Mirror GUI |
-| `anubis-agent` | 3.2 MB | Lightweight fleet agent (JSON only, fixed command set) |
+| Binary | Size | Stripped | Purpose |
+|:-------|:-----|:--------|:--------|
+| `pantheon` | 12 MB | **8.3 MB** | Full CLI — all deities, Mirror GUI |
+| `pantheon-agent` | 3.2 MB | **2.1 MB** | Lightweight fleet agent (JSON only) |
 
 ---
 
-## 📦 Scan Domains (64+ Rules)
+## 📦 Scan Domains (58 Rules)
 
 | Domain | Examples |
 |:-------|:--------|
@@ -136,12 +184,12 @@ Anubis is built on modules named after Egyptian mythology:
 
 ## 🧠 Neural Brain
 
-Anubis includes an on-demand neural classification engine:
+Pantheon includes an on-demand neural classification engine:
 
 ```bash
-anubis install-brain             # Download CoreML/ONNX model
-anubis install-brain --update    # Check for latest version
-anubis install-brain --remove    # Self-delete weights
+pantheon install-brain             # Download CoreML/ONNX model
+pantheon install-brain --update    # Check for latest version
+pantheon install-brain --remove    # Self-delete weights
 ```
 
 The brain classifies files into 9 categories: **junk**, **project**, **config**, **model**, **data**, **media**, **archive**, **essential**, **unknown**. Currently ships with a heuristic classifier; neural model backends (ONNX Runtime, CoreML) are in development.
@@ -150,10 +198,10 @@ The brain classifies files into 9 categories: **junk**, **project**, **config**,
 
 ## 🔌 MCP Server — AI IDE Integration
 
-Anubis doubles as a context sanitizer for AI coding assistants:
+Pantheon doubles as a context sanitizer for AI coding assistants:
 
 ```bash
-anubis mcp    # Start MCP server (stdio)
+pantheon mcp    # Start MCP server (stdio)
 ```
 
 ### Configure Claude Code
@@ -161,8 +209,8 @@ anubis mcp    # Start MCP server (stdio)
 // ~/.claude/claude_desktop_config.json
 {
   "mcpServers": {
-    "anubis": {
-      "command": "anubis",
+    "pantheon": {
+      "command": "pantheon",
       "args": ["mcp"]
     }
   }
@@ -174,8 +222,8 @@ anubis mcp    # Start MCP server (stdio)
 // .cursor/mcp.json
 {
   "mcpServers": {
-    "anubis": {
-      "command": "anubis",
+    "pantheon": {
+      "command": "pantheon",
       "args": ["mcp"]
     }
   }
@@ -212,26 +260,26 @@ Thoth gives AI assistants **persistent memory across sessions**. Instead of re-r
 | Tokens consumed | 275,496 | 3,564 | **271,932 saved** |
 | Context window used | 137.7% (⚠️ doesn't fit) | 1.7% | **136% preserved** |
 | Cost per session (Opus 4) | $4.13 | $0.05 | **$4.08 saved** |
-| Cumulative (11 sessions) | — | — | **~3M tokens, ~$45** |
 
 > We built Thoth because our own AI sessions were failing — the codebase was too large to fit in context. The before/after is measurable. [Read the case study →](docs/case-studies/thoth-context-savings.md)
 
-Thoth is MIT licensed and works with any project, any language, any AI assistant. See [docs/THOTH.md](docs/THOTH.md) for the full specification.
-
 ---
 
-## 📊 Case Studies
+## 🪶 Ma'at — QA/QC Governance
 
-We build these tools because we need them. Every claim has a case study with measured data:
+Ma'at ensures every change meets quality standards:
 
-| Case Study | Key Finding |
-|:-----------|:------------|
-| [𓁟 Thoth Context Savings](docs/case-studies/thoth-context-savings.md) | 98.7% reduction in context needed — 22,958 lines → 297 |
-| 🪩 Mirror Dedup Performance | 27.3x faster than naive hashing, 98.8% less disk I/O |
-| 𓂓 Ka Ghost Detection | 23 GB of Parallels remnants found after "clean uninstall" |
+```bash
+pantheon maat                    # Full governance assessment
+pantheon maat --coverage         # Test coverage thresholds
+pantheon maat --canon            # Canon document verification
+pantheon maat --pipeline         # CI pipeline health
+pantheon maat --json             # Machine-readable output
+```
 
-*All metrics verified from real development sessions via `wc -l`, `go test`, and `git log`.*
+57 tests, 3 governance domains, per-module threshold enforcement.
 
+---
 
 ## ⚖️ Policy Enforcement
 
@@ -248,13 +296,13 @@ policies:
         threshold: 20
         unit: GB
         severity: fail
-        remediation: Run 'anubis judge --confirm'
+        remediation: Run 'pantheon judge --confirm'
 ```
 
 ```bash
-anubis scales enforce                      # Run default policies
-anubis scales enforce -f custom-policy.yaml # Custom policies
-anubis scales validate -f policy.yaml      # Syntax check
+pantheon scales enforce                      # Run default policies
+pantheon scales enforce -f custom-policy.yaml # Custom policies
+pantheon scales validate -f policy.yaml      # Syntax check
 ```
 
 ---
@@ -269,8 +317,8 @@ Mirror finds duplicate files across any directory using a **three-phase scan**:
 
 ### Why This Matters
 
-| Metric | Naive approach | Anubis Mirror |
-|:-------|:--------------|:--------------|
+| Metric | Naive approach | Pantheon Mirror |
+|:-------|:--------------|:----------------|
 | 56 candidate files (97.8 MB) | Reads all 97.8 MB | Reads 448 KB partial, then only matched files |
 | Disk I/O | 97.8 MB | **< 2 MB** |
 | Time | 84 ms | **3 ms** |
@@ -279,26 +327,14 @@ Mirror finds duplicate files across any directory using a **three-phase scan**:
 
 *Benchmarked on real ~/Downloads directory, March 2026.*
 
-### Cleaning Policy
-
-- **Trash first** — all removals go to macOS Trash (reversible, "Put Back" works)
-- **Decision log** — every action recorded with path, SHA-256, reason, timestamp
-- **Per-file rollback** — session logs persist at `~/.config/anubis/mirror/decisions/`
-- **Human approval required** — no automatic deletion, ever
-
-### GUI + CLI Feature Parity
-
-`anubis mirror` (no args) launches a browser-based GUI with native macOS folder picker.
-Every feature in the CLI is available in the GUI — identical engine, different interface.
-
 ---
 
 ## 🛡️ Product Tiers
 
 | Tier | Scope | Price |
 |:-----|:------|:------|
-| **Anubis Free** | Single workstation, all scan commands, Mirror GUI + CLI | Free forever |
-| **Anubis Pro** | Neural brain, importance ranking, semantic search | $9/mo |
+| **Pantheon Free** | Single workstation, all commands, Mirror GUI + CLI | Free forever |
+| **Pantheon Pro** | Neural brain, importance ranking, semantic search | $9/mo |
 | **Eye of Horus** | Subnet sweep (< 100 nodes) | $29/mo |
 | **Ra** | Enterprise fleet, SAN/NAS, compliance | Contact |
 
@@ -311,7 +347,7 @@ Every feature in the CLI is available in the GUI — identical engine, different
 - **Rule A3: Fixed Agent Commands** — agent has no shell access
 - **Trash-first cleaning** — every removal goes to Trash with full decision log
 - **29 protected paths** — system dirs, user content dirs, keychains, and SSH keys are hardcoded as undeletable
-- **`--stealth` mode** — Anubis comes, judges, and vanishes (zero footprint)
+- **`--stealth` mode** — Pantheon comes, judges, and vanishes (zero footprint)
 - All scanning is local — no data leaves your machine
 
 ---
@@ -330,13 +366,13 @@ MIT License — free and open source forever. See [LICENSE](LICENSE).
 
 ## 🏢 Sirsi Technologies
 
-Sirsi Anubis is the infrastructure hygiene product from [Sirsi Technologies](https://github.com/SirsiMaster).
+Sirsi Pantheon is the DevOps intelligence platform from [Sirsi Technologies](https://github.com/SirsiMaster).
 
 | Product | Role |
 |:--------|:-----|
-| **Sirsi Anubis** | Infrastructure hygiene platform |
+| **Sirsi Pantheon** | Unified DevOps Intelligence Platform |
 | **Sirsi Nexus** | AI infrastructure platform |
 
 ---
 
-*𓂀 The jackal sees everything. Nothing escapes the Weighing.*
+*🏛️ One install. All deities. Nothing escapes the Weighing.*

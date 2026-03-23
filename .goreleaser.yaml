@@ -1,8 +1,8 @@
-# goreleaser config — Sirsi Anubis v0.3.0-alpha
+# goreleaser config — Sirsi Pantheon v0.4.0-alpha
 # Docs: https://goreleaser.com
 version: 2
 
-project_name: sirsi-anubis
+project_name: sirsi-pantheon
 
 before:
   hooks:
@@ -10,9 +10,9 @@ before:
     - go generate ./...
 
 builds:
-  - id: anubis
-    main: ./cmd/anubis/
-    binary: anubis
+  - id: pantheon
+    main: ./cmd/pantheon/
+    binary: pantheon
     env:
       - CGO_ENABLED=0
     goos:
@@ -28,9 +28,9 @@ builds:
       - -X main.commit={{.ShortCommit}}
       - -X main.date={{.Date}}
 
-  - id: anubis-agent
-    main: ./cmd/anubis-agent/
-    binary: anubis-agent
+  - id: pantheon-agent
+    main: ./cmd/pantheon-agent/
+    binary: pantheon-agent
     env:
       - CGO_ENABLED=0
     goos:
@@ -47,8 +47,8 @@ builds:
 archives:
   - id: default
     builds:
-      - anubis
-      - anubis-agent
+      - pantheon
+      - pantheon-agent
     name_template: >-
       {{ .ProjectName }}_
       {{- .Version }}_
@@ -72,19 +72,19 @@ archives:
 # TODO: Enable Homebrew tap after setting up a PAT with cross-repo write access.
 # The default GITHUB_TOKEN cannot push to SirsiMaster/homebrew-tools.
 # brews:
-#   - name: sirsi-anubis
+#   - name: sirsi-pantheon
 #     repository:
 #       owner: SirsiMaster
 #       name: homebrew-tools
 #     directory: Formula
-#     homepage: https://github.com/SirsiMaster/sirsi-anubis
-#     description: "𓂀 Infrastructure hygiene for the AI era"
+#     homepage: https://github.com/SirsiMaster/sirsi-pantheon
+#     description: "🏛️ Unified DevOps Intelligence Platform"
 #     license: MIT
 #     install: |
-#       bin.install "anubis"
-#       bin.install "anubis-agent"
+#       bin.install "pantheon"
+#       bin.install "pantheon-agent"
 #     test: |
-#       system "#{bin}/anubis", "version"
+#       system "#{bin}/pantheon", "version"
 
 checksum:
   name_template: checksums.txt
@@ -102,30 +102,36 @@ changelog:
 release:
   github:
     owner: SirsiMaster
-    name: sirsi-anubis
+    name: sirsi-pantheon
   name_template: "v{{.Version}}"
   prerelease: auto
   draft: false
   header: |
-    ## 𓂀 Sirsi Anubis {{.Version}}
+    ## 🏛️ Sirsi Pantheon {{.Version}}
 
-    Infrastructure hygiene for the AI era.
+    Unified DevOps Intelligence Platform — One Install, All Deities.
+
+    ### Deities
+    - 𓂀 **Anubis** — Infrastructure Hygiene (foundational)
+    - 🪶 **Ma'at** — QA/QC Governance
+    - 𓁟 **Thoth** — Persistent Knowledge
 
     ### Highlights
-    - 17 CLI commands, 58 scan rules, 17 internal modules
+    - 18 CLI commands, 58 scan rules, 20 internal modules
     - Mirror file deduplication — 27x faster than naive hashing
     - Trash-first cleaning with per-file decision log
     - Neural brain downloader + classifier interface
     - MCP server for AI IDE integration (Claude, Cursor, Windsurf)
     - Scales policy engine for fleet enforcement
-    - 29 hardcoded safety protections, 453 tests, 15 test suites
+    - Ma'at QA/QC governance assessments
+    - 29 hardcoded safety protections, 522 tests, 18 test suites
 
     ### Install
     ```bash
-    brew tap SirsiMaster/tools && brew install sirsi-anubis
+    brew tap SirsiMaster/tools && brew install sirsi-pantheon
     # or
-    go install github.com/SirsiMaster/sirsi-anubis/cmd/anubis@{{.Tag}}
+    go install github.com/SirsiMaster/sirsi-pantheon/cmd/pantheon@{{.Tag}}
     ```
   footer: |
     ---
-    *𓂀 The jackal sees everything. Nothing escapes the Weighing.*
+    *🏛️ One install. All deities. Nothing escapes the Weighing.*

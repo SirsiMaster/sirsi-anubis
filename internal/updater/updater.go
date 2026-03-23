@@ -14,10 +14,10 @@ import (
 
 const (
 	// GitHubReleasesAPI is the public endpoint for version checks.
-	GitHubReleasesAPI = "https://api.github.com/repos/SirsiMaster/sirsi-anubis/releases/latest"
+	GitHubReleasesAPI = "https://api.github.com/repos/SirsiMaster/sirsi-pantheon/releases/latest"
 
 	// AdvisoryURL is checked for post-release roadblocks and known issues.
-	AdvisoryURL = "https://raw.githubusercontent.com/SirsiMaster/sirsi-anubis/main/ADVISORY.json"
+	AdvisoryURL = "https://raw.githubusercontent.com/SirsiMaster/sirsi-pantheon/main/ADVISORY.json"
 
 	// checkTimeout is the maximum time to wait for a response.
 	checkTimeout = 3 * time.Second
@@ -163,7 +163,7 @@ func findPlatformAsset(assets []Asset) string {
 	os := runtime.GOOS
 	arch := runtime.GOARCH
 
-	// Match pattern: sirsi-anubis_*_darwin_arm64.tar.gz
+	// Match pattern: sirsi-pantheon_*_darwin_arm64.tar.gz
 	target := fmt.Sprintf("%s_%s", os, arch)
 
 	for _, a := range assets {

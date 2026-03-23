@@ -23,7 +23,7 @@ import (
 
 const (
 	// DefaultManifestURL points to the brain manifest in the latest GitHub Release.
-	DefaultManifestURL = "https://raw.githubusercontent.com/SirsiMaster/sirsi-anubis/main/brain-manifest.json"
+	DefaultManifestURL = "https://raw.githubusercontent.com/SirsiMaster/sirsi-pantheon/main/brain-manifest.json"
 
 	// DefaultWeightsDir is where models are stored.
 	DefaultWeightsDir = ".anubis/weights"

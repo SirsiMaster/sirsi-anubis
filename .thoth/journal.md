@@ -262,7 +262,7 @@ Built the QA/QC governance agent — the first deity to become an autonomous ass
 
 When asked "what does Thoth say about our efficiency?", ran a full portfolio audit. Findings:
 - Thoth memories were skeletons in 4/5 repos — deployed in Session 6 but never populated with real state
-- Ma'at only existed in sirsi-anubis — zero governance in other repos
+- Ma'at only existed in sirsi-pantheon — zero governance in other repos
 - 3 repos had dirty working trees
 - GEMINI.md/CLAUDE.md missing from 2 repos
 - **Pantheon coverage: ~20% across the portfolio**
@@ -282,4 +282,4 @@ Canonized as ADR-005. Key principles:
 
 **Why this is the right framing**: We'd been thinking about individual tools. But the value is in the collection — cleanup + knowledge + governance + policy + resources as one integrated system. The investor pitch changes from "we built a workstation cleaner" to "we built a DevOps intelligence platform with autonomous agents."
 
-**Session total**: 4 commits to sirsi-anubis, 1 commit each to 4 other repos. 57 new tests (522 total). 2 ADRs canonized (004 Ma'at, 005 Pantheon). Portfolio Standard deployed to all repos. All 5 repos on GitHub, clean working trees.
+**Session total**: 4 commits to sirsi-pantheon, 1 commit each to 4 other repos. 57 new tests (522 total). 2 ADRs canonized (004 Ma'at, 005 Pantheon). Portfolio Standard deployed to all repos. All 5 repos on GitHub, clean working trees.

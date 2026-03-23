@@ -1,6 +1,6 @@
 package rules
 
-import "github.com/SirsiMaster/sirsi-anubis/internal/jackal"
+import "github.com/SirsiMaster/sirsi-pantheon/internal/jackal"
 
 // ═══════════════════════════════════════════
 // JAVA / JVM ECOSYSTEM

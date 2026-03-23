@@ -53,9 +53,9 @@ Written in Go. Two binaries under 10 MB. No telemetry, no tracking, no analytics
 
 The Egyptian theme is intentional — every module is named after mythology: Jackal (scanner), Ka (ghost hunter), Scales (policy engine), Hapi (resource optimizer), Scarab (fleet sweep).
 
-`go install github.com/SirsiMaster/sirsi-anubis/cmd/anubis@latest`
+`go install github.com/SirsiMaster/sirsi-pantheon/cmd/anubis@latest`
 
-GitHub: https://github.com/SirsiMaster/sirsi-anubis
+GitHub: https://github.com/SirsiMaster/sirsi-pantheon
 
 ---
 
@@ -70,7 +70,7 @@ Anubis treats it as a developer workstation.
 58 scan rules. Ghost app hunting. Neural classification. MCP server.
 Free. Open source. MIT.
 
-github.com/SirsiMaster/sirsi-anubis
+github.com/SirsiMaster/sirsi-pantheon
 
 **Tweet 2:**
 What makes Anubis different?
@@ -134,7 +134,7 @@ Written in Go. Under 10 MB. Ships today.
 
 ```bash
 # Install
-brew tap SirsiMaster/tools && brew install sirsi-anubis
+brew tap SirsiMaster/tools && brew install sirsi-pantheon
 
 # Scan workstation (58 rules, 7 domains)
 anubis weigh

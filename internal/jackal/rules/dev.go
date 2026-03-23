@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/SirsiMaster/sirsi-anubis/internal/cleaner"
-	"github.com/SirsiMaster/sirsi-anubis/internal/jackal"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/cleaner"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal"
 )
 
 // ═══════════════════════════════════════════

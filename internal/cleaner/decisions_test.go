@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SirsiMaster/sirsi-anubis/internal/platform"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
 )
 
 // ═══════════════════════════════════════════

@@ -6,7 +6,7 @@ Angel investors / VCs evaluating Sirsi Technologies for seed round.
 ## Setup
 - Terminal open, maximized
 - Clean macOS desktop (dark mode preferred)
-- Anubis installed: `go install github.com/SirsiMaster/sirsi-anubis/cmd/anubis@latest`
+- Anubis installed: `go install github.com/SirsiMaster/sirsi-pantheon/cmd/anubis@latest`
 
 ---
 

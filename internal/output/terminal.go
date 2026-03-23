@@ -1,5 +1,5 @@
-// Package output handles terminal rendering for Sirsi Anubis.
-// Uses the Anubis brand language: Gold + Black + Deep Lapis (Rule A10).
+// Package output handles terminal rendering for Sirsi Pantheon.
+// Uses the Pantheon brand language: Gold + Black + Deep Lapis (Rule A10).
 package output
 
 import (
@@ -81,13 +81,15 @@ var (
 	SeverityWarning = lipgloss.NewStyle().Foreground(Red)
 )
 
-// Banner prints the Anubis banner.
+// Banner prints the Pantheon banner.
 func Banner() {
 	banner := TitleStyle.Render(`
-  𓂀  Sirsi Anubis
+  🏛️  Sirsi Pantheon
   ═══════════════════════════════
-  The Guardian of Infrastructure Hygiene
-  "Weigh. Judge. Purge."
+  Unified DevOps Intelligence Platform
+  "One Install. All Deities."
+
+  𓂀 Anubis · 🪶 Ma'at · 𓁟 Thoth
 `)
 	fmt.Fprintln(os.Stderr, banner)
 }

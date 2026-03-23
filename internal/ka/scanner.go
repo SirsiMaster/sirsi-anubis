@@ -19,8 +19,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/SirsiMaster/sirsi-anubis/internal/cleaner"
-	"github.com/SirsiMaster/sirsi-anubis/internal/logging"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/cleaner"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/logging"
 )
 
 // Ghost represents a detected Ka — the spirit of a dead application.

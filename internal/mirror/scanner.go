@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/SirsiMaster/sirsi-anubis/internal/logging"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/logging"
 )
 
 // Scan walks the given directories and finds duplicate files.

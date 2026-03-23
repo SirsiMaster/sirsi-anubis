@@ -14,8 +14,8 @@ Thank you for considering contributing to Sirsi Anubis! This guide will help you
 
 ```bash
 # Clone the repo
-git clone https://github.com/SirsiMaster/sirsi-anubis.git
-cd sirsi-anubis
+git clone https://github.com/SirsiMaster/sirsi-pantheon.git
+cd sirsi-pantheon
 
 # Build the CLI
 go build -o anubis ./cmd/anubis/

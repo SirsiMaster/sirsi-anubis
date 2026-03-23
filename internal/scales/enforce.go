@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/SirsiMaster/sirsi-anubis/internal/jackal"
-	"github.com/SirsiMaster/sirsi-anubis/internal/jackal/rules"
-	"github.com/SirsiMaster/sirsi-anubis/internal/ka"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal/rules"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/ka"
 )
 
 // Verdict is the result of evaluating a single policy rule.

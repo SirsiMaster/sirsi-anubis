@@ -105,9 +105,9 @@ func (c *CoverageAssessor) runCoverage() (string, error) {
 }
 
 // coverageRegex matches lines like:
-// ok  	github.com/SirsiMaster/sirsi-anubis/internal/cleaner	0.234s	coverage: 77.3% of statements
+// ok  	github.com/SirsiMaster/sirsi-pantheon/internal/cleaner	0.234s	coverage: 77.3% of statements
 // or lines with [no test files]:
-// ?   	github.com/SirsiMaster/sirsi-anubis/internal/mapper	[no test files]
+// ?   	github.com/SirsiMaster/sirsi-pantheon/internal/mapper	[no test files]
 var coverageRegex = regexp.MustCompile(
 	`(?:ok|FAIL)\s+\S+/internal/(\S+)\s+\S+\s+coverage:\s+([\d.]+)%`,
 )

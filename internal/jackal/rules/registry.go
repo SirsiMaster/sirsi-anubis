@@ -3,7 +3,7 @@ package rules
 import (
 	"runtime"
 
-	"github.com/SirsiMaster/sirsi-anubis/internal/jackal"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal"
 )
 
 // AllRules returns all built-in scan rules for the current platform.

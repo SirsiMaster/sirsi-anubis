@@ -57,7 +57,7 @@ Benchmarked across 4 real production codebases (428,000+ lines of code):
 
 | Project | Source Lines | Thoth Lines | Token Savings |
 |:--------|:------------|:------------|:-------------|
-| sirsi-anubis (Go) | 14,589 | 85 | **99.4%** |
+| sirsi-pantheon (Go) | 14,589 | 85 | **99.4%** |
 | assiduous (React) | 160,897 | 100* | **99.9%** |
 | FinalWishes (Next.js) | 96,514 | 100* | **99.9%** |
 | SirsiNexusApp (TS) | 155,817 | 100* | **99.9%** |
@@ -96,7 +96,7 @@ language: TypeScript
 
 ```bash
 # Uses the canonical Sirsi Thoth template
-cp -r /path/to/sirsi-anubis/.thoth-template .thoth
+cp -r /path/to/sirsi-pantheon/.thoth-template .thoth
 ```
 
 ### For AI workflows:

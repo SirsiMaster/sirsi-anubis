@@ -1,4 +1,4 @@
-module github.com/SirsiMaster/sirsi-anubis
+module github.com/SirsiMaster/sirsi-pantheon
 
 go 1.22.0
 

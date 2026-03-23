@@ -3,8 +3,8 @@
 # Last updated: 2026-03-23T05:33:00-04:00
 
 ## Identity
-project: sirsi-anubis
-repo: github.com/SirsiMaster/sirsi-anubis
+project: sirsi-pantheon
+repo: github.com/SirsiMaster/sirsi-pantheon
 language: Go 1.22+
 version: 0.3.0-alpha
 binary_count: 2 (anubis @ 12 MB, anubis-agent @ 3.2 MB)

@@ -24,7 +24,7 @@ const (
 	ProtocolVersion = "2025-03-26"
 
 	// ServerName is our MCP server identity.
-	ServerName = "sirsi-anubis"
+	ServerName = "sirsi-pantheon"
 
 	// ServerVersion is the current Anubis version.
 	ServerVersion = "0.2.0-alpha"

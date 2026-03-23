@@ -97,7 +97,7 @@ Every AI agent (Gemini, Claude, Antigravity) and every developer can navigate an
 | **QA_PLAN.md** | Test strategy and quality plan | `docs/` |
 | **PROJECT_SCOPE.md** | Scope definition, boundaries | `docs/` |
 
-### Tier 3: Required for Tools (sirsi-anubis, sirsi-thoth)
+### Tier 3: Required for Tools (sirsi-pantheon, sirsi-thoth)
 
 | Document | Purpose | Location |
 |:---------|:--------|:---------|
@@ -120,7 +120,7 @@ Every AI agent (Gemini, Claude, Antigravity) and every developer can navigate an
 - **Governs**: Canon linkage, coverage, pipeline health
 - **Rule**: Every feature links to canon. Ma'at assessments guide quality.
 - **Supersedes**: Manual "check that all tests pass" instructions
-- **Note**: Ma'at currently runs as `anubis maat` in sirsi-anubis. For other repos, quality governance is applied through the rules (§1.24) until Ma'at becomes a standalone tool.
+- **Note**: Ma'at currently runs as `anubis maat` in sirsi-pantheon. For other repos, quality governance is applied through the rules (§1.24) until Ma'at becomes a standalone tool.
 
 ### Pre-Push Gate
 - **File**: `.githooks/pre-push`
@@ -144,7 +144,7 @@ Every AI agent (Gemini, Claude, Antigravity) and every developer can navigate an
 |:---------|:-------------|:---------|
 | **Design system** | FinalWishes, Assiduous | Color palettes, typography, component rules |
 | **Legal/compliance** | FinalWishes | Legal document fidelity, PII siloing |
-| **Safety protocols** | sirsi-anubis | Dry-run requirements, protected paths |
+| **Safety protocols** | sirsi-pantheon | Dry-run requirements, protected paths |
 | **Domain logic** | Each repo | Business rules specific to the problem domain |
 | **Stack rules** | Each repo | Framework-specific conventions |
 
@@ -154,7 +154,7 @@ Every AI agent (Gemini, Claude, Antigravity) and every developer can navigate an
 
 > This matrix shows which Tier 1 docs exist in each repo.
 
-| Document | sirsi-anubis | SirsiNexusApp | FinalWishes | assiduous | sirsi-thoth |
+| Document | sirsi-pantheon | SirsiNexusApp | FinalWishes | assiduous | sirsi-thoth |
 |:---------|:------------|:--------------|:------------|:----------|:------------|
 | Rules file | ✅ ANUBIS_RULES | ✅ SIRSI_RULES | ✅ GEMINI.md | ❌ | ❌ |
 | GEMINI.md | ✅ | ✅ | ✅ | ❌ | ❌ |
@@ -178,7 +178,7 @@ Every AI agent (Gemini, Claude, Antigravity) and every developer can navigate an
 ## 6. Versioning This Standard
 
 - **Location**: This file lives in every repo as `docs/SIRSI_PORTFOLIO_STANDARD.md`
-- **Source of truth**: sirsi-anubis (where it was first codified)
+- **Source of truth**: sirsi-pantheon (where it was first codified)
 - **Updates**: When a rule is added or modified, ALL repos must be updated
 - **Ma'at enforcement**: In the future, Ma'at will verify that portfolio standards are consistent across repos
 

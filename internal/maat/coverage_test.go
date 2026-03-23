@@ -8,9 +8,9 @@ import (
 // --- ParseCoverageOutput tests ---
 
 func TestParseCoverageOutputBasic(t *testing.T) {
-	input := `ok  	github.com/SirsiMaster/sirsi-anubis/internal/cleaner	0.234s	coverage: 77.3% of statements
-ok  	github.com/SirsiMaster/sirsi-anubis/internal/ka	1.002s	coverage: 42.7% of statements
-?   	github.com/SirsiMaster/sirsi-anubis/internal/mapper	[no test files]`
+	input := `ok  	github.com/SirsiMaster/sirsi-pantheon/internal/cleaner	0.234s	coverage: 77.3% of statements
+ok  	github.com/SirsiMaster/sirsi-pantheon/internal/ka	1.002s	coverage: 42.7% of statements
+?   	github.com/SirsiMaster/sirsi-pantheon/internal/mapper	[no test files]`
 
 	results := ParseCoverageOutput(input)
 
@@ -35,8 +35,8 @@ ok  	github.com/SirsiMaster/sirsi-anubis/internal/ka	1.002s	coverage: 42.7% of s
 }
 
 func TestParseCoverageOutputSubPackages(t *testing.T) {
-	input := `ok  	github.com/SirsiMaster/sirsi-anubis/internal/jackal/rules	0.123s	coverage: 55.0% of statements
-ok  	github.com/SirsiMaster/sirsi-anubis/internal/jackal	0.456s	coverage: 60.0% of statements`
+	input := `ok  	github.com/SirsiMaster/sirsi-pantheon/internal/jackal/rules	0.123s	coverage: 55.0% of statements
+ok  	github.com/SirsiMaster/sirsi-pantheon/internal/jackal	0.456s	coverage: 60.0% of statements`
 
 	results := ParseCoverageOutput(input)
 
@@ -51,7 +51,7 @@ ok  	github.com/SirsiMaster/sirsi-anubis/internal/jackal	0.456s	coverage: 60.0% 
 }
 
 func TestParseCoverageOutputFailedTests(t *testing.T) {
-	input := `FAIL	github.com/SirsiMaster/sirsi-anubis/internal/mirror	0.789s	coverage: 60.0% of statements`
+	input := `FAIL	github.com/SirsiMaster/sirsi-pantheon/internal/mirror	0.789s	coverage: 60.0% of statements`
 
 	results := ParseCoverageOutput(input)
 	if len(results) != 1 {
@@ -77,7 +77,7 @@ func TestCoverageAssessorPass(t *testing.T) {
 			{Module: "cleaner", MinCoverage: 80, SafetyCritical: true},
 		},
 		Runner: func() (string, error) {
-			return `ok  	github.com/SirsiMaster/sirsi-anubis/internal/cleaner	0.234s	coverage: 85.0% of statements`, nil
+			return `ok  	github.com/SirsiMaster/sirsi-pantheon/internal/cleaner	0.234s	coverage: 85.0% of statements`, nil
 		},
 	}
 
@@ -104,7 +104,7 @@ func TestCoverageAssessorFail(t *testing.T) {
 			{Module: "cleaner", MinCoverage: 80, SafetyCritical: true},
 		},
 		Runner: func() (string, error) {
-			return `ok  	github.com/SirsiMaster/sirsi-anubis/internal/cleaner	0.234s	coverage: 50.0% of statements`, nil
+			return `ok  	github.com/SirsiMaster/sirsi-pantheon/internal/cleaner	0.234s	coverage: 50.0% of statements`, nil
 		},
 	}
 
@@ -125,7 +125,7 @@ func TestCoverageAssessorWarning(t *testing.T) {
 		},
 		Runner: func() (string, error) {
 			// 70% is within 80% of 80% (64%), so it should be a warning, not a fail.
-			return `ok  	github.com/SirsiMaster/sirsi-anubis/internal/cleaner	0.234s	coverage: 70.0% of statements`, nil
+			return `ok  	github.com/SirsiMaster/sirsi-pantheon/internal/cleaner	0.234s	coverage: 70.0% of statements`, nil
 		},
 	}
 
@@ -145,7 +145,7 @@ func TestCoverageAssessorNoTests(t *testing.T) {
 			{Module: "mapper", MinCoverage: 50},
 		},
 		Runner: func() (string, error) {
-			return `?   	github.com/SirsiMaster/sirsi-anubis/internal/mapper	[no test files]`, nil
+			return `?   	github.com/SirsiMaster/sirsi-pantheon/internal/mapper	[no test files]`, nil
 		},
 	}
 
@@ -178,9 +178,9 @@ func TestCoverageAssessorMultipleModules(t *testing.T) {
 		},
 		Runner: func() (string, error) {
 			return strings.Join([]string{
-				`ok  	github.com/SirsiMaster/sirsi-anubis/internal/cleaner	0.234s	coverage: 85.0% of statements`,
-				`ok  	github.com/SirsiMaster/sirsi-anubis/internal/ka	1.002s	coverage: 42.7% of statements`,
-				`ok  	github.com/SirsiMaster/sirsi-anubis/internal/mirror	0.345s	coverage: 60.0% of statements`,
+				`ok  	github.com/SirsiMaster/sirsi-pantheon/internal/cleaner	0.234s	coverage: 85.0% of statements`,
+				`ok  	github.com/SirsiMaster/sirsi-pantheon/internal/ka	1.002s	coverage: 42.7% of statements`,
+				`ok  	github.com/SirsiMaster/sirsi-pantheon/internal/mirror	0.345s	coverage: 60.0% of statements`,
 			}, "\n"), nil
 		},
 	}

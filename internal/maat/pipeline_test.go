@@ -80,7 +80,7 @@ Error: Process completed with exit code 1.`
 func TestCategorizeFailureLogTest(t *testing.T) {
 	log := `--- FAIL: TestSomething (0.01s)
     foo_test.go:42: expected 1, got 2
-FAIL	github.com/SirsiMaster/sirsi-anubis/internal/foo	0.234s`
+FAIL	github.com/SirsiMaster/sirsi-pantheon/internal/foo	0.234s`
 
 	detail := CategorizeFailureLog("123", log)
 	if detail.Category != FailureTest {

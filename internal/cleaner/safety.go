@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/SirsiMaster/sirsi-anubis/internal/platform"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
 )
 
 // protectedPrefixes are now provided by platform.Current().ProtectedPrefixes().

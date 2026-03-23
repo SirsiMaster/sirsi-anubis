@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/SirsiMaster/sirsi-anubis/internal/brain"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/brain"
 )
 
 // registerResources adds all Anubis resources to the MCP server.

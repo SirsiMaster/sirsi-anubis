@@ -1,5 +1,5 @@
 #!/bin/bash
-# 𓂀 Anubis Pre-Push Gate
+# 𓂀 Pantheon Pre-Push Gate
 # Runs the same checks CI runs, so lint issues never reach the pipeline.
 # Install: git config core.hooksPath .githooks
 # Skip:    git push --no-verify (use sparingly)
@@ -7,7 +7,7 @@
 set -e
 
 echo ""
-echo "  𓂀 Anubis pre-push gate..."
+echo "  𓂀 Pantheon pre-push gate..."
 echo ""
 
 # 1. gofmt — formatting must be canonical

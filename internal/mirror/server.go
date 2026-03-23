@@ -14,7 +14,7 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/SirsiMaster/sirsi-anubis/internal/platform"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
 )
 
 // Server runs a local web UI for the Mirror dedup scanner.

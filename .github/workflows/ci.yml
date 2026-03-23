@@ -1,4 +1,4 @@
-name: CI — Sirsi Anubis
+name: CI — Sirsi Pantheon
 
 on:
   push:
@@ -64,23 +64,23 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
 
-      - name: Build anubis
-        run: go build -o anubis ./cmd/anubis/
+      - name: Build pantheon
+        run: go build -o pantheon ./cmd/pantheon/
 
-      - name: Build anubis-agent
-        run: CGO_ENABLED=0 go build -o anubis-agent ./cmd/anubis-agent/
+      - name: Build pantheon-agent
+        run: CGO_ENABLED=0 go build -o pantheon-agent ./cmd/pantheon-agent/
 
       - name: Binary size guard
         run: |
-          ANUBIS_SIZE=$(stat -f%z anubis 2>/dev/null || stat -c%s anubis)
-          AGENT_SIZE=$(stat -f%z anubis-agent 2>/dev/null || stat -c%s anubis-agent)
-          echo "anubis: ${ANUBIS_SIZE} bytes"
-          echo "anubis-agent: ${AGENT_SIZE} bytes"
-          # Warn if anubis > 25MB
-          if [ "$ANUBIS_SIZE" -gt 26214400 ]; then
-            echo "::warning::anubis binary exceeds 25MB (${ANUBIS_SIZE} bytes)"
+          PANTHEON_SIZE=$(stat -f%z pantheon 2>/dev/null || stat -c%s pantheon)
+          AGENT_SIZE=$(stat -f%z pantheon-agent 2>/dev/null || stat -c%s pantheon-agent)
+          echo "pantheon: ${PANTHEON_SIZE} bytes"
+          echo "pantheon-agent: ${AGENT_SIZE} bytes"
+          # Warn if pantheon > 25MB
+          if [ "$PANTHEON_SIZE" -gt 26214400 ]; then
+            echo "::warning::pantheon binary exceeds 25MB (${PANTHEON_SIZE} bytes)"
           fi
           # Warn if agent > 12MB
           if [ "$AGENT_SIZE" -gt 12582912 ]; then
-            echo "::warning::anubis-agent binary exceeds 12MB (${AGENT_SIZE} bytes)"
+            echo "::warning::pantheon-agent binary exceeds 12MB (${AGENT_SIZE} bytes)"
           fi

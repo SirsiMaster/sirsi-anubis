@@ -1,16 +1,16 @@
 # ANUBIS_RULES.md
-**Operational Directive for All Development Agents (sirsi-anubis)**
+**Operational Directive for All Development Agents (sirsi-pantheon)**
 **Version:** 1.1.0 (Traceability Hardened)
 **Date:** March 20, 2026
 
 ---
 
 ## 0. Identity
-This is the **sirsi-anubis** repository — Sirsi Technologies' infrastructure hygiene platform.
+This is the **sirsi-pantheon** repository — Sirsi Technologies' infrastructure hygiene platform.
 An open-source CLI tool that scans, judges, and purges infrastructure waste across workstations, containers, VMs, networks, and storage backends.
 
-- **GitHub**: `https://github.com/SirsiMaster/sirsi-anubis`
-- **Local Path**: `/Users/thekryptodragon/Development/sirsi-anubis`
+- **GitHub**: `https://github.com/SirsiMaster/sirsi-pantheon`
+- **Local Path**: `/Users/thekryptodragon/Development/sirsi-pantheon`
 - **CLI Binary**: `anubis`
 - **Agent Binary**: `anubis-agent`
 
@@ -23,7 +23,7 @@ Rules, design tokens, and business logic from other repositories do NOT apply he
 | **SirsiNexusApp** | Platform Monorepo | Core infrastructure, shared services, UCS components |
 | **FinalWishes** | Tenant Application | Estate planning platform (Royal Neo-Deco) |
 | **Assiduous** | Tenant Application | Real estate platform (Assiduous Modern) |
-| **sirsi-anubis** (this repo) | **Infrastructure Tool** | Infrastructure hygiene CLI + fleet management |
+| **sirsi-pantheon** (this repo) | **Infrastructure Tool** | Infrastructure hygiene CLI + fleet management |
 | **sirsi-rook** (reserved) | **Database Tool** | Database & storage orchestration |
 | **sirsi-rogue** (reserved) | **Security Tool** | Cybersecurity sweeper |
 
@@ -231,11 +231,11 @@ Anubis scans filesystems and processes. Scan results may contain sensitive infor
 | **SSH** | **golang.org/x/crypto/ssh** | Native Go SSH client |
 | **Build** | **goreleaser** | Multi-platform binary releases |
 | **CI/CD** | **GitHub Actions** | Build, test, release |
-| **Distribution** | **Homebrew tap** + GitHub Releases | `brew install sirsi-anubis` |
+| **Distribution** | **Homebrew tap** + GitHub Releases | `brew install sirsi-pantheon` |
 
 ---
 
-## 4. Canonical Documents (sirsi-anubis)
+## 4. Canonical Documents (sirsi-pantheon)
 
 These documents are the source of truth for this repo:
 

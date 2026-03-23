@@ -1,5 +1,5 @@
 {
-  "name": "sirsi-anubis",
+  "name": "sirsi-pantheon",
   "displayName": "𓂀 Sirsi Anubis — Eye of Horus",
   "description": "Infrastructure hygiene monitor for your workspace. Powered by the Anubis MCP server.",
   "version": "0.1.0",
@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/SirsiMaster/sirsi-anubis"
+    "url": "https://github.com/SirsiMaster/sirsi-pantheon"
   },
   "categories": [
     "Other",
