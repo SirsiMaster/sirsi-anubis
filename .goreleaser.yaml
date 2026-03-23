@@ -69,22 +69,21 @@ archives:
       - configs/example_policy.yaml
       - configs/workspace_template.yaml
 
-# TODO: Enable Homebrew tap after setting up a PAT with cross-repo write access.
-# The default GITHUB_TOKEN cannot push to SirsiMaster/homebrew-tools.
-# brews:
-#   - name: sirsi-pantheon
-#     repository:
-#       owner: SirsiMaster
-#       name: homebrew-tools
-#     directory: Formula
-#     homepage: https://github.com/SirsiMaster/sirsi-pantheon
-#     description: "🏛️ Unified DevOps Intelligence Platform"
-#     license: MIT
-#     install: |
-#       bin.install "pantheon"
-#       bin.install "pantheon-agent"
-#     test: |
-#       system "#{bin}/pantheon", "version"
+brews:
+  - name: sirsi-pantheon
+    repository:
+      owner: SirsiMaster
+      name: homebrew-tools
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Formula
+    homepage: https://github.com/SirsiMaster/sirsi-pantheon
+    description: "🏛️ Unified DevOps Intelligence Platform — One Install, All Deities"
+    license: MIT
+    install: |
+      bin.install "pantheon"
+      bin.install "pantheon-agent"
+    test: |
+      system "#{bin}/pantheon", "version"
 
 checksum:
   name_template: checksums.txt

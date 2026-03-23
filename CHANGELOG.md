@@ -10,14 +10,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 ### Planned
 - P0: Cleaner test coverage to 80%+ (safety-critical)
 - P0: Scanner edge cases (permissions, symlink loops)
-- P1: Homebrew tap (needs PAT for cross-repo access)
 - P1: `anubis maat` — pipeline purifier (CI monitoring + auto-fix + reporting)
+- P1: Standalone Ma'at — independent deployment without Anubis binary
 - P2: npm publish thoth-init, VS Code extension
 
 ## [0.4.0-alpha] — 2026-03-23 (Launch Execution + Modular Deities)
 
 ### Added
-- **Homebrew Tap Integration** — Automated formula updates via `HOMEBREW_TAP_TOKEN`
+- **Homebrew Tap Integration** — Automated formula updates via `HOMEBREW_TAP_TOKEN`; `brew tap SirsiMaster/tools && brew install sirsi-pantheon`
+- **ADR-007 Unified Findings Portal** — Canonical architecture for cross-deity finding aggregation
+- **ADR-006 Self-Aware Resource Governance** — Guard module + yield-based resource management
+- **Yield Module** (`internal/yield/`) — Cooperative resource yielding for process management
+- **Horus Designation** — Assigned as the Unified Findings Portal deity
 - **Modular Deities (v2.1.0)** — ADR-005 updated with independent deployment standards
 - **Ra (Hypervisor)** — v0.1.0-alpha overseer added to Pantheon architecture
 - **Seba Rebrand** — `internal/mapper/` → `internal/seba/` (high-performance mapping)
@@ -28,11 +32,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 - **Pantheon Unification** — Standardized GEMINI.md, CLAUDE.md, and Portfolio Standard across all 5 repos
 - **Ma'at Governance** — Integrated pipeline monitoring and automated health checks
 - **Improved Logging** — Wired Go 1.21 `slog` into `ka` and `cleaner` cores for better diagnostics
+- **Release Pipeline** — GoReleaser brews section enabled with `HOMEBREW_TAP_TOKEN` cross-repo secret
 
 ### Fixed
 - **Missing Imports** — Resolved `undefined: logging` error in `internal/cleaner/safety.go`
 - **Domain Purge** — Replaced all instances of `sirsinexus.dev` with `sirsi.ai` in SirsiNexusApp
 - **MCP Versioning** — Corrected version reporting to match release tags
+- **gofmt** — Fixed formatting in `yield_test.go`
+
 
 ---
 
