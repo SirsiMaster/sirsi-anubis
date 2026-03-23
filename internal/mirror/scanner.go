@@ -11,12 +11,15 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/SirsiMaster/sirsi-anubis/internal/logging"
 )
 
 // Scan walks the given directories and finds duplicate files.
 // Uses a two-phase approach: group by size first (instant), then hash to confirm.
 func Scan(opts ScanOptions) (*MirrorResult, error) {
 	start := time.Now()
+	logging.Debug("mirror scan starting", "paths", opts.Paths, "minSize", opts.MinSize)
 
 	if len(opts.Paths) == 0 {
 		return nil, fmt.Errorf("no paths specified")
@@ -86,6 +89,7 @@ func Scan(opts ScanOptions) (*MirrorResult, error) {
 	}
 
 	// Phase 2: Two-stage hashing to minimize disk I/O
+	logging.Debug("phase 1 complete", "scanned", totalScanned, "sizeGroups", len(sizeGroups))
 	// Stage A: Hash first 4KB of each file (fast pre-filter).
 	//          Two files with different 4KB prefixes cannot be duplicates.
 	// Stage B: Full SHA-256 only for files whose 4KB prefix matched.
@@ -222,6 +226,13 @@ func Scan(opts ScanOptions) (*MirrorResult, error) {
 		ScanDuration:    time.Since(start),
 		DirsScanned:     opts.Paths,
 	}
+
+	logging.Debug("mirror scan complete",
+		"scanned", totalScanned,
+		"duplicates", totalDuplicates,
+		"waste", totalWaste,
+		"duration", time.Since(start),
+	)
 
 	return result, nil
 }

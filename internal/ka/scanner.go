@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/SirsiMaster/sirsi-anubis/internal/cleaner"
+	"github.com/SirsiMaster/sirsi-anubis/internal/logging"
 )
 
 // Ghost represents a detected Ka — the spirit of a dead application.
@@ -142,9 +143,11 @@ func NewScanner() *Scanner {
 // This method has ZERO side effects — it only reads.
 func (s *Scanner) Scan(includeSudo bool) ([]Ghost, error) {
 	// Step 1: Build inventory of currently installed apps
+	logging.Debug("ka scan starting", "includeSudo", includeSudo)
 	if err := s.buildInstalledAppIndex(); err != nil {
 		return nil, fmt.Errorf("failed to index installed apps: %w", err)
 	}
+	logging.Debug("installed apps indexed", "bundleIDs", len(s.installedApps), "names", len(s.installedNames))
 
 	// Step 2: Scan all residual locations for orphaned entries
 	orphans := s.scanForOrphans(includeSudo)
@@ -154,6 +157,7 @@ func (s *Scanner) Scan(includeSudo bool) ([]Ghost, error) {
 
 	// Step 4: Merge orphans into Ghost structures
 	ghosts := s.mergeOrphans(orphans, lsGhosts)
+	logging.Debug("ka scan complete", "ghosts", len(ghosts), "orphans", len(orphans), "lsGhosts", len(lsGhosts))
 
 	return ghosts, nil
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/SirsiMaster/sirsi-anubis/internal/logging"
 	"github.com/SirsiMaster/sirsi-anubis/internal/output"
 	"github.com/SirsiMaster/sirsi-anubis/internal/stealth"
 	"github.com/SirsiMaster/sirsi-anubis/internal/updater"
@@ -20,6 +21,7 @@ var (
 	jsonOutput  bool
 	quietMode   bool
 	stealthMode bool
+	verboseMode bool
 )
 
 // rootCmd is the base command for anubis.
@@ -42,6 +44,10 @@ containers, VMs, networks, and storage backends.
 	Run: func(cmd *cobra.Command, args []string) {
 		output.Banner()
 		_ = cmd.Help()
+	},
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		logging.Init(verboseMode, quietMode, jsonOutput)
+		logging.Debug("anubis starting", "version", version, "platform", runtime.GOOS+"/"+runtime.GOARCH)
 	},
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {
 		if stealthMode {
@@ -74,6 +80,7 @@ var versionCmd = &cobra.Command{
 func init() {
 	rootCmd.PersistentFlags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
 	rootCmd.PersistentFlags().BoolVar(&quietMode, "quiet", false, "Suppress all output except errors and summary")
+	rootCmd.PersistentFlags().BoolVarP(&verboseMode, "verbose", "v", false, "Enable debug logging (stderr)")
 	rootCmd.PersistentFlags().BoolVar(&stealthMode, "stealth", false, "Ephemeral mode — delete all Anubis data after execution")
 
 	rootCmd.AddCommand(versionCmd)
