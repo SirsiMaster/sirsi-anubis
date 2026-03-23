@@ -10,14 +10,25 @@ echo ""
 echo "  𓇳 Pantheon pre-push gate..."
 echo ""
 
+# Detect tag-only pushes (skip Ma'at for speed — tags don't change code)
+TAG_ONLY=true
+while read local_ref local_sha remote_ref remote_sha; do
+    case "$local_ref" in
+        refs/tags/*) ;;
+        *) TAG_ONLY=false ;;
+    esac
+done
+
 # 0. Build fresh binary for Ma'at assessment
 go build -o ./pantheon ./cmd/pantheon/ 2>/dev/null
-if [ -x "./pantheon" ]; then
+if [ "$TAG_ONLY" = "false" ] && [ -x "./pantheon" ]; then
     echo "  𓆄 Ma'at quality assessment..."
     ./pantheon maat --coverage --canon || {
         echo "  ❌ Ma'at assessment failed — quality standards not met"
         exit 1
     }
+else
+    echo "  ⏭️  Tag push — skipping Ma'at (code unchanged)"
 fi
 
 # 1. gofmt — formatting must be canonical
