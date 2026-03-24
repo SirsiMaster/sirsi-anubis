@@ -1,6 +1,6 @@
 #!/bin/bash
 # 𓂀 Pantheon Pre-Push Gate
-# Runs the same checks CI runs, so lint issues never reach the pipeline.
+# Guarantees CI stays green by running the SAME checks CI runs locally.
 # Install: git config core.hooksPath .githooks
 # Skip:    git push --no-verify (use sparingly)
 
@@ -65,13 +65,27 @@ else
     echo "  ⚠️  golangci-lint not found — skipping (install for full gate)"
 fi
 
-# 4. Build check
+# 4. Build check — both binaries, same as CI
 if ! go build ./... 2>/dev/null; then
     echo "  ❌ build failed"
     exit 1
 fi
 
-# 5. IDE / Agent Health Check
+# 5. ──────────────────────────────────────────────────────────────────
+#    TEST SUITE — the #1 reason CI goes red
+#    Runs the full test suite locally. This is the gate CI uses.
+#    Tests with //go:build darwin tags will be skipped on Linux CI,
+#    so platform-specific failures can't slip through.
+# ──────────────────────────────────────────────────────────────────
+echo "  🧪 Running test suite..."
+if ! go test ./... -count=1 -timeout 120s 2>/dev/null; then
+    echo ""
+    echo "  ❌ Tests failed — CI would fail. Fix before pushing."
+    echo "  Run: go test -v ./... to see failures"
+    exit 1
+fi
+
+# 6. IDE / Agent Health Check
 echo "  👁️ Checking Agent health..."
 if [ -f ".thoth/memory.yaml" ]; then
     if ! grep -q "project: sirsi-pantheon" .thoth/memory.yaml; then

@@ -1,6 +1,7 @@
 package platform
 
 import (
+	"runtime"
 	"testing"
 )
 
@@ -9,6 +10,9 @@ import (
 // failures in non-interactive environments.
 
 func TestDarwin_MoveToTrash(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("osascript only available on macOS")
+	}
 	d := &Darwin{}
 	// MoveToTrash on a nonexistent file — osascript will fail but code path exercised.
 	err := d.MoveToTrash("/nonexistent/file/for/test")
@@ -28,6 +32,9 @@ func TestDarwin_OpenBrowser(t *testing.T) {
 // ─── Linux ──────────────────────────────────────────────────────────────────
 
 func TestLinux_MoveToTrash(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("gio/trash-cli only available on Linux")
+	}
 	l := &Linux{}
 	err := l.MoveToTrash("/nonexistent/file/for/test")
 	if err == nil {
