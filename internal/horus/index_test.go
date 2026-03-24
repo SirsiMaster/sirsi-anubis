@@ -11,12 +11,22 @@ func TestIndex_BuildAndQuery(t *testing.T) {
 	tmpDir := t.TempDir()
 	cachePath := filepath.Join(tmpDir, "manifest.gob")
 
-	home, _ := os.UserHomeDir()
+	// Create a synthetic directory tree so the test is cross-platform.
+	// ~/Library/Caches only exists on macOS — Linux CI has no such path.
+	dataDir := filepath.Join(tmpDir, "data")
+	subDir := filepath.Join(dataDir, "sub")
+	if err := os.MkdirAll(subDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Write some files so size > 0
+	os.WriteFile(filepath.Join(dataDir, "a.txt"), []byte("hello world"), 0o644)
+	os.WriteFile(filepath.Join(dataDir, "b.bin"), make([]byte, 4096), 0o644)
+	os.WriteFile(filepath.Join(subDir, "c.log"), []byte("log entry"), 0o644)
 
-	// Build index of ~/Library (a large tree).
+	// Build index of the synthetic tree.
 	start := time.Now()
 	m, err := Index(IndexOptions{
-		Roots:        []string{filepath.Join(home, "Library", "Caches")},
+		Roots:        []string{dataDir},
 		MaxDepth:     5,
 		CachePath:    cachePath,
 		ForceRefresh: true,
@@ -28,19 +38,22 @@ func TestIndex_BuildAndQuery(t *testing.T) {
 
 	t.Logf("BUILD: %d dirs, %d files in %s",
 		m.Stats.DirsWalked, m.Stats.FilesIndexed, buildTime.Round(time.Millisecond))
-	t.Logf("DIR SUMMARIES: %d entries (vs %d files — %.0fx reduction)",
-		len(m.Dirs), m.Stats.FilesIndexed,
-		float64(m.Stats.FilesIndexed)/float64(len(m.Dirs)))
 
-	// Check cache file size.
+	if m.Stats.FilesIndexed < 3 {
+		t.Errorf("Expected at least 3 files indexed, got %d", m.Stats.FilesIndexed)
+	}
+
+	// Check cache file was written.
 	if info, statErr := os.Stat(cachePath); statErr == nil {
-		t.Logf("CACHE SIZE: %.1f MB (gob)", float64(info.Size())/1024/1024)
+		t.Logf("CACHE SIZE: %.1f KB (gob)", float64(info.Size())/1024)
+	} else {
+		t.Errorf("Cache file not written: %v", statErr)
 	}
 
 	// Load from cache — should be very fast.
 	start = time.Now()
 	m2, err := Index(IndexOptions{
-		Roots:     []string{filepath.Join(home, "Library", "Caches")},
+		Roots:     []string{dataDir},
 		MaxDepth:  5,
 		CachePath: cachePath,
 		TTL:       1 * time.Hour,
@@ -53,14 +66,16 @@ func TestIndex_BuildAndQuery(t *testing.T) {
 	t.Logf("CACHE LOAD: %d dir summaries in %s", len(m2.Dirs), queryTime.Round(time.Millisecond))
 
 	// Query: DirSizeAndCount — O(1) lookup.
-	cachesPath := filepath.Join(home, "Library", "Caches")
 	start = time.Now()
-	size, count := m.DirSizeAndCount(cachesPath)
+	size, count := m.DirSizeAndCount(dataDir)
 	queryDur := time.Since(start)
-	t.Logf("QUERY DirSizeAndCount(Library/Caches): %d bytes, %d files in %s", size, count, queryDur)
+	t.Logf("QUERY DirSizeAndCount(data): %d bytes, %d files in %s", size, count, queryDur)
 
 	if size == 0 {
-		t.Error("Expected non-zero size for Library/Caches")
+		t.Error("Expected non-zero size for data dir")
+	}
+	if count < 3 {
+		t.Errorf("Expected at least 3 files, got %d", count)
 	}
 }
 
