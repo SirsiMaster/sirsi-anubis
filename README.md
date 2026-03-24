@@ -15,45 +15,19 @@
 
 ### The Deities
 
-| Deity | Domain | Description |
-|:------|:-------|:------------|
-| 𓂀 **Anubis** | Infrastructure Hygiene | Scan, judge, and purge waste — the foundational module |
-| 🪶 **Ma'at** | QA/QC Governance | Coverage, canon verification, pipeline monitoring |
-| 𓁟 **Thoth** | Persistent Knowledge | AI session memory that saves 98.7% of context |
-
-Anubis is the **foundational module** — the reason Pantheon exists. It's not being replaced, it's being elevated. Every scan rule, every safety protection, every feature you see here started with Anubis. Pantheon is what happens when one deity proves the architecture works and the others join in.
-
----
-
-## 🏗️ Why the Rebrand: Binary Size Tells the Story
-
-We analyzed exactly what's inside the binary and discovered something remarkable:
-
-| Component | Size |
-|:----------|-----:|
-| Go runtime + stdlib | ~10 MB |
-| **All 20 Sirsi modules combined** | **~186 KB** |
-| Total binary (stripped) | 8.3 MB |
-
-**All application code — 20 modules, 18 commands, 13,813 lines — compiles to just 186 KB.** That's 1.5% of the binary. The other 98.5% is Go's runtime, which is paid once regardless of module count.
-
-Adding a new deity module costs **2-30 KB**. We could double the module count and the binary would grow by ~100 KB. Pantheon isn't a monolith — it's a composable platform that happens to ship as a single file.
-
-**The rename reflects reality:** the binary already contained every deity. Calling it "Anubis" was limiting what it actually is. Pantheon gives every deity equal standing under one roof while honoring Anubis as the foundation.
-
-### Size Per Deity Module (compiled)
-
-| Module | Compiled Size | Role |
-|:-------|-------------:|:-----|
-| mcp | 31.1 KB | AI IDE integration |
-| jackal | 26.6 KB | Scan engine (58 rules) |
-| mirror | 19.3 KB | File dedup (27x faster) |
-| maat | 18.9 KB | QA/QC governance |
-| brain | 15.6 KB | Neural classifier |
-| guard | 8.8 KB | RAM audit |
-| ka | 7.3 KB | Ghost app detection |
-| *...12 more* | *2-10 KB each* | |
-| **Total** | **~186 KB** | **1.5% of binary** |
+| Glyph | Deity | Domain | What It Does |
+|:------|:------|:-------|:-------------|
+| 𓂀 | **Anubis** | Judge of the Dead | Finds junk on your computer that cleaning apps miss |
+| 𓂓 | **Ka** | Spirit of the Dead | Detects apps you deleted that are still secretly running |
+| 𓉡 | **Hathor** | Goddess of Reflection | Finds duplicate files eating your storage |
+| 𓁵 | **Sekhmet** | Warrior Guardian | Kills runaway processes that freeze your machine |
+| 𓆄 | **Ma'at** | Truth and Order | Grades your code quality and enforces team standards |
+| 𓁹 | **Horus** | The All-Seeing Eye | Fixes broken search results and indexes your filesystem |
+| 𓆣 | **Khepri** | Scarab of Renewal | Scans every device on your network and audits Docker |
+| 𓇼 | **Seba** | Star Map | Draws a visual map of your infrastructure |
+| 𓁟 | **Thoth** | God of Knowledge | Cuts AI token waste by 98% so your context window lasts |
+| 𓁶 | **Hapi** | God of the Flood | Detects your GPU, Neural Engine, and available hardware |
+| ☀️ | **Ra** | Supreme Overseer | The boss — runs all deities automatically (planned) |
 
 ---
 
@@ -115,21 +89,18 @@ pantheon maat --pipeline         # CI pipeline monitoring
 |:--------|:------|:-----------|
 | `pantheon weigh` | 𓂀 Anubis | Scan workstation for infrastructure waste |
 | `pantheon judge` | 𓂀 Anubis | Clean artifacts found by weigh |
-| `pantheon ka` | 𓂀 Anubis | Hunt ghost apps — find spirits of the dead |
-| `pantheon guard` | 𓂀 Anubis | RAM audit, zombie process management |
-| `pantheon sight` | 𓂀 Anubis | Launch Services / Spotlight repair |
-| `pantheon profile` | 𓂀 Anubis | Machine profiling and system info |
-| `pantheon seba` | 𓂀 Anubis | Dependency graph mapper |
-| `pantheon hapi` | 𓂀 Anubis | Resource optimizer (GPU, dedup, snapshots) |
-| `pantheon scarab` | 𓂀 Anubis | Network discovery + container audit |
-| `pantheon install-brain` | 𓂀 Anubis | Download neural classification model |
-| `pantheon uninstall-brain` | 𓂀 Anubis | Remove neural weights |
-| `pantheon mirror` | 𓂀 Anubis | Duplicate file scanner (GUI + CLI) |
-| `pantheon scales enforce` | 𓂀 Anubis | Run hygiene policy enforcement |
-| `pantheon book-of-the-dead` | 𓂀 Anubis | Deep system autopsy |
-| `pantheon initiate` | 𓂀 Anubis | Grant macOS permissions |
+| `pantheon ka` | 𓂓 Ka | Hunt ghost apps — find spirits of the dead |
+| `pantheon guard` | 𓁵 Sekhmet | RAM audit, zombie process management |
+| `pantheon sight` | 𓁹 Horus | Launch Services / Spotlight repair |
+| `pantheon mirror` | 𓉡 Hathor | Duplicate file scanner (GUI + CLI) |
+| `pantheon hapi` | 𓁶 Hapi | Hardware detection (GPU, Neural Engine, VRAM) |
+| `pantheon scarab` | 𓆣 Khepri | Network discovery + container audit |
+| `pantheon seba` | 𓇼 Seba | Infrastructure topology graph |
 | `pantheon mcp` | 𓁟 Thoth | Start MCP server for AI IDE integration |
-| `pantheon maat` | 🪶 Ma'at | QA/QC governance assessment |
+| `pantheon install-brain` | 𓁟 Thoth | Download neural classification model |
+| `pantheon maat` | 𓆄 Ma'at | QA/QC governance assessment |
+| `pantheon scales enforce` | 𓆄 Ma'at | Run hygiene policy enforcement |
+| `pantheon profile` | — | Machine profiling and system info |
 | `pantheon version` | — | Show version and deity roster |
 
 ### Global Flags
@@ -145,26 +116,22 @@ pantheon maat --pipeline         # CI pipeline monitoring
 
 Pantheon is built on modules named after Egyptian mythology. Every deity maintains its identity while sharing a unified runtime:
 
-| Module | Deity | Codename | Role | Status |
-|:-------|:------|:---------|:-----|:-------|
-| 🐺 **Jackal** | Anubis | The Hunter | Scan engine — 58 rules across 7 domains | ✅ |
-| 𓂓 **Ka** | Anubis | The Spirit | Ghost app detection — 17 macOS locations | ✅ |
-| 🪞 **Mirror** | Anubis | The Reflection | File dedup — 27x faster than naive hashing | ✅ |
-| 🛡️ **Guard** | Anubis | The Guardian | RAM audit, zombie process management | ✅ |
-| 👁️ **Sight** | Anubis | The Sight | Launch Services + Spotlight repair | ✅ |
-| 🌊 **Hapi** | Anubis | The Flow | GPU detection, dedup, APFS snapshots | ✅ |
-| 🪲 **Scarab** | Anubis | The Transformer | Network discovery + container audit | ✅ |
-| 🧠 **Brain** | Anubis | Neural | On-demand model downloader + classifier | ✅ |
-| 🔌 **MCP** | Thoth | Context | MCP server for AI IDE integration | ✅ |
-| ⚖️ **Scales** | Anubis | The Judgment | YAML policy engine + enforcement | ✅ |
-| 🪶 **Ma'at** | Ma'at | Governance | Coverage, canon, pipeline assessments | ✅ |
-
-### Two Binaries
-
-| Binary | Size | Stripped | Purpose |
-|:-------|:-----|:--------|:--------|
-| `pantheon` | 12 MB | **8.3 MB** | Full CLI — all deities, Mirror GUI |
-| `pantheon-agent` | 3.2 MB | **2.1 MB** | Lightweight fleet agent (JSON only) |
+| Module | Deity | Role | Status |
+|:-------|:------|:-----|:-------|
+| **Jackal** | 𓂀 Anubis | Scan engine — 58 rules across 7 domains | ✅ |
+| **Cleaner** | 𓂀 Anubis | Safe deletion with Trash + SHA-256 verification | ✅ |
+| **Ka** | 𓂓 Ka | Ghost app detection — 17 macOS locations | ✅ |
+| **Mirror** | 𓉡 Hathor | File dedup — 27x faster than naive hashing | ✅ |
+| **Guard** | 𓁵 Sekhmet | RAM audit, zombie process management | ✅ |
+| **Sight** | 𓁹 Horus | Launch Services + Spotlight repair | ✅ |
+| **Horus** | 𓁹 Horus | Shared filesystem index — walk once, query forever | ✅ |
+| **Hapi** | 𓁶 Hapi | GPU/Neural Engine/VRAM detection | ✅ |
+| **Scarab** | 𓆣 Khepri | Network discovery + container audit | ✅ |
+| **Brain** | 𓁟 Thoth | On-demand model downloader + classifier | ✅ |
+| **MCP** | 𓁟 Thoth | MCP server for AI IDE integration | ✅ |
+| **Scales** | 𓆄 Ma'at | YAML policy engine + enforcement | ✅ |
+| **Ma'at** | 𓆄 Ma'at | Coverage, canon, pipeline assessments | ✅ |
+| **Seba** | 𓇼 Seba | Infrastructure topology graph | 🚧 |
 
 ---
 
@@ -352,9 +319,43 @@ Mirror finds duplicate files across any directory using a **three-phase scan**:
 
 ---
 
-## 🤝 Contributing
+## 🛠️ Development
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines. Adding scan rules is straightforward — implement the `ScanRule` interface in `internal/jackal/rules/`.
+### Setup
+```bash
+git clone https://github.com/SirsiMaster/sirsi-pantheon.git
+cd sirsi-pantheon
+git config core.hooksPath .githooks    # Enable pre-push gate
+go build ./...
+```
+
+### Pre-Push Gate — Tiered Depth
+
+Every `git push` runs a quality gate. The default is **fast** (~10-30 seconds).
+Set `MAAT_DEPTH` to control how deep the gate checks:
+
+| Tier | Time | What Runs | When to Use |
+|:-----|:-----|:----------|:------------|
+| **`fast`** (default) | ~10-30s | `gofmt` + `go vet` + build + tests on changed packages only | Every push |
+| **`standard`** | ~60-90s | Fast + Ma'at coverage/canon on changed packages | Before PR merge |
+| **`deep`** | ~3-5 min | Standard + full test suite + full Ma'at assessment | Pre-release only |
+
+```bash
+git push                          # fast (default) — seconds, not minutes
+MAAT_DEPTH=standard git push      # standard — adds Ma'at on changed pkgs
+MAAT_DEPTH=deep git push          # deep — full suite (pre-release)
+git push --no-verify              # skip gate entirely (use sparingly)
+```
+
+> **Why tiered?** The full Ma'at + test suite takes 3-5 minutes and floods the IDE
+> with terminal output, causing IPC starvation on Electron-based editors.
+> The fast tier runs only what's relevant to your change. CI still runs the
+> full deep suite on every push — the local gate catches the 95% case in seconds.
+
+### Adding Scan Rules
+
+Implement the `ScanRule` interface in `internal/jackal/rules/`.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
 
 ---
 
@@ -366,13 +367,12 @@ MIT License — free and open source forever. See [LICENSE](LICENSE).
 
 ## 🏢 Sirsi Technologies
 
-Sirsi Pantheon is the DevOps intelligence platform from [Sirsi Technologies](https://github.com/SirsiMaster).
+Sirsi Pantheon is built by [Sirsi Technologies](https://sirsi.ai).
 
-| Product | Role |
-|:--------|:-----|
-| **Sirsi Pantheon** | Unified DevOps Intelligence Platform |
-| **Sirsi Nexus** | AI infrastructure platform |
+- 🌐 [sirsi.ai](https://sirsi.ai) — Sirsi Nexus Portal
+- 📖 [Origin Stories](https://sirsimaster.github.io/sirsi-pantheon/case-studies.html) — Why each deity exists
+- 📊 [Build Log](https://sirsimaster.github.io/sirsi-pantheon/build-log.html) — Sprint-by-sprint progress
 
 ---
 
-*🏛️ One install. All deities. Nothing escapes the Weighing.*
+*𓂀 One install. All deities. Nothing escapes the Weighing.*
