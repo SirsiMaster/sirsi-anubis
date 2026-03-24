@@ -211,47 +211,116 @@
       font-size: 1.1rem;
     }
 
-    /* ── Deity Grid ───────────────────────────────────── */
+    /* ── Deity Flip Cards ──────────────────────────────── */
     .deity-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 1.5rem;
     }
-    .deity-card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
+    .flip-card {
+      perspective: 1000px;
+      height: 280px;
+      cursor: pointer;
+    }
+    .flip-card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      transform-style: preserve-3d;
+    }
+    .flip-card:hover .flip-card-inner {
+      transform: rotateY(180deg);
+    }
+    .flip-card-front, .flip-card-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
       border-radius: var(--radius-lg);
-      padding: 1.8rem;
-      transition: all 0.3s ease;
+      border: 1px solid var(--card-border);
       backdrop-filter: blur(10px);
+      overflow: hidden;
     }
-    .deity-card:hover {
-      border-color: var(--color-primary);
-      transform: translateY(-3px);
-      box-shadow: 0 8px 30px rgba(5, 150, 105, 0.15);
+    .flip-card-front {
+      background: var(--card-bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 2rem 1.5rem;
     }
-    .deity-card .deity-icon {
-      font-size: 2.5rem;
-      margin-bottom: 0.8rem;
+    .flip-card-front .deity-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
       display: block;
     }
-    .deity-card h3 {
+    .flip-card-front h3 {
       font-family: var(--font-heading);
-      font-size: 1.35rem;
-      margin-bottom: 0.4rem;
+      font-size: 1.3rem;
       color: var(--color-gold-bright);
-    }
-    .deity-card .deity-cmd {
-      font-family: var(--font-mono);
-      font-size: 0.95rem;
-      color: var(--color-primary-light);
       margin-bottom: 0.6rem;
-      display: block;
     }
-    .deity-card p {
-      font-size: 1.05rem;
+    .flip-card-front .eli5 {
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+      line-height: 1.4;
+      max-width: 280px;
+    }
+    .flip-card-front .flip-hint {
+      position: absolute;
+      bottom: 0.8rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .flip-card-back {
+      background: linear-gradient(135deg, rgba(2, 44, 34, 0.9), rgba(0, 0, 0, 0.85));
+      transform: rotateY(180deg);
+      padding: 1.5rem 1.8rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .flip-card-back .back-cmd {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--color-primary-light);
+      background: rgba(0,0,0,0.4);
+      padding: 0.4rem 0.8rem;
+      border-radius: 4px;
+      display: inline-block;
+      margin-bottom: 0.8rem;
+      align-self: flex-start;
+    }
+    .flip-card-back .back-desc {
+      font-size: 0.95rem;
       color: var(--text-secondary);
       line-height: 1.5;
+      margin-bottom: 1rem;
+    }
+    .flip-card-back .back-impact {
+      display: flex;
+      gap: 1.2rem;
+      flex-wrap: wrap;
+    }
+    .flip-card-back .impact-item {
+      display: flex;
+      flex-direction: column;
+    }
+    .flip-card-back .impact-value {
+      font-family: var(--font-heading);
+      font-size: 1.3rem;
+      color: var(--color-gold-bright);
+    }
+    .flip-card-back .impact-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
 
     /* ── Case Studies ─────────────────────────────────── */
@@ -404,75 +473,230 @@
   <section>
     <div class="container">
       <h2>The Pantheon</h2>
-      <p class="section-sub">Each deity commands its own domain — install one, install all</p>
+      <p class="section-sub">Hover a card to see what it does under the hood</p>
 
       <div class="deity-grid">
-        <div class="deity-card">
-          <span class="deity-icon">𓂀</span>
-          <h3>Anubis — Judge of the Dead</h3>
-          <span class="deity-cmd">pantheon weigh · pantheon judge</span>
-          <p>The jackal god who weighs your system's heart. Scans 7 domains and 58+ rules for infrastructure waste — cache directories, orphaned build artifacts, stale model weights. Then renders judgment: purge what's dead.</p>
+
+        <!-- Anubis -->
+        <div class="flip-card">
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <span class="deity-icon">𓂀</span>
+              <h3>Anubis</h3>
+              <p class="eli5">Finds junk on your computer that cleaning apps miss.</p>
+              <span class="flip-hint">hover to flip</span>
+            </div>
+            <div class="flip-card-back">
+              <span class="back-cmd">$ pantheon weigh · $ pantheon judge</span>
+              <p class="back-desc">Scans 7 domains (caches, Docker, Homebrew, Python, Node, Go, AI models) with 58+ rules. Shows you exactly what's wasting space and safely deletes it.</p>
+              <div class="back-impact">
+                <div class="impact-item"><span class="impact-value">47 GB</span><span class="impact-label">Found on first scan</span></div>
+                <div class="impact-item"><span class="impact-value">58+</span><span class="impact-label">Scan rules</span></div>
+                <div class="impact-item"><span class="impact-value">4</span><span class="impact-label">Profiles</span></div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="deity-card">
-          <span class="deity-icon">𓂓</span>
-          <h3>Ka — Spirit of the Dead</h3>
-          <span class="deity-cmd">pantheon ka</span>
-          <p>The life force that persists after death. Ka hunts ghost apps — the spirits of uninstalled software that linger as .plist files, Launch Services phantoms, and orphaned cache directories. Sub-second parallel scan.</p>
+
+        <!-- Ka -->
+        <div class="flip-card">
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <span class="deity-icon">𓂓</span>
+              <h3>Ka</h3>
+              <p class="eli5">Detects apps you deleted that are still secretly running.</p>
+              <span class="flip-hint">hover to flip</span>
+            </div>
+            <div class="flip-card-back">
+              <span class="back-cmd">$ pantheon ka</span>
+              <p class="back-desc">Finds "ghost apps" — uninstalled software that left behind startup files, system registrations, and cache folders. Scans Launch Services in parallel for sub-second results.</p>
+              <div class="back-impact">
+                <div class="impact-item"><span class="impact-value">&lt; 1s</span><span class="impact-label">Full scan time</span></div>
+                <div class="impact-item"><span class="impact-value">8.5s → 1s</span><span class="impact-label">Before/after</span></div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="deity-card">
-          <span class="deity-icon">𓉡</span>
-          <h3>Hathor — Goddess of Reflection</h3>
-          <span class="deity-cmd">pantheon mirror</span>
-          <p>The mirror goddess finds your duplicates. Three-phase matching: size grouping → partial hash (first+last 4KB) → full SHA-256. Smart keep/delete recommendations with protected paths. Web UI included.</p>
+
+        <!-- Hathor -->
+        <div class="flip-card">
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <span class="deity-icon">𓉡</span>
+              <h3>Hathor</h3>
+              <p class="eli5">Finds duplicate files eating your storage.</p>
+              <span class="flip-hint">hover to flip</span>
+            </div>
+            <div class="flip-card-back">
+              <span class="back-cmd">$ pantheon mirror</span>
+              <p class="back-desc">Three-phase dedup: groups by size → partial hash (first+last 4KB) → full SHA-256. Recommends which copy to keep. Includes a web UI for review.</p>
+              <div class="back-impact">
+                <div class="impact-item"><span class="impact-value">3-phase</span><span class="impact-label">Matching algo</span></div>
+                <div class="impact-item"><span class="impact-value">Web UI</span><span class="impact-label">Visual review</span></div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="deity-card">
-          <span class="deity-icon">𓁵</span>
-          <h3>Sekhmet — The Warrior Guardian</h3>
-          <span class="deity-cmd">pantheon guard</span>
-          <p>Ra's lioness enforcer and destroyer of threats. Sekhmet audits memory pressure, classifies processes across 5 types, and surgically terminates zombie and orphan processes consuming your resources.</p>
+
+        <!-- Sekhmet -->
+        <div class="flip-card">
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <span class="deity-icon">𓁵</span>
+              <h3>Sekhmet</h3>
+              <p class="eli5">Kills runaway processes that freeze your machine.</p>
+              <span class="flip-hint">hover to flip</span>
+            </div>
+            <div class="flip-card-back">
+              <span class="back-cmd">$ pantheon guard</span>
+              <p class="back-desc">Audits RAM and CPU pressure. Classifies every process as system, user, zombie, orphan, or hog. Alerts when your IDE is about to stall and offers to intervene.</p>
+              <div class="back-impact">
+                <div class="impact-item"><span class="impact-value">264%</span><span class="impact-label">CPU caught</span></div>
+                <div class="impact-item"><span class="impact-value">17 min</span><span class="impact-label">Freeze prevented</span></div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="deity-card">
-          <span class="deity-icon">𓆄</span>
-          <h3>Ma'at — Truth and Order</h3>
-          <span class="deity-cmd">pantheon maat · pantheon scales</span>
-          <p>The goddess of cosmic order wields her feather and her scales. Quality governance with coverage enforcement, canon linkage verification, and policy-as-code. The Feather Weight score gamifies truth.</p>
+
+        <!-- Ma'at -->
+        <div class="flip-card">
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <span class="deity-icon">𓆄</span>
+              <h3>Ma'at</h3>
+              <p class="eli5">Grades your code quality and enforces team standards.</p>
+              <span class="flip-hint">hover to flip</span>
+            </div>
+            <div class="flip-card-back">
+              <span class="back-cmd">$ pantheon maat · $ pantheon scales</span>
+              <p class="back-desc">Runs test coverage, lint checks, and commit traceability. Produces a "Feather Weight" score out of 100. Scales enforces org-wide policies as YAML rules.</p>
+              <div class="back-impact">
+                <div class="impact-item"><span class="impact-value">88/100</span><span class="impact-label">Current score</span></div>
+                <div class="impact-item"><span class="impact-value">3,667×</span><span class="impact-label">Speed boost</span></div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="deity-card">
-          <span class="deity-icon">𓁹</span>
-          <h3>Horus — The All-Seeing Eye</h3>
-          <span class="deity-cmd">pantheon sight</span>
-          <p>The redeemer who restores what can be saved. Horus heals Spotlight and Launch Services, fixing phantom registrations and ghost entries. His shared filesystem index lets every deity see everything — walk once, query forever.</p>
+
+        <!-- Horus -->
+        <div class="flip-card">
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <span class="deity-icon">𓁹</span>
+              <h3>Horus</h3>
+              <p class="eli5">Fixes broken search results and indexes your entire filesystem.</p>
+              <span class="flip-hint">hover to flip</span>
+            </div>
+            <div class="flip-card-back">
+              <span class="back-cmd">$ pantheon sight</span>
+              <p class="back-desc">Heals macOS Spotlight and Launch Services. Builds a shared filesystem index that every other deity uses — walk the disk once, all modules query it instantly.</p>
+              <div class="back-impact">
+                <div class="impact-item"><span class="impact-value">15.6s → 833ms</span><span class="impact-label">Index time</span></div>
+                <div class="impact-item"><span class="impact-value">19×</span><span class="impact-label">Speedup</span></div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="deity-card">
-          <span class="deity-icon">𓆣</span>
-          <h3>Khepri — Scarab of Renewal</h3>
-          <span class="deity-cmd">pantheon scarab</span>
-          <p>The dawn beetle who transforms and renews. Khepri discovers and audits hosts across your network — Docker container inspection, ARP scanning, port discovery. Fleet-scale infrastructure hygiene.</p>
+
+        <!-- Khepri -->
+        <div class="flip-card">
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <span class="deity-icon">𓆣</span>
+              <h3>Khepri</h3>
+              <p class="eli5">Scans every device on your network and audits Docker containers.</p>
+              <span class="flip-hint">hover to flip</span>
+            </div>
+            <div class="flip-card-back">
+              <span class="back-cmd">$ pantheon scarab</span>
+              <p class="back-desc">ARP-scans your local network, discovers hosts, inspects Docker containers for waste and vulnerabilities. Fleet-scale version of Anubis.</p>
+              <div class="back-impact">
+                <div class="impact-item"><span class="impact-value">64 GB</span><span class="impact-label">Docker waste found</span></div>
+                <div class="impact-item"><span class="impact-value">LAN-wide</span><span class="impact-label">Scan scope</span></div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="deity-card">
-          <span class="deity-icon">𓇼</span>
-          <h3>Seba — The Star Map</h3>
-          <span class="deity-cmd">pantheon seba</span>
-          <p>The Egyptian word for "star." Seba visualizes your infrastructure as an interactive network graph — mapping the constellation of services, hosts, and dependencies across your environment.</p>
+
+        <!-- Seba -->
+        <div class="flip-card">
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <span class="deity-icon">𓇼</span>
+              <h3>Seba</h3>
+              <p class="eli5">Draws a visual map of your infrastructure.</p>
+              <span class="flip-hint">hover to flip</span>
+            </div>
+            <div class="flip-card-back">
+              <span class="back-cmd">$ pantheon seba</span>
+              <p class="back-desc">Generates an interactive network topology graph. See how services, hosts, and containers connect to each other at a glance.</p>
+              <div class="back-impact">
+                <div class="impact-item"><span class="impact-value">Interactive</span><span class="impact-label">Graph view</span></div>
+                <div class="impact-item"><span class="impact-value">Real-time</span><span class="impact-label">Topology</span></div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="deity-card">
-          <span class="deity-icon">𓁟</span>
-          <h3>Thoth — God of Knowledge</h3>
-          <span class="deity-cmd">pantheon mcp · pantheon install-brain</span>
-          <p>The ibis-headed scribe who records all things. Persistent AI memory with 98% context reduction. Neural file classification via the Brain module. MCP server for Claude, Cursor, and Windsurf.</p>
+
+        <!-- Thoth -->
+        <div class="flip-card">
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <span class="deity-icon">𓁟</span>
+              <h3>Thoth</h3>
+              <p class="eli5">Gives your AI coding assistant a permanent memory.</p>
+              <span class="flip-hint">hover to flip</span>
+            </div>
+            <div class="flip-card-back">
+              <span class="back-cmd">$ pantheon mcp · $ pantheon install-brain</span>
+              <p class="back-desc">Three-layer memory (YAML + journal + artifacts) so AI agents never re-read your codebase. Neural file classifier. MCP server for Claude, Cursor, and Windsurf.</p>
+              <div class="back-impact">
+                <div class="impact-item"><span class="impact-value">98%</span><span class="impact-label">Less re-reading</span></div>
+                <div class="impact-item"><span class="impact-value">50×</span><span class="impact-label">Cost reduction</span></div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="deity-card">
-          <span class="deity-icon">𓁶</span>
-          <h3>Hapi — God of the Flood</h3>
-          <span class="deity-cmd">pantheon hapi</span>
-          <p>The Nile god who controls the flow of abundance. Hapi detects hardware resources — GPUs, Neural Engines, VRAM — and optimizes resource allocation so nothing runs dry.</p>
+
+        <!-- Hapi -->
+        <div class="flip-card">
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <span class="deity-icon">𓁶</span>
+              <h3>Hapi</h3>
+              <p class="eli5">Detects your GPU, Neural Engine, and available hardware.</p>
+              <span class="flip-hint">hover to flip</span>
+            </div>
+            <div class="flip-card-back">
+              <span class="back-cmd">$ pantheon hapi</span>
+              <p class="back-desc">Hardware resource detection — finds GPUs, VRAM, Neural Engines, CPU cores. Routes computation to the fastest available accelerator so nothing sits idle.</p>
+              <div class="back-impact">
+                <div class="impact-item"><span class="impact-value">4 vendors</span><span class="impact-label">Apple · NVIDIA · AMD · Intel</span></div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="deity-card">
-          <span class="deity-icon">☀️</span>
-          <h3>Ra — The Supreme Overseer</h3>
-          <span class="deity-cmd">planned</span>
-          <p>The sun god who rules all deities. Ra is the autonomous hypervisor — orchestrating every deity, monitoring system health, and making autonomous decisions about when to scan, judge, guard, and heal.</p>
+
+        <!-- Ra -->
+        <div class="flip-card">
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <span class="deity-icon">☀️</span>
+              <h3>Ra</h3>
+              <p class="eli5">The boss. Runs all deities automatically.</p>
+              <span class="flip-hint">coming soon</span>
+            </div>
+            <div class="flip-card-back">
+              <span class="back-cmd">planned</span>
+              <p class="back-desc">Autonomous hypervisor that monitors system health and decides when to scan, guard, clean, and heal — without you asking. The orchestrator of the entire Pantheon.</p>
+              <div class="back-impact">
+                <div class="impact-item"><span class="impact-value">Autonomous</span><span class="impact-label">Decision engine</span></div>
+                <div class="impact-item"><span class="impact-value">11 deities</span><span class="impact-label">Orchestrated</span></div>
+              </div>
+            </div>
+          </div>
         </div>
+
       </div>
     </div>
   </section>
