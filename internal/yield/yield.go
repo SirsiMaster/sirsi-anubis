@@ -37,12 +37,22 @@ const (
 	VerdictYield   = "yield"   // Load ratio > 0.85 — defer heavy operations
 )
 
+// LoadProvider reads load averages from the system.
+// Inject a custom provider for testing.
+type LoadProvider func() (load1, load5 float64, err error)
+
 // Check reads the current system load and returns a recommendation.
 // This is lightweight (single syscall) and safe to run at any time.
 func Check() (*SystemLoad, error) {
+	return CheckWith(getLoadAverage)
+}
+
+// CheckWith reads system load using the provided load source.
+// Use this for testing with synthetic load values.
+func CheckWith(provider LoadProvider) (*SystemLoad, error) {
 	cpus := runtime.NumCPU()
 
-	load1, load5, err := getLoadAverage()
+	load1, load5, err := provider()
 	if err != nil {
 		return nil, fmt.Errorf("load average: %w", err)
 	}
@@ -93,7 +103,12 @@ func ShouldYield() bool {
 // or yield levels. Returns true if the command should abort (yield level).
 // The --force flag overrides yield.
 func WarnIfHeavy(commandName string, force bool) bool {
-	load, err := Check()
+	return WarnIfHeavyWith(commandName, force, getLoadAverage)
+}
+
+// WarnIfHeavyWith is the injectable version of WarnIfHeavy for testing.
+func WarnIfHeavyWith(commandName string, force bool, provider LoadProvider) bool {
+	load, err := CheckWith(provider)
 	if err != nil {
 		return false
 	}
