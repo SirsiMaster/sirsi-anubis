@@ -1,6 +1,6 @@
-# Pantheon Session 16 — Continuation Prompt
+# Pantheon Session 17 — Continuation Prompt
 
-Session 16 starts from `docs/CONTINUATION-PROMPT.md`
+Session 17 starts from `docs/CONTINUATION-PROMPT.md`
 
 ## System State
 
@@ -8,7 +8,7 @@ Session 16 starts from `docs/CONTINUATION-PROMPT.md`
 - **B11 COMPLETE**: Full multithreading + ANE detection across ALL deities
 - **B10 COMPLETE**: Pre-push diff detection fixed (uses remote_sha from stdin)
 - **Accelerator layer COMPLETE**: 5 backends (ANE, Metal, CUDA, ROCm, CPU)
-- **All coverage targets met**: Ka 93%, brain 94.6%, scarab 95.9%, guard 86.8%
+- **Antigravity IPC COMPLETE**: Guard watchdog → MCP bridge with AlertRing buffer
 
 ## Benchmark Ledger (cumulative)
 
@@ -23,79 +23,63 @@ Session 15:      12 ms      833 ms   1,080 ms     ~2,000 ms
 Total gain:  4,583×       18.7×       7.8×         ~32×
 ```
 
-## Session 15 Deliveries
+## Coverage Ledger (verified Session 16)
 
-### B11: Full Multithreading (MANDATORY — ✅ DONE)
-Every deity and module now uses `runtime.LockOSThread()` for true multi-core:
-- Ma'at Weigh() — 3 assessors × 3 OS threads
-- Jackal Engine.Scan() — N rules × NumCPU threads  
-- Guard Audit() — 2 probes × 2 threads
-- Scarab AuditContainers() — 3 Docker queries × 3 threads
-- Horus buildIndex() — N roots × GOMAXPROCS threads
-- Hapi detectDarwinHardware() — 4 probes × 4 threads
-- Ka Scan() — lsregister + filesystem on 2 threads
-- Platform DetectCompute() — 7 probes × 7 threads
-- Watchdog run() — 1 dedicated pinned thread
-- pingSweep — 50-slot semaphore (already concurrent)
-
-### B10: Pre-push Gate Fix (MANDATORY — ✅ DONE)
-Pre-push hook now uses `remote_sha` from Git stdin (the actual remote state)
-instead of `@{push}` which could resolve to HEAD after tracking updates.
-
-### Accelerator Abstraction Layer (Phase 2 — ✅ Infrastructure DONE)
-- `internal/hapi/accelerator.go`: Accelerator interface + 5 backends
-- `internal/platform/compute.go`: CPU topology, ANE, GPU, memory BW
-- `pantheon hapi` CLI shows routing table + accelerator capabilities
-- **Not yet done**: CoreML bridge (CGo), Metal compute shaders, CUDA kernels
-
-### Coverage Sprint (from previous sessions — verified still passing)
 | Module | Coverage |
 |--------|----------|
 | scarab | 95.9% |
 | brain | 94.6% |
 | ka | 93.0% |
-| guard | 86.8% |
+| horus | 92.1% |
+| seba | 90.0% |
+| guard | 89.0% |
+| mcp | 85.6% |
 | maat | 71.3% |
 
-### Continuation Prompt Priorities — Status
-| # | Task | Status |
-|---|------|--------|
-| Priority 1 | Updater version comparison | ✅ Already correct (verified) |
-| Priority 2 | Ka coverage → 50% | ✅ Already at 93.0% |
-| Priority 3 | Ma'at coverage discovery | ✅ Already fixed (cache fallback) |
-| Priority 4 | Canon linkage | ⚠️ Historical commits (interactive rebase risk) |
-| B10 | Pre-push diff detection | ✅ Fixed (remote_sha from stdin) |
-| B11 | Full concurrency + ANE | ✅ Complete |
+## Session 16 Deliveries
+
+### Antigravity IPC Bridge (✅ DONE)
+- `guard/antigravity.go`: Thread-safe AlertRing buffer (64-slot, O(1) push/read)
+- `AntigravityBridge`: connects Sekhmet watchdog → MCP consumers
+- Severity classification: warning (<150% CPU) / critical (≥150%)
+- `mcp/resources.go`: registered `anubis://watchdog-alerts` resource
+- `SetWatchdogBridge()` / `GetWatchdogBridge()` global bridge accessor
+- Full test suite: 10 tests, ring buffer + lifecycle + JSON round-trip
+
+### Horus Coverage Sprint (✅ DONE) — 61.6% → 92.1%
+- Every 0% function now at 100%: DirSize, DirCount, Glob, EntriesUnder,
+  FindDirsNamed, Summary, DefaultCachePath, DefaultRoots, loadJSONManifest
+- Edge cases: JSON fallback, expired cache rebuild, SaveManifest/LoadManifest errors
+
+### Seba MVP Tests (✅ DONE) — 0% → 90.0%
+- First test suite: NewGraph, AddNode, AddEdge, ToJSON, RenderHTML
+- Full pipeline integration test (10 nodes, 10 edges, HTML render)
 
 ## Known Issues
 
-1. **Canon linkage**: 2 historical commits (`15e0a89`, `5096a91`) lack `Refs:` footers
-   - Interactive rebase on pushed commits is destructive
-   - All new commits have proper refs
-2. **CoreML bridge**: ANE detection works, but actual CoreML inference requires CGo
-3. **Metal compute**: Hash acceleration stubbed (falls back to CPU sha256)
+1. **Canon linkage**: 2 historical commits lack `Refs:` footers (rebase risk)
+2. **CoreML bridge**: ANE detection works, inference requires CGo
+3. **Metal compute**: Hash acceleration stubbed (CPU fallback)
+4. **Antigravity CLI wiring**: Bridge registered in MCP but not started from CLI
+   - Needs `pantheon guard --watch` → `StartBridge()` → `mcp.SetWatchdogBridge()`
 
 ## Priority Queue (Next Session)
 
-### Priority 1: Antigravity IPC Fix
-- The IDE lockup (Plugin Host at 103.9% CPU) is an IPC starvation issue
-- Pre-existed Pantheon — now that Pantheon can detect it, need to wire MCP
-- Guard watchdog should alert via MCP when Plugin Host > threshold
-- See: `dev_environment_optimizer.md` for full architecture
+### Priority 1: CLI Wiring for Antigravity Bridge
+- Wire `StartBridge()` in `guard --watch` CLI command
+- Call `mcp.SetWatchdogBridge()` when MCP server starts alongside watchdog
+- End-to-end: `pantheon mcp` → watchdog → alerts flow to MCP resource
 
 ### Priority 2: CoreML Bridge for ANE
-- Requires CGo or subprocess call to Swift/Python CoreML runtime
+- Requires CGo or subprocess to Swift/Python CoreML runtime
 - Target: embeddings via all-MiniLM-L6-v2 on ANE (60× speedup)
-- Target: file classification on ANE
 - Alternative: shell out to `mlx_lm` or `coremltools`
 
-### Priority 3: Horus Coverage (33%)
-- Core shared index module has low test coverage
-- Impact: all deities depend on Horus
+### Priority 3: Ma'at Coverage → 80%
+- Currently 71.3%, lowest major module
 
-### Priority 4: Seba MVP
-- Network graph visualization at 0% coverage
-- Needed for fleet scanning story
+### Priority 4: MCP Coverage → 90%
+- Currently 85.6%, new watchdog resource needs tests
 
 ## Architecture References
 
