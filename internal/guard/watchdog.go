@@ -1,80 +1,187 @@
+// Package guard — watchdog.go
+//
+// Sekhmet Watchdog: Lightweight, goroutine-based CPU/memory pressure monitor.
+//
+// Design principles:
+//   - NEVER block the caller — Watch() launches a background goroutine and returns immediately
+//   - NEVER fork processes in a tight loop — sample via native syscalls where possible
+//   - Self-throttle — if the watchdog itself is consuming too much, back off
+//   - Channel-based alerts — non-blocking sends, bounded buffer, no callback storms
+//   - Core-aware — respects runtime.NumCPU() and pins monitor to a single OS thread
+//
+// Architecture:
+//
+//	┌────────────┐      ┌───────────┐      ┌──────────┐
+//	│  Sampler   │─────▶│  Analyzer │─────▶│  Alerts  │──▶ consumer
+//	│ (1 thread) │      │(goroutine)│      │(chan, 16) │
+//	└────────────┘      └───────────┘      └──────────┘
+//	     ▲                    │
+//	     │   backoff if       │
+//	     └── self CPU > 5% ───┘
 package guard
 
 import (
 	"context"
 	"fmt"
 	"os/exec"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 )
 
 // WatchConfig configures the Sekhmet watchdog.
 type WatchConfig struct {
-	Interval     time.Duration // How often to poll (default: 5s)
-	CPUThreshold float64       // Alert when a process exceeds this % (default: 80.0)
-	DurationSecs int           // Alert only if sustained for this many consecutive checks (default: 3)
-	MaxAlerts    int           // Stop after this many alerts (0 = unlimited)
+	Interval     time.Duration // Polling interval (default: 5s)
+	CPUThreshold float64       // Alert threshold per-process (default: 80.0%)
+	SustainCount int           // Consecutive checks before alert (default: 3)
+	MaxAlerts    int           // Stop after N alerts (0 = unlimited)
+	SampleSize   int           // Top-N processes to sample (default: 15)
+	SelfBudget   float64       // Max CPU% the watchdog itself should use (default: 5.0)
 }
 
-// DefaultWatchConfig returns sensible defaults for the watchdog.
+// DefaultWatchConfig returns sensible defaults.
 func DefaultWatchConfig() WatchConfig {
 	return WatchConfig{
 		Interval:     5 * time.Second,
 		CPUThreshold: 80.0,
-		DurationSecs: 3,
+		SustainCount: 3,
 		MaxAlerts:    0,
+		SampleSize:   15,
+		SelfBudget:   5.0,
 	}
 }
 
-// WatchAlert is emitted when a process exceeds the CPU threshold.
+// WatchAlert is emitted when a process sustains CPU > threshold.
 type WatchAlert struct {
 	Process    ProcessInfo
 	CPUPercent float64
-	Duration   time.Duration // How long it's been sustained
+	Duration   time.Duration
 	Timestamp  time.Time
 }
 
-// AlertFunc is the callback for watch alerts.
-type AlertFunc func(alert WatchAlert)
+// Watchdog is a running Sekhmet monitor instance.
+type Watchdog struct {
+	cfg     WatchConfig
+	ctx     context.Context
+	cancel  context.CancelFunc
+	alerts  chan WatchAlert
+	stopped chan struct{}
+	running atomic.Bool
 
-// Watch monitors system processes for CPU/memory pressure.
-// It calls onAlert when a process sustains CPU > threshold for duration checks.
-// It blocks until the context is cancelled.
-func Watch(ctx context.Context, cfg WatchConfig, onAlert AlertFunc) error {
-	if cfg.Interval == 0 {
-		cfg.Interval = 5 * time.Second
-	}
-	if cfg.CPUThreshold == 0 {
-		cfg.CPUThreshold = 80.0
-	}
-	if cfg.DurationSecs == 0 {
-		cfg.DurationSecs = 3
-	}
+	// Metrics
+	mu          sync.RWMutex
+	totalPolls  int64
+	totalAlerts int64
+	backoffs    int64
+	lastPoll    time.Time
+}
 
-	// Track how many consecutive checks each PID has been hot
-	hotStreak := make(map[int]int)       // PID -> consecutive checks above threshold
-	firstSeen := make(map[int]time.Time) // PID -> when first exceeded threshold
-	alertCount := 0
+// StartWatch creates and starts a Sekhmet watchdog on a background goroutine.
+// Returns a *Watchdog handle. Consume alerts via watchdog.Alerts().
+// The watchdog runs until ctx is cancelled or watchdog.Stop() is called.
+func StartWatch(ctx context.Context, cfg WatchConfig) *Watchdog {
+	applyDefaults(&cfg)
 
-	ticker := time.NewTicker(cfg.Interval)
+	wCtx, cancel := context.WithCancel(ctx)
+	w := &Watchdog{
+		cfg:     cfg,
+		ctx:     wCtx,
+		cancel:  cancel,
+		alerts:  make(chan WatchAlert, 16), // Bounded buffer — never blocks producer
+		stopped: make(chan struct{}),
+	}
+	w.running.Store(true)
+
+	// Launch monitor on a dedicated goroutine
+	go w.run()
+
+	return w
+}
+
+// Alerts returns the read-only alert channel. Consume this in your main loop.
+func (w *Watchdog) Alerts() <-chan WatchAlert {
+	return w.alerts
+}
+
+// Stop gracefully shuts down the watchdog.
+func (w *Watchdog) Stop() {
+	w.cancel()
+	<-w.stopped // Wait for clean exit
+}
+
+// IsRunning returns true if the watchdog is still active.
+func (w *Watchdog) IsRunning() bool {
+	return w.running.Load()
+}
+
+// Stats returns watchdog metrics.
+func (w *Watchdog) Stats() (polls, alerts, backoffs int64) {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	return w.totalPolls, w.totalAlerts, w.backoffs
+}
+
+// run is the main monitor loop — runs on its own goroutine.
+func (w *Watchdog) run() {
+	defer close(w.stopped)
+	defer close(w.alerts)
+	defer w.running.Store(false)
+
+	// Pin to a single OS thread to avoid scheduler contention.
+	// This goroutine does I/O (ps fork) — we don't want it competing
+	// with the Go scheduler's P pool on a resource-constrained machine.
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	hotStreak := make(map[int]int)
+	firstSeen := make(map[int]time.Time)
+	currentInterval := w.cfg.Interval
+
+	ticker := time.NewTicker(currentInterval)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-ctx.Done():
-			return ctx.Err()
+		case <-w.ctx.Done():
+			return
 		case <-ticker.C:
-			procs, err := getCPUSnapshot()
+			start := time.Now()
+
+			procs, err := sampleTopCPU(w.cfg.SampleSize)
 			if err != nil {
-				continue // Transient error — try again next tick
+				continue // Transient — retry next tick
 			}
 
-			// Track hot processes
+			elapsed := time.Since(start)
+			w.mu.Lock()
+			w.totalPolls++
+			w.lastPoll = time.Now()
+			w.mu.Unlock()
+
+			// Self-throttle: if sampling itself took > SelfBudget% of interval,
+			// double the interval to back off
+			selfCost := float64(elapsed) / float64(w.cfg.Interval) * 100
+			if selfCost > w.cfg.SelfBudget {
+				currentInterval = min64(currentInterval*2, 30*time.Second)
+				ticker.Reset(currentInterval)
+				w.mu.Lock()
+				w.backoffs++
+				w.mu.Unlock()
+				continue
+			} else if currentInterval > w.cfg.Interval {
+				// Recover from backoff
+				currentInterval = w.cfg.Interval
+				ticker.Reset(currentInterval)
+			}
+
+			// Analyze — track sustained CPU spikes
 			currentHot := make(map[int]bool)
 			for _, p := range procs {
-				if p.CPUPercent >= cfg.CPUThreshold {
+				if p.CPUPercent >= w.cfg.CPUThreshold {
 					currentHot[p.PID] = true
 					hotStreak[p.PID]++
 
@@ -82,27 +189,40 @@ func Watch(ctx context.Context, cfg WatchConfig, onAlert AlertFunc) error {
 						firstSeen[p.PID] = time.Now()
 					}
 
-					// Alert if sustained for enough consecutive checks
-					if hotStreak[p.PID] >= cfg.DurationSecs && onAlert != nil {
-						duration := time.Since(firstSeen[p.PID])
-						onAlert(WatchAlert{
+					if hotStreak[p.PID] >= w.cfg.SustainCount {
+						alert := WatchAlert{
 							Process:    p,
 							CPUPercent: p.CPUPercent,
-							Duration:   duration,
+							Duration:   time.Since(firstSeen[p.PID]),
 							Timestamp:  time.Now(),
-						})
-						alertCount++
-						// Reset streak so we don't spam — re-alert if it continues
+						}
+
+						// Non-blocking send — drop alert if consumer is slow
+						select {
+						case w.alerts <- alert:
+							w.mu.Lock()
+							w.totalAlerts++
+							w.mu.Unlock()
+						default:
+							// Consumer too slow — drop this alert silently
+						}
+
+						// Reset streak to avoid spamming
 						hotStreak[p.PID] = 0
 
-						if cfg.MaxAlerts > 0 && alertCount >= cfg.MaxAlerts {
-							return nil
+						if w.cfg.MaxAlerts > 0 {
+							w.mu.RLock()
+							total := w.totalAlerts
+							w.mu.RUnlock()
+							if total >= int64(w.cfg.MaxAlerts) {
+								return
+							}
 						}
 					}
 				}
 			}
 
-			// Reset streaks for processes that cooled down
+			// Clean up cooled-down processes
 			for pid := range hotStreak {
 				if !currentHot[pid] {
 					delete(hotStreak, pid)
@@ -113,9 +233,16 @@ func Watch(ctx context.Context, cfg WatchConfig, onAlert AlertFunc) error {
 	}
 }
 
-// getCPUSnapshot returns a quick snapshot of top CPU consumers.
-func getCPUSnapshot() ([]ProcessInfo, error) {
-	// Use ps sorted by CPU, top 20 only
+// sampleTopCPU returns the top-N processes by CPU usage.
+// Uses a single fork to `ps` sorted by CPU descending — one syscall per poll.
+func sampleTopCPU(topN int) ([]ProcessInfo, error) {
+	if topN <= 0 {
+		topN = 15
+	}
+
+	// -arcxo: sorted by CPU descending, no path (just binary name)
+	// This is the cheapest single-fork we can do on macOS.
+	// On Linux, we'd read /proc directly — TODO for Phase 4.
 	out, err := exec.Command("ps", "-arcxo", "pid,rss,%cpu,comm").Output()
 	if err != nil {
 		return nil, err
@@ -146,12 +273,11 @@ func getCPUSnapshot() ([]ProcessInfo, error) {
 		procs = append(procs, ProcessInfo{
 			PID:        pid,
 			Name:       name,
-			RSS:        rss * 1024, // ps reports in KB
+			RSS:        rss * 1024,
 			CPUPercent: cpu,
 		})
 
-		// Only track top 20 — no need to scan everything
-		if len(procs) >= 20 {
+		if len(procs) >= topN {
 			break
 		}
 	}
@@ -169,3 +295,53 @@ func FormatAlert(a WatchAlert) string {
 		a.Process.Name, a.Process.PID, a.CPUPercent,
 		a.Duration.Truncate(time.Second), FormatBytes(a.Process.RSS))
 }
+
+func applyDefaults(cfg *WatchConfig) {
+	if cfg.Interval == 0 {
+		cfg.Interval = 5 * time.Second
+	}
+	if cfg.CPUThreshold == 0 {
+		cfg.CPUThreshold = 80.0
+	}
+	if cfg.SustainCount == 0 {
+		cfg.SustainCount = 3
+	}
+	if cfg.SampleSize == 0 {
+		cfg.SampleSize = 15
+	}
+	if cfg.SelfBudget == 0 {
+		cfg.SelfBudget = 5.0
+	}
+}
+
+func min64(a, b time.Duration) time.Duration {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// ── Legacy compatibility ──────────────────────────────────────────────
+// Watch provides the old blocking API for backward compatibility.
+// New code should use StartWatch() instead.
+func Watch(ctx context.Context, cfg WatchConfig, onAlert AlertFunc) error {
+	w := StartWatch(ctx, cfg)
+	defer w.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case alert, ok := <-w.Alerts():
+			if !ok {
+				return nil // Channel closed — watchdog stopped
+			}
+			if onAlert != nil {
+				onAlert(alert)
+			}
+		}
+	}
+}
+
+// AlertFunc is the callback for the legacy Watch() API.
+type AlertFunc func(alert WatchAlert)

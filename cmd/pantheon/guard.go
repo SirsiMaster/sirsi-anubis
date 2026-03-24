@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -214,10 +215,15 @@ func slayTargetStrings() []string {
 
 // runWatchdog starts the Sekhmet watchdog mode.
 func runWatchdog() {
+	numCPU := runtime.NumCPU()
+
 	output.Header("𓁵 Sekhmet — Watchdog Mode")
 	fmt.Println()
-	output.Info(fmt.Sprintf("Monitoring CPU pressure (threshold: %.0f%%)", guardThreshold))
-	output.Info("Polling every 5 seconds. Press Ctrl+C to stop.")
+	output.Info(fmt.Sprintf("CPU threshold:  %.0f%%", guardThreshold))
+	output.Info(fmt.Sprintf("Cores detected: %d", numCPU))
+	output.Info(fmt.Sprintf("Polling:        every 5s, top-15 by CPU"))
+	output.Info(fmt.Sprintf("Architecture:   dedicated goroutine, non-blocking alerts"))
+	output.Info("Press Ctrl+C to stop.")
 	fmt.Println()
 
 	cfg := guard.DefaultWatchConfig()
@@ -236,8 +242,12 @@ func runWatchdog() {
 		cancel()
 	}()
 
+	// Start watchdog on background goroutine
+	w := guard.StartWatch(ctx, cfg)
+
+	// Consume alerts on the main goroutine
 	alertCount := 0
-	err := guard.Watch(ctx, cfg, func(alert guard.WatchAlert) {
+	for alert := range w.Alerts() {
 		alertCount++
 		fmt.Println(guard.FormatAlert(alert))
 
@@ -246,18 +256,17 @@ func runWatchdog() {
 		if group != "" {
 			output.Warn(fmt.Sprintf("  → Fix: pantheon guard --slay %s --dry-run", group))
 		}
-	})
-
-	if err != nil && err != context.Canceled {
-		output.Error(fmt.Sprintf("Watchdog error: %v", err))
-		os.Exit(1)
 	}
 
+	// Report stats
+	polls, alerts, backoffs := w.Stats()
+	fmt.Println()
 	if alertCount == 0 {
 		output.Info("✅ No CPU pressure detected during monitoring.")
 	} else {
 		output.Warn(fmt.Sprintf("Total alerts: %d", alertCount))
 	}
+	output.Info(fmt.Sprintf("Stats: %d polls, %d alerts, %d backoffs", polls, alerts, backoffs))
 }
 
 // classifyForAdvice maps process names to slay targets for actionable suggestions.
