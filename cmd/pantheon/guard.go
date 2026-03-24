@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -17,6 +19,8 @@ var (
 	guardSlayTarget string
 	guardDryRun     bool
 	guardConfirm    bool
+	guardWatch      bool
+	guardThreshold  float64
 )
 
 var guardCmd = &cobra.Command{
@@ -46,9 +50,17 @@ func init() {
 	guardCmd.Flags().StringVar(&guardSlayTarget, "slay", "", "Target group to kill (node, lsp, docker, electron, build, ai, all)")
 	guardCmd.Flags().BoolVar(&guardDryRun, "dry-run", false, "Show what would be killed without actually killing")
 	guardCmd.Flags().BoolVar(&guardConfirm, "confirm", false, "Actually kill processes (required for slay)")
+	guardCmd.Flags().BoolVar(&guardWatch, "watch", false, "Sekhmet watchdog mode — monitor CPU pressure continuously")
+	guardCmd.Flags().Float64Var(&guardThreshold, "threshold", 80.0, "CPU threshold for watchdog alerts (default: 80%%)")
 }
 
 func runGuard(cmd *cobra.Command, args []string) {
+	// Watch mode (Sekhmet watchdog)
+	if guardWatch {
+		runWatchdog()
+		return
+	}
+
 	// Run audit
 	result, err := guard.Audit()
 	if err != nil {
@@ -198,4 +210,73 @@ func slayTargetStrings() []string {
 		strs[i] = string(t)
 	}
 	return strs
+}
+
+// runWatchdog starts the Sekhmet watchdog mode.
+func runWatchdog() {
+	output.Header("𓁵 Sekhmet — Watchdog Mode")
+	fmt.Println()
+	output.Info(fmt.Sprintf("Monitoring CPU pressure (threshold: %.0f%%)", guardThreshold))
+	output.Info("Polling every 5 seconds. Press Ctrl+C to stop.")
+	fmt.Println()
+
+	cfg := guard.DefaultWatchConfig()
+	cfg.CPUThreshold = guardThreshold
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Handle Ctrl+C gracefully
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt)
+	go func() {
+		<-sigCh
+		fmt.Println()
+		output.Info("𓁵 Sekhmet standing down.")
+		cancel()
+	}()
+
+	alertCount := 0
+	err := guard.Watch(ctx, cfg, func(alert guard.WatchAlert) {
+		alertCount++
+		fmt.Println(guard.FormatAlert(alert))
+
+		// Give actionable advice based on process type
+		group := classifyForAdvice(alert.Process.Name)
+		if group != "" {
+			output.Warn(fmt.Sprintf("  → Fix: pantheon guard --slay %s --dry-run", group))
+		}
+	})
+
+	if err != nil && err != context.Canceled {
+		output.Error(fmt.Sprintf("Watchdog error: %v", err))
+		os.Exit(1)
+	}
+
+	if alertCount == 0 {
+		output.Info("✅ No CPU pressure detected during monitoring.")
+	} else {
+		output.Warn(fmt.Sprintf("Total alerts: %d", alertCount))
+	}
+}
+
+// classifyForAdvice maps process names to slay targets for actionable suggestions.
+func classifyForAdvice(name string) string {
+	name = strings.ToLower(name)
+	switch {
+	case strings.Contains(name, "node") || strings.Contains(name, "npm"):
+		return "node"
+	case strings.Contains(name, "gopls") || strings.Contains(name, "language"):
+		return "lsp"
+	case strings.Contains(name, "docker"):
+		return "docker"
+	case strings.Contains(name, "electron") || strings.Contains(name, "plugin host") || strings.Contains(name, "helper"):
+		return "electron"
+	case strings.Contains(name, "cargo") || strings.Contains(name, "gradle") || strings.Contains(name, "webpack"):
+		return "build"
+	case strings.Contains(name, "ollama") || strings.Contains(name, "mlx"):
+		return "ai"
+	default:
+		return ""
+	}
 }
