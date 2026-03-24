@@ -4,9 +4,33 @@ import (
 	"encoding/json"
 	"fmt"
 	"runtime"
+	"sync"
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/brain"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/guard"
 )
+
+// ── Antigravity IPC Bridge (global accessor) ────────────────────────────
+
+var (
+	bridgeMu     sync.RWMutex
+	activeBridge *guard.AntigravityBridge
+)
+
+// SetWatchdogBridge stores a reference to the active Antigravity bridge
+// so MCP resources and tools can query watchdog alerts.
+func SetWatchdogBridge(b *guard.AntigravityBridge) {
+	bridgeMu.Lock()
+	defer bridgeMu.Unlock()
+	activeBridge = b
+}
+
+// GetWatchdogBridge returns the active bridge (may be nil).
+func GetWatchdogBridge() *guard.AntigravityBridge {
+	bridgeMu.RLock()
+	defer bridgeMu.RUnlock()
+	return activeBridge
+}
 
 // registerResources adds all Anubis resources to the MCP server.
 func registerResources(s *Server) {
@@ -30,6 +54,13 @@ func registerResources(s *Server) {
 		Description: "Status of the neural classification brain — installed model, version, and capabilities.",
 		MimeType:    "application/json",
 	}, handleBrainResource)
+
+	s.RegisterResource(Resource{
+		URI:         "anubis://watchdog-alerts",
+		Name:        "Sekhmet Watchdog Alerts",
+		Description: "Live CPU/memory pressure alerts from the Sekhmet watchdog. Shows recent sustained CPU spikes and IDE starvation events.",
+		MimeType:    "application/json",
+	}, handleWatchdogResource)
 }
 
 // handleHealthResource provides system health as a structured JSON resource.
@@ -116,5 +147,35 @@ func handleBrainResource() (*ResourceContent, error) {
 		URI:      "anubis://brain-status",
 		MimeType: "application/json",
 		Text:     string(data),
+	}, nil
+}
+
+// handleWatchdogResource provides live watchdog alert data from the Antigravity bridge.
+func handleWatchdogResource() (*ResourceContent, error) {
+	bridge := GetWatchdogBridge()
+	if bridge == nil {
+		// No bridge active — return dormant status
+		status := map[string]interface{}{
+			"active":        false,
+			"message":       "Sekhmet watchdog not running. Start with 'pantheon guard --watch'.",
+			"recent_alerts": []interface{}{},
+		}
+		data, _ := json.MarshalIndent(status, "", "  ")
+		return &ResourceContent{
+			URI:      "anubis://watchdog-alerts",
+			MimeType: "application/json",
+			Text:     string(data),
+		}, nil
+	}
+
+	statusJSON, err := bridge.StatusJSON()
+	if err != nil {
+		return nil, fmt.Errorf("bridge status: %w", err)
+	}
+
+	return &ResourceContent{
+		URI:      "anubis://watchdog-alerts",
+		MimeType: "application/json",
+		Text:     statusJSON,
 	}, nil
 }
