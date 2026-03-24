@@ -15,7 +15,9 @@ package maat
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -185,26 +187,43 @@ type Assessor interface {
 	Domain() Domain
 }
 
-// Weigh runs all provided assessors and produces a unified report.
+// Weigh runs all provided assessors CONCURRENTLY on dedicated OS threads.
+// Each assessor gets its own goroutine pinned to a separate CPU core via
+// runtime.LockOSThread(). Pipeline, coverage, and canon assessments
+// execute in true parallel across all available cores.
 func Weigh(assessors ...Assessor) (*Report, error) {
+	var mu sync.Mutex
 	var all []Assessment
+	var wg sync.WaitGroup
 
 	for _, assessor := range assessors {
-		results, err := assessor.Assess()
-		if err != nil {
-			// Assessment failure is itself a failing assessment.
-			all = append(all, Assessment{
-				Domain:        assessor.Domain(),
-				Subject:       "assessor",
-				Standard:      "must complete without error",
-				Verdict:       VerdictFail,
-				FeatherWeight: 0,
-				Message:       fmt.Sprintf("assessment failed: %v", err),
-			})
-			continue
-		}
-		all = append(all, results...)
+		wg.Add(1)
+		go func(a Assessor) {
+			defer wg.Done()
+			// Pin to dedicated OS thread for true multithreading.
+			runtime.LockOSThread()
+			defer runtime.UnlockOSThread()
+
+			results, err := a.Assess()
+
+			mu.Lock()
+			defer mu.Unlock()
+
+			if err != nil {
+				all = append(all, Assessment{
+					Domain:        a.Domain(),
+					Subject:       "assessor",
+					Standard:      "must complete without error",
+					Verdict:       VerdictFail,
+					FeatherWeight: 0,
+					Message:       fmt.Sprintf("assessment failed: %v", err),
+				})
+				return
+			}
+			all = append(all, results...)
+		}(assessor)
 	}
 
+	wg.Wait()
 	return NewReport(all), nil
 }

@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // ProcessInfo represents a running process with memory usage.
@@ -94,6 +95,7 @@ var orphanPatterns = map[string]string{
 }
 
 // Audit scans all running processes and groups them by type.
+// Memory info and process list are fetched concurrently on dedicated OS threads.
 func Audit() (*AuditResult, error) {
 	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
 		return nil, fmt.Errorf("guard: unsupported platform %s", runtime.GOOS)
@@ -101,15 +103,32 @@ func Audit() (*AuditResult, error) {
 
 	result := &AuditResult{}
 
-	// Get total/used/free RAM
-	if err := getMemoryInfo(result); err != nil {
-		return nil, fmt.Errorf("guard: memory info: %w", err)
-	}
+	// Run memory and process queries in parallel on dedicated threads.
+	var memErr error
+	var processes []ProcessInfo
+	var procErr error
+	var wg sync.WaitGroup
 
-	// Get process list
-	processes, err := getProcessList()
-	if err != nil {
-		return nil, fmt.Errorf("guard: process list: %w", err)
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+		memErr = getMemoryInfo(result)
+	}()
+	go func() {
+		defer wg.Done()
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+		processes, procErr = getProcessList()
+	}()
+	wg.Wait()
+
+	if memErr != nil {
+		return nil, fmt.Errorf("guard: memory info: %w", memErr)
+	}
+	if procErr != nil {
+		return nil, fmt.Errorf("guard: process list: %w", procErr)
 	}
 
 	// Group processes

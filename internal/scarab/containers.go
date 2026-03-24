@@ -3,7 +3,9 @@ package scarab
 import (
 	"fmt"
 	"os/exec"
+	"runtime"
 	"strings"
+	"sync"
 )
 
 // Injectable command runners for testability (B11 pattern).
@@ -40,6 +42,7 @@ type ContainerAudit struct {
 }
 
 // AuditContainers scans the local Docker environment.
+// Docker PS, Images, and Volumes run concurrently on dedicated OS threads.
 func AuditContainers() (*ContainerAudit, error) {
 	audit := &ContainerAudit{}
 
@@ -49,10 +52,35 @@ func AuditContainers() (*ContainerAudit, error) {
 	}
 	audit.DockerRunning = true
 
-	// List all containers
-	out, err := runDockerPS()
-	if err == nil {
-		for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+	// Run all Docker queries concurrently on dedicated threads.
+	var psOut, imgOut, volOut []byte
+	var psErr, imgErr, volErr error
+	var wg sync.WaitGroup
+
+	wg.Add(3)
+	go func() {
+		defer wg.Done()
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+		psOut, psErr = runDockerPS()
+	}()
+	go func() {
+		defer wg.Done()
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+		imgOut, imgErr = runDockerImages()
+	}()
+	go func() {
+		defer wg.Done()
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+		volOut, volErr = runDockerVols()
+	}()
+	wg.Wait()
+
+	// Process results
+	if psErr == nil {
+		for _, line := range strings.Split(strings.TrimSpace(string(psOut)), "\n") {
 			c := splitContainerLine(line)
 			if c == nil {
 				continue
@@ -66,16 +94,12 @@ func AuditContainers() (*ContainerAudit, error) {
 		}
 	}
 
-	// Count dangling images
-	out, err = runDockerImages()
-	if err == nil {
-		audit.DanglingImages = countNonEmptyLines(strings.TrimSpace(string(out)))
+	if imgErr == nil {
+		audit.DanglingImages = countNonEmptyLines(strings.TrimSpace(string(imgOut)))
 	}
 
-	// Count unused volumes
-	out, err = runDockerVols()
-	if err == nil {
-		audit.UnusedVolumes = countNonEmptyLines(strings.TrimSpace(string(out)))
+	if volErr == nil {
+		audit.UnusedVolumes = countNonEmptyLines(strings.TrimSpace(string(volOut)))
 	}
 
 	return audit, nil

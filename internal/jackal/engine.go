@@ -146,6 +146,9 @@ func (e *Engine) Scan(ctx context.Context, opts ScanOptions) (*ScanResult, error
 		go func(r ScanRule) {
 			defer wg.Done()
 			defer func() { <-sem }() // Release slot
+			// Pin to dedicated OS thread for true multi-core execution.
+			runtime.LockOSThread()
+			defer runtime.UnlockOSThread()
 			findings, err := r.Scan(ctx, opts)
 			ch <- ruleResult{
 				findings: findings,
