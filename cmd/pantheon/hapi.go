@@ -120,6 +120,27 @@ func runHapiGPU() {
 		output.Info("Neural Engine: ❌ Not available")
 	}
 
+	// Accelerator routing
+	fmt.Println()
+	accelProfile := hapi.DetectAccelerators()
+	output.Header("⚡ Compute Routing")
+	fmt.Println()
+	for workload, accel := range accelProfile.Routing {
+		output.Info(fmt.Sprintf("  %-16s → %s", workload, accel))
+	}
+	if accelProfile.MemBandwidth > 0 {
+		output.Info(fmt.Sprintf("  Memory BW:       %d GB/s", accelProfile.MemBandwidth))
+	}
+	if accelProfile.UnifiedMemory {
+		output.Info("  Unified Memory:  ✅ Zero-copy GPU↔CPU")
+	}
+	if accelProfile.HasANE {
+		output.Info(fmt.Sprintf("  ANE Cores:       %d", accelProfile.ANECores))
+	}
+	if accelProfile.HasGPU {
+		output.Info(fmt.Sprintf("  GPU Cores:       %d (%s)", accelProfile.GPUCores, accelProfile.GPUVendor))
+	}
+
 	// Recommendations
 	fmt.Println()
 	switch gpu.Type {
