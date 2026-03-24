@@ -13,6 +13,7 @@ import (
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/guard"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/mcp"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
 )
 
@@ -213,60 +214,72 @@ func slayTargetStrings() []string {
 	return strs
 }
 
-// runWatchdog starts the Sekhmet watchdog mode.
+// runWatchdog starts the Sekhmet watchdog mode with the Antigravity IPC bridge.
+// The bridge connects the watchdog to MCP consumers via a thread-safe AlertRing,
+// so any running MCP server can query live alerts via anubis://watchdog-alerts.
 func runWatchdog() {
 	numCPU := runtime.NumCPU()
 
-	output.Header("𓁵 Sekhmet — Watchdog Mode")
+	output.Header("𓁵 Sekhmet — Watchdog Mode (Antigravity Bridge)")
 	fmt.Println()
 	output.Info(fmt.Sprintf("CPU threshold:  %.0f%%", guardThreshold))
 	output.Info(fmt.Sprintf("Cores detected: %d", numCPU))
-	output.Info(fmt.Sprintf("Polling:        every 5s, top-15 by CPU"))
-	output.Info(fmt.Sprintf("Architecture:   dedicated goroutine, non-blocking alerts"))
+	output.Info(fmt.Sprintf("Polling:        every 3s, sustained-count=2"))
+	output.Info(fmt.Sprintf("Architecture:   Antigravity IPC bridge + AlertRing buffer"))
+	output.Info(fmt.Sprintf("MCP resource:   anubis://watchdog-alerts (live)"))
 	output.Info("Press Ctrl+C to stop.")
 	fmt.Println()
 
-	cfg := guard.DefaultWatchConfig()
-	cfg.CPUThreshold = guardThreshold
+	// Configure the bridge (not just the raw watchdog)
+	cfg := guard.DefaultBridgeConfig()
+	cfg.WatchConfig.CPUThreshold = guardThreshold
+	cfg.OnAlert = func(entry guard.AlertEntry) {
+		// Print alerts to stderr in real-time
+		severity := "⚠️"
+		if entry.Severity == "critical" {
+			severity = "🔴"
+		}
+		fmt.Fprintf(os.Stderr, "  %s  [%s] PID %-6d %-20s  CPU: %.0f%%  RAM: %s  (%s)\n",
+			severity, entry.Severity, entry.PID, entry.ProcessName,
+			entry.CPUPercent, entry.RSSHuman, entry.Duration)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// Handle Ctrl+C gracefully
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, os.Interrupt)
-	go func() {
-		<-sigCh
-		fmt.Println()
-		output.Info("𓁵 Sekhmet standing down.")
-		cancel()
-	}()
-
-	// Start watchdog on background goroutine
-	w := guard.StartWatch(ctx, cfg)
-
-	// Consume alerts on the main goroutine
-	alertCount := 0
-	for alert := range w.Alerts() {
-		alertCount++
-		fmt.Println(guard.FormatAlert(alert))
-
-		// Give actionable advice based on process type
-		group := classifyForAdvice(alert.Process.Name)
+		// Give actionable advice
+		group := classifyForAdvice(entry.ProcessName)
 		if group != "" {
 			output.Warn(fmt.Sprintf("  → Fix: pantheon guard --slay %s --dry-run", group))
 		}
 	}
 
-	// Report stats
-	polls, alerts, backoffs := w.Stats()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Start the full bridge (watchdog + ring buffer + MCP integration)
+	bridge := guard.StartBridge(ctx, cfg)
+
+	// Register with MCP so the watchdog-alerts resource serves live data
+	mcp.SetWatchdogBridge(bridge)
+	output.Success("Antigravity bridge active — MCP consumers can query alerts")
 	fmt.Println()
-	if alertCount == 0 {
-		output.Info("✅ No CPU pressure detected during monitoring.")
-	} else {
-		output.Warn(fmt.Sprintf("Total alerts: %d", alertCount))
-	}
-	output.Info(fmt.Sprintf("Stats: %d polls, %d alerts, %d backoffs", polls, alerts, backoffs))
+
+	// Handle Ctrl+C gracefully
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt)
+	<-sigCh
+
+	fmt.Println()
+	output.Info("𓁵 Sekhmet standing down.")
+
+	// Report final stats from the bridge
+	status := bridge.Status()
+	fmt.Println()
+	output.Info(fmt.Sprintf("Buffered alerts:  %d", status.BufferedCount))
+	output.Info(fmt.Sprintf("Lifetime alerts:  %d", status.LifetimeAlerts))
+	output.Info(fmt.Sprintf("Watchdog polls:   %d", status.WatchdogPolls))
+	output.Info(fmt.Sprintf("Backoffs:         %d", status.WatchdogBackoffs))
+
+	// Clean shutdown
+	bridge.Stop()
+	mcp.SetWatchdogBridge(nil)
 }
 
 // classifyForAdvice maps process names to slay targets for actionable suggestions.
