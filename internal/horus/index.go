@@ -209,6 +209,9 @@ func buildIndex(opts IndexOptions) (*Manifest, error) {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
+			// Pin to dedicated OS thread for true multi-core I/O.
+			runtime.LockOSThread()
+			defer runtime.UnlockOSThread()
 
 			localDirs := make(map[string]bool)
 			localFiles := make([]fileEntry, 0, 10000)

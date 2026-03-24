@@ -17,6 +17,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -185,6 +186,8 @@ func (s *Scanner) Scan(includeSudo bool) ([]Ghost, error) {
 		// Full path: parallel filesystem + lsregister.
 		done := make(chan struct{})
 		go func() {
+			runtime.LockOSThread()
+			defer runtime.UnlockOSThread()
 			lsGhosts = s.scanLaunchServices()
 			close(done)
 		}()

@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // ComputeCapability describes the hardware compute resources available.
@@ -82,69 +83,116 @@ func DetectCompute() *ComputeCapability {
 }
 
 // detectDarwinCompute uses sysctl to probe Apple Silicon topology.
+// All system queries run concurrently on dedicated OS threads.
 func detectDarwinCompute(cc *ComputeCapability) {
-	// CPU model
-	if out, err := exec.Command("sysctl", "-n", "machdep.cpu.brand_string").Output(); err == nil {
-		cc.CPUModel = strings.TrimSpace(string(out))
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+
+	// Helper to run sysctl and parse int result
+	sysctlInt := func(key string, target *int) {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			runtime.LockOSThread()
+			defer runtime.UnlockOSThread()
+			if out, err := exec.Command("sysctl", "-n", key).Output(); err == nil {
+				val, _ := strconv.Atoi(strings.TrimSpace(string(out)))
+				mu.Lock()
+				*target = val
+				mu.Unlock()
+			}
+		}()
 	}
 
-	// Physical cores
-	if out, err := exec.Command("sysctl", "-n", "hw.physicalcpu").Output(); err == nil {
-		cc.PhysicalCores, _ = strconv.Atoi(strings.TrimSpace(string(out)))
-	}
-
-	// P-cores and E-cores (Apple Silicon specific)
-	if out, err := exec.Command("sysctl", "-n", "hw.perflevel0.logicalcpu").Output(); err == nil {
-		cc.PCores, _ = strconv.Atoi(strings.TrimSpace(string(out)))
-	}
-	if out, err := exec.Command("sysctl", "-n", "hw.perflevel1.logicalcpu").Output(); err == nil {
-		cc.ECores, _ = strconv.Atoi(strings.TrimSpace(string(out)))
-	}
-
-	// Total RAM
-	if out, err := exec.Command("sysctl", "-n", "hw.memsize").Output(); err == nil {
-		cc.TotalRAMBytes, _ = strconv.ParseInt(strings.TrimSpace(string(out)), 10, 64)
-	}
-
-	// ANE detection — Apple Silicon M1+ has Neural Engine
-	// Detected via IORegistry: AppleANE device
-	if out, err := exec.Command("ioreg", "-l", "-w0").Output(); err == nil {
-		outStr := string(out)
-		if strings.Contains(outStr, "appleane") || strings.Contains(strings.ToLower(outStr), "ane") {
-			cc.ANEAvailable = true
-			cc.ANECores = 16 // All M1/M2/M3/M4 have 16 ANE cores
+	// CPU model (string)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+		if out, err := exec.Command("sysctl", "-n", "machdep.cpu.brand_string").Output(); err == nil {
+			mu.Lock()
+			cc.CPUModel = strings.TrimSpace(string(out))
+			mu.Unlock()
 		}
-	}
+	}()
 
-	// If ioreg takes too long, also check CPU model
+	// Total RAM (int64)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+		if out, err := exec.Command("sysctl", "-n", "hw.memsize").Output(); err == nil {
+			val, _ := strconv.ParseInt(strings.TrimSpace(string(out)), 10, 64)
+			mu.Lock()
+			cc.TotalRAMBytes = val
+			mu.Unlock()
+		}
+	}()
+
+	// Integer sysctl probes — all concurrent
+	sysctlInt("hw.physicalcpu", &cc.PhysicalCores)
+	sysctlInt("hw.perflevel0.logicalcpu", &cc.PCores)
+	sysctlInt("hw.perflevel1.logicalcpu", &cc.ECores)
+
+	// ANE + GPU detection (heavier commands)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+		if out, err := exec.Command("ioreg", "-l", "-w0").Output(); err == nil {
+			outStr := string(out)
+			if strings.Contains(outStr, "appleane") || strings.Contains(strings.ToLower(outStr), "ane") {
+				mu.Lock()
+				cc.ANEAvailable = true
+				cc.ANECores = 16
+				mu.Unlock()
+			}
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+		if out, err := exec.Command("system_profiler", "SPDisplaysDataType", "-detailLevel", "mini").Output(); err == nil {
+			outStr := string(out)
+			for _, line := range strings.Split(outStr, "\n") {
+				line = strings.TrimSpace(line)
+				if strings.HasPrefix(line, "Total Number of Cores:") {
+					parts := strings.SplitN(line, ":", 2)
+					if len(parts) == 2 {
+						val, _ := strconv.Atoi(strings.TrimSpace(parts[1]))
+						mu.Lock()
+						cc.GPUCores = val
+						mu.Unlock()
+					}
+				}
+				if strings.HasPrefix(line, "Chipset Model:") {
+					parts := strings.SplitN(line, ":", 2)
+					if len(parts) == 2 {
+						mu.Lock()
+						cc.GPUModel = strings.TrimSpace(parts[1])
+						mu.Unlock()
+					}
+				}
+			}
+		}
+	}()
+
+	wg.Wait()
+
+	// Post-processing (depends on CPU model being set)
 	if !cc.ANEAvailable && strings.Contains(cc.CPUModel, "Apple") {
 		cc.ANEAvailable = true
 		cc.ANECores = 16
 	}
 
-	// Unified memory (all Apple Silicon)
 	if strings.Contains(cc.CPUModel, "Apple") {
 		cc.UnifiedMemory = true
-	}
-
-	// GPU cores — detect from system_profiler
-	if out, err := exec.Command("system_profiler", "SPDisplaysDataType", "-detailLevel", "mini").Output(); err == nil {
-		outStr := string(out)
-		for _, line := range strings.Split(outStr, "\n") {
-			line = strings.TrimSpace(line)
-			if strings.HasPrefix(line, "Total Number of Cores:") {
-				parts := strings.SplitN(line, ":", 2)
-				if len(parts) == 2 {
-					cc.GPUCores, _ = strconv.Atoi(strings.TrimSpace(parts[1]))
-				}
-			}
-			if strings.HasPrefix(line, "Chipset Model:") {
-				parts := strings.SplitN(line, ":", 2)
-				if len(parts) == 2 {
-					cc.GPUModel = strings.TrimSpace(parts[1])
-				}
-			}
-		}
 	}
 
 	// Memory bandwidth estimation based on chip

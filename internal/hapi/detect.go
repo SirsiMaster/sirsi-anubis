@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // GPUType identifies the GPU/accelerator vendor.
@@ -72,29 +73,54 @@ func DetectHardware() (*HardwareProfile, error) {
 }
 
 // detectDarwinHardware detects macOS hardware (Apple Silicon, Metal, Neural Engine).
+// All system queries run concurrently on dedicated OS threads.
 func detectDarwinHardware(p *HardwareProfile) {
+	var wg sync.WaitGroup
+
+	wg.Add(4)
 	// CPU model
-	if out, err := exec.Command("sysctl", "-n", "machdep.cpu.brand_string").Output(); err == nil {
-		p.CPUModel = strings.TrimSpace(string(out))
-	}
+	go func() {
+		defer wg.Done()
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+		if out, err := exec.Command("sysctl", "-n", "machdep.cpu.brand_string").Output(); err == nil {
+			p.CPUModel = strings.TrimSpace(string(out))
+		}
+	}()
 
 	// Total RAM
-	if out, err := exec.Command("sysctl", "-n", "hw.memsize").Output(); err == nil {
-		p.TotalRAM, _ = strconv.ParseInt(strings.TrimSpace(string(out)), 10, 64)
-	}
+	go func() {
+		defer wg.Done()
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+		if out, err := exec.Command("sysctl", "-n", "hw.memsize").Output(); err == nil {
+			p.TotalRAM, _ = strconv.ParseInt(strings.TrimSpace(string(out)), 10, 64)
+		}
+	}()
 
 	// Kernel
-	if out, err := exec.Command("uname", "-r").Output(); err == nil {
-		p.Kernel = strings.TrimSpace(string(out))
-	}
+	go func() {
+		defer wg.Done()
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+		if out, err := exec.Command("uname", "-r").Output(); err == nil {
+			p.Kernel = strings.TrimSpace(string(out))
+		}
+	}()
 
 	// GPU via system_profiler
-	if out, err := exec.Command("system_profiler", "SPDisplaysDataType").Output(); err == nil {
-		gpuInfo := parseDisplayProfile(string(out))
-		p.GPU = gpuInfo
-	}
+	go func() {
+		defer wg.Done()
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+		if out, err := exec.Command("system_profiler", "SPDisplaysDataType").Output(); err == nil {
+			p.GPU = parseDisplayProfile(string(out))
+		}
+	}()
 
-	// Neural Engine detection (Apple Silicon M-series)
+	wg.Wait()
+
+	// Neural Engine detection (Apple Silicon M-series) — depends on CPU model
 	if strings.Contains(p.CPUModel, "Apple M") {
 		p.NeuralEngine = true
 	}
