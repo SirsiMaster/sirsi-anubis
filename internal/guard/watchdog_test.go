@@ -2,6 +2,7 @@ package guard
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -201,5 +202,202 @@ func TestMin64(t *testing.T) {
 	}
 	if min64(30*time.Second, 10*time.Second) != 10*time.Second {
 		t.Error("min64 should return smaller")
+	}
+}
+
+// === MOCKED WATCHDOG TESTS ===
+
+func saveAndRestoreSampler(t *testing.T) {
+	t.Helper()
+	orig := sampleTopCPUFn
+	t.Cleanup(func() { sampleTopCPUFn = orig })
+}
+
+func TestWatchdog_SustainedAlert_Mocked(t *testing.T) {
+	saveAndRestoreSampler(t)
+	sampleTopCPUFn = func(n int) ([]ProcessInfo, error) {
+		return []ProcessInfo{
+			{PID: 999, Name: "hot-proc", CPUPercent: 95.0, RSS: 1024 * 1024},
+		}, nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+
+	cfg := WatchConfig{
+		Interval:     10 * time.Millisecond,
+		CPUThreshold: 90.0,
+		SustainCount: 2,
+		MaxAlerts:    1,
+		SampleSize:   5,
+		SelfBudget:   50.0, // High budget so we don't backoff
+	}
+
+	w := StartWatch(ctx, cfg)
+	alert := <-w.Alerts()
+
+	if alert.Process.Name != "hot-proc" {
+		t.Errorf("Name = %q, want hot-proc", alert.Process.Name)
+	}
+	if alert.CPUPercent != 95.0 {
+		t.Errorf("CPU = %.1f, want 95.0", alert.CPUPercent)
+	}
+
+	// MaxAlerts=1 should stop the watchdog
+	<-w.stopped
+	if w.IsRunning() {
+		t.Error("should stop after MaxAlerts")
+	}
+}
+
+func TestWatchdog_Backoff_Mocked(t *testing.T) {
+	saveAndRestoreSampler(t)
+	// Simulate slow sampling by sleeping
+	sampleTopCPUFn = func(n int) ([]ProcessInfo, error) {
+		time.Sleep(20 * time.Millisecond) // Slow sampler
+		return []ProcessInfo{}, nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+
+	cfg := WatchConfig{
+		Interval:     10 * time.Millisecond,
+		CPUThreshold: 99.0,
+		SustainCount: 1,
+		SampleSize:   5,
+		SelfBudget:   1.0, // Very tight — triggers backoff immediately
+	}
+
+	w := StartWatch(ctx, cfg)
+	<-ctx.Done()
+	w.Stop()
+
+	_, _, backoffs := w.Stats()
+	if backoffs == 0 {
+		t.Error("should have backed off due to slow sampling")
+	}
+}
+
+func TestWatchdog_SamplerError_Mocked(t *testing.T) {
+	saveAndRestoreSampler(t)
+	calls := 0
+	sampleTopCPUFn = func(n int) ([]ProcessInfo, error) {
+		calls++
+		if calls <= 2 {
+			return nil, fmt.Errorf("transient error")
+		}
+		return []ProcessInfo{}, nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+
+	cfg := WatchConfig{
+		Interval:     10 * time.Millisecond,
+		CPUThreshold: 99.0,
+		SustainCount: 1,
+		SampleSize:   5,
+		SelfBudget:   50.0,
+	}
+
+	w := StartWatch(ctx, cfg)
+	<-ctx.Done()
+	w.Stop()
+
+	polls, _, _ := w.Stats()
+	if polls == 0 {
+		t.Error("should have recovered from transient errors")
+	}
+}
+
+func TestWatch_WithAlerts_Mocked(t *testing.T) {
+	saveAndRestoreSampler(t)
+	sampleTopCPUFn = func(n int) ([]ProcessInfo, error) {
+		return []ProcessInfo{
+			{PID: 42, Name: "alert-proc", CPUPercent: 99.0, RSS: 1024},
+		}, nil
+	}
+
+	cfg := WatchConfig{
+		Interval:     10 * time.Millisecond,
+		CPUThreshold: 50.0,
+		SustainCount: 1,
+		MaxAlerts:    1,
+		SampleSize:   5,
+		SelfBudget:   50.0,
+	}
+
+	var received []WatchAlert
+	err := Watch(context.Background(), cfg, func(a WatchAlert) {
+		received = append(received, a)
+	})
+	// Watch returns nil when the channel closes (MaxAlerts reached)
+	if err != nil {
+		t.Logf("Watch returned: %v (expected nil or context error)", err)
+	}
+	if len(received) == 0 {
+		t.Error("should have received at least one alert")
+	}
+}
+
+func TestWatch_NilCallback_Mocked(t *testing.T) {
+	saveAndRestoreSampler(t)
+	sampleTopCPUFn = func(n int) ([]ProcessInfo, error) {
+		return []ProcessInfo{
+			{PID: 42, Name: "test", CPUPercent: 99.0, RSS: 1024},
+		}, nil
+	}
+
+	cfg := WatchConfig{
+		Interval:     10 * time.Millisecond,
+		CPUThreshold: 50.0,
+		SustainCount: 1,
+		MaxAlerts:    1,
+		SampleSize:   5,
+		SelfBudget:   50.0,
+	}
+
+	// nil callback — should not panic
+	err := Watch(context.Background(), cfg, nil)
+	if err != nil {
+		t.Logf("Watch returned: %v", err)
+	}
+}
+
+func TestWatchdog_CoolDown_Mocked(t *testing.T) {
+	saveAndRestoreSampler(t)
+	calls := 0
+	sampleTopCPUFn = func(n int) ([]ProcessInfo, error) {
+		calls++
+		// Hot for first 3 calls, then cool down
+		if calls <= 3 {
+			return []ProcessInfo{
+				{PID: 77, Name: "cooling", CPUPercent: 95.0, RSS: 1024},
+			}, nil
+		}
+		return []ProcessInfo{
+			{PID: 77, Name: "cooling", CPUPercent: 1.0, RSS: 1024}, // Below threshold
+		}, nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+
+	cfg := WatchConfig{
+		Interval:     10 * time.Millisecond,
+		CPUThreshold: 90.0,
+		SustainCount: 5, // Won't reach sustain count before cooldown
+		SampleSize:   5,
+		SelfBudget:   50.0,
+	}
+
+	w := StartWatch(ctx, cfg)
+	<-ctx.Done()
+	w.Stop()
+
+	_, alerts, _ := w.Stats()
+	if alerts != 0 {
+		t.Errorf("should have 0 alerts (cooldown before sustain), got %d", alerts)
 	}
 }

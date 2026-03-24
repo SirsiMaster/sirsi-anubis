@@ -33,6 +33,9 @@ import (
 	"time"
 )
 
+// Injectable sampler for testability.
+var sampleTopCPUFn = defaultSampleTopCPU
+
 // WatchConfig configures the Sekhmet watchdog.
 type WatchConfig struct {
 	Interval     time.Duration // Polling interval (default: 5s)
@@ -151,7 +154,7 @@ func (w *Watchdog) run() {
 		case <-ticker.C:
 			start := time.Now()
 
-			procs, err := sampleTopCPU(w.cfg.SampleSize)
+			procs, err := sampleTopCPUFn(w.cfg.SampleSize)
 			if err != nil {
 				continue // Transient — retry next tick
 			}
@@ -236,13 +239,14 @@ func (w *Watchdog) run() {
 // sampleTopCPU returns the top-N processes by CPU usage.
 // Uses a single fork to `ps` sorted by CPU descending — one syscall per poll.
 func sampleTopCPU(topN int) ([]ProcessInfo, error) {
+	return sampleTopCPUFn(topN)
+}
+
+func defaultSampleTopCPU(topN int) ([]ProcessInfo, error) {
 	if topN <= 0 {
 		topN = 15
 	}
 
-	// -arcxo: sorted by CPU descending, no path (just binary name)
-	// This is the cheapest single-fork we can do on macOS.
-	// On Linux, we'd read /proc directly — TODO for Phase 4.
 	out, err := exec.Command("ps", "-arcxo", "pid,rss,%cpu,comm").Output()
 	if err != nil {
 		return nil, err
@@ -252,7 +256,7 @@ func sampleTopCPU(topN int) ([]ProcessInfo, error) {
 	lines := strings.Split(string(out), "\n")
 
 	for i, line := range lines {
-		if i == 0 { // Skip header
+		if i == 0 {
 			continue
 		}
 		line = strings.TrimSpace(line)
