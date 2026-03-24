@@ -38,6 +38,16 @@ const (
 	manifestTimeout = 10 * time.Second
 )
 
+// ── Injectable dependencies (swap in tests) ──────────────────────────
+// These are package-level function vars so tests can replace them
+// without modifying production code. Exported functions remain stable.
+var (
+	weightsDirFn          = defaultWeightsDir
+	fetchRemoteManifestFn = defaultFetchRemoteManifest
+	downloadFileFn        = defaultDownloadFile
+	hashFileFn            = defaultHashFile
+)
+
 // ModelInfo describes a downloadable model in the remote manifest.
 type ModelInfo struct {
 	Name        string `json:"name"`
@@ -85,6 +95,10 @@ type Status struct {
 
 // WeightsDir returns the absolute path to the weights directory.
 func WeightsDir() (string, error) {
+	return weightsDirFn()
+}
+
+func defaultWeightsDir() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("resolve home dir: %w", err)
@@ -94,7 +108,7 @@ func WeightsDir() (string, error) {
 
 // GetStatus checks the current brain installation status.
 func GetStatus() (*Status, error) {
-	dir, err := WeightsDir()
+	dir, err := weightsDirFn()
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +125,7 @@ func GetStatus() (*Status, error) {
 	}
 
 	// Check remote manifest for updates
-	remote, err := FetchRemoteManifest()
+	remote, err := fetchRemoteManifestFn()
 	if err == nil && remote != nil {
 		status.Available = remote.Models
 
@@ -133,6 +147,10 @@ func GetStatus() (*Status, error) {
 
 // FetchRemoteManifest downloads the brain manifest from GitHub.
 func FetchRemoteManifest() (*RemoteManifest, error) {
+	return fetchRemoteManifestFn()
+}
+
+func defaultFetchRemoteManifest() (*RemoteManifest, error) {
 	client := &http.Client{Timeout: manifestTimeout}
 
 	resp, err := client.Get(DefaultManifestURL)
@@ -157,7 +175,7 @@ func FetchRemoteManifest() (*RemoteManifest, error) {
 // The onProgress callback is called during download with (bytesDownloaded, totalBytes).
 func Install(onProgress ProgressFunc) (*LocalManifest, error) {
 	// Fetch remote manifest
-	remote, err := FetchRemoteManifest()
+	remote, err := fetchRemoteManifestFn()
 	if err != nil {
 		return nil, fmt.Errorf("fetch remote manifest: %w", err)
 	}
@@ -188,7 +206,7 @@ func Install(onProgress ProgressFunc) (*LocalManifest, error) {
 
 // InstallFromManifest installs a specific model by name from the remote manifest.
 func InstallFromManifest(modelName string, onProgress ProgressFunc) (*LocalManifest, error) {
-	remote, err := FetchRemoteManifest()
+	remote, err := fetchRemoteManifestFn()
 	if err != nil {
 		return nil, fmt.Errorf("fetch remote manifest: %w", err)
 	}
@@ -217,7 +235,7 @@ func Update(onProgress ProgressFunc) (*LocalManifest, bool, error) {
 	}
 
 	// Fetch remote
-	remote, err := FetchRemoteManifest()
+	remote, err := fetchRemoteManifestFn()
 	if err != nil {
 		return nil, false, fmt.Errorf("fetch remote manifest: %w", err)
 	}
@@ -250,7 +268,7 @@ func Remove() error {
 
 // IsInstalled returns true if a brain model is currently installed.
 func IsInstalled() bool {
-	dir, err := WeightsDir()
+	dir, err := weightsDirFn()
 	if err != nil {
 		return false
 	}
@@ -275,7 +293,7 @@ func selectPlatformModel(defaultModel *ModelInfo, remote *RemoteManifest) *Model
 
 // installModel handles the actual download, verification, and manifest write.
 func installModel(model *ModelInfo, onProgress ProgressFunc) (*LocalManifest, error) {
-	dir, err := WeightsDir()
+	dir, err := weightsDirFn()
 	if err != nil {
 		return nil, err
 	}
@@ -302,7 +320,7 @@ func installModel(model *ModelInfo, onProgress ProgressFunc) (*LocalManifest, er
 	localPath := filepath.Join(dir, filename)
 
 	// Download with progress
-	if dlErr := downloadFile(model.DownloadURL, localPath, model.SizeBytes, onProgress); dlErr != nil {
+	if dlErr := downloadFileFn(model.DownloadURL, localPath, model.SizeBytes, onProgress); dlErr != nil {
 		// Clean up partial download
 		_ = os.Remove(localPath)
 		return nil, fmt.Errorf("download model: %w", dlErr)
@@ -310,7 +328,7 @@ func installModel(model *ModelInfo, onProgress ProgressFunc) (*LocalManifest, er
 
 	// Verify checksum
 	if model.SHA256 != "" {
-		actualHash, hashErr := hashFile(localPath)
+		actualHash, hashErr := hashFileFn(localPath)
 		if hashErr != nil {
 			_ = os.Remove(localPath)
 			return nil, fmt.Errorf("checksum verification: %w", hashErr)
@@ -347,6 +365,10 @@ func installModel(model *ModelInfo, onProgress ProgressFunc) (*LocalManifest, er
 
 // downloadFile downloads a URL to a local path with progress reporting.
 func downloadFile(url, destPath string, expectedSize int64, onProgress ProgressFunc) error {
+	return downloadFileFn(url, destPath, expectedSize, onProgress)
+}
+
+func defaultDownloadFile(url, destPath string, expectedSize int64, onProgress ProgressFunc) error {
 	client := &http.Client{Timeout: httpTimeout}
 
 	resp, err := client.Get(url)
@@ -399,6 +421,10 @@ func downloadFile(url, destPath string, expectedSize int64, onProgress ProgressF
 
 // hashFile computes the SHA-256 hash of a file.
 func hashFile(path string) (string, error) {
+	return hashFileFn(path)
+}
+
+func defaultHashFile(path string) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return "", err

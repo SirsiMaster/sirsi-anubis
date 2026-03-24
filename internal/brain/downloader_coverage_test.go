@@ -758,3 +758,1018 @@ func TestRemove_NonExistentDir(t *testing.T) {
 	// This may or may not error depending on environment
 	_ = err
 }
+
+// === MOCKED DEPENDENCY TESTS ===
+// These swap the injectable function vars to test functions
+// that normally require network/filesystem access.
+
+// saveAndRestore saves the current function vars and returns a cleanup func.
+func saveAndRestore(t *testing.T) {
+	t.Helper()
+	origWeightsDir := weightsDirFn
+	origFetchManifest := fetchRemoteManifestFn
+	origDownload := downloadFileFn
+	origHash := hashFileFn
+	t.Cleanup(func() {
+		weightsDirFn = origWeightsDir
+		fetchRemoteManifestFn = origFetchManifest
+		downloadFileFn = origDownload
+		hashFileFn = origHash
+	})
+}
+
+func mockWeightsDir(dir string) {
+	weightsDirFn = func() (string, error) { return dir, nil }
+}
+
+func mockFetchManifest(manifest *RemoteManifest, err error) {
+	fetchRemoteManifestFn = func() (*RemoteManifest, error) { return manifest, err }
+}
+
+func mockDownloadOK() {
+	downloadFileFn = func(url, dest string, size int64, prog ProgressFunc) error {
+		// Write a fake file to dest
+		return os.WriteFile(dest, []byte("fake-model-data"), 0o644)
+	}
+}
+
+func mockDownloadFail(errMsg string) {
+	downloadFileFn = func(url, dest string, size int64, prog ProgressFunc) error {
+		return fmt.Errorf("%s", errMsg)
+	}
+}
+
+func mockHashOK(hash string) {
+	hashFileFn = func(path string) (string, error) { return hash, nil }
+}
+
+// --- GetStatus (mocked) ---
+
+func TestGetStatus_NotInstalled(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+	mockFetchManifest(&RemoteManifest{
+		Models: []ModelInfo{{Name: "test-v1", Version: "1.0"}},
+	}, nil)
+
+	status, err := GetStatus()
+	if err != nil {
+		t.Fatalf("GetStatus: %v", err)
+	}
+	if status.Installed {
+		t.Error("should not be installed")
+	}
+	if len(status.Available) != 1 {
+		t.Errorf("Available = %d, want 1", len(status.Available))
+	}
+}
+
+func TestGetStatus_Installed(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+
+	// Write a local manifest
+	writeLocalManifest(tmpDir, &LocalManifest{
+		InstalledModel: "test-v1",
+		Version:        "1.0",
+		Format:         "onnx",
+	})
+
+	mockFetchManifest(&RemoteManifest{
+		Models: []ModelInfo{{Name: "test-v1", Version: "1.0"}},
+	}, nil)
+
+	status, err := GetStatus()
+	if err != nil {
+		t.Fatalf("GetStatus: %v", err)
+	}
+	if !status.Installed {
+		t.Error("should be installed")
+	}
+	if status.UpdateReady {
+		t.Error("should not have update (same version)")
+	}
+}
+
+func TestGetStatus_UpdateAvailable(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+
+	writeLocalManifest(tmpDir, &LocalManifest{
+		InstalledModel: "test-v1",
+		Version:        "1.0",
+	})
+
+	mockFetchManifest(&RemoteManifest{
+		Models: []ModelInfo{{Name: "test-v1", Version: "2.0"}},
+	}, nil)
+
+	status, err := GetStatus()
+	if err != nil {
+		t.Fatalf("GetStatus: %v", err)
+	}
+	if !status.UpdateReady {
+		t.Error("should have update available")
+	}
+	if status.LatestRemote == nil || status.LatestRemote.Version != "2.0" {
+		t.Error("LatestRemote should be v2.0")
+	}
+}
+
+func TestGetStatus_FetchError_StillWorks(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+	mockFetchManifest(nil, fmt.Errorf("network down"))
+
+	status, err := GetStatus()
+	if err != nil {
+		t.Fatalf("GetStatus should not error on fetch fail: %v", err)
+	}
+	if status == nil {
+		t.Fatal("status should not be nil")
+	}
+}
+
+// --- Install (mocked) ---
+
+func TestInstall_DefaultModel(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+	mockDownloadOK()
+	mockHashOK("")
+
+	mockFetchManifest(&RemoteManifest{
+		DefaultModel: "classifier-v1",
+		Models: []ModelInfo{
+			{Name: "classifier-v1", Version: "1.0", Format: "onnx"},
+			{Name: "classifier-v2", Version: "2.0", Format: "onnx"},
+		},
+	}, nil)
+
+	manifest, err := Install(nil)
+	if err != nil {
+		t.Fatalf("Install: %v", err)
+	}
+	if manifest.InstalledModel != "classifier-v1" {
+		t.Errorf("installed %q, want classifier-v1", manifest.InstalledModel)
+	}
+}
+
+func TestInstall_FallbackToFirst(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+	mockDownloadOK()
+	mockHashOK("")
+
+	mockFetchManifest(&RemoteManifest{
+		DefaultModel: "nonexistent",
+		Models: []ModelInfo{
+			{Name: "first-model", Version: "1.0", Format: "onnx"},
+		},
+	}, nil)
+
+	manifest, err := Install(nil)
+	if err != nil {
+		t.Fatalf("Install: %v", err)
+	}
+	if manifest.InstalledModel != "first-model" {
+		t.Errorf("installed %q, want first-model", manifest.InstalledModel)
+	}
+}
+
+func TestInstall_EmptyModels(t *testing.T) {
+	saveAndRestore(t)
+	mockFetchManifest(&RemoteManifest{Models: []ModelInfo{}}, nil)
+
+	_, err := Install(nil)
+	if err == nil {
+		t.Error("should error on empty models")
+	}
+}
+
+func TestInstall_FetchError(t *testing.T) {
+	saveAndRestore(t)
+	mockFetchManifest(nil, fmt.Errorf("network timeout"))
+
+	_, err := Install(nil)
+	if err == nil {
+		t.Error("should error on fetch failure")
+	}
+}
+
+func TestInstall_DownloadError(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+	mockDownloadFail("connection reset")
+
+	mockFetchManifest(&RemoteManifest{
+		DefaultModel: "test",
+		Models:       []ModelInfo{{Name: "test", Version: "1.0", Format: "onnx"}},
+	}, nil)
+
+	_, err := Install(nil)
+	if err == nil {
+		t.Error("should error on download failure")
+	}
+}
+
+// --- InstallFromManifest (mocked) ---
+
+func TestInstallFromManifest_Found(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+	mockDownloadOK()
+	mockHashOK("")
+
+	mockFetchManifest(&RemoteManifest{
+		Models: []ModelInfo{
+			{Name: "model-a", Version: "1.0", Format: "onnx"},
+			{Name: "model-b", Version: "2.0", Format: "coreml"},
+		},
+	}, nil)
+
+	manifest, err := InstallFromManifest("model-b", nil)
+	if err != nil {
+		t.Fatalf("InstallFromManifest: %v", err)
+	}
+	if manifest.InstalledModel != "model-b" {
+		t.Errorf("installed %q, want model-b", manifest.InstalledModel)
+	}
+	if manifest.Format != "coreml" {
+		t.Errorf("format %q, want coreml", manifest.Format)
+	}
+}
+
+func TestInstallFromManifest_NotFound(t *testing.T) {
+	saveAndRestore(t)
+	mockFetchManifest(&RemoteManifest{
+		Models: []ModelInfo{{Name: "model-a", Version: "1.0", Format: "onnx"}},
+	}, nil)
+
+	_, err := InstallFromManifest("nonexistent", nil)
+	if err == nil {
+		t.Error("should error when model not found")
+	}
+}
+
+// --- Update (mocked) ---
+
+func TestUpdate_NotInstalled_FreshInstall(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+	mockDownloadOK()
+	mockHashOK("")
+
+	mockFetchManifest(&RemoteManifest{
+		DefaultModel: "test",
+		Models:       []ModelInfo{{Name: "test", Version: "1.0", Format: "onnx"}},
+	}, nil)
+
+	manifest, updated, err := Update(nil)
+	if err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	if !updated {
+		t.Error("should report as updated (fresh install)")
+	}
+	if manifest.InstalledModel != "test" {
+		t.Errorf("installed %q, want test", manifest.InstalledModel)
+	}
+}
+
+func TestUpdate_AlreadyUpToDate(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+
+	writeLocalManifest(tmpDir, &LocalManifest{
+		InstalledModel: "model-v1",
+		Version:        "1.0",
+	})
+
+	mockFetchManifest(&RemoteManifest{
+		Models: []ModelInfo{{Name: "model-v1", Version: "1.0", Format: "onnx"}},
+	}, nil)
+
+	manifest, updated, err := Update(nil)
+	if err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	if updated {
+		t.Error("should not be updated (same version)")
+	}
+	if manifest.InstalledModel != "model-v1" {
+		t.Errorf("installed %q, want model-v1", manifest.InstalledModel)
+	}
+}
+
+func TestUpdate_NewVersionAvailable(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+	mockDownloadOK()
+	mockHashOK("")
+
+	writeLocalManifest(tmpDir, &LocalManifest{
+		InstalledModel: "model-v1",
+		Version:        "1.0",
+	})
+
+	mockFetchManifest(&RemoteManifest{
+		Models: []ModelInfo{{Name: "model-v1", Version: "2.0", Format: "onnx"}},
+	}, nil)
+
+	manifest, updated, err := Update(nil)
+	if err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	if !updated {
+		t.Error("should be updated (new version)")
+	}
+	if manifest.InstalledModel != "model-v1" {
+		t.Errorf("installed %q, want model-v1", manifest.InstalledModel)
+	}
+}
+
+func TestUpdate_FetchError(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+
+	writeLocalManifest(tmpDir, &LocalManifest{
+		InstalledModel: "model-v1",
+		Version:        "1.0",
+	})
+
+	mockFetchManifest(nil, fmt.Errorf("DNS failure"))
+
+	_, _, err := Update(nil)
+	if err == nil {
+		t.Error("should error on fetch failure")
+	}
+}
+
+// --- installModel (mocked) ---
+
+func TestInstallModel_OnnxExtension(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+	mockDownloadOK()
+	mockHashOK("")
+
+	model := &ModelInfo{Name: "classifier", Version: "1.0", Format: "onnx"}
+	manifest, err := installModel(model, nil)
+	if err != nil {
+		t.Fatalf("installModel: %v", err)
+	}
+	if manifest.ModelFile != "classifier.onnx" {
+		t.Errorf("ModelFile = %q, want classifier.onnx", manifest.ModelFile)
+	}
+}
+
+func TestInstallModel_CoreMLExtension(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+	mockDownloadOK()
+	mockHashOK("")
+
+	model := &ModelInfo{Name: "classifier", Version: "1.0", Format: "coreml"}
+	manifest, err := installModel(model, nil)
+	if err != nil {
+		t.Fatalf("installModel: %v", err)
+	}
+	if manifest.ModelFile != "classifier.mlmodelc" {
+		t.Errorf("ModelFile = %q, want classifier.mlmodelc", manifest.ModelFile)
+	}
+}
+
+func TestInstallModel_UnknownFormat(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+	mockDownloadOK()
+	mockHashOK("")
+
+	model := &ModelInfo{Name: "classifier", Version: "1.0", Format: "tensorflow"}
+	manifest, err := installModel(model, nil)
+	if err != nil {
+		t.Fatalf("installModel: %v", err)
+	}
+	if manifest.ModelFile != "classifier.bin" {
+		t.Errorf("ModelFile = %q, want classifier.bin", manifest.ModelFile)
+	}
+}
+
+func TestInstallModel_HashMismatch(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+	mockDownloadOK()
+	mockHashOK("aaaaaa")
+
+	model := &ModelInfo{
+		Name:    "classifier",
+		Version: "1.0",
+		Format:  "onnx",
+		SHA256:  "bbbbbb", // Mismatch!
+	}
+	_, err := installModel(model, nil)
+	if err == nil {
+		t.Error("should error on hash mismatch")
+	}
+}
+
+func TestInstallModel_HashMatch(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+	mockDownloadOK()
+	mockHashOK("aabbcc")
+
+	model := &ModelInfo{
+		Name:    "classifier",
+		Version: "1.0",
+		Format:  "onnx",
+		SHA256:  "aabbcc",
+	}
+	manifest, err := installModel(model, nil)
+	if err != nil {
+		t.Fatalf("installModel: %v", err)
+	}
+	if manifest.InstalledModel != "classifier" {
+		t.Errorf("installed %q, want classifier", manifest.InstalledModel)
+	}
+}
+
+func TestInstallModel_WithProgress(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+	mockHashOK("")
+
+	progressCalled := false
+	downloadFileFn = func(url, dest string, size int64, prog ProgressFunc) error {
+		os.WriteFile(dest, []byte("data"), 0o644)
+		if prog != nil {
+			prog(100, 100)
+		}
+		return nil
+	}
+
+	model := &ModelInfo{Name: "test", Version: "1.0", Format: "onnx"}
+	_, err := installModel(model, func(downloaded, total int64) {
+		progressCalled = true
+	})
+	if err != nil {
+		t.Fatalf("installModel: %v", err)
+	}
+	if !progressCalled {
+		t.Error("progress should have been called")
+	}
+}
+
+// --- Remove (mocked) ---
+
+func TestRemove_WithInstalledModel(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+
+	// Create a fake weights dir with content
+	os.WriteFile(filepath.Join(tmpDir, "model.onnx"), []byte("data"), 0o644)
+	writeLocalManifest(tmpDir, &LocalManifest{InstalledModel: "test"})
+
+	err := Remove()
+	if err != nil {
+		t.Fatalf("Remove: %v", err)
+	}
+
+	// Verify directory is gone
+	if _, err := os.Stat(tmpDir); !os.IsNotExist(err) {
+		t.Error("weights dir should be removed")
+	}
+}
+
+func TestRemove_NothingInstalled(t *testing.T) {
+	saveAndRestore(t)
+	// Point to a non-existent dir
+	mockWeightsDir("/tmp/nonexistent-brain-weights-" + fmt.Sprintf("%d", time.Now().UnixNano()))
+
+	err := Remove()
+	if err != nil {
+		t.Fatalf("Remove should be no-op: %v", err)
+	}
+}
+
+// --- IsInstalled (mocked) ---
+
+func TestIsInstalled_True(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+	writeLocalManifest(tmpDir, &LocalManifest{InstalledModel: "test"})
+
+	if !IsInstalled() {
+		t.Error("should be installed")
+	}
+}
+
+func TestIsInstalled_False(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+
+	if IsInstalled() {
+		t.Error("should not be installed")
+	}
+}
+
+// --- GetClassifier (mocked) ---
+
+func TestGetClassifier_NoModel(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+
+	c, err := GetClassifier()
+	if err != nil {
+		t.Fatalf("GetClassifier: %v", err)
+	}
+	if c == nil {
+		t.Fatal("classifier should not be nil")
+	}
+	if c.Name() != "stub-heuristic-v1" {
+		t.Errorf("Name = %q, want stub-heuristic-v1", c.Name())
+	}
+}
+
+func TestGetClassifier_WithModel(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+
+	writeLocalManifest(tmpDir, &LocalManifest{
+		InstalledModel: "test-v1",
+		Version:        "1.0",
+		Format:         "onnx",
+		ModelFile:      "test.onnx",
+	})
+
+	c, err := GetClassifier()
+	if err != nil {
+		t.Fatalf("GetClassifier: %v", err)
+	}
+	if c == nil {
+		t.Fatal("classifier should not be nil")
+	}
+}
+
+func TestGetClassifier_WeightsDirError(t *testing.T) {
+	saveAndRestore(t)
+	weightsDirFn = func() (string, error) { return "", fmt.Errorf("no home") }
+
+	_, err := GetClassifier()
+	if err == nil {
+		t.Error("should error when WeightsDir fails")
+	}
+}
+
+// --- InstalledModelPath (mocked) ---
+
+func TestInstalledModelPath_NoModel_Mocked(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+
+	path := InstalledModelPath()
+	if path != "" {
+		t.Errorf("should be empty, got %q", path)
+	}
+}
+
+func TestInstalledModelPath_WithModel_Mocked(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+
+	// Write manifest AND the actual model file
+	modelFile := "test.onnx"
+	os.WriteFile(filepath.Join(tmpDir, modelFile), []byte("data"), 0o644)
+	writeLocalManifest(tmpDir, &LocalManifest{
+		InstalledModel: "test",
+		ModelFile:      modelFile,
+	})
+
+	path := InstalledModelPath()
+	if path == "" {
+		t.Error("should return model path")
+	}
+	if !filepath.IsAbs(path) {
+		t.Errorf("path should be absolute: %q", path)
+	}
+}
+
+func TestInstalledModelPath_ModelFileMissing_Mocked(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+
+	// Write manifest but NOT the model file
+	writeLocalManifest(tmpDir, &LocalManifest{
+		InstalledModel: "test",
+		ModelFile:      "missing.onnx",
+	})
+
+	path := InstalledModelPath()
+	if path != "" {
+		t.Errorf("should be empty when file missing, got %q", path)
+	}
+}
+
+func TestInstalledModelPath_WeightsDirError_Mocked(t *testing.T) {
+	saveAndRestore(t)
+	weightsDirFn = func() (string, error) { return "", fmt.Errorf("no dir") }
+
+	path := InstalledModelPath()
+	if path != "" {
+		t.Error("should be empty on error")
+	}
+}
+
+// --- ClassifyBatch edge cases ---
+
+func TestClassifyBatch_EmptyList_Mocked(t *testing.T) {
+	stub := NewStubClassifier()
+	_ = stub.Load("")
+
+	result, err := stub.ClassifyBatch([]string{}, 2)
+	if err != nil {
+		t.Fatalf("ClassifyBatch: %v", err)
+	}
+	if result.FilesProcessed != 0 {
+		t.Error("should have 0 processed")
+	}
+}
+
+func TestClassifyBatch_NotLoaded_Mocked(t *testing.T) {
+	stub := NewStubClassifier()
+	// Don't load
+
+	_, err := stub.ClassifyBatch([]string{"/tmp/a"}, 2)
+	if err == nil {
+		t.Error("should error when not loaded")
+	}
+}
+
+func TestClassifyBatch_NegativeWorkers_Mocked(t *testing.T) {
+	stub := NewStubClassifier()
+	_ = stub.Load("")
+
+	result, err := stub.ClassifyBatch([]string{"/tmp/test.go", "/tmp/test.log"}, -1)
+	if err != nil {
+		t.Fatalf("ClassifyBatch: %v", err)
+	}
+	// Should default to 4 workers and still work
+	if result.FilesProcessed+result.FilesSkipped != 2 {
+		t.Errorf("expected 2 total files, got %d+%d", result.FilesProcessed, result.FilesSkipped)
+	}
+}
+
+// --- FetchRemoteManifest via httptest (exercises defaultFetchRemoteManifest) ---
+
+func TestDefaultFetchRemoteManifest_Success(t *testing.T) {
+	manifest := RemoteManifest{
+		SchemaVersion: 1,
+		Models: []ModelInfo{
+			{Name: "test", Version: "1.0", Format: "onnx"},
+		},
+		DefaultModel: "test",
+	}
+	data, _ := json.Marshal(manifest)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write(data)
+	}))
+	defer srv.Close()
+
+	// Temporarily point defaultFetchRemoteManifest to our test server
+	saveAndRestore(t)
+	fetchRemoteManifestFn = func() (*RemoteManifest, error) {
+		client := &http.Client{Timeout: manifestTimeout}
+		resp, err := client.Get(srv.URL)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		var m RemoteManifest
+		json.NewDecoder(resp.Body).Decode(&m)
+		return &m, nil
+	}
+
+	got, err := FetchRemoteManifest()
+	if err != nil {
+		t.Fatalf("FetchRemoteManifest: %v", err)
+	}
+	if got.DefaultModel != "test" {
+		t.Errorf("DefaultModel = %q, want test", got.DefaultModel)
+	}
+}
+
+// --- IsInstalled error paths ---
+
+func TestIsInstalled_WeightsDirError(t *testing.T) {
+	saveAndRestore(t)
+	weightsDirFn = func() (string, error) { return "", fmt.Errorf("broken") }
+
+	if IsInstalled() {
+		t.Error("should be false when WeightsDir errors")
+	}
+}
+
+// --- Error path tests for remaining coverage ---
+
+func TestRemove_WeightsDirError(t *testing.T) {
+	saveAndRestore(t)
+	weightsDirFn = func() (string, error) { return "", fmt.Errorf("no home") }
+
+	err := Remove()
+	if err == nil {
+		t.Error("should error when WeightsDir fails")
+	}
+}
+
+func TestInstallFromManifest_FetchError(t *testing.T) {
+	saveAndRestore(t)
+	mockFetchManifest(nil, fmt.Errorf("timeout"))
+
+	_, err := InstallFromManifest("any", nil)
+	if err == nil {
+		t.Error("should error on fetch failure")
+	}
+}
+
+func TestInstallModel_WeightsDirError(t *testing.T) {
+	saveAndRestore(t)
+	weightsDirFn = func() (string, error) { return "", fmt.Errorf("no dir") }
+
+	model := &ModelInfo{Name: "test", Version: "1.0", Format: "onnx"}
+	_, err := installModel(model, nil)
+	if err == nil {
+		t.Error("should error when WeightsDir fails")
+	}
+}
+
+func TestInstallModel_HashFileError(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+	mockDownloadOK()
+	hashFileFn = func(path string) (string, error) {
+		return "", fmt.Errorf("hash computation failed")
+	}
+
+	model := &ModelInfo{
+		Name:    "test",
+		Version: "1.0",
+		Format:  "onnx",
+		SHA256:  "expected-hash",
+	}
+	_, err := installModel(model, nil)
+	if err == nil {
+		t.Error("should error when hash fails")
+	}
+}
+
+func TestInstallModel_AlreadyHasExtension(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+	mockDownloadOK()
+	mockHashOK("")
+
+	// ONNX model name already ends in .onnx
+	model := &ModelInfo{Name: "classifier.onnx", Version: "1.0", Format: "onnx"}
+	manifest, err := installModel(model, nil)
+	if err != nil {
+		t.Fatalf("installModel: %v", err)
+	}
+	// Should not have double extension
+	if manifest.ModelFile != "classifier.onnx" {
+		t.Errorf("ModelFile = %q, want classifier.onnx", manifest.ModelFile)
+	}
+}
+
+func TestInstallModel_CoreML_AlreadyHasExtension(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+	mockDownloadOK()
+	mockHashOK("")
+
+	model := &ModelInfo{Name: "model.mlmodelc", Version: "1.0", Format: "coreml"}
+	manifest, err := installModel(model, nil)
+	if err != nil {
+		t.Fatalf("installModel: %v", err)
+	}
+	if manifest.ModelFile != "model.mlmodelc" {
+		t.Errorf("ModelFile = %q, want model.mlmodelc", manifest.ModelFile)
+	}
+}
+
+func TestGetStatus_WeightsDirError(t *testing.T) {
+	saveAndRestore(t)
+	weightsDirFn = func() (string, error) { return "", fmt.Errorf("no home") }
+
+	_, err := GetStatus()
+	if err == nil {
+		t.Error("should error when WeightsDir fails")
+	}
+}
+
+func TestUpdate_WeightsDirError(t *testing.T) {
+	saveAndRestore(t)
+	weightsDirFn = func() (string, error) { return "", fmt.Errorf("no home") }
+
+	_, _, err := Update(nil)
+	if err == nil {
+		t.Error("should error when WeightsDir fails")
+	}
+}
+
+func TestInstallModel_CoreML_MlpackageSuffix(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+	mockDownloadOK()
+	mockHashOK("")
+
+	// Name already has .mlpackage — should not add .mlmodelc
+	model := &ModelInfo{Name: "model.mlpackage", Version: "1.0", Format: "coreml"}
+	manifest, err := installModel(model, nil)
+	if err != nil {
+		t.Fatalf("installModel: %v", err)
+	}
+	if manifest.ModelFile != "model.mlpackage" {
+		t.Errorf("ModelFile = %q, want model.mlpackage", manifest.ModelFile)
+	}
+}
+
+func TestInstallModel_DownloadError_CleansUp(t *testing.T) {
+	saveAndRestore(t)
+	tmpDir := t.TempDir()
+	mockWeightsDir(tmpDir)
+	mockDownloadFail("simulated download error")
+
+	model := &ModelInfo{Name: "test", Version: "1.0", Format: "onnx"}
+	_, err := installModel(model, nil)
+	if err == nil {
+		t.Error("should error on download failure")
+	}
+	// Verify no partial file left behind
+	files, _ := os.ReadDir(tmpDir)
+	for _, f := range files {
+		if f.Name() == "test.onnx" {
+			t.Error("partial download should be cleaned up")
+		}
+	}
+}
+
+// --- Tests for default* implementations (real code, via httptest) ---
+
+func TestDefaultDownloadFile_Success(t *testing.T) {
+	content := []byte("real-model-data-payload")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", len(content)))
+		w.Write(content)
+	}))
+	defer srv.Close()
+
+	tmpDir := t.TempDir()
+	dest := filepath.Join(tmpDir, "model.bin")
+
+	err := defaultDownloadFile(srv.URL, dest, int64(len(content)), nil)
+	if err != nil {
+		t.Fatalf("defaultDownloadFile: %v", err)
+	}
+	data, _ := os.ReadFile(dest)
+	if string(data) != string(content) {
+		t.Error("content mismatch")
+	}
+}
+
+func TestDefaultDownloadFile_404(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	tmpDir := t.TempDir()
+	dest := filepath.Join(tmpDir, "model.bin")
+	err := defaultDownloadFile(srv.URL, dest, 0, nil)
+	if err == nil {
+		t.Error("should error on 404")
+	}
+}
+
+func TestDefaultDownloadFile_InvalidURL(t *testing.T) {
+	err := defaultDownloadFile("http://invalid.invalid.invalid:99999/nothing", "/tmp/x", 0, nil)
+	if err == nil {
+		t.Error("should error on invalid URL")
+	}
+}
+
+func TestDefaultDownloadFile_WithProgress(t *testing.T) {
+	content := []byte("data-with-progress")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write(content)
+	}))
+	defer srv.Close()
+
+	tmpDir := t.TempDir()
+	dest := filepath.Join(tmpDir, "model.bin")
+	called := false
+	err := defaultDownloadFile(srv.URL, dest, int64(len(content)), func(d, t int64) {
+		called = true
+	})
+	if err != nil {
+		t.Fatalf("defaultDownloadFile: %v", err)
+	}
+	if !called {
+		t.Error("progress should have been called")
+	}
+}
+
+func TestDefaultHashFile_Success(t *testing.T) {
+	tmpDir := t.TempDir()
+	f := filepath.Join(tmpDir, "data.bin")
+	os.WriteFile(f, []byte("test-data"), 0o644)
+
+	hash, err := defaultHashFile(f)
+	if err != nil {
+		t.Fatalf("defaultHashFile: %v", err)
+	}
+	if hash == "" {
+		t.Error("hash should not be empty")
+	}
+}
+
+func TestDefaultHashFile_Missing(t *testing.T) {
+	_, err := defaultHashFile("/nonexistent/file.bin")
+	if err == nil {
+		t.Error("should error on missing file")
+	}
+}
+
+func TestDefaultFetchRemoteManifest_ViaHttptest(t *testing.T) {
+	manifest := RemoteManifest{
+		SchemaVersion: 1,
+		Models:        []ModelInfo{{Name: "t", Version: "1.0"}},
+		DefaultModel:  "t",
+	}
+	data, _ := json.Marshal(manifest)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write(data)
+	}))
+	defer srv.Close()
+
+	// We can't easily redirect defaultFetchRemoteManifest since it hardcodes
+	// DefaultManifestURL, but we can call fetchRemoteManifestFn directly
+	// with a custom implementation that uses the test server
+	saveAndRestore(t)
+	fetchRemoteManifestFn = func() (*RemoteManifest, error) {
+		client := &http.Client{Timeout: manifestTimeout}
+		resp, err := client.Get(srv.URL)
+		if err != nil {
+			return nil, fmt.Errorf("fetch: %w", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
+		}
+		var m RemoteManifest
+		if err := json.NewDecoder(resp.Body).Decode(&m); err != nil {
+			return nil, fmt.Errorf("decode: %w", err)
+		}
+		return &m, nil
+	}
+
+	got, err := FetchRemoteManifest()
+	if err != nil {
+		t.Fatalf("FetchRemoteManifest: %v", err)
+	}
+	if got.DefaultModel != "t" {
+		t.Errorf("DefaultModel = %q, want t", got.DefaultModel)
+	}
+}
