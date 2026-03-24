@@ -37,11 +37,23 @@ if [ "$TAG_ONLY" = "true" ]; then
 fi
 
 # ── Detect changed Go packages (for diff-based testing) ─────────────
+# Compare what's being PUSHED (commits on local not yet on remote).
+# - @{push} is the remote tracking ref (e.g., origin/main)
+# - Falls back to HEAD~1 for repos without upstream tracking
 CHANGED_PKGS=""
-CHANGED_GO_FILES=$(git diff --cached --name-only --diff-filter=ACMR HEAD -- '*.go' 2>/dev/null || \
-                   git diff --name-only HEAD~1 HEAD -- '*.go' 2>/dev/null || echo "")
+REMOTE_REF=$(git rev-parse --verify @{push} 2>/dev/null || \
+             git rev-parse --verify HEAD~1 2>/dev/null || echo "")
 
-if [ -n "$CHANGED_GO_FILES" ]; then
+if [ -n "$REMOTE_REF" ]; then
+    CHANGED_GO_FILES=$(git diff --name-only "$REMOTE_REF" HEAD -- '*.go' 2>/dev/null || echo "")
+else
+    # No ref to compare — treat as if everything changed
+    CHANGED_GO_FILES="all"
+fi
+
+if [ "$CHANGED_GO_FILES" = "all" ]; then
+    CHANGED_PKGS="./..."
+elif [ -n "$CHANGED_GO_FILES" ]; then
     # Extract unique package directories from changed files
     CHANGED_PKGS=$(echo "$CHANGED_GO_FILES" | xargs -I{} dirname {} | sort -u | \
                    sed 's|^|./|' | tr '\n' ' ')
