@@ -47,12 +47,28 @@ Build a native macOS menu bar application so Pantheon appears in:
 cmd/pantheon-menubar/
 ├── main.go           # systray.Run() + menu items
 ├── icon.go           # Embedded icon bytes
-└── handlers.go       # Menu click handlers → CLI subcommands
+├── handlers.go       # Menu click handlers → CLI subcommands
+└── stats.go          # Live stats collection for menu display
 ```
 
 Features:
 - 𓂀 Ankh icon in menu bar
-- Dropdown: Scan | Judge | Guard | Ka | Mirror | Quit
+- **Stats panel at top of dropdown** (always visible):
+  - 🟢/🟡/🔴 RAM Pressure (free %, swap usage)
+  - 🧠 Context Pressure (if AI session detected: tokens used / remaining)
+  - 📄 Files since last commit (uncommitted change count)
+  - ⏱ Time since last commit
+  - 🏛 Active deities/agents (which are running)
+  - 📡 Active sessions (watchdog, MCP server, etc.)
+  - 💾 Disk waste estimate (last scan result)
+  - ⚡ Accelerator status (ANE/GPU/CPU mode)
+- **Commands section** (below stats):
+  - Scan (weigh) | Judge | Guard | Ka | Mirror
+- **Quick actions**:
+  - Start/Stop Watchdog
+  - Open Build Log
+  - Open Case Studies
+  - Quit
 - Status line: "Pantheon Active — last scan: 2m ago"
 - Sekhmet watchdog running in background
 - Alert badge when CPU starvation detected
@@ -107,6 +123,26 @@ Pantheon.app/Contents/
 3. **CoreML bridge**: ANE detection works, actual inference requires CGo
 4. **Windows platform**: `internal/platform/windows.go` not yet created
 
+## Deity Duties (New)
+
+### 𓂀 Horus — Auto-Publish (Build-in-Public)
+Horus should take Thoth's journal scribings and auto-update:
+- `docs/case-studies.html` — newest stories at top, timestamped
+- `docs/build-log.html` — session summaries, metrics
+- Frequency: **twice daily** (or on every `git push`)
+- Implementation: Makefile target or pre-push hook addition
+
+### 𓁹 Osiris — Recovery Deity (NEW)
+Osiris is the god of resurrection and the afterlife. In Pantheon:
+- **Osiris guards against session loss** (Rule A18: Incremental Commits)
+- Detects uncommitted work and warns before session end
+- Future: auto-checkpoint commits every N file changes
+- The session recovery case study is Osiris's origin story
+
+## One-Line Starter for Next Session
+
+> **"Continue from `docs/CONTINUATION-PROMPT.md` — Session 18: build the macOS menu bar app (ADR-010) with stats panel, Horus auto-publish, and Osiris checkpoint guardian."**
+
 ---
-**Last Updated**: March 25, 2026 — 10:55
+**Last Updated**: March 25, 2026 — 11:27
 **Session Count**: 18 (next)

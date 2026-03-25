@@ -131,6 +131,7 @@
     .label-crisis { background: rgba(220, 38, 38, 0.15); color: #f87171; border: 1px solid rgba(220, 38, 38, 0.3); }
     .label-insight { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
     .label-solution { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .label-autopsy { background: rgba(139, 92, 246, 0.15); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.3); }
 
     .narrative { margin-bottom: 2rem; }
     .narrative p { margin-bottom: 1.2rem; color: var(--text-secondary); }
@@ -295,6 +296,82 @@
     <h1>Why Pantheon Exists</h1>
     <p>Every deity was born from a real crisis at Sirsi Technologies. We didn't set out to build a platform — we were just trying to survive our own development environment. These are those stories.</p>
   </header>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!--  CASE STUDY 0: SESSION RECOVERY (NEWEST — 2026-03-25)  -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <section class="case-study">
+    <div class="container">
+      <div class="case-header">
+        <span class="case-glyph">𓁟</span>
+        <div>
+          <span class="case-label label-autopsy">Triage Autopsy</span>
+          <span style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); margin-left: 0.5rem;">2026-03-25 10:20 EDT</span>
+          <h2>The Lost Session — When Pantheon Had to Save Itself</h2>
+          <p class="case-subtitle">How Thoth's memory, Ma'at's gate, and 20 minutes of forensics recovered 3,400 lines of lost code</p>
+        </div>
+      </div>
+
+      <div class="narrative">
+        <p>On March 25, 2026, we started a new session and discovered that <strong>an entire working session had vanished.</strong></p>
+
+        <p>Session 17 — a 2+ hour deep architectural session — had never been committed. 38 files modified. 12 new files created. 1,350 lines added. 2,061 lines deleted. Cross-platform CI pipelines. Standalone deity binaries. A full Platform interface refactor. <em>All of it existed only in the local working tree.</em></p>
+
+        <p>The AI assistant that built the code was gone. Its context was gone. The conversation was gone. If this were a human developer who forgot to push before reformatting their laptop, the story would end here.</p>
+
+        <p>But we had Pantheon.</p>
+      </div>
+
+      <div class="snapshot">
+        <div class="label">$ git status (March 25, 10:20 AM)</div>
+        <br>
+        <div><span class="red">27 modified files</span>  — guard, platform, mirror, sight, scarab</div>
+        <div><span class="red">12 untracked files</span> — cmd/anubis/, cmd/maat/, Makefile, proof.go</div>
+        <div><span class="yellow">0 commits</span>       — everything in working tree only</div>
+        <div><span class="yellow">0 pushes</span>         — nothing on remote</div>
+        <br>
+        <div class="label">Recovery sources:</div>
+        <div><span class="green">𓁟 Thoth journal.md</span>  — Entry 017: "The Boss Fight" (explains WHY)</div>
+        <div><span class="green">𓆄 Ma'at QA_PLAN.md</span>  — Coverage targets (explains WHAT)</div>
+        <div><span class="green">𓂀 PANTHEON_ROADMAP</span>  — Phase 2 cross-platform plan (explains WHERE)</div>
+        <div><span class="green">⚙️ Pre-push gate</span>    — Caught 10 formatting errors in recovered code</div>
+      </div>
+
+      <div class="narrative">
+        <p><strong>Thoth was the key.</strong> Git can tell you <em>what</em> files changed. But only Thoth's journal could tell us <em>why</em> they changed. Journal Entry 017, titled "The Boss Fight: 99% Coverage and the Interface Wall," documented the reasoning behind ADR-009 (Injectable System Providers) — the design pattern that drove all 38 file changes. Without that narrative, we'd have 38 modified files and zero understanding of the architecture.</p>
+
+        <p>Ma'at's QA_PLAN.md confirmed the coverage targets. PANTHEON_ROADMAP.md validated that the cross-platform CI changes were intentional. And the pre-push gate — the same gate we'd fixed just hours earlier (B10) — caught formatting violations in the recovered files, preventing broken code from reaching the remote.</p>
+
+        <p>The entire recovery took <strong>20 minutes</strong>. 100% of the code was recovered. The only casualty was a single stale test assertion that had been written against old defaults.</p>
+      </div>
+
+      <div class="metric-row">
+        <div class="metric-card">
+          <div class="metric-value">3,411</div>
+          <div class="metric-label">Lines at risk (additions + deletions)</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">100%</div>
+          <div class="metric-label">Data recovered</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">20 min</div>
+          <div class="metric-label">Total recovery time</div>
+        </div>
+      </div>
+
+      <div class="pullquote">
+        "The strongest product story is one where the product saves itself. Thoth preserved the intent. Ma'at preserved the quality. Git preserved the bytes. Pantheon didn't just survive the loss — it proved that its architecture works beyond code."
+        <div class="attr">— March 25, 2026, 20 minutes after discovering the lost session</div>
+      </div>
+
+      <div class="narrative">
+        <p><strong>What we changed:</strong> Proposed <em>Rule A18 (Incremental Commits)</em> — no AI session may accumulate more than 5 file changes without a checkpoint commit. And ADR-010 — the Pantheon Menu Bar App — will include a "session guardian" that detects uncommitted changes and alerts the developer before a session ends.</p>
+
+        <p>The incident proved something we hadn't expected: <strong>Pantheon's deity architecture isn't just a clever naming convention.</strong> Each deity genuinely specializes. Thoth knew the story. Ma'at enforced quality. Horus mapped the files. The separation of concerns that makes the code maintainable is the same separation that made recovery possible.</p>
+      </div>
+    </div>
+  </section>
 
   <!-- ═══════════════════════════════════════════════════════ -->
   <!--  CASE STUDY 1: ANUBIS                                  -->
