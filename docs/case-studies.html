@@ -631,6 +631,74 @@
       </ul>
     </div>
   </section>
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!--  CASE STUDY 4: THE ORPHAN HUNT (NEW — 2026-03-25)      -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <section class="case-study">
+    <div class="container">
+      <div class="case-header">
+        <span class="case-glyph">𓁵</span>
+        <div>
+          <span class="case-label label-crisis">Dogfood Failure</span>
+          <span style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); margin-left: 0.5rem;">2026-03-25 14:15 EDT</span>
+          <h2>The Orphan Hunt — 17 Zombies in the Machine</h2>
+          <p class="case-subtitle">When 25 invisible processes stole 1.1 GB of RAM and Pantheon looked the other way</p>
+        </div>
+      </div>
+
+      <div class="narrative">
+        <p>On March 25, 2026, we encountered a failure that shouldn't have been possible in a Pantheon-protected environment. The browser subagent — the AI's internal testing eye — was failing. Not because of a bug, but because it <em>couldn't even start.</em></p>
+
+        <p>We ran a manual audit and found a graveyard of dead sessions. <strong>17 Playwright driver processes</strong> and <strong>8 headless Chrome renderers</strong> were still running long after their parent AI agents had disconnected. They were zombies — orphaned children of a crashed process that were now clogging the pipes of the next scan.</p>
+
+        <p>Together, they were holding <strong>1.1 GB of RAM</strong> and dozens of open file handles. Most importantly, they were blocking new browser instances from initializing. And yet, the Pantheon dashboard was green. No CPU spikes. No RAM alerts. No ghosts on disk.</p>
+      </div>
+
+      <div class="snapshot">
+        <div class="label">$ ps aux | grep "playwright\|antigravity-browser-profile"</div>
+        <br>
+        <div><span class="red">11751</span>  0.0% CPU  66 MB   ms-playwright/node run-driver (Orphan)</div>
+        <div><span class="red">11701</span>  0.0% CPU  96 MB   Google Chrome Helper (Orphan)</div>
+        <div><span class="red">11691</span>  0.0% CPU  195 MB  Google Chrome Helper (Orphan)</div>
+        <div>... (14 more identical processes)</div>
+        <br>
+        <div class="label">Why they were invisible:</div>
+        <div><span class="yellow">CPU: 0.0%</span>      — Idle zombies don't trigger the Sekhmet Watchdog.</div>
+        <div><span class="yellow">Disk: 0 B</span>      — They weren't file remnants; Ka (Ghost Detection) missed them.</div>
+        <div><span class="yellow">PPID: 1</span>        — Adopted by kernel_task/launchd. They had no "active" parent.</div>
+      </div>
+
+      <div class="narrative">
+        <p><strong>This was a dogfood crisis.</strong> We had built deities for file waste (Anubis), dead app remnants (Ka), and CPU hogs (Sekhmet). But we had a massive blind spot for <em>process litter</em> — the child processes of developer tools that fail silently and stay running forever.</p>
+
+        <p>Within an hour, we summoned a new capability for Sekhmet: <strong>Orphan Process Detection.</strong> Unlike the standard watchdog which looks for heat (CPU), the Orphan Hunter looks for <em>loneliness</em>. It looks for known patterns (Playwright, LSP servers, Electron helpers, Build watchers) that are running with a PPID of 1 (orphaned) or whose parents don't match their expected toolchain.</p>
+      </div>
+
+      <div class="metric-row">
+        <div class="metric-card">
+          <div class="metric-value">25</div>
+          <div class="metric-label">Zombie processes missed</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">1.1 GB</div>
+          <div class="metric-label">RAM silently leaked</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">7 Patterns</div>
+          <div class="metric-label">Now covered by Orphan Hunter</div>
+        </div>
+      </div>
+
+      <div class="pullquote">
+        "Pantheon was watching for the fire, but it missed the flood. Idle orphanned processes are the 'slow leaks' of infrastructure hygiene. They don't scream, they just sit there until your machine feels like it's running through molasses."
+        <div class="attr">— March 25, 2026, minutes after the first Orphan Hunter test passed</div>
+      </div>
+
+      <div class="narrative">
+        <p><strong>The result:</strong> <code>internal/guard/orphan.go</code>. Sekhmet now has a "sweep" function that identifies these stale children before they can block the next developer move. It's the difference between a doctor who only checks for a fever (CPU) and one who checks for a full circulatory audit (Process Topology).</p>
+      </div>
+    </div>
+  </section>
 
   <!-- ═══ CTA ════════════════════════════════════════════════ -->
   <section class="cta-section">

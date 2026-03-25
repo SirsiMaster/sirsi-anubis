@@ -369,10 +369,17 @@ MIT License — free and open source forever. See [LICENSE](LICENSE).
 
 Sirsi Pantheon is built by [Sirsi Technologies](https://sirsi.ai).
 
-- 🌐 [sirsi.ai](https://sirsi.ai) — Sirsi Nexus Portal
-- 📖 [Origin Stories](https://sirsimaster.github.io/sirsi-pantheon/case-studies.html) — Why each deity exists
-- 📊 [Build Log](https://sirsimaster.github.io/sirsi-pantheon/build-log.html) — Sprint-by-sprint progress
+- 🌐 [sirsi.ai](https://sirsi.ai)
+
+## 𓂀 Documentation & Registry
+
+- **[Deity Registry](docs/pantheon/index.html)**: Interactive hub for all 12 deities at `pantheon.sirsi.ai`.
+- **[Case Studies (HTML)](docs/case-studies.html)**: Origin stories and nitty-gritty post-mortems of system failures.
+- **[Case Studies (Markdown)](docs/CASE-STUDIES.md)**: GitHub-flavored version of the case studies.
+- **[Build Log](docs/build-log.html)**: Real-time chronicle of the Pantheon build.
+- **[ADR Index](docs/ADR-INDEX.md)**: Every architectural decision record.
 
 ---
 
 *𓂀 One install. All deities. Nothing escapes the Weighing.*
+```
