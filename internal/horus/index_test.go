@@ -86,11 +86,9 @@ func TestIndex_BuildAndQuery(t *testing.T) {
 
 func TestManifest_Exists(t *testing.T) {
 	m := &Manifest{
-		Entries: map[string]Entry{
-			"/foo/bar": {Size: 100},
-		},
 		Dirs: map[string]DirSummary{
-			"/foo": {TotalSize: 100, FileCount: 1},
+			"/foo":     {TotalSize: 100, FileCount: 1},
+			"/foo/bar": {TotalSize: 100},
 		},
 	}
 	if !m.Exists("/foo/bar") {
@@ -170,31 +168,24 @@ func TestManifest_DirCount(t *testing.T) {
 
 func TestManifest_Glob(t *testing.T) {
 	m := &Manifest{
-		Entries: map[string]Entry{
-			"/data/a.txt":     {Size: 10},
-			"/data/b.txt":     {Size: 20},
-			"/data/c.log":     {Size: 30},
-			"/other/d.txt":    {Size: 40},
-			"/data/sub/e.txt": {Size: 50},
+		Dirs: map[string]DirSummary{
+			"/data":         {},
+			"/other":        {},
+			"/data/sub":     {},
+			"/data/reports": {},
 		},
 	}
 
-	// Match all .txt files in /data (non-recursive, filepath.Match doesn't recurse)
-	matches := m.Glob("/data/*.txt")
+	// Match all directories in /data
+	matches := m.Glob("/data/*")
 	if len(matches) != 2 {
-		t.Errorf("Expected 2 matches for /data/*.txt, got %d: %v", len(matches), matches)
+		t.Errorf("Expected 2 directory matches for /data/*, got %d: %v", len(matches), matches)
 	}
 
-	// Match all .log files
+	// No more file-level globbing in Phase 2 for performance.
 	logMatches := m.Glob("/data/*.log")
-	if len(logMatches) != 1 {
-		t.Errorf("Expected 1 match for /data/*.log, got %d", len(logMatches))
-	}
-
-	// No matches
-	noMatches := m.Glob("/nowhere/*")
-	if len(noMatches) != 0 {
-		t.Errorf("Expected 0 matches, got %d", len(noMatches))
+	if len(logMatches) != 0 {
+		t.Errorf("Expected 0 matches for files in Phase 2, got %d", len(logMatches))
 	}
 }
 
@@ -394,9 +385,6 @@ func TestLoadJSONManifest(t *testing.T) {
 		Dirs: map[string]DirSummary{
 			"/tmp/data": {TotalSize: 100, FileCount: 2, DirCount: 1},
 		},
-		Entries: map[string]Entry{
-			"/tmp/data/file.txt": {Size: 100},
-		},
 		Stats: WalkStats{
 			DirsWalked:   5,
 			FilesIndexed: 10,
@@ -456,7 +444,6 @@ func TestIndex_JSONFallback(t *testing.T) {
 		Timestamp: time.Now(), // fresh!
 		Roots:     []string{tmpDir},
 		Dirs:      map[string]DirSummary{tmpDir: {TotalSize: 42}},
-		Entries:   map[string]Entry{},
 		Stats:     WalkStats{DirsWalked: 1, FilesIndexed: 1},
 	}
 	data, _ := json.Marshal(m)
@@ -491,7 +478,6 @@ func TestIndex_ExpiredCacheRebuild(t *testing.T) {
 		Timestamp: time.Now().Add(-1 * time.Hour), // expired
 		Roots:     []string{dataDir},
 		Dirs:      map[string]DirSummary{},
-		Entries:   map[string]Entry{},
 		Stats:     WalkStats{DirsWalked: 0, FilesIndexed: 0},
 	}
 	if err := SaveManifest(cachePath, old); err != nil {
@@ -521,7 +507,6 @@ func TestSaveManifest_ErrorPaths(t *testing.T) {
 	m := &Manifest{
 		Version: "2.0.0",
 		Dirs:    map[string]DirSummary{"/test": {}},
-		Entries: map[string]Entry{},
 	}
 
 	// Successful save + load round-trip

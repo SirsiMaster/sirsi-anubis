@@ -59,8 +59,8 @@ var KnownOrphanPatterns = []OrphanPattern{
 	},
 	{
 		Name:         "LSP Servers",
-		ProcessNames: []string{"gopls", "typescript-language-server", "pylsp", "rust-analyzer", "clangd"},
-		ParentHints:  []string{"code", "cursor", "windsurf"},
+		ProcessNames: []string{"gopls", "typescript-language-server", "pylsp", "rust-analyzer", "clangd", "language_server_macos_arm", "pantheon"},
+		ParentHints:  []string{"code", "cursor", "windsurf", "Antigravity", "Electron"},
 		Category:     "ide",
 	},
 	{

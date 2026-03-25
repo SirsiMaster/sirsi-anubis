@@ -43,11 +43,14 @@ func (r *baseScanRule) Scan(ctx context.Context, opts jackal.ScanOptions) ([]jac
 	for _, pattern := range r.paths {
 		expanded := jackal.ExpandPath(pattern, homeDir)
 
-		// Resolve glob — use Horus index if available, else filesystem.
+		// Resolve glob — use Horus index if available, then fallback to disk for files.
 		var matches []string
 		if opts.Manifest != nil {
 			matches = opts.Manifest.Glob(expanded)
-		} else {
+		}
+		// Horus Phase 2 is directory-only. If no directories matched or Horus is absent,
+		// fallback to a real filesystem glob to catch individual files.
+		if len(matches) == 0 {
 			var err error
 			matches, err = filepath.Glob(expanded)
 			if err != nil {

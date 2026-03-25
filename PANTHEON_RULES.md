@@ -229,6 +229,23 @@ Anubis scans filesystems and processes. Scan results may contain sensitive infor
 *   **Sovereignty**: Ma'at administers the tests, validates the scores, and provides the "Quality Insight" for all other deities.
 *   **Canon Gate**: A module failing a Ma'at assessment (score < 85) is considered "not yet canon" and cannot be included in a stable release.
 
+### 2.15 Incremental Commits (Rule A18)
+> Established March 25, 2026. Prevents session loss from IDE crashes or context exhaustion.
+
+*   **Rule**: After every **5 file changes**, the agent MUST perform a checkpoint commit and push.
+*   **Rationale**: A single IDE crash can erase an entire session's unsaved work. Incremental commits ensure that progress is preserved regardless of external failures.
+*   **Format**: `chore: checkpoint — [brief description of changes]`
+
+### 2.16 No Application Bundle Mutations (Rule A19)
+> Established March 25, 2026. After a catastrophic incident where replacing a binary inside Antigravity.app crashed the IDE and required a full reinstall.
+
+*   **Rule**: The agent MUST NEVER write to, modify, delete, or replace any file inside `/Applications/*.app/` bundles. This includes but is not limited to:
+    *   Language server binaries (`language_server_macos_arm`, etc.)
+    *   Extension files, frameworks, or helper binaries
+    *   Any file inside `Contents/Resources/`, `Contents/Frameworks/`, or `Contents/MacOS/`
+*   **Rationale**: Application bundles are **code-signed**. Modifying any file inside them invalidates the signature, corrupts the application, and can require a full reinstall. The agent's Pantheon binary is a **CLI tool**, not an IDE extension — it has no business inside the app bundle.
+*   **Enforcement**: Any `cp`, `mv`, `rm`, or `write` operation targeting a path matching `/Applications/*.app/**` is a **CRITICAL SAFETY VIOLATION** equivalent to Rule A1 (Safety First).
+
 ---
 
 ## 3. Technology Stack

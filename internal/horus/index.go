@@ -29,14 +29,13 @@ import (
 )
 
 // Manifest is the shared filesystem index.
-// Phase 2: stores pre-aggregated directory summaries instead of every file.
+// Phase 2: stores ONLY pre-aggregated directory summaries, no individual file entries.
 type Manifest struct {
 	Version   string                `json:"version"`
 	Platform  string                `json:"platform"`
 	Timestamp time.Time             `json:"timestamp"`
 	Roots     []string              `json:"roots"`
-	Dirs      map[string]DirSummary `json:"dirs"`    // directory path → summary
-	Entries   map[string]Entry      `json:"entries"` // legacy: file entries (only if needed)
+	Dirs      map[string]DirSummary `json:"dirs"` // directory path → summary
 	Stats     WalkStats             `json:"stats"`
 }
 
@@ -303,19 +302,12 @@ func buildIndex(opts IndexOptions) (*Manifest, error) {
 		}
 	}
 
-	// Also store a minimal entries map for Exists/Glob queries (directories only).
-	entries := make(map[string]Entry, len(allDirs))
-	for dir := range allDirs {
-		entries[dir] = Entry{IsDir: true}
-	}
-
 	return &Manifest{
 		Version:   "2.0.0",
 		Platform:  runtime.GOOS + "/" + runtime.GOARCH,
 		Timestamp: time.Now(),
 		Roots:     roots,
 		Dirs:      dirSummaries,
-		Entries:   entries,
 		Stats: WalkStats{
 			DirsWalked:   totalDirs,
 			FilesIndexed: totalFiles,
@@ -353,19 +345,25 @@ func (m *Manifest) DirSizeAndCount(dir string) (int64, int) {
 }
 
 // Exists checks if a path exists in the index.
+// Fallback to the filesystem if we need to confirm a specific file's presence.
 func (m *Manifest) Exists(path string) bool {
-	_, ok := m.Entries[path]
-	if ok {
+	if _, ok := m.Dirs[path]; ok {
 		return true
 	}
-	_, ok = m.Dirs[path]
-	return ok
+	// Fallback: If we know the parent directory exists, check the file on disk.
+	dir := filepath.Dir(path)
+	if _, ok := m.Dirs[dir]; ok {
+		_, err := os.Stat(path)
+		return err == nil
+	}
+	return false
 }
 
-// Glob returns all indexed paths matching a glob pattern.
+// Glob returns all matching paths in the index.
+// Note: Matches directories only in this phase for performance.
 func (m *Manifest) Glob(pattern string) []string {
 	var matches []string
-	for path := range m.Entries {
+	for path := range m.Dirs {
 		if matched, _ := filepath.Match(pattern, path); matched {
 			matches = append(matches, path)
 		}

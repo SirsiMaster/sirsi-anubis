@@ -122,5 +122,5 @@ optimization strategy needed (parallelism, skip-lists).
 
 ---
 
-*Measured on Apple M4 Max, macOS Sequoia, Go 1.26.1.*
+*Measured on Apple M1 Max, macOS Tahoe, Go 1.26.1.*
 *All numbers independently verifiable per Rule A14.*

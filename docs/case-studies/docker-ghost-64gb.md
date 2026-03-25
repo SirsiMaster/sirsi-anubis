@@ -106,5 +106,5 @@ looked at the findings data this closely.
 
 ---
 
-*Measured on Apple M4 Max, macOS Sequoia.*
+*Measured on Apple M1 Max, macOS Tahoe.*
 *All numbers independently verifiable per Rule A14.*

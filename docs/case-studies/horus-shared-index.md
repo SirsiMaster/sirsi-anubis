@@ -200,6 +200,6 @@ Phase 1 (Horus wiring):     1,080 ms  (7.8×)
 
 ---
 
-*Measured on Apple M4 Max, macOS Sequoia, Go 1.26.1.*
+*Measured on Apple M1 Max, macOS Tahoe, Go 1.26.1.*
 *All numbers independently verifiable per Rule A14.*
 *Timeline: discovered 12:45 PM, fixed by 1:30 PM — same session.*

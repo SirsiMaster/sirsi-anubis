@@ -97,6 +97,8 @@ Ma'at now queries Git for modified files and only runs tests on changed packages
 **Status:** Shipped | **Deity:** Horus (All-Seeing Eye) | **Speedup:** 19× Overall
 
 ### The Problem
+*Measured on Apple M1 Max, macOS Tahoe (v26.3.1).*
+*All numbers independently verifiable per Rule A14.*
 Anubis, Ka, and Hathor all walked the filesystem independently. Total redundant I/O: **~38 seconds** per full scan.
 
 ### The Solution: Walk Once, Share Many
