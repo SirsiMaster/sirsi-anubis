@@ -3,11 +3,10 @@ package guard
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
-	"syscall"
-	"time"
+
+	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
 )
 
 // SlayTarget defines what group of processes to terminate.
@@ -49,26 +48,22 @@ type SlayResult struct {
 	DryRun     bool
 }
 
-// ProcessKiller is a function that terminates a process by PID.
-// Inject a mock for testing the Slay execution paths.
-type ProcessKiller func(pid int) error
-
-// Slay terminates processes matching the target group.
-// Rule A1: NEVER kills without confirmation (dryRun must be explicitly false).
-// Safety: SIGTERM first, SIGKILL after 5s timeout. Never kills root/system processes.
+// Slay terminates processes matching the target group using the current platform.
 func Slay(target SlayTarget, dryRun bool) (*SlayResult, error) {
-	return SlayWith(target, dryRun, killProcess)
+	return SlayWith(platform.Current(), target, dryRun)
 }
 
-// SlayWith is the injectable version of Slay for testing.
-func SlayWith(target SlayTarget, dryRun bool, killer ProcessKiller) (*SlayResult, error) {
+// SlayWith terminates processes matching the target group using the provided platform (Rule A16).
+// Rule A1: NEVER kills without confirmation (dryRun must be explicitly false).
+// Safety: SIGTERM first (via Platform.Kill), Never kills root/system processes.
+func SlayWith(p platform.Platform, target SlayTarget, dryRun bool) (*SlayResult, error) {
 	result := &SlayResult{
 		Target: target,
 		DryRun: dryRun,
 	}
 
 	// Get current process list
-	processes, err := getProcessList()
+	processes, err := getProcessListWith(p)
 	if err != nil {
 		return nil, fmt.Errorf("guard slay: %w", err)
 	}
@@ -76,65 +71,65 @@ func SlayWith(target SlayTarget, dryRun bool, killer ProcessKiller) (*SlayResult
 	// Classify and filter
 	var targets []ProcessInfo
 	for i := range processes {
-		p := &processes[i]
-		group := classifyProcess(p)
-		p.Group = group
+		proc := &processes[i]
+		group := classifyProcess(proc)
+		proc.Group = group
 
 		if target == SlayAll {
 			// "all" only targets known orphan groups, not "other"
 			if group != "other" && group != "app_helper" {
-				targets = append(targets, *p)
+				targets = append(targets, *proc)
 			}
 		} else if group == string(target) {
-			targets = append(targets, *p)
+			targets = append(targets, *proc)
 		}
 	}
 
 	// Safety: filter out protected processes
 	var safeTargets []ProcessInfo
-	for _, p := range targets {
-		if isProtectedProcess(p) {
+	for _, proc := range targets {
+		if isProtectedProcessWith(p, proc) {
 			result.Skipped++
 			continue
 		}
-		safeTargets = append(safeTargets, p)
+		safeTargets = append(safeTargets, proc)
 	}
 
 	// Execute kills
-	for _, p := range safeTargets {
+	for _, proc := range safeTargets {
 		if dryRun {
 			result.Killed++
-			result.BytesFreed += p.RSS
+			result.BytesFreed += proc.RSS
 			continue
 		}
 
-		err := killer(p.PID)
+		err := p.Kill(proc.PID)
 		if err != nil {
 			result.Failed++
-			result.Errors = append(result.Errors, fmt.Errorf("PID %d (%s): %w", p.PID, p.Name, err))
+			result.Errors = append(result.Errors, fmt.Errorf("PID %d (%s): %w", proc.PID, proc.Name, err))
 		} else {
 			result.Killed++
-			result.BytesFreed += p.RSS
+			result.BytesFreed += proc.RSS
 		}
 	}
 
 	return result, nil
 }
 
-// isProtectedProcess returns true for processes that should never be killed.
-func isProtectedProcess(p ProcessInfo) bool {
+// isProtectedProcessWith returns true for processes that should never be killed.
+func isProtectedProcessWith(p platform.Platform, proc ProcessInfo) bool {
 	// Never kill root or system processes
-	if p.User == "root" || p.User == "_windowserver" || p.User == "_coreaudiod" {
+	if proc.User == "root" || proc.User == "_windowserver" || proc.User == "_coreaudiod" {
 		return true
 	}
 
 	// Never kill ourselves
-	if p.PID == os.Getpid() {
+	if proc.PID == os.Getpid() {
 		return true
 	}
 
 	// Never kill PID 1 (init/launchd)
-	if p.PID <= 1 {
+	if proc.PID <= 1 {
 		return true
 	}
 
@@ -145,7 +140,7 @@ func isProtectedProcess(p ProcessInfo) bool {
 		"cfprefsd", "distnoted", "syslogd", "notifyd",
 		"securityd", "trustd", "tccd", "locationd",
 	}
-	nameLower := strings.ToLower(p.Name)
+	nameLower := strings.ToLower(proc.Name)
 	for _, protected := range protectedNames {
 		if strings.ToLower(protected) == nameLower {
 			return true
@@ -155,41 +150,9 @@ func isProtectedProcess(p ProcessInfo) bool {
 	return false
 }
 
-// killProcess sends SIGTERM, waits 5s, then SIGKILL if still running.
-func killProcess(pid int) error {
-	// Send SIGTERM (graceful)
-	proc, err := os.FindProcess(pid)
-	if err != nil {
-		return fmt.Errorf("find process: %w", err)
-	}
-
-	if err := proc.Signal(syscall.SIGTERM); err != nil {
-		return fmt.Errorf("SIGTERM: %w", err)
-	}
-
-	// Wait up to 5 seconds for graceful shutdown
-	for i := 0; i < 10; i++ {
-		time.Sleep(500 * time.Millisecond)
-		if !isProcessRunning(pid) {
-			return nil
-		}
-	}
-
-	// Still running — force kill
-	if err := proc.Signal(syscall.SIGKILL); err != nil {
-		// Process may have died between check and kill
-		if !isProcessRunning(pid) {
-			return nil
-		}
-		return fmt.Errorf("SIGKILL: %w", err)
-	}
-
-	return nil
-}
-
 // isProcessRunning checks if a process is still alive.
-func isProcessRunning(pid int) bool {
-	out, err := exec.Command("kill", "-0", strconv.Itoa(pid)).CombinedOutput()
+func isProcessRunningWith(p platform.Platform, pid int) bool {
+	out, err := p.Command("kill", "-0", strconv.Itoa(pid))
 	_ = out
 	return err == nil
 }

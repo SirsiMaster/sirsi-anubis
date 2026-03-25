@@ -2,13 +2,39 @@ package platform
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
+	"strings"
 )
 
 // Linux implements Platform for Linux distributions.
 type Linux struct{}
 
 func (l *Linux) Name() string { return "linux" }
+
+func (l *Linux) Getenv(key string) string {
+	return os.Getenv(key)
+}
+
+func (l *Linux) UserHomeDir() (string, error) {
+	return os.UserHomeDir()
+}
+
+func (l *Linux) Getwd() (string, error) {
+	return os.Getwd()
+}
+
+func (l *Linux) Command(name string, args ...string) ([]byte, error) {
+	return exec.Command(name, args...).CombinedOutput()
+}
+
+func (l *Linux) Processes() ([]string, error) {
+	out, err := l.Command("ps", "-eo", "comm")
+	if err != nil {
+		return nil, err
+	}
+	return strings.Split(string(out), "\n"), nil
+}
 
 func (l *Linux) SupportsTrash() bool { return false } // TODO: freedesktop.org trash spec
 
@@ -57,4 +83,17 @@ func (l *Linux) PickFolder() (string, error) {
 
 func (l *Linux) OpenBrowser(url string) error {
 	return exec.Command("xdg-open", url).Start()
+}
+
+func (l *Linux) ReadDir(dirname string) ([]os.DirEntry, error) {
+	return os.ReadDir(dirname)
+}
+
+func (l *Linux) Kill(pid int) error {
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		return err
+	}
+	_ = exec.Command("kill", "-15", fmt.Sprintf("%d", pid)).Run()
+	return proc.Kill()
 }

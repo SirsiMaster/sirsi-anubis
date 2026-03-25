@@ -24,16 +24,22 @@ type Server struct {
 	mu       sync.Mutex
 	result   *MirrorResult
 	scanning bool
+	platform platform.Platform
 }
 
 // NewServer creates a Mirror web UI server on a random available port.
 func NewServer() (*Server, error) {
+	return NewServerWith(platform.Current())
+}
+
+// NewServerWith is the injectable version of NewServer.
+func NewServerWith(p platform.Platform) (*Server, error) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return nil, fmt.Errorf("listen: %w", err)
 	}
 	port := ln.Addr().(*net.TCPAddr).Port
-	return &Server{port: port, listener: ln}, nil
+	return &Server{port: port, listener: ln, platform: p}, nil
 }
 
 // URL returns the local URL for the web UI.
@@ -43,7 +49,7 @@ func (s *Server) URL() string {
 
 // OpenBrowser opens the default browser to the web UI.
 func (s *Server) OpenBrowser() error {
-	return platform.Current().OpenBrowser(s.URL())
+	return s.platform.OpenBrowser(s.URL())
 }
 
 // Serve starts the HTTP server with graceful shutdown on SIGINT/SIGTERM.
@@ -81,11 +87,11 @@ func (s *Server) handleBrowse(w http.ResponseWriter, r *http.Request) {
 
 	dir := r.URL.Query().Get("path")
 	if dir == "" {
-		home, _ := os.UserHomeDir()
+		home, _ := s.platform.UserHomeDir()
 		dir = home
 	}
 
-	entries, err := os.ReadDir(dir)
+	entries, err := s.platform.ReadDir(dir)
 	if err != nil {
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"error": err.Error(),
@@ -124,7 +130,7 @@ func (s *Server) handlePickFolder(w http.ResponseWriter, _ *http.Request) {
 
 	// Use platform-native folder picker dialog.
 	// This gets us the real absolute path that browsers can't provide.
-	path, err := platform.Current().PickFolder()
+	path, err := s.platform.PickFolder()
 	if err != nil || path == "" {
 		// User canceled the dialog or platform doesn't support it
 		_ = json.NewEncoder(w).Encode(map[string]string{"error": "canceled"})

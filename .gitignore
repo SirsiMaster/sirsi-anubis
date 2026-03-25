@@ -34,3 +34,5 @@ tmp/
 /pantheon
 /pantheon-agent
 
+bin/
+coverage_target_modules.out

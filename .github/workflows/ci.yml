@@ -31,7 +31,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
         go-version: ['1.22']
     steps:
       - uses: actions/checkout@v4
@@ -55,7 +55,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
         go-version: ['1.22']
     steps:
       - uses: actions/checkout@v4
@@ -65,22 +65,31 @@ jobs:
           go-version: ${{ matrix.go-version }}
 
       - name: Build pantheon
-        run: go build -o pantheon ./cmd/pantheon/
+        run: go build -o pantheon${{ matrix.os == 'windows-latest' && '.exe' || '' }} ./cmd/pantheon/
 
       - name: Build pantheon-agent
-        run: CGO_ENABLED=0 go build -o pantheon-agent ./cmd/pantheon-agent/
+        run: CGO_ENABLED=0 go build -o pantheon-agent${{ matrix.os == 'windows-latest' && '.exe' || '' }} ./cmd/pantheon-agent/
 
-      - name: Binary size guard
+      - name: Binary size guard (Unix)
+        if: matrix.os != 'windows-latest'
         run: |
           PANTHEON_SIZE=$(stat -f%z pantheon 2>/dev/null || stat -c%s pantheon)
           AGENT_SIZE=$(stat -f%z pantheon-agent 2>/dev/null || stat -c%s pantheon-agent)
           echo "pantheon: ${PANTHEON_SIZE} bytes"
           echo "pantheon-agent: ${AGENT_SIZE} bytes"
-          # Warn if pantheon > 25MB
           if [ "$PANTHEON_SIZE" -gt 26214400 ]; then
             echo "::warning::pantheon binary exceeds 25MB (${PANTHEON_SIZE} bytes)"
           fi
-          # Warn if agent > 12MB
           if [ "$AGENT_SIZE" -gt 12582912 ]; then
             echo "::warning::pantheon-agent binary exceeds 12MB (${AGENT_SIZE} bytes)"
           fi
+
+      - name: Binary size guard (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          $p_size = (Get-Item pantheon.exe).Length
+          $a_size = (Get-Item pantheon-agent.exe).Length
+          Write-Host "pantheon: $p_size bytes"
+          Write-Host "pantheon-agent: $a_size bytes"
+          if ($p_size -gt 26214400) { Write-Output "::warning::pantheon binary exceeds 25MB ($p_size bytes)" }
+          if ($a_size -gt 12582912) { Write-Output "::warning::pantheon-agent binary exceeds 12MB ($a_size bytes)" }

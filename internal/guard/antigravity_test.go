@@ -150,14 +150,14 @@ func TestDefaultBridgeConfig(t *testing.T) {
 	if cfg.WatchConfig.CPUThreshold != 60.0 {
 		t.Errorf("Expected IDE threshold 60.0, got %.1f", cfg.WatchConfig.CPUThreshold)
 	}
-	if cfg.WatchConfig.SustainCount != 2 {
-		t.Errorf("Expected sustain count 2, got %d", cfg.WatchConfig.SustainCount)
+	if cfg.WatchConfig.SustainCount != 1 {
+		t.Errorf("Expected sustain count 1, got %d", cfg.WatchConfig.SustainCount)
 	}
-	if cfg.WatchConfig.Interval != 3*time.Second {
-		t.Errorf("Expected 3s interval, got %s", cfg.WatchConfig.Interval)
+	if cfg.WatchConfig.Interval != 800*time.Millisecond {
+		t.Errorf("Expected 800ms interval, got %s", cfg.WatchConfig.Interval)
 	}
-	if cfg.CPUCritical != 150.0 {
-		t.Errorf("Expected critical 150.0, got %.1f", cfg.CPUCritical)
+	if cfg.CPUCritical != 120.0 {
+		t.Errorf("Expected critical 120.0, got %.1f", cfg.CPUCritical)
 	}
 }
 

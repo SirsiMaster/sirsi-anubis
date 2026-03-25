@@ -1,37 +1,49 @@
 // Package platform provides an abstraction layer over OS-specific operations.
-//
-// The Platform interface enables:
-// 1. Cross-platform support (macOS, Linux, Windows)
-// 2. Testability (mock platform operations in unit tests)
-// 3. Clean separation between business logic and OS integration
-//
-// Architecture:
-//   - Current() returns the platform for the running OS
-//   - Mock() returns a test-friendly implementation
-//   - All OS-specific code lives behind this interface
 package platform
+
+import (
+	"os"
+)
 
 // Platform abstracts OS-specific operations.
 // All system interactions that differ across platforms go through this interface.
 type Platform interface {
-	// MoveToTrash moves a file to the OS-native trash/recycle bin.
-	// Returns an error if trash is not supported (falls back to permanent delete).
-	MoveToTrash(path string) error
+	// Getenv retrieves the value of the environment variable named by the key.
+	Getenv(key string) string
 
-	// ProtectedPrefixes returns the list of path prefixes that must
-	// never be modified or deleted on this platform.
-	ProtectedPrefixes() []string
+	// UserHomeDir returns the current user's home directory.
+	UserHomeDir() (string, error)
 
-	// PickFolder opens a native folder-picker dialog and returns
-	// the selected absolute path. Returns empty string if canceled.
-	PickFolder() (string, error)
+	// Getwd returns a rooted path name corresponding to the current directory.
+	Getwd() (string, error)
 
-	// OpenBrowser opens a URL in the system default browser.
-	OpenBrowser(url string) error
+	// Command executes a system command and returns its combined output.
+	Command(name string, args ...string) ([]byte, error)
+
+	// Processes returns a list of running process names.
+	Processes() ([]string, error)
 
 	// Name returns the platform identifier ("darwin", "linux", "windows", "mock").
 	Name() string
 
 	// SupportsTrash returns true if the platform supports reversible trash.
 	SupportsTrash() bool
+
+	// MoveToTrash moves a file to the OS trash or recycling bin.
+	MoveToTrash(path string) error
+
+	// ProtectedPrefixes returns a list of system-wide protected directory prefixes.
+	ProtectedPrefixes() []string
+
+	// OpenBrowser opens the default browser to the given URL.
+	OpenBrowser(url string) error
+
+	// PickFolder opens a native folder picker dialog and returns the selected path.
+	PickFolder() (string, error)
+
+	// ReadDir reads the directory named by dirname and returns a list of directory entries.
+	ReadDir(dirname string) ([]os.DirEntry, error)
+
+	// Kill terminates a process by its PID (Rule A1).
+	Kill(pid int) error
 }

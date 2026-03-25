@@ -66,15 +66,15 @@ func runGuard(cmd *cobra.Command, args []string) {
 	// Run audit
 	result, err := guard.Audit()
 	if err != nil {
-		output.Error(fmt.Sprintf("Guard audit failed: %v", err))
+		output.Error("Guard audit failed: %v", err)
 		os.Exit(1)
 	}
 
 	// If --slay is specified, handle that
 	if guardSlayTarget != "" {
 		if !guard.IsValidTarget(guardSlayTarget) {
-			output.Error(fmt.Sprintf("Invalid slay target: %q", guardSlayTarget))
-			output.Warn(fmt.Sprintf("Valid targets: %s", strings.Join(slayTargetStrings(), ", ")))
+			output.Error("Invalid slay target: %q", guardSlayTarget)
+			output.Warn("Valid targets: %s", strings.Join(slayTargetStrings(), ", "))
 			os.Exit(1)
 		}
 
@@ -87,7 +87,7 @@ func runGuard(cmd *cobra.Command, args []string) {
 		isDryRun := guardDryRun || !guardConfirm
 		slayResult, err := guard.Slay(guard.SlayTarget(guardSlayTarget), isDryRun)
 		if err != nil {
-			output.Error(fmt.Sprintf("Slay failed: %v", err))
+			output.Error("Slay failed: %v", err)
 			os.Exit(1)
 		}
 
@@ -118,13 +118,13 @@ func renderAuditResult(result *guard.AuditResult) {
 	fmt.Println()
 
 	// Memory overview
-	output.Info(fmt.Sprintf("Total RAM:  %s", guard.FormatBytes(result.TotalRAM)))
-	output.Info(fmt.Sprintf("Used:       %s", guard.FormatBytes(result.UsedRAM)))
-	output.Info(fmt.Sprintf("Free:       %s", guard.FormatBytes(result.FreeRAM)))
+	output.Info("Total RAM:  %s", guard.FormatBytes(result.TotalRAM))
+	output.Info("Used:       %s", guard.FormatBytes(result.UsedRAM))
+	output.Info("Free:       %s", guard.FormatBytes(result.FreeRAM))
 
 	usedPercent := float64(result.UsedRAM) / float64(result.TotalRAM) * 100
 	if usedPercent > 85 {
-		output.Warn(fmt.Sprintf("⚠️  RAM pressure: %.0f%% used — consider slaying orphans", usedPercent))
+		output.Warn("⚠️  RAM pressure: %.0f%% used — consider slaying orphans", usedPercent)
 	}
 	fmt.Println()
 
@@ -147,8 +147,8 @@ func renderAuditResult(result *guard.AuditResult) {
 
 	// Orphans summary
 	if result.TotalOrphans > 0 {
-		output.Warn(fmt.Sprintf("🔍 Found %d potential orphan processes using %s",
-			result.TotalOrphans, guard.FormatBytes(result.OrphanRSS)))
+		output.Warn("🔍 Found %d potential orphan processes using %s",
+			result.TotalOrphans, guard.FormatBytes(result.OrphanRSS))
 
 		// Show top 10 orphans
 		limit := 10
@@ -184,23 +184,23 @@ func renderSlayResult(result *guard.SlayResult) {
 	}
 	fmt.Println()
 
-	output.Info(fmt.Sprintf("Target:    %s", result.Target))
-	output.Info(fmt.Sprintf("Killed:    %d processes", result.Killed))
+	output.Info("Target:    %s", result.Target)
+	output.Info("Killed:    %d processes", result.Killed)
 	if result.Skipped > 0 {
-		output.Warn(fmt.Sprintf("Skipped:   %d (protected system processes)", result.Skipped))
+		output.Warn("Skipped:   %d (protected system processes)", result.Skipped)
 	}
 	if result.Failed > 0 {
-		output.Error(fmt.Sprintf("Failed:    %d", result.Failed))
+		output.Error("Failed:    %d", result.Failed)
 		for _, err := range result.Errors {
-			output.Error(fmt.Sprintf("  → %v", err))
+			output.Error("  → %v", err)
 		}
 	}
-	output.Info(fmt.Sprintf("RAM freed: %s", guard.FormatBytes(result.BytesFreed)))
+	output.Info("RAM freed: %s", guard.FormatBytes(result.BytesFreed))
 
 	if result.DryRun {
 		fmt.Println()
 		output.Warn("This was a dry run. To actually kill processes:")
-		output.Info(fmt.Sprintf("  pantheon guard --slay %s --confirm", result.Target))
+		output.Info("  pantheon guard --slay %s --confirm", result.Target)
 	}
 	fmt.Println()
 }
@@ -222,11 +222,11 @@ func runWatchdog() {
 
 	output.Header("𓁵 Sekhmet — Watchdog Mode (Antigravity Bridge)")
 	fmt.Println()
-	output.Info(fmt.Sprintf("CPU threshold:  %.0f%%", guardThreshold))
-	output.Info(fmt.Sprintf("Cores detected: %d", numCPU))
-	output.Info(fmt.Sprintf("Polling:        every 3s, sustained-count=2"))
-	output.Info(fmt.Sprintf("Architecture:   Antigravity IPC bridge + AlertRing buffer"))
-	output.Info(fmt.Sprintf("MCP resource:   anubis://watchdog-alerts (live)"))
+	output.Info("CPU threshold:  %.0f%%", guardThreshold)
+	output.Info("Cores detected: %d", numCPU)
+	output.Info("Polling:        every 800ms, sustain-count=1")
+	output.Info("Architecture:   Antigravity IPC bridge + AlertRing buffer")
+	output.Info("MCP resource:   anubis://watchdog-alerts (live)")
 	output.Info("Press Ctrl+C to stop.")
 	fmt.Println()
 
@@ -246,7 +246,7 @@ func runWatchdog() {
 		// Give actionable advice
 		group := classifyForAdvice(entry.ProcessName)
 		if group != "" {
-			output.Warn(fmt.Sprintf("  → Fix: pantheon guard --slay %s --dry-run", group))
+			output.Warn("  → Fix: pantheon guard --slay %s --dry-run", group)
 		}
 	}
 
@@ -272,10 +272,10 @@ func runWatchdog() {
 	// Report final stats from the bridge
 	status := bridge.Status()
 	fmt.Println()
-	output.Info(fmt.Sprintf("Buffered alerts:  %d", status.BufferedCount))
-	output.Info(fmt.Sprintf("Lifetime alerts:  %d", status.LifetimeAlerts))
-	output.Info(fmt.Sprintf("Watchdog polls:   %d", status.WatchdogPolls))
-	output.Info(fmt.Sprintf("Backoffs:         %d", status.WatchdogBackoffs))
+	output.Info("Buffered alerts:  %d", status.BufferedCount)
+	output.Info("Lifetime alerts:  %d", status.LifetimeAlerts)
+	output.Info("Watchdog polls:   %d", status.WatchdogPolls)
+	output.Info("Backoffs:         %d", status.WatchdogBackoffs)
 
 	// Clean shutdown
 	bridge.Stop()

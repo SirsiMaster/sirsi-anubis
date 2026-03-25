@@ -125,11 +125,11 @@ type BridgeConfig struct {
 func DefaultBridgeConfig() BridgeConfig {
 	wc := DefaultWatchConfig()
 	wc.CPUThreshold = 60.0 // Lower threshold for IDE — catch Plugin Host early
-	wc.SustainCount = 2    // Alert faster
-	wc.Interval = 3 * time.Second
+	wc.SustainCount = 1    // Trigger on first violation for snappier response
+	wc.Interval = 800 * time.Millisecond
 	return BridgeConfig{
 		WatchConfig: wc,
-		CPUCritical: 150.0,
+		CPUCritical: 120.0, // Mark critical earlier
 	}
 }
 

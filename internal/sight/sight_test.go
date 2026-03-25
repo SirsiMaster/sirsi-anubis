@@ -10,7 +10,7 @@ import (
 // ═══════════════════════════════════════════
 
 func TestParseLSRegisterDump_EmptyInput(t *testing.T) {
-	ghosts := parseLSRegisterDump("")
+	ghosts := parseLSRegisterDump("", mockRunnerSuccess())
 	if len(ghosts) != 0 {
 		t.Errorf("expected 0 ghosts for empty input, got %d", len(ghosts))
 	}
@@ -23,7 +23,7 @@ func TestParseLSRegisterDump_SkipsAppleApps(t *testing.T) {
 	path: /Applications/Safari.app
 	name: Safari
 --------------------------------------------------------------------------------`
-	ghosts := parseLSRegisterDump(dump)
+	ghosts := parseLSRegisterDump(dump, mockRunnerSuccess())
 	for _, g := range ghosts {
 		if g.BundleID == "com.apple.Safari" {
 			t.Error("com.apple.* apps should be excluded")
@@ -38,7 +38,7 @@ func TestParseLSRegisterDump_NoAppPath(t *testing.T) {
 	path: /usr/local/bin/example
 	name: ExampleDaemon
 --------------------------------------------------------------------------------`
-	ghosts := parseLSRegisterDump(dump)
+	ghosts := parseLSRegisterDump(dump, mockRunnerSuccess())
 	if len(ghosts) != 0 {
 		t.Errorf("expected 0 ghosts for non-.app entries, got %d", len(ghosts))
 	}
@@ -49,7 +49,7 @@ func TestParseLSRegisterDump_MissingBundleID(t *testing.T) {
 	path: /Applications/Missing.app
 	name: Missing
 --------------------------------------------------------------------------------`
-	ghosts := parseLSRegisterDump(dump)
+	ghosts := parseLSRegisterDump(dump, mockRunnerSuccess())
 	if len(ghosts) != 0 {
 		t.Errorf("expected 0 ghosts when bundle id missing, got %d", len(ghosts))
 	}
@@ -66,7 +66,7 @@ func TestParseLSRegisterDump_Deduplication(t *testing.T) {
 	path: /Applications/Example.app/Contents/MacOS/helper
 	name: Example
 --------------------------------------------------------------------------------`
-	ghosts := parseLSRegisterDump(dump)
+	ghosts := parseLSRegisterDump(dump, mockRunnerSuccess())
 	count := 0
 	for _, g := range ghosts {
 		if g.BundleID == "com.example.app" {

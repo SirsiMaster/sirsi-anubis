@@ -175,10 +175,54 @@ func TestMock_Name(t *testing.T) {
 	}
 }
 
-func TestLinux_MoveToTrash_Fail(t *testing.T) {
-	l := &Linux{}
-	err := l.MoveToTrash("/no/such/path")
-	if err == nil {
-		t.Error("expected error from gio trash on Mac")
+func TestMock_Getenv(t *testing.T) {
+	m := &Mock{Env: map[string]string{"FOO": "BAR"}}
+	if m.Getenv("FOO") != "BAR" {
+		t.Errorf("Getenv(FOO) = %q, want %q", m.Getenv("FOO"), "BAR")
+	}
+	if m.Getenv("BAZ") != "" {
+		t.Errorf("Getenv(BAZ) = %q, want empty", m.Getenv("BAZ"))
+	}
+}
+
+func TestMock_UserHomeDir(t *testing.T) {
+	m := &Mock{HomeDir: "/users/mock"}
+	home, err := m.UserHomeDir()
+	if err != nil || home != "/users/mock" {
+		t.Errorf("UserHomeDir() = %q, err = %v", home, err)
+	}
+}
+
+func TestMock_Getwd(t *testing.T) {
+	m := &Mock{WorkDir: "/work/mock"}
+	wd, err := m.Getwd()
+	if err != nil || wd != "/work/mock" {
+		t.Errorf("Getwd() = %q, err = %v", wd, err)
+	}
+}
+
+func TestMock_Command(t *testing.T) {
+	m := &Mock{
+		CommandResults: map[string]string{
+			"echo hello": "hello\n",
+		},
+	}
+	out, err := m.Command("echo", "hello")
+	if err != nil || string(out) != "hello\n" {
+		t.Errorf("Command(echo hello) = %q, err = %v", string(out), err)
+	}
+
+	// Test fallback
+	out, err = m.Command("ls", "-la")
+	if err != nil || string(out) != "" {
+		t.Errorf("Command(ls -la) should return empty string, got %q", string(out))
+	}
+}
+
+func TestMock_Processes(t *testing.T) {
+	m := &Mock{ProcessList: []string{"go", "grep", "ls"}}
+	procs, err := m.Processes()
+	if err != nil || len(procs) != 3 {
+		t.Errorf("Processes() = %v, err = %v", procs, err)
 	}
 }

@@ -4,12 +4,13 @@ package guard
 
 import (
 	"fmt"
-	"os/exec"
 	"runtime"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
 )
 
 // ProcessInfo represents a running process with memory usage.
@@ -94,11 +95,16 @@ var orphanPatterns = map[string]string{
 	"mlx_lm":       "ai",
 }
 
-// Audit scans all running processes and groups them by type.
-// Memory info and process list are fetched concurrently on dedicated OS threads.
+// Audit scans all running processes and groups them by type using the current platform.
 func Audit() (*AuditResult, error) {
-	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
-		return nil, fmt.Errorf("guard: unsupported platform %s", runtime.GOOS)
+	return AuditWith(platform.Current())
+}
+
+// AuditWith scans all running processes using the provided platform (Rule A16).
+// Memory info and process list are fetched concurrently on dedicated OS threads.
+func AuditWith(p platform.Platform) (*AuditResult, error) {
+	if p.Name() != "darwin" && p.Name() != "linux" && p.Name() != "mock" {
+		return nil, fmt.Errorf("guard: unsupported platform %s", p.Name())
 	}
 
 	result := &AuditResult{}
@@ -114,13 +120,13 @@ func Audit() (*AuditResult, error) {
 		defer wg.Done()
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
-		memErr = getMemoryInfo(result)
+		memErr = getMemoryInfoWith(p, result)
 	}()
 	go func() {
 		defer wg.Done()
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
-		processes, procErr = getProcessList()
+		processes, procErr = getProcessListWith(p)
 	}()
 	wg.Wait()
 
@@ -134,16 +140,16 @@ func Audit() (*AuditResult, error) {
 	// Group processes
 	groupMap := make(map[string]*ProcessGroup)
 	for i := range processes {
-		p := &processes[i]
-		group := classifyProcess(p)
-		p.Group = group
+		proc := &processes[i]
+		group := classifyProcess(proc)
+		proc.Group = group
 
 		if _, ok := groupMap[group]; !ok {
 			groupMap[group] = &ProcessGroup{Name: group}
 		}
 		g := groupMap[group]
-		g.Processes = append(g.Processes, *p)
-		g.TotalRSS += p.RSS
+		g.Processes = append(g.Processes, *proc)
+		g.TotalRSS += proc.RSS
 		g.TotalCount++
 	}
 
@@ -209,21 +215,26 @@ func detectOrphans(processes []ProcessInfo) []ProcessInfo {
 	return orphans
 }
 
-// getMemoryInfo populates total/used/free RAM in the result.
-func getMemoryInfo(result *AuditResult) error {
-	switch runtime.GOOS {
+// getMemoryInfoWith populates total/used/free RAM in the result using the provided platform.
+func getMemoryInfoWith(p platform.Platform, result *AuditResult) error {
+	platformName := p.Name()
+	if platformName == "mock" {
+		// Try to detect intended mock platform via env or defaults to darwin
+		platformName = "darwin"
+	}
+	switch platformName {
 	case "darwin":
-		return getDarwinMemoryInfo(result)
+		return getDarwinMemoryInfoWith(p, result)
 	case "linux":
-		return getLinuxMemoryInfo(result)
+		return getLinuxMemoryInfoWith(p, result)
 	default:
-		return fmt.Errorf("unsupported platform: %s", runtime.GOOS)
+		return fmt.Errorf("unsupported platform: %s", platformName)
 	}
 }
 
-func getDarwinMemoryInfo(result *AuditResult) error {
+func getDarwinMemoryInfoWith(p platform.Platform, result *AuditResult) error {
 	// Get total RAM from sysctl
-	out, err := exec.Command("sysctl", "-n", "hw.memsize").Output()
+	out, err := p.Command("sysctl", "-n", "hw.memsize")
 	if err != nil {
 		return err
 	}
@@ -234,7 +245,7 @@ func getDarwinMemoryInfo(result *AuditResult) error {
 	result.TotalRAM = total
 
 	// Get memory pressure from vm_stat
-	out, err = exec.Command("vm_stat").Output()
+	out, err = p.Command("vm_stat")
 	if err != nil {
 		return err
 	}
@@ -245,8 +256,8 @@ func getDarwinMemoryInfo(result *AuditResult) error {
 	for _, line := range strings.Split(string(out), "\n") {
 		if strings.Contains(line, "page size of") {
 			parts := strings.Fields(line)
-			for _, p := range parts {
-				if v, err := strconv.ParseInt(p, 10, 64); err == nil && v > 0 {
+			for _, part := range parts {
+				if v, err := strconv.ParseInt(part, 10, 64); err == nil && v > 0 {
 					pageSize = v
 				}
 			}
@@ -267,12 +278,11 @@ func getDarwinMemoryInfo(result *AuditResult) error {
 
 	result.UsedRAM = active + wired
 	result.FreeRAM = free + inactive
-	_ = total // total is already set
 	return nil
 }
 
-func getLinuxMemoryInfo(result *AuditResult) error {
-	out, err := exec.Command("free", "-b").Output()
+func getLinuxMemoryInfoWith(p platform.Platform, result *AuditResult) error {
+	out, err := p.Command("free", "-b")
 	if err != nil {
 		return err
 	}
@@ -300,9 +310,9 @@ func parseVMStatValue(line string) int64 {
 	return v
 }
 
-// getProcessList returns all running processes with memory info.
-func getProcessList() ([]ProcessInfo, error) {
-	out, err := exec.Command("ps", "-axo", "pid,rss,vsz,%cpu,user,comm").Output()
+// getProcessListWith returns all running processes with memory info using the provided platform.
+func getProcessListWith(p platform.Platform) ([]ProcessInfo, error) {
+	out, err := p.Command("ps", "-axo", "pid,rss,vsz,%cpu,user,comm")
 	if err != nil {
 		return nil, err
 	}

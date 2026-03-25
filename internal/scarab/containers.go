@@ -2,22 +2,11 @@ package scarab
 
 import (
 	"fmt"
-	"os/exec"
 	"runtime"
 	"strings"
 	"sync"
-)
 
-// Injectable command runners for testability (B11 pattern).
-var (
-	runDockerInfo = func() error { return exec.Command("docker", "info").Run() }
-	runDockerPS   = func() ([]byte, error) {
-		return exec.Command("docker", "ps", "-a", "--format", "{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}").Output()
-	}
-	runDockerImages = func() ([]byte, error) { return exec.Command("docker", "images", "-f", "dangling=true", "-q").Output() }
-	runDockerVols   = func() ([]byte, error) {
-		return exec.Command("docker", "volume", "ls", "-f", "dangling=true", "-q").Output()
-	}
+	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
 )
 
 // Container represents a Docker container.
@@ -41,13 +30,19 @@ type ContainerAudit struct {
 	DockerRunning  bool        `json:"docker_running"`
 }
 
-// AuditContainers scans the local Docker environment.
-// Docker PS, Images, and Volumes run concurrently on dedicated OS threads.
+// AuditContainers scans the local Docker environment using the current platform.
 func AuditContainers() (*ContainerAudit, error) {
+	return AuditContainersWith(platform.Current())
+}
+
+// AuditContainersWith scans the local Docker environment using the provided platform (Rule A16).
+// Docker PS, Images, and Volumes run concurrently on dedicated OS threads.
+func AuditContainersWith(p platform.Platform) (*ContainerAudit, error) {
 	audit := &ContainerAudit{}
 
 	// Check Docker is running
-	if err := runDockerInfo(); err != nil {
+	_, err := p.Command("docker", "info")
+	if err != nil {
 		return audit, nil // Docker not running — not an error
 	}
 	audit.DockerRunning = true
@@ -62,19 +57,19 @@ func AuditContainers() (*ContainerAudit, error) {
 		defer wg.Done()
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
-		psOut, psErr = runDockerPS()
+		psOut, psErr = p.Command("docker", "ps", "-a", "--format", "{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}")
 	}()
 	go func() {
 		defer wg.Done()
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
-		imgOut, imgErr = runDockerImages()
+		imgOut, imgErr = p.Command("docker", "images", "-f", "dangling=true", "-q")
 	}()
 	go func() {
 		defer wg.Done()
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
-		volOut, volErr = runDockerVols()
+		volOut, volErr = p.Command("docker", "volume", "ls", "-f", "dangling=true", "-q")
 	}()
 	wg.Wait()
 

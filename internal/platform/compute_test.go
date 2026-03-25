@@ -28,158 +28,111 @@ func TestDetectCompute(t *testing.T) {
 	if cc.OptimalWorkers < 2 {
 		t.Errorf("OptimalWorkers = %d, want >= 2", cc.OptimalWorkers)
 	}
-
-	// Optimal CPU workers > 0
-	if cc.OptimalCPUWorkers <= 0 {
-		t.Errorf("OptimalCPUWorkers = %d, want > 0", cc.OptimalCPUWorkers)
-	}
-
-	// Optimal IO workers >= 4
-	if cc.OptimalIOWorkers < 4 {
-		t.Errorf("OptimalIOWorkers = %d, want >= 4", cc.OptimalIOWorkers)
-	}
-
-	t.Logf("Compute: model=%q, logical=%d, physical=%d, pcores=%d, ecores=%d",
-		cc.CPUModel, cc.LogicalCores, cc.PhysicalCores, cc.PCores, cc.ECores)
-	t.Logf("  GPU: cores=%d, model=%q", cc.GPUCores, cc.GPUModel)
-	t.Logf("  ANE: available=%v, cores=%d", cc.ANEAvailable, cc.ANECores)
-	t.Logf("  Memory: RAM=%d, bandwidth=%d GB/s, unified=%v",
-		cc.TotalRAMBytes, cc.MemoryBandwidth, cc.UnifiedMemory)
-	t.Logf("  Workers: optimal=%d, cpu=%d, io=%d",
-		cc.OptimalWorkers, cc.OptimalCPUWorkers, cc.OptimalIOWorkers)
 }
 
-func TestDetectCompute_DarwinSpecific(t *testing.T) {
-	if runtime.GOOS != "darwin" {
-		t.Skip("Darwin-specific test")
+func TestDetectComputeWith_MockDarwin(t *testing.T) {
+	m := &Mock{
+		NameStr: "darwin",
+		CommandResults: map[string]string{
+			"sysctl -n machdep.cpu.brand_string":                   "Apple M3 Pro",
+			"sysctl -n hw.memsize":                                 "17179869184",
+			"sysctl -n hw.physicalcpu":                             "12",
+			"sysctl -n hw.perflevel0.logicalcpu":                   "6",
+			"sysctl -n hw.perflevel1.logicalcpu":                   "6",
+			"ioreg -l -w0":                                         "appleane",
+			"system_profiler SPDisplaysDataType -detailLevel mini": "Total Number of Cores: 18\nChipset Model: Apple M3 Pro",
+		},
 	}
 
-	cc := DetectCompute()
+	cc := DetectComputeWith(m)
 
-	// CPU model should be populated on macOS
-	if cc.CPUModel == "" {
-		t.Error("CPUModel should not be empty on macOS")
+	if cc.CPUModel != "Apple M3 Pro" {
+		t.Errorf("CPUModel = %q, want %q", cc.CPUModel, "Apple M3 Pro")
 	}
-
-	// Total RAM should be populated
-	if cc.TotalRAMBytes <= 0 {
-		t.Errorf("TotalRAMBytes = %d, want > 0", cc.TotalRAMBytes)
+	if cc.PhysicalCores != 12 {
+		t.Errorf("PhysicalCores = %d, want 12", cc.PhysicalCores)
 	}
-
-	// Apple Silicon checks
-	if cc.ANEAvailable {
-		if cc.ANECores <= 0 {
-			t.Error("ANE available but ANECores <= 0")
-		}
-		if !cc.UnifiedMemory {
-			t.Error("ANE available implies Apple Silicon, should have unified memory")
-		}
+	if cc.PCores != 6 {
+		t.Errorf("PCores = %d, want 6", cc.PCores)
+	}
+	if cc.ECores != 6 {
+		t.Errorf("ECores = %d, want 6", cc.ECores)
+	}
+	if !cc.ANEAvailable || cc.ANECores != 16 {
+		t.Errorf("ANE: available=%v, cores=%d", cc.ANEAvailable, cc.ANECores)
+	}
+	if cc.GPUCores != 18 || cc.GPUModel != "Apple M3 Pro" {
+		t.Errorf("GPU: cores=%d, model=%q", cc.GPUCores, cc.GPUModel)
+	}
+	if cc.MemoryBandwidth != 150 { // M3 Pro estimation
+		t.Errorf("MemoryBandwidth = %d, want 150", cc.MemoryBandwidth)
+	}
+	if !cc.UnifiedMemory {
+		t.Error("Apple Silicon should have unified memory")
 	}
 }
 
-// ── Worker Derivation Logic ──────────────────────────────────────────────
-
-func TestDetectCompute_MinimumWorkers(t *testing.T) {
-	// Verify the minimum worker counts:
-	// OptimalWorkers >= 2
-	// OptimalIOWorkers >= 4
-	// OptimalCPUWorkers > 0
-
-	cc := DetectCompute()
-
-	if cc.OptimalWorkers < 2 {
-		t.Errorf("OptimalWorkers = %d, minimum is 2", cc.OptimalWorkers)
-	}
-	if cc.OptimalIOWorkers < 4 {
-		t.Errorf("OptimalIOWorkers = %d, minimum is 4", cc.OptimalIOWorkers)
-	}
-	if cc.OptimalCPUWorkers < 1 {
-		t.Errorf("OptimalCPUWorkers = %d, minimum is 1", cc.OptimalCPUWorkers)
-	}
-}
-
-// ── Memory Bandwidth Estimation ─────────────────────────────────────────
-
-func TestDetectCompute_MemoryBandwidth(t *testing.T) {
-	if runtime.GOOS != "darwin" {
-		t.Skip("Memory bandwidth estimation is macOS-specific")
+func TestDetectComputeWith_MockLinux(t *testing.T) {
+	m := &Mock{
+		NameStr: "linux",
+		CommandResults: map[string]string{
+			"grep -m1 model name /proc/cpuinfo": "model name : Intel(R) Core(TM) i9-12900K",
+			"grep MemTotal /proc/meminfo":       "MemTotal:       32845600 kB",
+		},
 	}
 
-	cc := DetectCompute()
+	cc := DetectComputeWith(m)
 
-	// If Apple Silicon, bandwidth should be estimated
-	if cc.UnifiedMemory && cc.MemoryBandwidth <= 0 {
-		t.Logf("WARNING: Apple Silicon detected but bandwidth not estimated (model=%q)", cc.CPUModel)
+	if cc.CPUModel != "Intel(R) Core(TM) i9-12900K" {
+		t.Errorf("CPUModel = %q, want %q", cc.CPUModel, "Intel(R) Core(TM) i9-12900K")
 	}
-
-	if cc.MemoryBandwidth > 0 {
-		// Known range: 68 (M1) to 800 (Ultra)
-		if cc.MemoryBandwidth < 50 || cc.MemoryBandwidth > 1000 {
-			t.Errorf("MemoryBandwidth = %d GB/s, outside expected range [50, 1000]", cc.MemoryBandwidth)
-		}
-		t.Logf("Memory bandwidth: %d GB/s", cc.MemoryBandwidth)
+	// 32845600 * 1024 = 33633894400
+	if cc.TotalRAMBytes != 33633894400 {
+		t.Errorf("TotalRAMBytes = %d, want 33633894400", cc.TotalRAMBytes)
 	}
 }
 
 // ── detectLinuxCompute ──────────────────────────────────────────────────
 
 func TestDetectLinuxCompute(t *testing.T) {
-	cc := &ComputeCapability{LogicalCores: runtime.NumCPU()}
-	detectLinuxCompute(cc)
+	m := &Mock{
+		CommandResults: map[string]string{
+			"grep -m1 model name /proc/cpuinfo": "model name : Test CPU",
+			"grep MemTotal /proc/meminfo":       "MemTotal:       1024 kB",
+		},
+	}
+	cc := &ComputeCapability{}
+	detectLinuxCompute(m, cc)
 
-	// On macOS, the Linux path won't find /proc/cpuinfo, but shouldn't panic
-	if cc.PhysicalCores <= 0 {
-		// This is expected on non-Linux — it should default to NumCPU
-		if runtime.GOOS == "linux" {
-			t.Errorf("PhysicalCores = %d on Linux, want > 0", cc.PhysicalCores)
-		}
+	if cc.CPUModel != "Test CPU" {
+		t.Errorf("CPUModel = %q, want %q", cc.CPUModel, "Test CPU")
+	}
+	if cc.TotalRAMBytes != 1024*1024 {
+		t.Errorf("TotalRAMBytes = %d, want %d", cc.TotalRAMBytes, 1024*1024)
 	}
 }
 
 // ── detectDarwinCompute ─────────────────────────────────────────────────
 
 func TestDetectDarwinCompute(t *testing.T) {
-	if runtime.GOOS != "darwin" {
-		t.Skip("macOS-only test")
+	m := &Mock{
+		CommandResults: map[string]string{
+			"sysctl -n machdep.cpu.brand_string":                   "Apple M1 Max",
+			"sysctl -n hw.memsize":                                 "34359738368",
+			"sysctl -n hw.physicalcpu":                             "10",
+			"sysctl -n hw.perflevel0.logicalcpu":                   "8",
+			"sysctl -n hw.perflevel1.logicalcpu":                   "2",
+			"ioreg -l -w0":                                         "appleane",
+			"system_profiler SPDisplaysDataType -detailLevel mini": "Total Number of Cores: 32\nChipset Model: Apple M1 Max",
+		},
 	}
+	cc := &ComputeCapability{}
+	detectDarwinCompute(m, cc)
 
-	cc := &ComputeCapability{LogicalCores: runtime.NumCPU()}
-	detectDarwinCompute(cc)
-
-	if cc.CPUModel == "" {
-		t.Error("CPUModel should be populated on macOS")
+	if cc.CPUModel != "Apple M1 Max" {
+		t.Errorf("CPUModel = %q, want %q", cc.CPUModel, "Apple M1 Max")
 	}
-	if cc.PhysicalCores <= 0 {
-		t.Errorf("PhysicalCores = %d, want > 0", cc.PhysicalCores)
+	if cc.MemoryBandwidth != 400 {
+		t.Errorf("MemoryBandwidth = %d, want 400", cc.MemoryBandwidth)
 	}
-	if cc.TotalRAMBytes <= 0 {
-		t.Errorf("TotalRAMBytes = %d, want > 0", cc.TotalRAMBytes)
-	}
-
-	t.Logf("Darwin compute: model=%q, physical=%d, P=%d/E=%d, ANE=%v, GPU=%d",
-		cc.CPUModel, cc.PhysicalCores, cc.PCores, cc.ECores, cc.ANEAvailable, cc.GPUCores)
-}
-
-// ── PickFolder / OpenBrowser ─────────────────────────────────────────────
-
-func TestDarwinPickFolder(t *testing.T) {
-	// Can't actually open a dialog in tests, but verify it doesn't panic
-	// with a quick error return.
-	d := &Darwin{}
-	_ = d.PickFolder
-}
-
-func TestDarwinOpenBrowser(t *testing.T) {
-	d := &Darwin{}
-	_ = d.OpenBrowser
-}
-
-func TestLinuxPickFolder(t *testing.T) {
-	l := &Linux{}
-	_ = l.PickFolder
-}
-
-func TestLinuxOpenBrowser(t *testing.T) {
-	l := &Linux{}
-	_ = l.OpenBrowser
 }

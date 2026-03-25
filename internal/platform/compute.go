@@ -6,7 +6,6 @@
 package platform
 
 import (
-	"os/exec"
 	"runtime"
 	"strconv"
 	"strings"
@@ -45,15 +44,20 @@ type ComputeCapability struct {
 // On Apple Silicon, uses sysctl for detailed core topology and ANE detection.
 // On Linux/x86, falls back to /proc/cpuinfo and runtime.NumCPU().
 func DetectCompute() *ComputeCapability {
+	return DetectComputeWith(Current())
+}
+
+// DetectComputeWith is the injectable version of DetectCompute.
+func DetectComputeWith(p Platform) *ComputeCapability {
 	cc := &ComputeCapability{
 		LogicalCores: runtime.NumCPU(),
 	}
 
-	switch runtime.GOOS {
+	switch p.Name() {
 	case "darwin":
-		detectDarwinCompute(cc)
+		detectDarwinCompute(p, cc)
 	case "linux":
-		detectLinuxCompute(cc)
+		detectLinuxCompute(p, cc)
 	default:
 		cc.PhysicalCores = runtime.NumCPU()
 	}
@@ -84,7 +88,7 @@ func DetectCompute() *ComputeCapability {
 
 // detectDarwinCompute uses sysctl to probe Apple Silicon topology.
 // All system queries run concurrently on dedicated OS threads.
-func detectDarwinCompute(cc *ComputeCapability) {
+func detectDarwinCompute(p Platform, cc *ComputeCapability) {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
@@ -95,7 +99,7 @@ func detectDarwinCompute(cc *ComputeCapability) {
 			defer wg.Done()
 			runtime.LockOSThread()
 			defer runtime.UnlockOSThread()
-			if out, err := exec.Command("sysctl", "-n", key).Output(); err == nil {
+			if out, err := p.Command("sysctl", "-n", key); err == nil {
 				val, _ := strconv.Atoi(strings.TrimSpace(string(out)))
 				mu.Lock()
 				*target = val
@@ -110,7 +114,7 @@ func detectDarwinCompute(cc *ComputeCapability) {
 		defer wg.Done()
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
-		if out, err := exec.Command("sysctl", "-n", "machdep.cpu.brand_string").Output(); err == nil {
+		if out, err := p.Command("sysctl", "-n", "machdep.cpu.brand_string"); err == nil {
 			mu.Lock()
 			cc.CPUModel = strings.TrimSpace(string(out))
 			mu.Unlock()
@@ -123,7 +127,7 @@ func detectDarwinCompute(cc *ComputeCapability) {
 		defer wg.Done()
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
-		if out, err := exec.Command("sysctl", "-n", "hw.memsize").Output(); err == nil {
+		if out, err := p.Command("sysctl", "-n", "hw.memsize"); err == nil {
 			val, _ := strconv.ParseInt(strings.TrimSpace(string(out)), 10, 64)
 			mu.Lock()
 			cc.TotalRAMBytes = val
@@ -142,7 +146,7 @@ func detectDarwinCompute(cc *ComputeCapability) {
 		defer wg.Done()
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
-		if out, err := exec.Command("ioreg", "-l", "-w0").Output(); err == nil {
+		if out, err := p.Command("ioreg", "-l", "-w0"); err == nil {
 			outStr := string(out)
 			if strings.Contains(outStr, "appleane") || strings.Contains(strings.ToLower(outStr), "ane") {
 				mu.Lock()
@@ -158,7 +162,7 @@ func detectDarwinCompute(cc *ComputeCapability) {
 		defer wg.Done()
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
-		if out, err := exec.Command("system_profiler", "SPDisplaysDataType", "-detailLevel", "mini").Output(); err == nil {
+		if out, err := p.Command("system_profiler", "SPDisplaysDataType", "-detailLevel", "mini"); err == nil {
 			outStr := string(out)
 			for _, line := range strings.Split(outStr, "\n") {
 				line = strings.TrimSpace(line)
@@ -234,17 +238,17 @@ func detectDarwinCompute(cc *ComputeCapability) {
 }
 
 // detectLinuxCompute reads /proc/cpuinfo for topology.
-func detectLinuxCompute(cc *ComputeCapability) {
+func detectLinuxCompute(p Platform, cc *ComputeCapability) {
 	cc.PhysicalCores = runtime.NumCPU()
 	// On Linux, read /proc/cpuinfo for model
-	if out, err := exec.Command("grep", "-m1", "model name", "/proc/cpuinfo").Output(); err == nil {
+	if out, err := p.Command("grep", "-m1", "model name", "/proc/cpuinfo"); err == nil {
 		parts := strings.SplitN(string(out), ":", 2)
 		if len(parts) == 2 {
 			cc.CPUModel = strings.TrimSpace(parts[1])
 		}
 	}
 	// Linux RAM
-	if out, err := exec.Command("grep", "MemTotal", "/proc/meminfo").Output(); err == nil {
+	if out, err := p.Command("grep", "MemTotal", "/proc/meminfo"); err == nil {
 		parts := strings.SplitN(string(out), ":", 2)
 		if len(parts) == 2 {
 			val := strings.TrimSpace(parts[1])

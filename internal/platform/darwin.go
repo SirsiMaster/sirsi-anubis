@@ -2,14 +2,40 @@ package platform
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 // Darwin implements Platform for macOS.
 type Darwin struct{}
 
 func (d *Darwin) Name() string { return "darwin" }
+
+func (d *Darwin) Getenv(key string) string {
+	return os.Getenv(key)
+}
+
+func (d *Darwin) UserHomeDir() (string, error) {
+	return os.UserHomeDir()
+}
+
+func (d *Darwin) Getwd() (string, error) {
+	return os.Getwd()
+}
+
+func (d *Darwin) Command(name string, args ...string) ([]byte, error) {
+	return exec.Command(name, args...).CombinedOutput()
+}
+
+func (d *Darwin) Processes() ([]string, error) {
+	out, err := d.Command("ps", "-eo", "comm")
+	if err != nil {
+		return nil, err
+	}
+	return strings.Split(string(out), "\n"), nil
+}
 
 func (d *Darwin) SupportsTrash() bool { return true }
 
@@ -50,4 +76,19 @@ func (d *Darwin) PickFolder() (string, error) {
 
 func (d *Darwin) OpenBrowser(url string) error {
 	return exec.Command("open", url).Start()
+}
+
+func (d *Darwin) ReadDir(dirname string) ([]os.DirEntry, error) {
+	return os.ReadDir(dirname)
+}
+
+func (d *Darwin) Kill(pid int) error {
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		return err
+	}
+	// Note: We use the system command "kill" to be more portable across environments
+	// than syscall package on some platforms.
+	_ = exec.Command("kill", "-15", fmt.Sprintf("%d", pid)).Run()
+	return proc.Kill() // Force kill if it's still there
 }

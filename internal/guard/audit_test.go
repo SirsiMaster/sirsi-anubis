@@ -3,6 +3,8 @@ package guard
 import (
 	"os"
 	"testing"
+
+	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
 )
 
 func TestClassifyProcess(t *testing.T) {
@@ -53,7 +55,7 @@ func TestIsProtectedProcess(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isProtectedProcess(tt.process)
+			got := isProtectedProcessWith(platform.Current(), tt.process)
 			if got != tt.protected {
 				t.Errorf("isProtectedProcess(%q, PID=%d) = %v, want %v",
 					tt.process.Name, tt.process.PID, got, tt.protected)
@@ -145,5 +147,28 @@ func TestAudit(t *testing.T) {
 	}
 	if len(result.Groups) == 0 {
 		t.Error("no process groups found")
+	}
+}
+
+func TestIsProtectedProcess_Root(t *testing.T) {
+	p := ProcessInfo{User: "root", PID: 100, Name: "something"}
+	if !isProtectedProcessWith(platform.Current(), p) {
+		t.Error("root processes should be protected")
+	}
+}
+
+func TestIsProtectedProcess_SystemUser(t *testing.T) {
+	for _, user := range []string{"_windowserver", "_coreaudiod"} {
+		p := ProcessInfo{User: user, PID: 100, Name: "something"}
+		if !isProtectedProcessWith(platform.Current(), p) {
+			t.Errorf("User %q should be protected", user)
+		}
+	}
+}
+
+func TestIsProtectedProcess_PID1(t *testing.T) {
+	p := ProcessInfo{User: "me", PID: 1, Name: "launchd"}
+	if !isProtectedProcessWith(platform.Current(), p) {
+		t.Error("PID 1 should be protected")
 	}
 }

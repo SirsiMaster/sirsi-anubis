@@ -12,7 +12,10 @@ import (
 
 // CommandRunner executes a system command and returns its error.
 // Inject a mock for testing without side effects.
-type CommandRunner func(name string, args ...string) error
+type CommandRunner interface {
+	Run(name string, args ...string) error
+	Output(name string, args ...string) ([]byte, error)
+}
 
 // GhostRegistration represents an app registered in Launch Services
 // whose .app bundle no longer exists on disk.
@@ -32,6 +35,11 @@ type SightResult struct {
 
 // Scan queries Launch Services for ghost app registrations.
 func Scan() (*SightResult, error) {
+	return ScanWith(defaultRunner{})
+}
+
+// ScanWith is the injectable version of Scan.
+func ScanWith(p CommandRunner) (*SightResult, error) {
 	if runtime.GOOS != "darwin" {
 		return nil, fmt.Errorf("sight: only supported on macOS")
 	}
@@ -39,16 +47,14 @@ func Scan() (*SightResult, error) {
 	result := &SightResult{CanFix: true}
 
 	// Dump Launch Services database
-	out, err := exec.Command(
-		"/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister",
-		"-dump",
-	).Output()
+	lsregister := "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister"
+	out, err := p.Output(lsregister, "-dump")
 	if err != nil {
 		return nil, fmt.Errorf("sight: lsregister dump failed: %w", err)
 	}
 
 	// Parse registrations for missing .app bundles
-	ghosts := parseLSRegisterDump(string(out))
+	ghosts := parseLSRegisterDump(string(out), p)
 	result.GhostRegistrations = ghosts
 	result.TotalGhosts = len(ghosts)
 
@@ -58,7 +64,7 @@ func Scan() (*SightResult, error) {
 // Fix rebuilds the Launch Services database, removing ghost registrations.
 // This is a DESTRUCTIVE operation — it resets all file associations.
 func Fix(dryRun bool) error {
-	return FixWith(dryRun, defaultRunner)
+	return FixWith(dryRun, defaultRunner{})
 }
 
 // FixWith is the injectable version of Fix for testing.
@@ -74,19 +80,19 @@ func FixWith(dryRun bool, runner CommandRunner) error {
 	lsregister := "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister"
 
 	// Kill the Launch Services database and rebuild
-	if err := runner(lsregister, "-kill", "-r", "-domain", "local", "-domain", "system", "-domain", "user"); err != nil {
+	if err := runner.Run(lsregister, "-kill", "-r", "-domain", "local", "-domain", "system", "-domain", "user"); err != nil {
 		return fmt.Errorf("sight: lsregister rebuild failed: %w", err)
 	}
 
 	// Restart Finder to pick up changes
-	_ = runner("killall", "Finder") // Non-fatal if Finder restart fails
+	_ = runner.Run("killall", "Finder") // Non-fatal if Finder restart fails
 
 	return nil
 }
 
 // ReindexSpotlight triggers a Spotlight re-index for the boot volume.
 func ReindexSpotlight(dryRun bool) error {
-	return ReindexSpotlightWith(dryRun, defaultRunner)
+	return ReindexSpotlightWith(dryRun, defaultRunner{})
 }
 
 // ReindexSpotlightWith is the injectable version for testing.
@@ -98,19 +104,23 @@ func ReindexSpotlightWith(dryRun bool, runner CommandRunner) error {
 		return nil
 	}
 
-	if err := runner("mdutil", "-E", "/"); err != nil {
+	if err := runner.Run("mdutil", "-E", "/"); err != nil {
 		return fmt.Errorf("sight: Spotlight reindex failed (may need sudo): %w", err)
 	}
 	return nil
 }
 
-// defaultRunner executes a real system command.
-func defaultRunner(name string, args ...string) error {
+type defaultRunner struct{}
+
+func (r defaultRunner) Run(name string, args ...string) error {
 	return exec.Command(name, args...).Run()
+}
+func (r defaultRunner) Output(name string, args ...string) ([]byte, error) {
+	return exec.Command(name, args...).CombinedOutput()
 }
 
 // parseLSRegisterDump extracts ghost registrations from lsregister output.
-func parseLSRegisterDump(dump string) []GhostRegistration {
+func parseLSRegisterDump(dump string, p CommandRunner) []GhostRegistration {
 	var ghosts []GhostRegistration
 	seen := make(map[string]bool)
 
@@ -175,20 +185,17 @@ func parseLSRegisterDump(dump string) []GhostRegistration {
 		}
 
 		// Check if .app exists on disk
-		cmd := exec.Command("test", "-d", appPath)
-		if cmd.Run() == nil {
-			continue // App exists — not a ghost
+		if err := p.Run("test", "-d", appPath); err != nil {
+			seen[bundleID] = true
+			if name == "" {
+				name = bundleID
+			}
+			ghosts = append(ghosts, GhostRegistration{
+				BundleID: bundleID,
+				Path:     appPath,
+				Name:     name,
+			})
 		}
-
-		seen[bundleID] = true
-		if name == "" {
-			name = bundleID
-		}
-		ghosts = append(ghosts, GhostRegistration{
-			BundleID: bundleID,
-			Path:     appPath,
-			Name:     name,
-		})
 	}
 
 	return ghosts

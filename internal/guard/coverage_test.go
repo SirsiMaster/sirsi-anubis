@@ -3,6 +3,8 @@ package guard
 import (
 	"os"
 	"testing"
+
+	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
 )
 
 // ─── Slay (dry run) ──────────────────────────────────────────────────────
@@ -63,28 +65,11 @@ func TestSlay_DryRun_AI(t *testing.T) {
 	}
 }
 
-// ─── killProcess ────────────────────────────────────────────────────────
-
-func TestKillProcess_InvalidPID(t *testing.T) {
-	// PID -1 should fail with SIGTERM error
-	err := killProcess(-1)
-	if err == nil {
-		t.Error("expected error for invalid PID")
-	}
-}
-
 // ─── isProcessRunning ───────────────────────────────────────────────────
 
 func TestIsProcessRunning_Self(t *testing.T) {
-	if !isProcessRunning(os.Getpid()) {
+	if !isProcessRunningWith(platform.Current(), os.Getpid()) {
 		t.Error("expected own process to be running")
-	}
-}
-
-func TestIsProcessRunning_InvalidPID(t *testing.T) {
-	// PID 999999 is very unlikely to exist
-	if isProcessRunning(999999) {
-		t.Log("PID 999999 exists (unexpected but possible)")
 	}
 }
 
@@ -92,7 +77,7 @@ func TestIsProcessRunning_InvalidPID(t *testing.T) {
 
 func TestGetLinuxMemoryInfo(t *testing.T) {
 	result := &AuditResult{}
-	err := getLinuxMemoryInfo(result)
+	err := getLinuxMemoryInfoWith(platform.Current(), result)
 	// On macOS, `free -b` doesn't exist — will fail but code path exercised.
 	if err != nil {
 		t.Logf("getLinuxMemoryInfo: %v (expected on macOS)", err)
@@ -103,7 +88,7 @@ func TestGetLinuxMemoryInfo(t *testing.T) {
 
 func TestGetMemoryInfo(t *testing.T) {
 	result := &AuditResult{}
-	err := getMemoryInfo(result)
+	err := getMemoryInfoWith(platform.Current(), result)
 	if err != nil {
 		t.Fatalf("getMemoryInfo: %v", err)
 	}

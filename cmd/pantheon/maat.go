@@ -41,12 +41,21 @@ See ADR-004 for the architecture decision.`,
 	Run: runMaat,
 }
 
+var maatProofCmd = &cobra.Command{
+	Use:   "proof",
+	Short: "Generate a Hardening Certificate (Proof of Truth) for public inspection",
+	Run: func(cmd *cobra.Command, args []string) {
+		maat.ExportProof()
+	},
+}
+
 func init() {
 	maatCmd.Flags().BoolVar(&maatPipeline, "pipeline", false, "Assess CI pipeline only")
 	maatCmd.Flags().BoolVar(&maatCoverage, "coverage", false, "Assess test coverage only")
 	maatCmd.Flags().BoolVar(&maatCanon, "canon", false, "Assess canon linkage only")
 	maatCmd.Flags().IntVar(&maatCommits, "commits", 10, "Number of recent commits to check for canon linkage")
 	maatCmd.Flags().BoolVar(&maatFull, "full", false, "Run full coverage scan (ignore diff cache, test all packages)")
+	maatCmd.AddCommand(maatProofCmd)
 }
 
 func runMaat(cmd *cobra.Command, args []string) {
