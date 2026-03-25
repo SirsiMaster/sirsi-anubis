@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sirsi Pantheon — Deity Registry</title>
+  <meta name="description" content="Browse every deity in the Sirsi Pantheon. Each module has a dedicated page with features, metrics, installation, and downloads.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --gold: #C8A951; --gold-bright: #E2C76B; --gold-dark: #A08332;
+      --lapis: #1A1A5E; --obsidian: #0F0F0F; --papyrus: #F5F0E8;
+      --emerald: #059669; --emerald-light: #10B981;
+      --bg: #020C08; --surface: #0A1A14; --surface-hover: #122820;
+      --text: #F0EDE5; --text-dim: rgba(240,237,229,0.6); --text-muted: rgba(240,237,229,0.35);
+      --border: rgba(200,169,81,0.15); --border-hover: rgba(200,169,81,0.35);
+      --font-heading: 'Cinzel', serif; --font-body: 'Inter', sans-serif; --font-mono: 'JetBrains Mono', monospace;
+    }
+    html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
+    body { font-family: var(--font-body); background: var(--bg); color: var(--text); min-height: 100vh; line-height: 1.6; }
+
+    /* ── Nav ──────────────────────────────────────────── */
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 1rem 3rem; border-bottom: 1px solid var(--border); backdrop-filter: blur(20px); position: sticky; top: 0; z-index: 100; background: rgba(2,12,8,0.85); }
+    nav .logo { font-family: var(--font-heading); font-size: 1.3rem; color: var(--gold); text-decoration: none; display: flex; align-items: center; gap: 0.5rem; }
+    nav .logo .glyph { font-size: 1.6rem; }
+    nav .nav-links { display: flex; gap: 1.5rem; }
+    nav .nav-links a { color: var(--text-dim); text-decoration: none; font-size: 0.95rem; transition: color 0.2s; }
+    nav .nav-links a:hover { color: var(--gold); }
+
+    /* ── Hero ──────────────────────────────────────────── */
+    .hero { text-align: center; padding: 5rem 3rem 3rem; position: relative; }
+    .hero::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(ellipse at 50% 0%, rgba(200,169,81,0.06) 0%, transparent 60%); pointer-events: none; }
+    .hero h1 { font-family: var(--font-heading); font-size: 3.5rem; background: linear-gradient(135deg, var(--gold-bright), var(--gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 0.5rem; }
+    .hero .subtitle { font-size: 1.3rem; color: var(--text-dim); max-width: 700px; margin: 0 auto 2rem; }
+    .hero .tagline { font-family: var(--font-mono); font-size: 0.95rem; color: var(--gold-dark); letter-spacing: 0.12em; text-transform: uppercase; }
+
+    /* ── Deity Grid ────────────────────────────────────── */
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 3rem; }
+    section { padding: 3rem 0; }
+    section h2 { font-family: var(--font-heading); font-size: 2rem; color: var(--gold); text-align: center; margin-bottom: 0.3rem; }
+    section .sub { text-align: center; color: var(--text-muted); margin-bottom: 2.5rem; }
+
+    .deity-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+    @media (max-width: 900px) { .deity-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 600px) { .deity-grid { grid-template-columns: 1fr; } }
+
+    .deity-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2rem;
+      text-decoration: none; color: var(--text); transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+      display: flex; flex-direction: column; position: relative; overflow: hidden;
+    }
+    .deity-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--gold), transparent); opacity: 0; transition: opacity 0.3s; }
+    .deity-card:hover { border-color: var(--border-hover); transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
+    .deity-card:hover::before { opacity: 1; }
+
+    .deity-card .card-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+    .deity-card .glyph { font-size: 2.8rem; }
+    .deity-card .card-title { font-family: var(--font-heading); font-size: 1.4rem; color: var(--gold-bright); }
+    .deity-card .card-role { font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+    .deity-card .card-desc { font-size: 1rem; color: var(--text-dim); line-height: 1.5; flex: 1; margin-bottom: 1.2rem; }
+    .deity-card .card-meta { display: flex; gap: 1.2rem; flex-wrap: wrap; }
+    .deity-card .meta-item { display: flex; flex-direction: column; }
+    .deity-card .meta-value { font-family: var(--font-heading); font-size: 1.1rem; color: var(--gold); }
+    .deity-card .meta-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+    .deity-card .badge { position: absolute; top: 1rem; right: 1rem; font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 999px; background: rgba(5,150,105,0.15); color: var(--emerald-light); border: 1px solid rgba(5,150,105,0.3); text-transform: uppercase; letter-spacing: 0.05em; }
+    .deity-card .badge.planned { background: rgba(200,169,81,0.1); color: var(--gold-dark); border-color: rgba(200,169,81,0.25); }
+
+    /* ── Install ──────────────────────────────────────── */
+    .install { max-width: 700px; margin: 2rem auto; background: rgba(0,0,0,0.5); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem 2rem; }
+    .install code { display: block; font-family: var(--font-mono); font-size: 0.95rem; margin: 0.3rem 0; color: var(--emerald-light); }
+    .install .prompt { color: var(--gold); }
+    .install .comment { color: var(--text-muted); }
+
+    /* ── Footer ───────────────────────────────────────── */
+    footer { text-align: center; padding: 3rem 2rem; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.9rem; }
+    footer a { color: var(--emerald-light); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+    .footer-links { display: flex; justify-content: center; gap: 2rem; margin-bottom: 1rem; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+
+  <!-- ═══ Nav ═══ -->
+  <nav>
+    <a href="../index.html" class="logo"><span class="glyph">𓂀</span> Pantheon</a>
+    <div class="nav-links">
+      <a href="../index.html">Home</a>
+      <a href="../build-log.html">Build Log</a>
+      <a href="../case-studies.html">Case Studies</a>
+      <a href="https://github.com/SirsiMaster/sirsi-pantheon">GitHub</a>
+      <a href="https://sirsi.ai">Sirsi Nexus</a>
+    </div>
+  </nav>
+
+  <!-- ═══ Hero ═══ -->
+  <header class="hero">
+    <p class="tagline">pantheon.sirsi.ai</p>
+    <h1>The Deity Registry</h1>
+    <p class="subtitle">Every module in the Pantheon gets a full page — features, metrics, installation, and downloads. Click any deity to explore.</p>
+  </header>
+
+  <!-- ═══ Install ═══ -->
+  <div class="install">
+    <code><span class="comment"># Install the full Pantheon (all deities in one 12 MB binary)</span></code>
+    <code><span class="prompt">$</span> brew tap SirsiMaster/tools && brew install sirsi-pantheon</code>
+    <code></code>
+    <code><span class="comment"># Or install from source</span></code>
+    <code><span class="prompt">$</span> go install github.com/SirsiMaster/sirsi-pantheon/cmd/pantheon@latest</code>
+  </div>
+
+  <!-- ═══ Deity Grid ═══ -->
+  <section>
+    <div class="container">
+      <h2>Choose Your Deity</h2>
+      <p class="sub">Each deity can be installed standalone or as part of the full Pantheon</p>
+
+      <div class="deity-grid">
+
+        <a href="anubis.html" class="deity-card">
+          <span class="badge">shipped</span>
+          <div class="card-header">
+            <span class="glyph">𓂀</span>
+            <div>
+              <div class="card-title">Anubis</div>
+              <div class="card-role">Judge of the Dead</div>
+            </div>
+          </div>
+          <p class="card-desc">Finds junk on your computer that cleaning apps miss. 58 scan rules across 7 domains — caches, Docker, AI models, IDEs, and more.</p>
+          <div class="card-meta">
+            <div class="meta-item"><span class="meta-value">58</span><span class="meta-label">Scan Rules</span></div>
+            <div class="meta-item"><span class="meta-value">94.6%</span><span class="meta-label">Coverage</span></div>
+            <div class="meta-item"><span class="meta-value">4.0 MB</span><span class="meta-label">Download</span></div>
+          </div>
+        </a>
+
+        <a href="ka.html" class="deity-card">
+          <span class="badge">shipped</span>
+          <div class="card-header">
+            <span class="glyph">𓂓</span>
+            <div>
+              <div class="card-title">Ka</div>
+              <div class="card-role">Spirit of the Dead</div>
+            </div>
+          </div>
+          <p class="card-desc">Detects ghost apps — software you deleted that left behind startup files, system registrations, and phantom processes.</p>
+          <div class="card-meta">
+            <div class="meta-item"><span class="meta-value">17</span><span class="meta-label">Search Paths</span></div>
+            <div class="meta-item"><span class="meta-value">93.0%</span><span class="meta-label">Coverage</span></div>
+            <div class="meta-item"><span class="meta-value">&lt; 1s</span><span class="meta-label">Scan Time</span></div>
+          </div>
+        </a>
+
+        <a href="sekhmet.html" class="deity-card">
+          <span class="badge">shipped</span>
+          <div class="card-header">
+            <span class="glyph">𓁵</span>
+            <div>
+              <div class="card-title">Sekhmet</div>
+              <div class="card-role">Warrior Guardian</div>
+            </div>
+          </div>
+          <p class="card-desc">Guards your system against CPU and RAM hogs. Detects runaway processes, throttles offenders with renice, and prevents IDE freezes.</p>
+          <div class="card-meta">
+            <div class="meta-item"><span class="meta-value">95.0%</span><span class="meta-label">Coverage</span></div>
+            <div class="meta-item"><span class="meta-value">3 levels</span><span class="meta-label">Throttle</span></div>
+            <div class="meta-item"><span class="meta-value">4.0 MB</span><span class="meta-label">Download</span></div>
+          </div>
+        </a>
+
+        <a href="hathor.html" class="deity-card">
+          <span class="badge">shipped</span>
+          <div class="card-header">
+            <span class="glyph">𓉡</span>
+            <div>
+              <div class="card-title">Hathor</div>
+              <div class="card-role">Goddess of Reflection</div>
+            </div>
+          </div>
+          <p class="card-desc">Finds duplicate files eating your storage. 3-phase dedup engine — size grouping → partial hash → full SHA-256. Includes web GUI.</p>
+          <div class="card-meta">
+            <div class="meta-item"><span class="meta-value">27×</span><span class="meta-label">Faster</span></div>
+            <div class="meta-item"><span class="meta-value">98.8%</span><span class="meta-label">I/O Saved</span></div>
+            <div class="meta-item"><span class="meta-value">Web GUI</span><span class="meta-label">Included</span></div>
+          </div>
+        </a>
+
+        <a href="maat.html" class="deity-card">
+          <span class="badge">shipped</span>
+          <div class="card-header">
+            <span class="glyph">𓆄</span>
+            <div>
+              <div class="card-title">Ma'at</div>
+              <div class="card-role">Truth and Order</div>
+            </div>
+          </div>
+          <p class="card-desc">Grades your code quality and enforces team standards. Coverage governance, canon verification, YAML policy engine.</p>
+          <div class="card-meta">
+            <div class="meta-item"><span class="meta-value">88/100</span><span class="meta-label">Score</span></div>
+            <div class="meta-item"><span class="meta-value">3</span><span class="meta-label">Domains</span></div>
+            <div class="meta-item"><span class="meta-value">4.0 MB</span><span class="meta-label">Download</span></div>
+          </div>
+        </a>
+
+        <a href="horus.html" class="deity-card">
+          <span class="badge">shipped</span>
+          <div class="card-header">
+            <span class="glyph">𓁹</span>
+            <div>
+              <div class="card-title">Horus</div>
+              <div class="card-role">The All-Seeing Eye</div>
+            </div>
+          </div>
+          <p class="card-desc">Shared filesystem index — walk the disk once, all deities query instantly. Fixes macOS Spotlight and Launch Services. Auto-publishes build documentation.</p>
+          <div class="card-meta">
+            <div class="meta-item"><span class="meta-value">19×</span><span class="meta-label">Faster</span></div>
+            <div class="meta-item"><span class="meta-value">92.8%</span><span class="meta-label">Coverage</span></div>
+            <div class="meta-item"><span class="meta-value">Gob cache</span><span class="meta-label">Format</span></div>
+          </div>
+        </a>
+
+        <a href="khepri.html" class="deity-card">
+          <span class="badge">shipped</span>
+          <div class="card-header">
+            <span class="glyph">𓆣</span>
+            <div>
+              <div class="card-title">Khepri</div>
+              <div class="card-role">Scarab of Renewal</div>
+            </div>
+          </div>
+          <p class="card-desc">Scans every device on your local network. Audits Docker containers, discovers hosts via ARP, inspects configurations.</p>
+          <div class="card-meta">
+            <div class="meta-item"><span class="meta-value">LAN-wide</span><span class="meta-label">Scope</span></div>
+            <div class="meta-item"><span class="meta-value">94.8%</span><span class="meta-label">Coverage</span></div>
+            <div class="meta-item"><span class="meta-value">4.0 MB</span><span class="meta-label">Download</span></div>
+          </div>
+        </a>
+
+        <a href="thoth.html" class="deity-card">
+          <span class="badge">shipped</span>
+          <div class="card-header">
+            <span class="glyph">𓁟</span>
+            <div>
+              <div class="card-title">Thoth</div>
+              <div class="card-role">God of Knowledge</div>
+            </div>
+          </div>
+          <p class="card-desc">Persistent AI memory that cuts context window waste by 98.7%. MCP server for Claude, Cursor, and Windsurf integration.</p>
+          <div class="card-meta">
+            <div class="meta-item"><span class="meta-value">98.7%</span><span class="meta-label">Token Saved</span></div>
+            <div class="meta-item"><span class="meta-value">5</span><span class="meta-label">MCP Tools</span></div>
+            <div class="meta-item"><span class="meta-value">$4.08</span><span class="meta-label">Saved/Session</span></div>
+          </div>
+        </a>
+
+        <a href="hapi.html" class="deity-card">
+          <span class="badge">shipped</span>
+          <div class="card-header">
+            <span class="glyph">𓁶</span>
+            <div>
+              <div class="card-title">Hapi</div>
+              <div class="card-role">God of the Flood</div>
+            </div>
+          </div>
+          <p class="card-desc">Hardware accelerator detection — finds GPUs, Neural Engines, VRAM, and CPU cores. Routes to the fastest compute available.</p>
+          <div class="card-meta">
+            <div class="meta-item"><span class="meta-value">4</span><span class="meta-label">Vendors</span></div>
+            <div class="meta-item"><span class="meta-value">84.3%</span><span class="meta-label">Coverage</span></div>
+            <div class="meta-item"><span class="meta-value">Auto</span><span class="meta-label">Detection</span></div>
+          </div>
+        </a>
+
+        <a href="osiris.html" class="deity-card">
+          <span class="badge">shipped</span>
+          <div class="card-header">
+            <span class="glyph">𓁹</span>
+            <div>
+              <div class="card-title">Osiris</div>
+              <div class="card-role">Checkpoint Guardian</div>
+            </div>
+          </div>
+          <p class="card-desc">Detects uncommitted work and assesses risk of session data loss. 5-level risk system with time-based escalation.</p>
+          <div class="card-meta">
+            <div class="meta-item"><span class="meta-value">5</span><span class="meta-label">Risk Levels</span></div>
+            <div class="meta-item"><span class="meta-value">92.8%</span><span class="meta-label">Coverage</span></div>
+            <div class="meta-item"><span class="meta-value">2h</span><span class="meta-label">Escalation</span></div>
+          </div>
+        </a>
+
+        <a href="seba.html" class="deity-card">
+          <span class="badge planned">in progress</span>
+          <div class="card-header">
+            <span class="glyph">𓇼</span>
+            <div>
+              <div class="card-title">Seba</div>
+              <div class="card-role">Star Map</div>
+            </div>
+          </div>
+          <p class="card-desc">Draws a visual map of your infrastructure. Interactive topology graph showing service connections and dependencies.</p>
+          <div class="card-meta">
+            <div class="meta-item"><span class="meta-value">Graph</span><span class="meta-label">Engine</span></div>
+            <div class="meta-item"><span class="meta-value">90.0%</span><span class="meta-label">Coverage</span></div>
+            <div class="meta-item"><span class="meta-value">D3.js</span><span class="meta-label">Visualization</span></div>
+          </div>
+        </a>
+
+        <a href="ra.html" class="deity-card">
+          <span class="badge planned">planned</span>
+          <div class="card-header">
+            <span class="glyph">☀️</span>
+            <div>
+              <div class="card-title">Ra</div>
+              <div class="card-role">Supreme Overseer</div>
+            </div>
+          </div>
+          <p class="card-desc">The autonomous hypervisor. Monitors system health and orchestrates all deities automatically. Fleet management, compliance, and the Sirsi Nexus bridge.</p>
+          <div class="card-meta">
+            <div class="meta-item"><span class="meta-value">12</span><span class="meta-label">Deities</span></div>
+            <div class="meta-item"><span class="meta-value">Fleet</span><span class="meta-label">Scale</span></div>
+            <div class="meta-item"><span class="meta-value">Enterprise</span><span class="meta-label">Tier</span></div>
+          </div>
+        </a>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ Tiers ═══ -->
+  <section>
+    <div class="container">
+      <h2>Editions</h2>
+      <p class="sub">Free forever for your machine. Paid for your fleet.</p>
+      <div class="deity-grid" style="grid-template-columns: repeat(2, 1fr);">
+        <div class="deity-card" style="cursor: default;">
+          <div class="card-header">
+            <span class="glyph">𓂀</span>
+            <div>
+              <div class="card-title">Pantheon Anubis</div>
+              <div class="card-role">Free Edition</div>
+            </div>
+          </div>
+          <p class="card-desc">All deities, all commands, single machine. Scan, clean, guard, govern, deduplicate, ghost hunt, hardware detect, AI memory. No feature gating. No telemetry. Free forever.</p>
+          <div class="card-meta">
+            <div class="meta-item"><span class="meta-value">$0</span><span class="meta-label">Forever</span></div>
+            <div class="meta-item"><span class="meta-value">12 MB</span><span class="meta-label">Binary</span></div>
+            <div class="meta-item"><span class="meta-value">MIT</span><span class="meta-label">License</span></div>
+          </div>
+        </div>
+        <div class="deity-card" style="cursor: default; border-color: var(--gold-dark);">
+          <div class="card-header">
+            <span class="glyph">☀️</span>
+            <div>
+              <div class="card-title">Pantheon Ra</div>
+              <div class="card-role">Enterprise Edition</div>
+            </div>
+          </div>
+          <p class="card-desc">Fleet management across routers, switches, GPU/TPU clusters, cloud infrastructure. Centralized policy enforcement, compliance reporting, and Sirsi Nexus integration. The infrastructure immune system for your organization.</p>
+          <div class="card-meta">
+            <div class="meta-item"><span class="meta-value">Fleet</span><span class="meta-label">Scale</span></div>
+            <div class="meta-item"><span class="meta-value">LSP</span><span class="meta-label">Included</span></div>
+            <div class="meta-item"><span class="meta-value">Contact</span><span class="meta-label">Pricing</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ Footer ═══ -->
+  <footer>
+    <div class="footer-links">
+      <a href="https://github.com/SirsiMaster/sirsi-pantheon">GitHub</a>
+      <a href="../build-log.html">Build Log</a>
+      <a href="../case-studies.html">Case Studies</a>
+      <a href="https://sirsi.ai">Sirsi Nexus</a>
+    </div>
+    <p>𓂀 Pantheon v0.4.0-alpha — Built by <a href="https://sirsi.ai">Sirsi Technologies</a></p>
+    <p style="margin-top: 0.3rem; font-size: 0.8rem;">One install. All deities. Nothing escapes the Weighing.</p>
+  </footer>
+
+</body>
+</html>
