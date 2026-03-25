@@ -325,22 +325,22 @@ func TestDefaultRoots(t *testing.T) {
 		t.Fatal("DefaultRoots returned empty slice")
 	}
 
-	// Should always contain Development and .cache
-	foundDev := false
+	// Phase 3: Scoped roots — should contain hygiene targets, not ~/Development
 	foundCache := false
+	foundCaches := false
 	for _, r := range roots {
-		if strings.HasSuffix(r, "Development") {
-			foundDev = true
-		}
 		if strings.HasSuffix(r, ".cache") {
 			foundCache = true
 		}
-	}
-	if !foundDev {
-		t.Error("DefaultRoots should include ~/Development")
+		if strings.HasSuffix(r, "Caches") {
+			foundCaches = true
+		}
 	}
 	if !foundCache {
 		t.Error("DefaultRoots should include ~/.cache")
+	}
+	if !foundCaches {
+		t.Error("DefaultRoots should include ~/Library/Caches")
 	}
 
 	// Platform-specific entries

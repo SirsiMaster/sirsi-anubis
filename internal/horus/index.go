@@ -84,8 +84,49 @@ type IndexOptions struct {
 	Parallelism  int
 }
 
-// DefaultRoots returns the standard filesystem roots that deities care about.
+// DefaultRoots returns targeted filesystem roots for infrastructure hygiene.
+// Phase 3: Scoped indexing — only scan paths that deities actually query.
+// This prevents triple-indexing overlap with the IDE's LSP and Thoth.
+//
+// Previously this scanned 14+ broad roots including ~/Development and /Applications,
+// causing 856K+ file entries and competing with the IDE's Language Server for
+// memory bandwidth and CPU. Now we only scan cache/log/build artifact paths.
 func DefaultRoots() []string {
+	home, _ := os.UserHomeDir()
+
+	// Core hygiene targets — caches, logs, and known waste producers.
+	roots := []string{
+		filepath.Join(home, "Library", "Caches"),
+		filepath.Join(home, "Library", "Logs"),
+		filepath.Join(home, ".cache"),
+		filepath.Join(home, ".local", "share"),
+		filepath.Join(home, "go", "pkg", "mod", "cache"),
+	}
+
+	switch runtime.GOOS {
+	case "darwin":
+		roots = append(roots,
+			"/opt/homebrew/var/log",
+			filepath.Join(home, "Library", "Developer", "Xcode", "DerivedData"),
+			filepath.Join(home, "Library", "Developer", "CoreSimulator"),
+		)
+	case "linux":
+		roots = append(roots,
+			"/var/cache",
+			"/var/tmp",
+		)
+	case "windows":
+		roots = append(roots,
+			filepath.Join(home, "AppData", "Local", "Temp"),
+		)
+	}
+
+	return roots
+}
+
+// FullScanRoots returns the broader root set for deep scans (e.g., `pantheon scan --deep`).
+// This is the old DefaultRoots — use sparingly, as it indexes 856K+ files.
+func FullScanRoots() []string {
 	home, _ := os.UserHomeDir()
 	roots := []string{
 		filepath.Join(home, "Library", "Caches"),
@@ -123,6 +164,14 @@ func DefaultRoots() []string {
 	}
 
 	return roots
+}
+
+// Release drops the manifest data from memory.
+// Call this after a scan/query cycle to free the heap for the IDE's Language Server.
+func (m *Manifest) Release() {
+	m.Dirs = nil
+	m.Roots = nil
+	m.Stats = WalkStats{}
 }
 
 // Index builds or loads the shared filesystem manifest.
