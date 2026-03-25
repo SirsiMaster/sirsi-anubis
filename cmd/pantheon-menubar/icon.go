@@ -2,11 +2,9 @@
 //
 // icon.go — Embedded icon for the macOS menu bar.
 //
-// The icon is a small 22x22 PNG ankh symbol (𓋹) rendered in gold on transparent.
-// For the menu bar, macOS requires a template image (monochrome).
-// We embed the raw PNG bytes and pass them to systray.SetIcon().
-//
-// To regenerate: use the generate_icon tool or manually create a 22x22 PNG.
+// macOS menu bar icons should be "template images" — monochrome with alpha.
+// The system tints them white on dark backgrounds and black on light.
+// Size: 22×22 pixels is the standard for @1x, 44×44 for @2x.
 package main
 
 import (
@@ -16,55 +14,49 @@ import (
 	"image/png"
 )
 
-// generateAnkhIcon creates a procedural 22x22 ankh icon for the menu bar.
-// This is a monochrome icon suitable for macOS template rendering.
-// The ankh symbol (☥) represents life and is the Pantheon emblem.
+// generateAnkhIcon creates a 22x22 ankh symbol as a macOS template icon.
+// Uses solid black pixels on transparent — macOS will handle the tinting.
 func generateAnkhIcon() []byte {
 	const size = 22
+	img := image.NewNRGBA(image.Rect(0, 0, size, size))
 
-	// Create a monochrome image
-	img := image.NewRGBA(image.Rect(0, 0, size, size))
+	// Ankh symbol (☥) — drawn as a pixel bitmap
+	// The ankh has: a loop/oval at top, a crossbar, and a vertical stem
+	black := color.NRGBA{0, 0, 0, 255}
 
-	// Draw ankh symbol procedurally.
-	// The ankh consists of:
-	// - An oval/loop at top (the handle)
-	// - A horizontal crossbar
-	// - A vertical stem below
-
-	white := color.RGBA{0, 0, 0, 255} // Black for template icon (macOS inverts)
-
-	// Loop (oval at top): rows 2-9
-	loopPixels := map[[2]int]bool{
-		// Top of oval
-		{9, 2}: true, {10, 2}: true, {11, 2}: true, {12, 2}: true,
-		// Upper sides
-		{8, 3}: true, {13, 3}: true,
-		{7, 4}: true, {14, 4}: true,
-		{7, 5}: true, {14, 5}: true,
-		{7, 6}: true, {14, 6}: true,
-		{8, 7}: true, {13, 7}: true,
-		// Bottom of oval (connects to stem)
-		{9, 8}: true, {12, 8}: true,
-		{10, 9}: true, {11, 9}: true,
+	// Define the ankh shape row by row (y from top)
+	// Each row is a list of x-coordinates that should be filled
+	rows := map[int][]int{
+		// Top of loop
+		1: {9, 10, 11, 12},
+		2: {7, 8, 13, 14},
+		3: {6, 7, 14, 15},
+		4: {6, 15},
+		5: {6, 15},
+		6: {6, 7, 14, 15},
+		7: {7, 8, 13, 14},
+		8: {8, 9, 12, 13},
+		9: {9, 10, 11, 12},
+		// Crossbar
+		10: {4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17},
+		11: {4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17},
+		// Stem
+		12: {10, 11},
+		13: {10, 11},
+		14: {10, 11},
+		15: {10, 11},
+		16: {10, 11},
+		17: {10, 11},
+		18: {10, 11},
+		19: {10, 11},
+		20: {10, 11},
 	}
 
-	// Crossbar: row 10-11
-	for x := 5; x <= 16; x++ {
-		loopPixels[[2]int{x, 10}] = true
-		loopPixels[[2]int{x, 11}] = true
-	}
-
-	// Stem: rows 12-19
-	for y := 12; y <= 19; y++ {
-		loopPixels[[2]int{10, y}] = true
-		loopPixels[[2]int{11, y}] = true
-	}
-
-	// Draw
-	for coord := range loopPixels {
-		x, y := coord[0], coord[1]
-		if x >= 0 && x < size && y >= 0 && y < size {
-			img.Set(x, y, white)
+	for y, xs := range rows {
+		for _, x := range xs {
+			if x >= 0 && x < size && y >= 0 && y < size {
+				img.Set(x, y, black)
+			}
 		}
 	}
 
