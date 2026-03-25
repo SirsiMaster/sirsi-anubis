@@ -700,6 +700,187 @@
     </div>
   </section>
 
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!--  CASE STUDY 5: MA'AT                                   -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <section class="case-study">
+    <div class="container">
+      <div class="case-header">
+        <span class="case-glyph">𓆄</span>
+        <div>
+          <span class="case-label label-solution">Efficiency Win</span>
+          <h2>Ma'at — The 3,667× Coverage Speedup</h2>
+          <p class="case-subtitle">How we took pre-push gates from 55 seconds to 15 milliseconds</p>
+        </div>
+      </div>
+
+      <div class="narrative">
+        <p>A gate that takes a minute to pass is a gate that developers start to bypass. In the early days of Pantheon, running our mandatory pre-push coverage check meant sitting and waiting for 55 seconds while <code>go test -cover ./...</code> walked every package.</p>
+        <p>The math was brutal: 10 pushes per day × 55 seconds = 9 minutes of pure waiting. Multiply that by 5 developers, and you're losing nearly an hour of technical momentum every single day.</p>
+      </div>
+
+      <div class="snapshot">
+        <div class="label">$ time pantheon maat --coverage</div>
+        <br>
+        <div><span class="red">Before:</span> 55.321s (Walks all 42 packages)</div>
+        <div><span class="green">After:</span>  0.015s  (Queries git diff, walks 2 packages)</div>
+        <br>
+        <div class="label">The Insight:</div>
+        <div>"Order (Ma'at) doesn't mean verifying everything every time. It means verifying *only what changed* relative to Truth (origin/HEAD)."</div>
+      </div>
+
+      <div class="metric-row">
+        <div class="metric-card">
+          <div class="metric-value">3,667×</div>
+          <div class="metric-label">Speedup Factor</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">55s → 15ms</div>
+          <div class="metric-label">Wait latency</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">5.5 hrs</div>
+          <div class="metric-label">Dev time saved/month</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!--  CASE STUDY 6: HORUS                                   -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <section class="case-study">
+    <div class="container">
+      <div class="case-header">
+        <span class="case-glyph">𓁹</span>
+        <div>
+          <span class="case-label label-insight">Architecture Discovery</span>
+          <h2>Horus — The All-Seeing Index</h2>
+          <p class="case-subtitle">Stopping the "redundant walk" — how one shared index makes every deity 19× faster</p>
+        </div>
+      </div>
+
+      <div class="narrative">
+        <p>Three deities — Anubis, Ka, and Hathor — were all walking the same filesystem independently. Every full assessment involved 38 seconds of redundant disk I/O. Our SSDs were screaming, and our results were slow.</p>
+        <p>We realized the filesystem is a shared resource; the index should be too. We built <strong>Horus</strong> to walk the disk once, cache a Gob-encoded manifest, and provide O(1) query performance to every other deity.</p>
+      </div>
+
+      <div class="snapshot">
+        <div class="label">Horus Manifest Query vs Disk Walk</div>
+        <br>
+        <div><span class="yellow">Jackal (Weigh)</span>  15.6s → <span class="green">833ms</span> (19× faster)</div>
+        <div><span class="yellow">Ka (Ghosts)</span>    8.5s  → <span class="green">1.1s</span>   (8× faster)</div>
+        <div><span class="yellow">Pre-push gate</span>  65s   → <span class="green">2s</span>     (32× faster)</div>
+        <br>
+        <div><span class="gold">Manifest Size:</span> 31 MB (Binary Gob)</div>
+        <div><span class="gold">Query Speed:</span>  541 nanoseconds (O(1) hash lookup)</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!--  CASE STUDY 7: KA                                      -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <section class="case-study">
+    <div class="container">
+      <div class="case-header">
+        <span class="case-glyph">𓂓</span>
+        <div>
+          <span class="case-label label-crisis">The Ghost of Parallels</span>
+          <h2>Ka — Spirits of the Dead</h2>
+          <p class="case-subtitle">Why an app you deleted six months ago is still eating 8.5 GB of your disk</p>
+        </div>
+      </div>
+
+      <div class="narrative">
+        <p>We uninstalled Parallels Desktop. We trashed the .app, we emptied the bin. And yet, six months later, we found <strong>8.5 GB of data</strong> sitting in <code>~/Library/Application Support/Parallels</code>. Logs, VM caches, and diagnostic dumps that no standard uninstaller bothered to clean up.</p>
+        <p>This is the "Ka" — the spirit double that lingers after the body (the .app) is gone. We mapped 17 separate locations on macOS where these spirits hide.</p>
+      </div>
+
+      <div class="metric-row">
+        <div class="metric-card">
+          <div class="metric-value">17</div>
+          <div class="metric-label">Ghost hiding spots mapped</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">8.5 GB</div>
+          <div class="metric-label">Found in a single ghost app</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">1.1s</div>
+          <div class="metric-label">Scan time (with Horus)</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!--  CASE STUDY 8: HATHOR                                  -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <section class="case-study">
+    <div class="container">
+      <div class="case-header">
+        <span class="case-glyph">𓉡</span>
+        <div>
+          <span class="case-label label-solution">Optimization Goal</span>
+          <h2>Hathor — The 27× Dedup Engine</h2>
+          <p class="case-subtitle">Finding duplicates in 100 GB of photos without melting your disk</p>
+        </div>
+      </div>
+
+      <div class="narrative">
+        <p>Hashing a 20 MB photo takes time. Hashing 5,000 photos takes a lifetime if you read every byte. Most "dedup" tools are disk-death sentences for high-volume users.</p>
+        <p>Hathor uses a <strong>3-Phase Reflection</strong> strategy. We only do the expensive SHA-256 work on files that have already cleared the size and "short-hash" (8KB header/footer) hurdles. Total I/O reduction: 98.8%.</p>
+      </div>
+
+      <div class="snapshot">
+        <div class="label">Hathor 3-Phase Filter</div>
+        <br>
+        <div><span class="green">Phase 1:</span> Size Check (90% candidates eliminated)</div>
+        <div><span class="green">Phase 2:</span> Header/Footer Hash (9% eliminated)</div>
+        <div><span class="gold">Phase 3:</span> Full SHA-256 (only on 1% collisions)</div>
+        <br>
+        <div><span class="gold">Result:</span> 98 MB read → <span class="green">1.2 MB read</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!--  CASE STUDY 9: SCARAB                                  -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <section class="case-study">
+    <div class="container">
+      <div class="case-header">
+        <span class="case-glyph">𓆣</span>
+        <div>
+          <span class="case-label label-autopsy">Volume Recovery</span>
+          <h2>Scarab — The 64 GB Docker Secret</h2>
+          <p class="case-subtitle">Healing CI runners that say they're full but `system df` says they're empty</p>
+        </div>
+      </div>
+
+      <div class="narrative">
+        <p>A CI/CD runner ran out of space. <code>docker system prune -a</code> cleaned nothing. <code>docker volume ls</code> was empty. Yet <code>df -h</code> showed `/var/lib/docker` at 100%.</p>
+        <p>Scarab (the module of renewal) found <strong>64 GB of orphaned volumes</strong> left over from a previous Docker engine installation that weren't being "claimed" by the active daemon. Scarab doesn't just ask Docker; it audits the filesystem reality.</p>
+      </div>
+
+      <div class="metric-row">
+        <div class="metric-card">
+          <div class="metric-value">64.2 GB</div>
+          <div class="metric-label">Hidden waste recovered</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">0 B</div>
+          <div class="metric-label">Docker's reported waste</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">1 Min</div>
+          <div class="metric-label">Recovery automation</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ═══ CTA ════════════════════════════════════════════════ -->
   <section class="cta-section">
     <h2>Building in Public</h2>

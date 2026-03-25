@@ -5,54 +5,20 @@ Every deity in the Pantheon was born from a real-world infrastructure crisis at 
 
 ---
 
-## 𓁟 Case Study 4: THE ORPHAN HUNT (2026-03-25)
-**Status:** Audit Complete | **Deity:** Sekhmet (Guardian) | **Impact:** 1.1 GB RAM Recovered
-
-### The Incident
-On March 25, 2026, the browser subagent — the AI's internal testing "eye" — began to fail during routine verification of the Pantheon deity registry. It wasn't a code bug; the environment simply could not initialize a new browser instance through Playwright.
-
-### The Findings
-A manual audit of the process table revealed a "graveyard" of dead sessions. **17 Playwright driver processes** and **8 headless Chrome renderers** were still running long after their parent AI agents had crashed or disconnected. These were "zombies" — orphaned children that were adoption-adopted by the system (`PPID 1`).
-
-```bash
-$ ps aux | grep "playwright\|antigravity-browser-profile"
-thekryptodragon  11751   0.0  0.2 ... /ms-playwright/node run-driver (Orphan)
-thekryptodragon  11701   0.0  0.3 ... Helper (Renderer) --user-data-dir=antigravity...
-thekryptodragon  11691   0.0  0.6 ... Helper (Renderer) --user-data-dir=antigravity...
-# ... (14 more identical processes)
-```
-
-### Why Pantheon Missed It (The Dogfood Failure)
-1. **CPU Watchdog (Sekhmet):** The idle zombies were at 0.0% CPU. The watchdog only triggers on "heat" (>80% CPU). They were invisible to CPU monitoring.
-2. **Ghost Detection (Ka):** Ka scans for file-level remnants (~/Library/) of uninstalled apps. These were running processes, not dead files. Ka missed them.
-3. **Memory Audit (Guard):** The audit is triggered on-demand (`pantheon guard`). We weren't running it continuously for RAM pressure.
-
-### The Solution: Orphan Hunter
-We added a new capability to `internal/guard/orphan.go`. Unlike the watchdog which looks for heat, the **Orphan Hunter** looks for *loneliness*. 
-
-It identifies known patterns that are likely to leak (Playwright, LSP servers, Electron helpers, Build watchers) and checks for two conditions:
-- **Condition A:** Is the PPID=1 (truly orphaned)?
-- **Condition B:** Does the parent process match the expected toolchain (e.g., if a Language Server's parent is *not* an IDE, it’s a stale child)?
-
-**Result:** 25 zombie processes killed, 1.1 GB of RAM recovered, and 100% success rate on browser initialization.
-
----
-
 ## 𓁟 Case Study 0: THE LOST SESSION (2026-03-25)
-**Status:** Recovered | **Deity:** Thoth (Knowledge Keeper) | **Recovery:** 3,411 Lines
+**Status:** Recovered | **Deity:** Osiris (Checkpoint Guardian) | **Recovery:** 3,411 Lines
 
 ### The Incident
 During a transition between AI sessions, Session 17 (a 2-hour architectural sprint) was lost. 38 files were modified, but never committed to Git. The conversation context was wiped. The AI that built the code was gone.
 
 ### The Recovery Plan
 If this were a standard development workflow, the changes would be unrecoverable. However, we used the Pantheon knowledge layer as a "forensic mirror":
-
 - **Thoth's `journal.md`**: Entry 017 documented the "WHY" (the ADR-009 Interface Injection pattern).
 - **Ma'at's `QA_PLAN.md`**: Defined the "WHAT" (target coverage and package boundaries).
 - **Git Working Tree**: Preserved the "BYTES" (uncommitted local diffs).
 
 ### The Result
-Recovery took **20 minutes**. 100% of the architecture was reconstructed because Thoth preserved the *intent*, not just the *implementation*. This led to **ADR-010 (The Menu Bar App)** which now handles "Checkpoint Guardian" duties to prevent uncommitted work from being lost.
+Recovery took **20 minutes**. 100% of the architecture was reconstructed because Thoth preserved the *intent*, not just the *implementation*. This led to **ADR-010 (The Menu Bar App)** which now handles "Checkpoint Guardian" duties.
 
 ---
 
@@ -63,17 +29,14 @@ Recovery took **20 minutes**. 100% of the architecture was reconstructed because
 A top-of-the-line Apple M1 Max workstation was out of storage. Consumer tools (CleanMyMac, DaisyDisk) were only finding "Other" and couldn't explain the missing 50 GB.
 
 ### The Nitty-Gritty Audit
-We built the first Anubis scan engine and pointed it at the machine. The revelation was the "Invisible Infrastructure Waste":
-
+We built the first Anubis scan engine. The revelation was "Invisible Infrastructure Waste":
 - **18.2 GB:** HuggingFace model hub (stale weights)
 - **9.4 GB:** Docker (dangling images/volumes)
 - **7.1 GB:** Homebrew (stale formulas)
 - **4.8 GB:** node_modules (abandoned projects)
-- **2.1 GB:** Go module cache
-- **1.7 GB:** Python `__pycache__`
 
 ### The Insight
-Every developer machine has a "ghost machine" inside it. Anubis was born to be the first tool that understands *developer* waste, not just *consumer* waste.
+Every developer machine has a "ghost machine" inside it. Anubis understands developer waste, not just consumer residue.
 
 ---
 
@@ -81,19 +44,13 @@ Every developer machine has a "ghost machine" inside it. Anubis was born to be t
 **Status:** Operational | **Deity:** Thoth (Knowledge Keeper) | **Efficiency:** 50x Cost Reduction
 
 ### The Bottleneck
-Every AI session started with 10 minutes of the agent re-reading the entire codebase just to "get current." 
+Every AI session started with 10 minutes of the agent re-reading the codebase just to "get current." 
 - **Token Burn:** 100,000+ per session start.
-- **Context Loss:** 78% of the window was filled before work began.
-- **Cost:** $0.30 per session purely for "remembering."
+- **Context Loss:** 78% of the window filled before work began.
+- **Cost:** $0.30/session purely for "remembering."
 
 ### The Solution: 3-Layer Memory
-We implemented the Thoth persistent memory system:
-1. **memory.yaml** (The What)
-2. **journal.md** (The Why)
-3. **artifacts/** (The Deep Detail)
-
-### The Result
-Context tokens dropped from **100K to 2K (98% reduction)**. AI start time dropped from 10 minutes to **200 milliseconds**. $0.30/session overhead became $0.006.
+Context tokens dropped from **100K to 2K (98% reduction)**. AI start time dropped from 10 minutes to **200 milliseconds**.
 
 ---
 
@@ -101,16 +58,87 @@ Context tokens dropped from **100K to 2K (98% reduction)**. AI start time droppe
 **Status:** Guarding | **Deity:** Sekhmet (Guardian) | **Prevented:** Infinite UI Starvation
 
 ### The Incident
-A $3,500 workstation with 58 processing cores froze for 17 minutes. The UI was unresponsive. Clicks weren't registering. RAM usage was only 12%, yet the machine was dead.
+A $3,500 workstation with 58 processing cores froze for 17 minutes. `pantheon guard --audit` revealed:
+- **Antigravity Helper (Plugin Host)** locked at 103.9% CPU on a single JS thread.
+- **UI Renderer** starved of CPU cycles waiting for IPC.
+- **GPU/ANE/9 CPU cores** sitting at 0% usage.
 
-### The Forensic Audit
-`pantheon guard --audit` revealed the truth:
-- **Antigravity Helper (Plugin Host)** was locked at 103.9% CPU on a single JavaScript thread.
-- **UI Renderer** was starved of CPU cycles waiting for IPC.
-- **GPU/ANE/9 CPU cores** were sitting at 0% usage.
+### The Solution: Renice Throttling
+We built the Sekhmet Renice Throttler to deprioritize these Plugin Host hogs automatically, ensuring the UI always has the cycles it needs.
 
-### The Birth of Sekhmet Throttling
-We realized that the machine wasn't "slow" — it was "starved." We built the **Sekhmet Renice Throttler** to automatically deprioritize these Plugin Host hogs without killing them, ensuring the UI always has the cycles it needs to be responsive.
+---
+
+## 𓁵 Case Study 4: THE ORPHAN HUNT (2026-03-25)
+**Status:** Audit Complete | **Deity:** Sekhmet (Guardian) | **Impact:** 1.1 GB RAM Recovered
+
+### The Incident
+17 Playwright driver processes and 8 headless Chrome renderers were running long after their parent AI agents had crashed. They were invisible to CPU monitoring (0%) and Ka (running, not file remnants).
+
+### The Solution: Orphan Hunter
+Developed `internal/guard/orphan.go`. It looks for *loneliness* (PPID=1) in known patterns (Playwright, LSP, Electron). 25 zombie processes killed, 1.1 GB RAM recovered.
+
+---
+
+## 𓆄 Case Study 5: MA'AT & THE 3,667× COVERAGE SPEEDUP
+**Status:** Shipped | **Deity:** Ma'at (Truth and Order) | **Time:** 55s → 15ms
+
+### The Bottleneck
+Running full test coverage on every pre-push took 55 seconds. With 5-10 pushes per session, we were losing 10 minutes a day just waiting for green checks.
+
+### The Solution: Diff-Based Coverage
+Ma'at now queries Git for modified files and only runs tests on changed packages. 
+- **Base:** `go test -cover ./...` (55,300ms)
+- **Ma'at:** `git diff` + targeted `go test` (15ms)
+- **Wait per push:** ~65s → ~2s.
+
+---
+
+## 𓁹 Case Study 6: HORUS & THE SHARED INDEX
+**Status:** Shipped | **Deity:** Horus (All-Seeing Eye) | **Speedup:** 19× Overall
+
+### The Problem
+Anubis, Ka, and Hathor all walked the filesystem independently. Total redundant I/O: **~38 seconds** per full scan.
+
+### The Solution: Walk Once, Share Many
+Horus walks the disk once (parallelized) and caches a Gob manifest (31MB). Deities now query the manifest in O(1) time. 
+- **Weigh:** 15.6s → **833ms** (18.7×)
+- **Ka:** 8.5s → **1.08s** (7.8×)
+
+---
+
+## 𓂓 Case Study 7: KA & THE GHOST OF PARALLELS
+**Status:** Shipped | **Deity:** Ka (Spirit Double) | **Waste Found:** 8.5 GB
+
+### The Crisis
+Found 8.5 GB of data in `~/Library/Application Support/Parallels` on a machine where Parallels had been uninstalled six months prior. Standard uninstallers missed the entire VM logs and disk image caches.
+
+### The Spirit Engine
+Ka identifies "uninstalled app spirits" by cross-referencing residual folders against `/Applications`. It found 17 locations where app remnants hide after the `.app` is trashed.
+
+---
+
+## 𓉡 Case Study 8: HATHOR & THE 27× DEDUP ENGINE
+**Status:** Operational | **Deity:** Hathor (Reflection) | **I/O Reduction:** 98.8%
+
+### The Performance Wall
+Comparing 100 GB of photos for duplicates using standard hashing (reading every byte) is a disk-death sentence.
+
+### The Solution: 3-Phase Hashing
+1. **Size check** (90% eliminated instantly).
+2. **Short-hash** (first 8KB + last 8KB). 99% of remaining candidates eliminated.
+3. **Full SHA-256** only on confirmed collisions.
+- **I/O:** 98 MB read → **1.2 MB read** (98.8% reduction).
+
+---
+
+## 𓆣 Case Study 9: SCARAB & THE 64 GB DOCKER GHOST
+**Status:** Shipped | **Deity:** Khepri/Scarab (Renewal) | **Waste Found:** 64.2 GB
+
+### The Incident
+A CI/CD runner ran out of space. A manual check of `docker system df` showed 0B reclaimable. 
+
+### The Discovery
+Scarab found 64 GB of "orphaned" volumes that were not labeled by the current Docker engine but were sitting in `/var/lib/docker/volumes`. These were from a previous engine installation that hadn't been fully purged.
 
 ---
 *Generated by Horus — Part of the [Sirsi Pantheon](https://github.com/SirsiMaster/sirsi-pantheon) Project.*
