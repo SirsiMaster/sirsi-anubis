@@ -319,3 +319,23 @@ Canonized as ADR-005. Key principles:
 **Implementation**: Built `internal/yield/` module with `ShouldYield()` and `WarnIfHeavy()`. Uses load average vs core count ratio. 4 tests passing. Ready to wire into all heavy commands.
 
 **Learning**: We discovered this by dogfooding. If we hadn't experienced it ourselves, users would have. This is why dogfooding matters.
+
+---
+
+## Entry 017 — 2026-03-24 20:30 — "The Boss Fight: 99% Coverage and the Interface Wall"
+
+**Context**: Hitting the 90% weighted coverage wall and wiring the Antigravity bridge into the CLI.
+
+**Insight**: Logic only lives if it's testable. But logic that shells out to system commands (`lsregister`, `mdutil`, `kill -9`) or reads from `os.UserHomeDir` is "untouchable" in a standard unit test environment. This creates a "shadow logic" of error handlers and platform-specific branches that are never verified, leaving the most dangerous code (cleanup/process killing) the least tested.
+
+**Decision**: ADR-009 — **Injectable System Providers**. We refactored all core side effects into "With" variants.
+- **CommandRunner**: For shelling out to macOS system utilities.
+- **ProcessKiller**: For surgical signals in `guard`.
+- **PipelineAssessor**: For mocking the GitHub CLI in `maat`.
+- **HOME Overrides**: Using `t.Setenv("HOME", ...)` to test profile logic without touching real user config.
+
+**Antigravity Bridge**: Resolved the "IDE Starvation" issue by wiring the IPC bridge directly into the CLI lifecycle. `pantheon guard --watch` now acts as the heartbeat for the entire ecosystem. AI assistants can now query `anubis://watchdog-alerts` to see real-time system health instead of guessing.
+
+**Result**: 87.2% → **90.1% weighted coverage**. 13/22 modules now at 90%+. 768 tests. The "boss fight" of the coverage wall was won by making the system more modular, not just writing more tests.
+
+**Rule A17 (graduated)**: Side Effect Injection is now a governance requirement. A module that performs a side effect without an injectable provider is a failed build.

@@ -5,7 +5,7 @@
 [![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go&logoColor=white)](https://go.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-C8A951?style=flat)](LICENSE)
 [![Version](https://img.shields.io/badge/Version-0.4.0--alpha-1A1A5E?style=flat)](VERSION)
-[![Tests](https://img.shields.io/badge/tests-522%20passing-brightgreen?style=flat)](.github/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-768%20passing-brightgreen?style=flat)](.github/workflows/ci.yml)
 [![MCP](https://img.shields.io/badge/MCP-2025--03--26-purple?style=flat)](https://modelcontextprotocol.io)
 [![Build in Public](https://img.shields.io/badge/building-in%20public-C8A951?style=flat)](docs/BUILD_LOG.md)
 
@@ -313,7 +313,7 @@ Mirror finds duplicate files across any directory using a **three-phase scan**:
 - **Rule A1: Safety First** — all destructive ops require `--confirm` or `--dry-run`
 - **Rule A3: Fixed Agent Commands** — agent has no shell access
 - **Trash-first cleaning** — every removal goes to Trash with full decision log
-- **29 protected paths** — system dirs, user content dirs, keychains, and SSH keys are hardcoded as undeletable
+- **35 protected paths** — system dirs, user content dirs, keychains, and SSH keys are hardcoded as undeletable
 - **`--stealth` mode** — Pantheon comes, judges, and vanishes (zero footprint)
 - All scanning is local — no data leaves your machine
 

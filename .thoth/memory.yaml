@@ -1,18 +1,18 @@
 # 𓁟 Thoth — Project Memory for Sirsi Pantheon
 # Read this FIRST before any source files.
-# Last updated: 2026-03-23T19:50:00-04:00
+# Last updated: 2026-03-24T20:30:00-04:00
 
 ## Identity
 project: sirsi-pantheon
 repo: github.com/SirsiMaster/sirsi-pantheon
 language: Go 1.22+
-version: 0.4.0-alpha
+version: 0.4.0-alpha (Revision 2)
 binary_count: 2 (pantheon @ 12 MB, pantheon-agent @ 3.2 MB)
-test_count: 650+
-line_count: ~20,500
+test_count: 768
+line_count: ~17,110
 module_count: 22
 command_count: 18
-mcp_tools: 5 (scan_workspace, ghost_report, health_check, classify_files, thoth_read_memory)
+mcp_tools: 5 (scan_workspace, ghost_report, health_check, classify_files, watchdog_alerts)
 
 ## Architecture Quick Reference
 # Modules are named after Egyptian mythology
@@ -70,8 +70,9 @@ mcp_tools: 5 (scan_workspace, ghost_report, health_check, classify_files, thoth_
 ## Known Limitations (as of v0.4.0-alpha)
 # - GUI folder picker only works on macOS (Linux: zenity/kdialog in platform/linux.go)
 # - Trash integration only works on macOS (Linux: gio trash in platform/linux.go)
-# - 21/22 modules at 80%+ test coverage (weighted avg ~87%)
-# - Platform module structurally capped at 73% (OS dialogs + Linux-only code)
+# - 13/22 modules at 90%+ test coverage (weighted avg 90.1%)
+# - 21/22 modules at 80%+ test coverage (weighted avg 90.1%)
+# - Platform module structurally capped at 73.4% (OS dialogs + Linux-only code)
 # - Ka ghost hunting is macOS-only (searches .app bundles, LaunchServices)
 # - Scan rules are macOS/Linux only — no Windows AppData paths yet
 # - Homebrew tap: VERIFIED (brew install sirsi-pantheon works end-to-end)
@@ -80,20 +81,16 @@ mcp_tools: 5 (scan_workspace, ghost_report, health_check, classify_files, thoth_
 # - Horus: Phase 1 implemented (shared index, parallel walks, manifest cache)
 #   Phase 2 planned: FSEvents/fanotify/USN Journal for incremental updates
 # - Isis, Osiris: Designated deities but have no tool mapping yet
-# - ADR count: 8 (001-founding, 002-ka, 003-build-in-public, 004-maat, 005-pantheon, 006-resource-gov, 007-findings-portal, 008-shared-filesystem-index)
+# - ADR count: 9 (001-founding... 009-injectable-providers)
 
 ## Recent Changes (most recent first)
-# 2026-03-24: Session 16b — MCP Performance + Coverage Sprint + Antigravity Bridge Wiring
-#   MCP health_check: 17s → 63ms (270× speedup) — uses cached Horus index instead of live scans.
-#   Coverage sprint: 8 rounds targeting 9 modules across 22 total.
-#   Key results: output 0→100%, yield 52→82% (injectable LoadProvider), hapi 56→84%,
-#   platform 45→73%, maat 71→80%, cleaner 80→86%, mcp 82→87%.
-#   21/22 modules now at 80%+ test coverage (weighted avg ~87%).
-#   Antigravity bridge wired into CLI: `pantheon guard --watch` now starts the full
-#   bridge (StartBridge + AlertRing + SetWatchdogBridge) — MCP consumers get live alerts.
-#   Yield module refactored: LoadProvider type + CheckWith/WarnIfHeavyWith for testing.
-#   Scales CollectMetrics timeout reduced 30s → 5s to prevent IDE starvation.
-#   Note: Platform coverage is structurally maxed on macOS (PickFolder/OpenBrowser/LinuxCompute).
+# 2026-03-24: Session 16b — The Coverage Sprint & Antigravity Bridge (90.1% Hit)
+#   Coverage breakthrough: 87.2% → 90.1% (Rule A16 established).
+#   Injectable Providers: standard interface injection for signals and exec.Command (ADR-009).
+#   Guard (89→91%), Ma'at (80→88%), Sight (78→93%), Profile (84→85%).
+#   Antigravity CLI: `pantheon guard --watch` now starts the full bridge + AlertRing.
+#   Note: Platform coverage is structurally maxed at 73.4% on macOS.
+#   Canon update: ANUBIS_RULES.md → PANTHEON_RULES.md (v2.0.0). ADR-009 added.
 # 2026-03-23: Session 14 — Brain Coverage + Homebrew Verification
 #   Brain coverage sprint: 40.4% → 55.9% (exceeds 50% Ma'at threshold).
 #   New tests: downloadFile (httptest), selectPlatformModel, classifyByHeuristic

@@ -1,7 +1,7 @@
-# ANUBIS_RULES.md
+# PANTHEON_RULES.md
 **Operational Directive for All Development Agents (sirsi-pantheon)**
-**Version:** 1.1.0 (Traceability Hardened)
-**Date:** March 20, 2026
+**Version:** 2.0.0 (The Pantheon Unification)
+**Date:** March 24, 2026
 
 ---
 
@@ -11,8 +11,8 @@ An open-source CLI tool that scans, judges, and purges infrastructure waste acro
 
 - **GitHub**: `https://github.com/SirsiMaster/sirsi-pantheon`
 - **Local Path**: `/Users/thekryptodragon/Development/sirsi-pantheon`
-- **CLI Binary**: `anubis`
-- **Agent Binary**: `anubis-agent`
+- **CLI Binary**: `pantheon`
+- **Agent Binary**: `pantheon-agent`
 
 **This repo is NOT SirsiNexusApp. This repo is NOT FinalWishes. This repo is NOT Assiduous.**
 Rules, design tokens, and business logic from other repositories do NOT apply here unless explicitly inherited through Universal Rules (§1).
@@ -213,6 +213,14 @@ Anubis scans filesystems and processes. Scan results may contain sensitive infor
 *   `docs/CONTINUATION-PROMPT.md` is the session boundary marker.
 *   Session counts in ROI calculations, case studies, and build logs MUST use this definition.
 
+### 2.13 Side Effect Injection (Rule A16)
+> Established March 24, 2026. Required for 99% test coverage and deterministic safety audits. (ADR-009)
+
+*   **Rule**: ALL logic performing system-level side effects (`exec.Command`, `signals`, `os.RemoveAll`, `os.UserHomeDir`) MUST be abstracted through an interface or function type (Injection Pattern).
+*   **Standard**: Every module MUST export a default simple function (e.g., `Slay()`) that delegates to an internal "With" variant (e.g., `SlayWith(killer)`).
+*   **Safety**: Testing MUST exercise at least one failure path for every system side effect (e.g., "kill root process fails") without mutating the host.
+*   **Verification**: A module with system side effects and zero mock-based coverage is a **governance failure**.
+
 ---
 
 ## 3. Technology Stack
@@ -320,5 +328,5 @@ These documents are the source of truth for this repo:
 | **7** | **Temple** | Web dashboard / native SwiftUI GUI |
 
 ---
-**Canonical source**: `ANUBIS_RULES.md`
+**Canonical source**: `PANTHEON_RULES.md`
 **Auto-synced to**: `GEMINI.md`, `CLAUDE.md`

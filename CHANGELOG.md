@@ -1,4 +1,4 @@
-# Changelog — Sirsi Anubis
+# Changelog — Sirsi Pantheon
 All notable changes to this project are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
@@ -8,11 +8,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 
 ## [Unreleased]
 ### Planned
-- P0: Cleaner test coverage to 80%+ (safety-critical)
-- P0: Scanner edge cases (permissions, symlink loops)
-- P1: `anubis maat` — pipeline purifier (CI monitoring + auto-fix + reporting)
-- P1: Standalone Ma'at — independent deployment without Anubis binary
+- P0: Reach 95%+ coverage on remaining modules (Sight, Platform, Mirror)
+- P1: Thoth auto-sync (Horus/Ra feed facts)
+- P1: CoreML embeddings on ANE (60x speedup)
 - P2: npm publish thoth-init, VS Code extension
+
+### Session 16b (2026-03-24) — The Interface Injection Sprint
+- **Coverage Breakthrough** — Weighted average pushed to **90.1%** (Rule A16 established).
+- **Injectable Providers** — Established standard interface injection for signals and `exec.Command` (ADR-009).
+- **Guard Module (89→91%)** — Full deterministic audit of process termination paths (root-failures, dry-runs).
+- **Ma'at Module (80→88%)** — Deterministic CI pipeline assessment with injectable gh-cli runners.
+- **Sight Module (78→93%)** — Rebuilt `Fix` and `ReindexSpotlight` with mockable system commands.
+- **Antigravity CLI Wiring** — `pantheon guard --watch` now starts the full IPC bridge + AlertRing.
+- **MCP Live Alerts** — Bridged watchdog alerts into MCP resources via `anubis://watchdog-alerts`.
+- **Canon Realignment** — `ANUBIS_RULES.md` → `PANTHEON_RULES.md` (v2.0.0). ADR index updated.
 
 ## [0.4.0-alpha] — 2026-03-23 (Launch Execution + Modular Deities)
 
