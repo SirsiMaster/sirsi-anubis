@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQ — Which Pantheon Tool Should I Use? | Sirsi Pantheon</title>
+    <meta name="description" content="Choose the right Pantheon tool for your workflow: VS Code Extension, Menu Bar App, CLI, or MCP Server.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold: #C8A951;
+            --gold-dim: #9A7B3A;
+            --black: #0F0F0F;
+            --lapis: #1A1A5E;
+            --surface: #161616;
+            --surface-2: #1E1E1E;
+            --surface-3: #252525;
+            --text: #E8E8E8;
+            --text-dim: #888;
+            --green: #4EC9B0;
+            --blue: #569CD6;
+            --red: #F44747;
+            --purple: #C586C0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--black);
+            color: var(--text);
+            line-height: 1.7;
+            min-height: 100vh;
+        }
+
+        /* ── Header ─────────────────────────────── */
+        .hero {
+            background: linear-gradient(135deg, var(--lapis) 0%, var(--black) 60%, #1a0a2e 100%);
+            padding: 80px 40px 60px;
+            text-align: center;
+            border-bottom: 2px solid var(--gold-dim);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '𓂀';
+            position: absolute;
+            font-size: 300px;
+            opacity: 0.03;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .hero h1 {
+            font-family: 'Cinzel', serif;
+            font-size: 2.8rem;
+            font-weight: 900;
+            color: var(--gold);
+            margin-bottom: 12px;
+            letter-spacing: 2px;
+        }
+
+        .hero p {
+            font-size: 1.15rem;
+            color: var(--text-dim);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* ── Nav ─────────────────────────────────── */
+        nav {
+            background: var(--surface);
+            padding: 12px 40px;
+            border-bottom: 1px solid #2a2a2a;
+            display: flex;
+            gap: 24px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        nav a {
+            color: var(--gold-dim);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: color 0.2s;
+        }
+
+        nav a:hover { color: var(--gold); }
+
+        /* ── Content ─────────────────────────────── */
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px 80px;
+        }
+
+        /* ── Decision Matrix ─────────────────────── */
+        .matrix {
+            background: var(--surface-2);
+            border: 1px solid #333;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 40px 0;
+        }
+
+        .matrix h2 {
+            font-family: 'Cinzel', serif;
+            color: var(--gold);
+            padding: 20px 24px;
+            font-size: 1.3rem;
+            border-bottom: 1px solid #333;
+        }
+
+        .matrix table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .matrix th {
+            background: var(--surface-3);
+            color: var(--gold-dim);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+
+        .matrix td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #222;
+            font-size: 0.9rem;
+        }
+
+        .matrix tr:last-child td { border-bottom: none; }
+        .matrix tr:hover { background: var(--surface-3); }
+
+        .matrix .tool-name {
+            color: var(--gold);
+            font-weight: 600;
+        }
+
+        .matrix .install-cmd {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.8rem;
+            color: var(--green);
+            background: rgba(78, 201, 176, 0.08);
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        /* ── Layer Cards ─────────────────────────── */
+        .layer-card {
+            background: var(--surface-2);
+            border: 1px solid #333;
+            border-radius: 12px;
+            margin: 24px 0;
+            overflow: hidden;
+            transition: border-color 0.3s;
+        }
+
+        .layer-card:hover { border-color: var(--gold-dim); }
+
+        .layer-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 20px 24px;
+            border-bottom: 1px solid #333;
+        }
+
+        .layer-icon {
+            font-size: 2rem;
+            width: 52px;
+            height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(200, 169, 81, 0.08);
+            border-radius: 10px;
+            border: 1px solid rgba(200, 169, 81, 0.2);
+        }
+
+        .layer-title {
+            font-family: 'Cinzel', serif;
+            color: var(--gold);
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .layer-subtitle {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+        }
+
+        .layer-size {
+            margin-left: auto;
+            background: rgba(200, 169, 81, 0.1);
+            color: var(--gold);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border: 1px solid rgba(200, 169, 81, 0.2);
+        }
+
+        .layer-body {
+            padding: 20px 24px;
+        }
+
+        .layer-body p {
+            margin-bottom: 16px;
+            color: var(--text-dim);
+        }
+
+        .feature-list {
+            list-style: none;
+            display: grid;
+            gap: 8px;
+        }
+
+        .feature-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .feature-list li::before {
+            content: '✦';
+            color: var(--gold);
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .ai-badge {
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            margin-left: 8px;
+        }
+
+        .ai-no {
+            background: rgba(78, 201, 176, 0.1);
+            color: var(--green);
+            border: 1px solid rgba(78, 201, 176, 0.2);
+        }
+
+        .ai-yes {
+            background: rgba(197, 134, 192, 0.1);
+            color: var(--purple);
+            border: 1px solid rgba(197, 134, 192, 0.2);
+        }
+
+        /* ── Combos Table ────────────────────────── */
+        .combos {
+            background: var(--surface-2);
+            border: 1px solid #333;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 40px 0;
+        }
+
+        .combos h2 {
+            font-family: 'Cinzel', serif;
+            color: var(--gold);
+            padding: 20px 24px;
+            font-size: 1.3rem;
+            border-bottom: 1px solid #333;
+        }
+
+        .combos table { width: 100%; border-collapse: collapse; }
+        .combos th {
+            background: var(--surface-3);
+            color: var(--gold-dim);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 12px 16px;
+            text-align: left;
+        }
+        .combos td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #222;
+            font-size: 0.9rem;
+        }
+        .combos tr:last-child td { border-bottom: none; }
+        .combos tr:hover { background: var(--surface-3); }
+
+        .combo-stack {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .combo-chip {
+            font-size: 0.75rem;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .chip-ext { background: rgba(86, 156, 214, 0.15); color: var(--blue); }
+        .chip-menu { background: rgba(200, 169, 81, 0.15); color: var(--gold); }
+        .chip-cli { background: rgba(78, 201, 176, 0.15); color: var(--green); }
+        .chip-mcp { background: rgba(197, 134, 192, 0.15); color: var(--purple); }
+
+        /* ── Smart Installer ─────────────────────── */
+        .installer-section {
+            background: linear-gradient(135deg, rgba(26, 26, 94, 0.3), rgba(15, 15, 15, 0.9));
+            border: 1px solid var(--gold-dim);
+            border-radius: 12px;
+            padding: 32px;
+            margin: 40px 0;
+            text-align: center;
+        }
+
+        .installer-section h2 {
+            font-family: 'Cinzel', serif;
+            color: var(--gold);
+            margin-bottom: 16px;
+        }
+
+        .installer-section p {
+            color: var(--text-dim);
+            margin-bottom: 20px;
+        }
+
+        .detect-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: left;
+        }
+
+        .detect-item {
+            background: var(--surface-2);
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            font-size: 0.85rem;
+        }
+
+        .detect-item .arrow { color: var(--gold); margin: 0 6px; }
+
+        /* ── Footer ──────────────────────────────── */
+        footer {
+            text-align: center;
+            padding: 40px;
+            border-top: 1px solid #222;
+            color: var(--text-dim);
+            font-size: 0.8rem;
+        }
+
+        footer a { color: var(--gold-dim); text-decoration: none; }
+        footer a:hover { color: var(--gold); }
+
+        @media (max-width: 640px) {
+            .hero h1 { font-size: 1.8rem; }
+            .layer-header { flex-wrap: wrap; }
+            .layer-size { margin-left: 0; margin-top: 8px; }
+            .detect-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header class="hero">
+        <h1>Which Pantheon Tool Should I Use?</h1>
+        <p>Four layers, one ecosystem. Choose what matches your workflow — most developers use 2-3 simultaneously.</p>
+    </header>
+
+    <nav>
+        <a href="/index.html">Registry</a>
+        <a href="/build-log.html">Build Log</a>
+        <a href="/case-studies.html">Case Studies</a>
+        <a href="/faq.html" style="color: var(--gold);">FAQ</a>
+    </nav>
+
+    <div class="container">
+
+        <!-- Decision Matrix -->
+        <div class="matrix">
+            <h2>Quick Decision Matrix</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>I want to...</th>
+                        <th>Use</th>
+                        <th>Install</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Auto-deprioritize LSPs and monitor RAM in my IDE</td>
+                        <td><span class="tool-name">VS Code Extension</span></td>
+                        <td><span class="install-cmd">ext install SirsiMaster.sirsi-pantheon</span></td>
+                    </tr>
+                    <tr>
+                        <td>Always see system health in my Mac menu bar</td>
+                        <td><span class="tool-name">Menu Bar App</span></td>
+                        <td><span class="install-cmd">brew install sirsi-pantheon-menubar</span></td>
+                    </tr>
+                    <tr>
+                        <td>Scan for waste, ghosts, and bloat from terminal</td>
+                        <td><span class="tool-name">CLI</span></td>
+                        <td><span class="install-cmd">brew install sirsi-pantheon</span></td>
+                    </tr>
+                    <tr>
+                        <td>Let my AI coding assistant query Pantheon directly</td>
+                        <td><span class="tool-name">MCP Server</span></td>
+                        <td><span class="install-cmd">pantheon mcp</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Layer Cards -->
+        <div class="layer-card">
+            <div class="layer-header">
+                <div class="layer-icon">🔌</div>
+                <div>
+                    <div class="layer-title">VS Code Extension</div>
+                    <div class="layer-subtitle">For any VS Code-based IDE</div>
+                </div>
+                <span class="ai-badge ai-no">No AI Required</span>
+                <div class="layer-size">40 KB download</div>
+            </div>
+            <div class="layer-body">
+                <p>Works in VS Code, Cursor, Windsurf, Antigravity — anything built on the VS Code engine. Available on <a href="https://open-vsx.org/extension/SirsiMaster/sirsi-pantheon" style="color: var(--gold);">OpenVSX</a>.</p>
+                <ul class="feature-list">
+                    <li><strong>Guardian</strong> — Auto-renice LSPs to Background QoS (nice +10)</li>
+                    <li><strong>Memory GC</strong> — Restarts bloated language servers automatically</li>
+                    <li><strong>Status Bar</strong> — Live PANTHEON metrics, refreshed every 5s</li>
+                    <li><strong>Command Palette</strong> — Scan, ghost report, renice, optimal settings</li>
+                    <li><strong>Thoth</strong> — Context compression from .thoth/memory.yaml</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="layer-card">
+            <div class="layer-header">
+                <div class="layer-icon">🖥️</div>
+                <div>
+                    <div class="layer-title">Menu Bar App</div>
+                    <div class="layer-subtitle">Always visible, IDE-independent</div>
+                </div>
+                <span class="ai-badge ai-no">No AI Required</span>
+                <div class="layer-size">2.6 MB download</div>
+            </div>
+            <div class="layer-body">
+                <p>Native macOS menu bar application. Runs independently of any IDE — always visible, always monitoring. Auto-starts at login with LaunchAgent.</p>
+                <ul class="feature-list">
+                    <li><strong>System tray icon</strong> — Heavyweight ankh, always visible</li>
+                    <li><strong>Live stats</strong> — RAM pressure, Git status, branch, accelerators</li>
+                    <li><strong>Command shortcuts</strong> — Quick-launch scan, guard, ghost hunt</li>
+                    <li><strong>Auto-start</strong> — LaunchAgent survives reboots, KeepAlive enabled</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="layer-card">
+            <div class="layer-header">
+                <div class="layer-icon">⌨️</div>
+                <div>
+                    <div class="layer-title">CLI</div>
+                    <div class="layer-subtitle">Full power, scriptable, CI/CD ready</div>
+                </div>
+                <span class="ai-badge ai-no">No AI Required</span>
+                <div class="layer-size">6.6 MB download</div>
+            </div>
+            <div class="layer-body">
+                <p>18 commands across 10+ modules. JSON output for piping. Works on macOS and Linux.</p>
+                <ul class="feature-list">
+                    <li><code style="color: var(--green);">pantheon weigh</code> — Full infrastructure scan (58 rules, 7 domains)</li>
+                    <li><code style="color: var(--green);">pantheon ka</code> — Ghost detection (17 macOS locations)</li>
+                    <li><code style="color: var(--green);">pantheon guard</code> — Process monitoring and resource control</li>
+                    <li><code style="color: var(--green);">pantheon maat</code> — Quality governance and coverage</li>
+                    <li><code style="color: var(--green);">pantheon mirror</code> — File deduplication with GUI</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="layer-card">
+            <div class="layer-header">
+                <div class="layer-icon">🤖</div>
+                <div>
+                    <div class="layer-title">MCP Server</div>
+                    <div class="layer-subtitle">For AI-enabled IDEs</div>
+                </div>
+                <span class="ai-badge ai-yes">AI Required</span>
+                <div class="layer-size">Built-in</div>
+            </div>
+            <div class="layer-body">
+                <p>Model Context Protocol server lets AI coding assistants (Claude, Gemini, Copilot) query Pantheon directly — zero copy-paste.</p>
+                <ul class="feature-list">
+                    <li><code style="color: var(--purple);">scan_workspace</code> — AI scans your system without you running commands</li>
+                    <li><code style="color: var(--purple);">ghost_report</code> — AI checks for dead processes</li>
+                    <li><code style="color: var(--purple);">health_check</code> — AI grades your system health</li>
+                    <li><code style="color: var(--purple);">thoth_read_memory</code> — AI reads project context</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Recommended Combinations -->
+        <div class="combos">
+            <h2>Recommended Combinations</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Developer Profile</th>
+                        <th>Recommended Stack</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>VS Code / Antigravity user</td>
+                        <td><div class="combo-stack"><span class="combo-chip chip-ext">Extension</span><span class="combo-chip chip-menu">Menu Bar</span></div></td>
+                    </tr>
+                    <tr>
+                        <td>JetBrains / Xcode / Sublime user</td>
+                        <td><div class="combo-stack"><span class="combo-chip chip-menu">Menu Bar</span><span class="combo-chip chip-cli">CLI</span></div></td>
+                    </tr>
+                    <tr>
+                        <td>Terminal-only (vim / emacs)</td>
+                        <td><div class="combo-stack"><span class="combo-chip chip-cli">CLI</span><span class="combo-chip chip-menu">Menu Bar</span></div></td>
+                    </tr>
+                    <tr>
+                        <td>AI-paired developer</td>
+                        <td><div class="combo-stack"><span class="combo-chip chip-ext">Extension</span><span class="combo-chip chip-menu">Menu Bar</span><span class="combo-chip chip-mcp">MCP</span></div></td>
+                    </tr>
+                    <tr>
+                        <td>DevOps / CI engineer</td>
+                        <td><div class="combo-stack"><span class="combo-chip chip-cli">CLI</span></div></td>
+                    </tr>
+                    <tr>
+                        <td>Fleet administrator</td>
+                        <td><div class="combo-stack"><span class="combo-chip chip-cli">CLI</span><span class="combo-chip chip-mcp">MCP</span></div></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Smart Installer -->
+        <div class="installer-section">
+            <h2>Smart Installer — Coming Soon</h2>
+            <p><code style="color: var(--green);">pantheon install</code> will auto-detect your environment and offer the right tools:</p>
+            <div class="detect-grid">
+                <div class="detect-item">VS Code detected <span class="arrow">→</span> <strong>Extension</strong></div>
+                <div class="detect-item">macOS detected <span class="arrow">→</span> <strong>Menu Bar</strong></div>
+                <div class="detect-item">AI IDE config found <span class="arrow">→</span> <strong>MCP</strong></div>
+                <div class="detect-item">Homebrew available <span class="arrow">→</span> <strong>Tap setup</strong></div>
+                <div class="detect-item">Linux / no GUI <span class="arrow">→</span> <strong>CLI only</strong></div>
+                <div class="detect-item">Fleet/VLAN mode <span class="arrow">→</span> <strong>Agent deploy</strong></div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>𓂀 Pantheon v0.5.1 — <a href="https://github.com/SirsiMaster/sirsi-pantheon">GitHub</a> · <a href="https://open-vsx.org/extension/SirsiMaster/sirsi-pantheon">OpenVSX</a> · <a href="/">Registry</a></p>
+        <p style="margin-top: 8px;">Zero telemetry. Zero network calls. Open source forever.</p>
+    </footer>
+</body>
+</html>
