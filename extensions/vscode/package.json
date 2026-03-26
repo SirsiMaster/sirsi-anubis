@@ -1,9 +1,10 @@
 {
   "name": "sirsi-pantheon",
-  "displayName": "𓂀 Sirsi Anubis — Eye of Horus",
-  "description": "Infrastructure hygiene monitor for your workspace. Powered by the Anubis MCP server.",
-  "version": "0.1.0",
+  "displayName": "𓂀 Pantheon — Anubis Suite",
+  "description": "Always-on infrastructure hygiene: auto-renice, RAM guardian, context compression. The Anubis Suite operates without oversight.",
+  "version": "0.5.0",
   "publisher": "SirsiMaster",
+  "license": "MPL-2.0",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -17,108 +18,131 @@
   ],
   "keywords": [
     "infrastructure",
-    "cleanup",
     "hygiene",
-    "devtools",
-    "ghost-files",
-    "mcp"
+    "renice",
+    "guardian",
+    "performance",
+    "mcp",
+    "pantheon",
+    "anubis"
   ],
-  "icon": "icon.png",
+  "icon": "resources/icon.png",
+  "galleryBanner": {
+    "color": "#0F0F0F",
+    "theme": "dark"
+  },
   "activationEvents": [
     "onStartupFinished"
   ],
-  "main": "./extension.js",
+  "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "anubis.scanWorkspace",
-        "title": "𓂀 Anubis: Scan Workspace",
-        "category": "Anubis"
+        "command": "pantheon.scan",
+        "title": "𓂀 Pantheon: Scan Workspace",
+        "category": "Pantheon",
+        "icon": "$(search)"
       },
       {
-        "command": "anubis.ghostReport",
-        "title": "𓂓 Anubis: Ghost Report",
-        "category": "Anubis"
+        "command": "pantheon.guard",
+        "title": "𓁵 Pantheon: Start Guardian",
+        "category": "Pantheon",
+        "icon": "$(shield)"
       },
       {
-        "command": "anubis.healthCheck",
-        "title": "𓂀 Anubis: Health Check",
-        "category": "Anubis"
+        "command": "pantheon.reniceLSP",
+        "title": "𓁵 Pantheon: Renice LSP Processes",
+        "category": "Pantheon",
+        "icon": "$(arrow-down)"
       },
       {
-        "command": "anubis.installBrain",
-        "title": "🧠 Anubis: Install Brain",
-        "category": "Anubis"
+        "command": "pantheon.ghostReport",
+        "title": "𓂓 Pantheon: Ghost Report (Ka)",
+        "category": "Pantheon",
+        "icon": "$(ghost)"
+      },
+      {
+        "command": "pantheon.thothContext",
+        "title": "𓁟 Pantheon: Show Thoth Context",
+        "category": "Pantheon",
+        "icon": "$(book)"
+      },
+      {
+        "command": "pantheon.showMetrics",
+        "title": "𓂀 Pantheon: Show System Metrics",
+        "category": "Pantheon",
+        "icon": "$(dashboard)"
+      },
+      {
+        "command": "pantheon.applyWorkspaceSettings",
+        "title": "𓂀 Pantheon: Apply Optimal Workspace Settings",
+        "category": "Pantheon",
+        "icon": "$(settings-gear)"
       }
     ],
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "anubis-sidebar",
-          "title": "Eye of Horus",
-          "icon": "$(eye)"
-        }
-      ]
-    },
-    "views": {
-      "anubis-sidebar": [
-        {
-          "id": "anubis-health",
-          "name": "Health Meter"
-        },
-        {
-          "id": "anubis-ghosts",
-          "name": "Ghost Apps"
-        },
-        {
-          "id": "anubis-findings",
-          "name": "Scan Findings"
-        }
-      ]
-    },
     "configuration": {
-      "title": "Sirsi Anubis",
+      "title": "Pantheon — Anubis Suite",
       "properties": {
-        "anubis.binaryPath": {
+        "pantheon.binaryPath": {
           "type": "string",
-          "default": "anubis",
-          "description": "Path to the anubis binary"
+          "default": "pantheon",
+          "description": "Path to the pantheon binary. Defaults to searching PATH."
         },
-        "anubis.autoScan": {
+        "pantheon.guardian.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable always-on Guardian (auto-renice on startup)."
+        },
+        "pantheon.guardian.reniceDelay": {
+          "type": "number",
+          "default": 30,
+          "description": "Seconds to wait after activation before first renice (LSP needs time to spawn)."
+        },
+        "pantheon.guardian.pollInterval": {
+          "type": "number",
+          "default": 5,
+          "description": "Seconds between Guardian status bar metric refreshes."
+        },
+        "pantheon.guardian.autoRenice": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically re-apply renice when sustained memory pressure is detected."
+        },
+        "pantheon.thoth.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Thoth context compression (reads .thoth/memory.yaml)."
+        },
+        "pantheon.workspace.autoOptimize": {
           "type": "boolean",
           "default": false,
-          "description": "Automatically scan workspace on open"
-        },
-        "anubis.scanCategories": {
-          "type": "array",
-          "default": ["dev", "ai", "ides"],
-          "description": "Categories to include in workspace scans"
+          "description": "Automatically apply optimal workspace settings on first activation."
         }
       }
     },
     "menus": {
       "commandPalette": [
-        {
-          "command": "anubis.scanWorkspace",
-          "when": "true"
-        },
-        {
-          "command": "anubis.ghostReport",
-          "when": "true"
-        },
-        {
-          "command": "anubis.healthCheck",
-          "when": "true"
-        }
+        { "command": "pantheon.scan", "when": "true" },
+        { "command": "pantheon.guard", "when": "true" },
+        { "command": "pantheon.reniceLSP", "when": "true" },
+        { "command": "pantheon.ghostReport", "when": "true" },
+        { "command": "pantheon.thothContext", "when": "true" },
+        { "command": "pantheon.showMetrics", "when": "true" },
+        { "command": "pantheon.applyWorkspaceSettings", "when": "true" }
       ]
     }
   },
   "scripts": {
-    "compile": "echo 'Scaffold only — no compilation needed yet'",
-    "watch": "echo 'Scaffold only'",
-    "lint": "echo 'Scaffold only'"
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "package": "npx -y @vscode/vsce package --no-dependencies",
+    "publish:openvsx": "npx -y ovsx publish --no-dependencies"
   },
   "devDependencies": {
-    "@types/vscode": "^1.85.0"
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
   }
 }

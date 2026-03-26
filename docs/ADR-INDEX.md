@@ -2,7 +2,7 @@
 
 This index tracks **all** architectural decisions for the Sirsi Pantheon ecosystem.
 
-**Total ADRs: 10** | **Next available: ADR-011**
+**Total ADRs: 12** | **Next available: ADR-013**
 
 ---
 
@@ -20,6 +20,8 @@ This index tracks **all** architectural decisions for the Sirsi Pantheon ecosyst
 | [ADR-008](ADR-008-SHARED-FILESYSTEM-INDEX.md) | Shared Filesystem Index — Walk once, query everywhere via Horus manifest cache | Accepted | 2026-03-24 |
 | [ADR-009](ADR-009-INJECTABLE-SYSTEM-PROVIDERS.md) | Injectable System Providers — standard interface injection for 99% coverage | Accepted | 2026-03-24 |
 | [ADR-010](ADR-010-MENUBAR-APPLICATION.md) | Pantheon Menu Bar Application — native macOS status bar + Finder presence | Proposed | 2026-03-25 |
+| [ADR-011](ADR-011-DEITY-ALIGNMENT.md) | Deity Alignment & Context Architecture — canonical scopes for all deities | Accepted | 2026-03-25 |
+| [ADR-012](ADR-012-VSCODE-EXTENSION.md) | Pantheon VS Code Extension — always-on Guardian, status bar ankh, Thoth context | Accepted | 2026-03-25 |
 
 ---
 
@@ -31,6 +33,7 @@ This index tracks **all** architectural decisions for the Sirsi Pantheon ecosyst
 - ADR-006: Self-Aware Resource Governance
 - ADR-007: Unified Findings Portal
 - ADR-010: Pantheon Menu Bar Application
+- ADR-012: Pantheon VS Code Extension
 
 ### Ghost Detection & Indexing
 - ADR-002: Ka Ghost Detection
@@ -59,6 +62,8 @@ This index tracks **all** architectural decisions for the Sirsi Pantheon ecosyst
 | ADR-008 | Active — Shared Filesystem Index |
 | ADR-009 | Active — Injectable System Providers |
 | ADR-010 | Proposed — Menu Bar Application |
-| ADR-011+ | Next available |
+| ADR-011 | Active — Deity Alignment |
+| ADR-012 | Active — VS Code Extension |
+| ADR-013+ | Next available |
 
-> **Last updated:** March 25, 2026 — ADR-010 proposed (Menu Bar Application for macOS GUI presence).
+> **Last updated:** March 25, 2026 — ADR-012 accepted (VS Code Extension with always-on Guardian).
