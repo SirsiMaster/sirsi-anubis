@@ -1,4 +1,4 @@
-# 𓂀 Session Continuation — Extension Testing + Publishing (Session 21)
+# 𓂀 Session Continuation — OpenVSX Publishing + MCP Integration (Session 22)
 
 ## Session Context
 - **Status**: 🟢 All work pushed. Clean tree.
@@ -7,47 +7,54 @@
 - **Rules**: A1-A19 codified
 - **ADRs**: 001–012 canonized
 - **Site**: Live at `sirsi-pantheon.web.app` + `pantheon.sirsi.ai`
-- **Last Commit**: `fd379e3` — fix(web): remove back-header from flip cards
+- **Last Commit**: `c9e4ef1` — feat(extension): native renice, memory GC, codicon status bar
 
-## What Was Accomplished (Session 20)
+## What Was Accomplished (Session 21)
 
-### Firebase Deployment + Custom Domain
-- Deployed 15 HTML pages to `sirsi-pantheon.web.app` via Firebase Hosting
-- Created Firebase site `sirsi-pantheon` in project `sirsi-nexus-live`
-- Wired custom domain `pantheon.sirsi.ai` via Firebase Hosting API + GoDaddy CNAME
-- Firebase: `HOST_ACTIVE`, `OWNERSHIP_ACTIVE`, SSL auto-provisioning
+### Guardian Rewrite
+- Replaced CLI-dependent renice with **native `renice(1)` + `taskpolicy(1)`**
+- Guardian discovers LSP processes via `ps`, applies nice +10 and Background QoS directly
+- Skips already-deprioritized processes (nice ≥ 10)
+- Host LSP (`language_server_macos_arm`) excluded from warnings and GC
 
-### Flip Cards
-- Rebuilt Deity Registry index with click-to-flip 3D CSS cards
-- Front: user-facing (name, description, key metrics)
-- Back: developer info (package path, coverage, test count, commands, deps, ADR)
-- 3 action buttons per card: Full Page, Download, Source (GitHub internal/ link)
-- Removed redundant card-back headers to maximize developer info space
+### Memory Pressure GC
+- Tracks per-process RSS across poll cycles using a pressure map
+- When a third-party LSP exceeds **500 MB for 3+ consecutive checks**, triggers VS Code's built-in LSP restart
+- Maps process names to restart commands (gopls → `go.languageserver.restart`, etc.)
+- Prevents ever-growing memory bloat from runaway LSPs
 
-### Canon Cleanup
-- VERSION bumped from `0.4.0-alpha` to `0.5.0-alpha`
-- Extension icon (`resources/icon.png`) created — Eye of Horus in gold on dark green
-- CHANGELOG, Thoth memory, and continuation prompt updated
-- All deity page nav links and URL displays fixed for Firebase paths
+### Codicon Status Bar
+- Replaced invisible hieroglyph `𓂀` with `$(eye) PANTHEON` codicons
+- Loading spinner `$(loading~spin)` on init, warning icon on pressure
+- Warning threshold: >1 GB third-party LSPs (host LSP at 4-6 GB is normal)
 
-## 🎯 SESSION 21 OBJECTIVES
+### Live Testing Results
+- **Guardian auto-renice**: ✅ All 3 LSPs reniced to nice 10 after 30s delay
+  - `language_server_macos_arm` (PID 28387): nice 0 → 10
+  - `gopls` (PID 29214): nice 0 → 10
+  - `gopls` (PID 29215): nice 0 → 10
+- **Extension Host footprint**: ~199 MB RSS (Code Helper Plugin)
+- **Sideloaded**: Installed in both Antigravity and VS Code
+- **CLI Fix**: Commands now use correct flags (`weigh --dev --json`, `guard --json`)
 
-### P0: Extension Sideload + Live Testing
-1. Package VSIX: `cd extensions/vscode && npm run package`
-2. Sideload: `code --install-extension sirsi-pantheon-0.5.0.vsix`
-3. Verify Guardian auto-renice — confirm LSPs deprioritized after 30s
-4. Verify status bar metric accuracy — compare with Activity Monitor
-5. Test each Command Palette entry end-to-end
+## 🎯 SESSION 22 OBJECTIVES
 
-### P1: Publish to OpenVSX
-1. Create OpenVSX API token at open-vsx.org
+### P0: Publish to OpenVSX
+1. Create OpenVSX API token at open-vsx.org (SirsiMaster Chrome profile)
 2. Publish: `npm run publish:openvsx`
 3. Add marketplace badges to README
+4. Verify listing at open-vsx.org/extension/SirsiMaster/sirsi-pantheon
 
-### P2: MCP Integration
+### P1: MCP Integration
 1. Connect Guardian to MCP resources (replace CLI spawn with MCP JSON-RPC)
 2. Add `anubis://guardian-status` MCP resource
 3. Sidebar TreeView data provider for real-time metrics
+4. Wire memory GC stats into MCP resource
+
+### P2: Version Bump + Release
+1. Bump VERSION from `0.5.0-alpha` to `0.5.1-alpha` (or `0.6.0-alpha` if MCP wired)
+2. GoReleaser: tag and publish GitHub release
+3. Update Homebrew formula with new SHA
 
 ### P3: Audit + Performance
 1. Evaluate installed VS Code extensions per Session 18 audit table
@@ -71,15 +78,15 @@
 | ☀️ Ra | `internal/ra/` | Hypervisor (Thinker) | 🔮 Future |
 
 ## Known Issues
-1. **Extension not yet sideloaded** — built and compiled but never tested in live IDE
-2. **OpenVSX publish** — needs API token setup
-3. **MCP not wired** — extension uses CLI spawn, not MCP JSON-RPC
-4. **Menu bar app** — built (ADR-010) but never sideloaded/tested
+1. **OpenVSX not published** — needs API token setup via SirsiMaster Chrome profile
+2. **MCP not wired** — extension uses CLI spawn + native renice, not MCP JSON-RPC
+3. **Menu bar app** — built (ADR-010) but never sideloaded/tested
+4. **`weigh` command slow** — `pantheon weigh --dev --json` may timeout in extension (60s limit)
 
 ## One-Line Starter for Next Session
 
-> **"Continue from `docs/CONTINUATION-PROMPT.md` — Session 21: sideload the Pantheon VS Code extension, test Guardian auto-renice live, package VSIX, and publish to OpenVSX."**
+> **"Continue from `docs/CONTINUATION-PROMPT.md` — Session 22: publish the Pantheon extension to OpenVSX, wire MCP integration for Guardian metrics, and tag a GitHub release."**
 
 ---
-**Last Updated**: March 25, 2026 — 22:00
-**Session Count**: 21 (next)
+**Last Updated**: March 26, 2026 — 17:05
+**Session Count**: 22 (next)

@@ -13,6 +13,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 - P1: CoreML embeddings on ANE (60x speedup)
 - P2: npm publish thoth-init, VS Code extension
 
+### Session 21 (2026-03-26) — Extension Live Testing + Memory GC
+- **Guardian Rewrite** — Native `renice(1)` + `taskpolicy(1)` implementation. No CLI binary dependency for renice.
+  - Discovers LSP processes via `ps`, applies nice +10 and Background QoS directly.
+  - Skips already-deprioritized processes. Excludes host LSP (language_server_macos_arm) from warnings.
+- **Memory Pressure GC** — Tracks per-process RSS across poll cycles.
+  - When a third-party LSP exceeds 500 MB for 3+ consecutive checks, triggers VS Code's built-in LSP restart.
+  - Maps process names to restart commands (gopls → `go.languageserver.restart`, tsserver → `typescript.restartTsServer`, etc.).
+- **Codicon Status Bar** — Replaced invisible hieroglyph with `$(eye) PANTHEON` codicons. Loading spinner on init. Warning icon on pressure.
+- **Warning Threshold** — Split total/third-party RAM tracking. Warning triggers on >1 GB third-party LSPs (host LSP at 4-6 GB is normal).
+- **CLI Fix** — Commands now use correct Pantheon CLI flags (`weigh --dev --json`, `guard --json`).
+- **Live Testing** — Verified end-to-end: all 3 LSPs reniced to nice 10 after 30s delay. Extension Host ~199 MB RSS.
+- **Sideloaded** — Installed in both Antigravity and VS Code via VSIX.
+
 ### Session 20 (2026-03-25) — The Deployment Sprint
 - **Firebase Hosting** — Deployed Deity Registry to `sirsi-pantheon.web.app` via Firebase Hosting (15 HTML pages).
   - Created Firebase site `sirsi-pantheon` in project `sirsi-nexus-live`.

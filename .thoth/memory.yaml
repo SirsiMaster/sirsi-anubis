@@ -1,6 +1,6 @@
 # 𓁟 Thoth — Project Memory for Sirsi Pantheon
 # Read this FIRST before any source files.
-# Last updated: 2026-03-25T22:00:00-04:00
+# Last updated: 2026-03-26T17:00:00-04:00
 
 ## Identity
 project: sirsi-pantheon
@@ -84,15 +84,25 @@ vscode_extension: extensions/vscode/ (TypeScript, 5 modules, 7 commands)
 # - Osiris: Checkpoint guardian implemented (uncommitted work detection + risk assessment)
 # - Isis: Designated deity but has no tool mapping yet
 # - ADR count: 12 (001-founding... 012-vscode-extension)
-# - VS Code Extension: extensions/vscode/ (TypeScript, always-on Guardian, ankh status bar, Thoth)
+# - VS Code Extension: extensions/vscode/ (TypeScript, always-on Guardian, codicon status bar, Thoth)
+# - Guardian: Native renice(1) + taskpolicy(1) — no CLI binary dependency
+# - Memory GC: Tracks per-process RSS, restarts bloated LSPs (>500 MB sustained)
 # - Pantheon.app: macOS menu bar application (headless + .app bundle)
-# - Guard renice: pantheon guard --renice lsp (deprioritizes LSPs to Background QoS)
 # - language_server_macos_arm is PROTECTED — never slay, only renice
+# - Host LSP excluded from warning threshold (4-6 GB is normal for Antigravity)
 # - Rule A19: NEVER modify /Applications/*.app/ bundles
 # - Website: sirsi-pantheon.web.app / pantheon.sirsi.ai (Firebase Hosting)
 # - Deity Registry: 13 HTML pages (index + 12 deities) with flip cards
 
 ## Recent Changes (most recent first)
+# 2026-03-26: Session 21 — Extension Live Testing + Memory GC
+#   Guardian rewrite: native renice(1) + taskpolicy(1), no CLI dependency.
+#   Memory pressure GC: tracks per-process RSS, restarts bloated LSPs.
+#   Codicon status bar: $(eye) PANTHEON replaces invisible hieroglyph.
+#   Warning threshold: >1 GB third-party LSPs (host LSP excluded).
+#   CLI fix: commands use correct flags (weigh --dev --json, guard --json).
+#   Live tested: all 3 LSPs reniced to nice 10 after 30s. Extension Host ~199 MB.
+#   Sideloaded in both Antigravity and VS Code.
 # 2026-03-25: Session 20 — The Deployment Sprint
 #   Deployed Deity Registry to Firebase Hosting (sirsi-pantheon.web.app).
 #   Wired custom domain pantheon.sirsi.ai via Firebase API + GoDaddy CNAME.
