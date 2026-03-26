@@ -5,6 +5,8 @@
 // macOS menu bar icons should be "template images" — monochrome with alpha.
 // The system tints them white on dark backgrounds and black on light.
 // Size: 22×22 pixels is the standard for @1x, 44×44 for @2x.
+//
+// This uses @2x (44×44) for Retina displays with HEAVYWEIGHT strokes.
 package main
 
 import (
@@ -14,51 +16,80 @@ import (
 	"image/png"
 )
 
-// generateAnkhIcon creates a 22x22 ankh symbol as a macOS template icon.
-// Uses solid black pixels on transparent — macOS will handle the tinting.
+// generateAnkhIcon creates a 44x44 ankh symbol as a macOS template icon (@2x Retina).
+// Uses HEAVYWEIGHT strokes — thick filled shapes for maximum visibility in the menu bar.
+// Solid black pixels on transparent — macOS handles the tinting.
 func generateAnkhIcon() []byte {
-	const size = 22
+	const size = 44
 	img := image.NewNRGBA(image.Rect(0, 0, size, size))
 
-	// Ankh symbol (☥) — drawn as a pixel bitmap
-	// The ankh has: a loop/oval at top, a crossbar, and a vertical stem
 	black := color.NRGBA{0, 0, 0, 255}
 
-	// Define the ankh shape row by row (y from top)
-	// Each row is a list of x-coordinates that should be filled
-	rows := map[int][]int{
-		// Top of loop
-		1: {9, 10, 11, 12},
-		2: {7, 8, 13, 14},
-		3: {6, 7, 14, 15},
-		4: {6, 15},
-		5: {6, 15},
-		6: {6, 7, 14, 15},
-		7: {7, 8, 13, 14},
-		8: {8, 9, 12, 13},
-		9: {9, 10, 11, 12},
-		// Crossbar
-		10: {4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17},
-		11: {4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17},
-		// Stem
-		12: {10, 11},
-		13: {10, 11},
-		14: {10, 11},
-		15: {10, 11},
-		16: {10, 11},
-		17: {10, 11},
-		18: {10, 11},
-		19: {10, 11},
-		20: {10, 11},
-	}
-
-	for y, xs := range rows {
-		for _, x := range xs {
-			if x >= 0 && x < size && y >= 0 && y < size {
-				img.Set(x, y, black)
+	// Helper: fill a circle (used for the loop at top of the ankh)
+	fillCircle := func(cx, cy, r int) {
+		for y := cy - r; y <= cy+r; y++ {
+			for x := cx - r; x <= cx+r; x++ {
+				dx := x - cx
+				dy := y - cy
+				if dx*dx+dy*dy <= r*r {
+					if x >= 0 && x < size && y >= 0 && y < size {
+						img.Set(x, y, black)
+					}
+				}
 			}
 		}
 	}
+
+	// Helper: fill a rectangle
+	fillRect := func(x1, y1, x2, y2 int) {
+		for y := y1; y <= y2; y++ {
+			for x := x1; x <= x2; x++ {
+				if x >= 0 && x < size && y >= 0 && y < size {
+					img.Set(x, y, black)
+				}
+			}
+		}
+	}
+
+	// Helper: clear circle (cut out from filled circle to make a ring)
+	clearCircle := func(cx, cy, r int) {
+		trans := color.NRGBA{0, 0, 0, 0}
+		for y := cy - r; y <= cy+r; y++ {
+			for x := cx - r; x <= cx+r; x++ {
+				dx := x - cx
+				dy := y - cy
+				if dx*dx+dy*dy <= r*r {
+					if x >= 0 && x < size && y >= 0 && y < size {
+						img.Set(x, y, trans)
+					}
+				}
+			}
+		}
+	}
+
+	// ── Draw the Ankh (☥) — HEAVYWEIGHT ────────────────────────────
+	//
+	// Structure:
+	//   1. Oval loop at top (filled circle minus inner circle = thick ring)
+	//   2. Wide crossbar through the center
+	//   3. Thick vertical stem below crossbar
+
+	centerX := size / 2 // 22
+
+	// 1. LOOP: outer circle at top, thick ring
+	loopCenterY := 12
+	fillCircle(centerX, loopCenterY, 11) // Outer radius 11
+	clearCircle(centerX, loopCenterY, 6) // Inner radius 6 → 5px thick ring
+
+	// 2. CROSSBAR: wide and thick, positioned at the bottom of the loop
+	crossbarY := 21
+	fillRect(5, crossbarY, 38, crossbarY+4) // Full width, 5px tall
+
+	// 3. STEM: thick vertical below crossbar
+	stemWidth := 6
+	stemX1 := centerX - stemWidth/2
+	stemX2 := centerX + stemWidth/2 - 1
+	fillRect(stemX1, crossbarY+5, stemX2, 42) // Down to near bottom
 
 	var buf bytes.Buffer
 	_ = png.Encode(&buf, img)

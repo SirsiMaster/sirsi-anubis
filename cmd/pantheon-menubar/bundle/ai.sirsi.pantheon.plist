@@ -6,7 +6,7 @@
 	<string>ai.sirsi.pantheon</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>BINARY_PATH</string>
+		<string>/opt/homebrew/bin/pantheon-menubar</string>
 	</array>
 	<key>RunAtLoad</key>
 	<true/>
