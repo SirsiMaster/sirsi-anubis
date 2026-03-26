@@ -246,6 +246,17 @@ Anubis scans filesystems and processes. Scan results may contain sensitive infor
 *   **Rationale**: Application bundles are **code-signed**. Modifying any file inside them invalidates the signature, corrupts the application, and can require a full reinstall. The agent's Pantheon binary is a **CLI tool**, not an IDE extension — it has no business inside the app bundle.
 *   **Enforcement**: Any `cp`, `mv`, `rm`, or `write` operation targeting a path matching `/Applications/*.app/**` is a **CRITICAL SAFETY VIOLATION** equivalent to Rule A1 (Safety First).
 
+### 2.17 SirsiMaster Browser Profile (Rule A20)
+> Established March 26, 2026. All browser-based agent activities must use the SirsiMaster identity.
+
+*   **Rule**: ALL browser subagent activities MUST use the **SirsiMaster Chrome profile**. This includes but is not limited to:
+    *   OpenVSX publishing (Eclipse Foundation login)
+    *   GitHub OAuth flows
+    *   Firebase Console operations
+    *   Any marketplace, registry, or service authentication
+*   **Rationale**: The SirsiMaster profile contains all stored credentials (Eclipse/OpenVSX, GitHub, GoDaddy, Firebase) for Sirsi ecosystem services. Using the wrong profile leads to authentication failures and identity mismatches.
+*   **Enforcement**: Browser subagents MUST be instructed to use the SirsiMaster Chrome profile in their task description. Thoth MUST propagate this requirement to all session continuations.
+
 ---
 
 ## 3. Technology Stack
