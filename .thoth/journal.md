@@ -413,3 +413,22 @@ Issues 3 and 4 required modifying files inside `/Applications/Antigravity.app/`.
 **Why this matters**: The triage demonstrated Pantheon's value as a "full-stack IDE health" tool. Not just monitoring your code — monitoring the IDE itself. The AG Monitor Pro extension was a third-party performance hog that no user would ever diagnose without profiling the Extension Host. Pantheon's Guardian model should eventually detect and warn about these extensions proactively.
 
 ---
+
+## Entry 020 — 2026-03-26 23:05 — "The Third Rail: Never Touch the Bundle"
+
+**Context**: Session 23. IDE crashed catastrophically after Session 22. Required full reinstall + 2 restarts. User couldn't load any agent until recovery. Forensic investigation of Crashpad dumps revealed the root cause.
+
+**The Chain**:
+1. **21:46** — Extension Host V8 OOM. `electron.v8-oom.is_heap_oom`. The manifest patches from Session 22 (adding `title` to Git commands, adding undeclared commands to Antigravity extension) created a state where the Extension Host repeatedly fails validation and leaks memory through error reporting. V8 GC efficiency dropped to `mu = 0.132` (normal: >0.9). Heap exhausted.
+2. **22:24** — macOS Jetsam killed the main Electron process via `libMemoryResourceException.dylib`. Orphan processes + leaked memory triggered kernel-level memory pressure response.
+3. **22:45** — Post-reinstall, same kill. Crashpad `pending/` directory (34 dumps) persisted through reinstall. Second restart finally cleared the stale state.
+
+**Root Cause**: Manifest semantics, not syntax. Adding JSON `command` declarations without corresponding handlers creates an un-realizable state. The Extension Host validates, fails, reports, retries, leaks — until V8 OOM. `codesign` is irrelevant. The JSON is valid. The schema is valid. But the state is impossible.
+
+**Decision**: Rule A19 hardened to **ABSOLUTE PROHIBITION**. The Session 22 exception ("manifest-only patches are safe with re-signing") was wrong. No exceptions for any file type. Case study published at `docs/case-studies/session-23-extension-host-crash-forensics.md`.
+
+**New insight for Guardian**: Monitor `~/Library/Application Support/Antigravity/Crashpad/pending/*.dmp` count. 34 pending dumps is a leading indicator of chronic IDE instability — Guardian should warn before cascade.
+
+**Strategic implication**: The user's IDE has bugs in its bundled extensions that can't be fixed safely. This creates a legitimate case for either (a) forking the IDE, (b) building an extension that hardens against upstream bugs, or (c) advocating for upstream fixes. Option (b) is the pragmatic path — Pantheon's extension already does some of this, and Guardian's Crashpad monitoring would be genuinely novel.
+
+---

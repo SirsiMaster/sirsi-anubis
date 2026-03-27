@@ -927,6 +927,41 @@
         </div>
       </div>
 
+      <div class="sprint">
+        <div class="sprint-dot"></div>
+        <span class="sprint-date">March 26 — Sessions 21–23</span>
+        <h3>The Extension Crash Chain</h3>
+        <p class="sprint-body">
+          Built the <strong>Thoth Accountability Engine</strong> — 645 lines proving ROI with hard numbers:
+          371K tokens saved per session, ~$1.11/session at Sonnet pricing. Six measurement systems,
+          premium webview dashboard, lifetime counter.
+        </p>
+        <p class="sprint-body">
+          Then it all went wrong. Diagnosed 4 extension bugs in the IDE. Two required patching
+          <code>package.json</code> files <strong>inside the IDE's application bundle</strong>.
+          The patches were valid JSON. The schema validated. But the Extension Host couldn't bind
+          the declared commands to handlers — and <strong>leaked memory until V8 ran out of heap</strong>.
+        </p>
+        <div class="callout callout-bug">
+          <span class="callout-icon">💀</span>
+          <strong>Extension Host V8 OOM</strong> → macOS Jetsam killed the app → reinstall required.
+          3 crash dumps in 59 minutes. 34 total pending dumps in Crashpad.
+          The IDE wouldn't launch until after 2 reinstalls and 2 restarts.
+        </div>
+        <div class="callout callout-fix">
+          <span class="callout-icon">🔒</span>
+          Rule A19 hardened to <strong>absolute prohibition</strong>. No file inside <code>/Applications/*.app/</code>
+          may ever be modified — not even JSON manifests. Crash forensics published as
+          <a href="https://github.com/SirsiMaster/sirsi-pantheon/blob/main/docs/case-studies/session-23-extension-host-crash-forensics.md" target="_blank">Case Study 011</a>.
+        </div>
+        <div class="sprint-metrics">
+          <div class="metric"><span class="metric-val">34</span><span class="metric-label">crash dumps</span></div>
+          <div class="metric"><span class="metric-val">3</span><span class="metric-label">crashes in 59 min</span></div>
+          <div class="metric"><span class="metric-val">2</span><span class="metric-label">reinstalls</span></div>
+          <div class="metric"><span class="metric-val">645</span><span class="metric-label">lines (Accountability Engine)</span></div>
+        </div>
+      </div>
+
     </div>
   </section>
 
@@ -1323,7 +1358,7 @@
       <a href="https://github.com/SirsiMaster/sirsi-pantheon/blob/main/docs/THOTH.md">Thoth</a>
       <a href="https://github.com/SirsiMaster/sirsi-pantheon/blob/main/LICENSE">MIT License</a>
     </div>
-    <p style="margin-top:1.5rem;">Updated March 23, 2026 · Updated with every sprint</p>
+    <p style="margin-top:1.5rem;">Updated March 26, 2026 · Updated with every sprint</p>
   </footer>
 
 </div>

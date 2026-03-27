@@ -236,15 +236,20 @@ Anubis scans filesystems and processes. Scan results may contain sensitive infor
 *   **Rationale**: A single IDE crash can erase an entire session's unsaved work. Incremental commits ensure that progress is preserved regardless of external failures.
 *   **Format**: `chore: checkpoint — [brief description of changes]`
 
-### 2.16 No Application Bundle Mutations (Rule A19)
-> Established March 25, 2026. After a catastrophic incident where replacing a binary inside Antigravity.app crashed the IDE and required a full reinstall.
+### 2.16 No Application Bundle Mutations (Rule A19) — ABSOLUTE PROHIBITION
+> Established March 25, 2026. Hardened March 26, 2026 after forensic proof that manifest-only patches caused a V8 OOM crash cascade requiring full IDE reinstall.
 
-*   **Rule**: The agent MUST NEVER write to, modify, delete, or replace any file inside `/Applications/*.app/` bundles. This includes but is not limited to:
+*   **Rule**: The agent MUST NEVER write to, modify, delete, or replace **ANY** file inside `/Applications/*.app/` bundles. **No exceptions.** This includes:
     *   Language server binaries (`language_server_macos_arm`, etc.)
-    *   Extension files, frameworks, or helper binaries
+    *   Extension `package.json` manifests (even "JSON-only" changes)
+    *   Extension source files, frameworks, or helper binaries
     *   Any file inside `Contents/Resources/`, `Contents/Frameworks/`, or `Contents/MacOS/`
-*   **Rationale**: Application bundles are **code-signed**. Modifying any file inside them invalidates the signature, corrupts the application, and can require a full reinstall. The agent's Pantheon binary is a **CLI tool**, not an IDE extension — it has no business inside the app bundle.
+*   **Rationale**: Application bundles carry two layers of integrity:
+    1. **Code signing** — Modifications invalidate the macOS signature, triggering Gatekeeper blocks.
+    2. **Semantic integrity** — Extension manifests declare commands, menus, and activation events. Adding declarations without corresponding handlers creates an un-realizable state that causes the Extension Host to leak memory through repeated validation failures, leading to **V8 heap OOM** (`electron.v8-oom.is_heap_oom`) and **macOS Jetsam termination** (`libMemoryResourceException.dylib`). This crash chain is invisible to the user and requires forensic analysis of Crashpad dumps to diagnose.
 *   **Enforcement**: Any `cp`, `mv`, `rm`, or `write` operation targeting a path matching `/Applications/*.app/**` is a **CRITICAL SAFETY VIOLATION** equivalent to Rule A1 (Safety First).
+*   **Evidence**: Session 23 crash forensics — 3 crash dumps in 59 minutes, 34 total pending dumps, full IDE reinstall required. See `docs/case-studies/session-23-extension-host-crash-forensics.md`.
+*   **If the IDE has bugs in bundled extensions**: Report upstream. Do NOT patch locally.
 
 ### 2.17 SirsiMaster Browser Profile (Rule A20)
 > Established March 26, 2026. All browser-based agent activities must use the SirsiMaster identity.
