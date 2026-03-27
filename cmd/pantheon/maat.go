@@ -98,7 +98,7 @@ func runMaat(cmd *cobra.Command, args []string) {
 	}
 
 	// JSON output.
-	if jsonOutput {
+	if JsonOutput {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		_ = enc.Encode(report)

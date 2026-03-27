@@ -144,7 +144,7 @@ func runSeba(cmd *cobra.Command, args []string) {
 	fmt.Println()
 
 	// Output
-	if jsonOutput {
+	if JsonOutput {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		_ = enc.Encode(graph)

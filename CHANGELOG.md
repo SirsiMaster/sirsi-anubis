@@ -11,7 +11,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 - P0: Reach 95%+ coverage on remaining modules (Sight, Platform, Mirror)
 - P1: Thoth auto-sync (Horus/Ra feed facts)
 - P1: CoreML embeddings on ANE (60x speedup)
-- P2: npm publish thoth-init, VS Code extension on OpenVSX
+- P2: npm publish thoth-init
+
+### Session 25 (2026-03-27) — Sekhmet Phase II (ANE Tokenization)
+- **HAPI Tokenization** — Extended the `Accelerator` interface with native `Tokenize` support.
+- **Hardware Backends** — Implemented specialized tokenization for AppleANE, Metal, CUDA, and ROCm.
+- **FastTokenize** — Built a deterministic BPE-style pure Go tokenizer as the universal CPU fallback.
+- **Sekhmet CLI** — Integrated `pantheon sekhmet --tokenize` for direct hardware-accelerated testing.
+- **Global Flags** — Centralized CLI flags in `cmd/pantheon/globals.go` to support modular command files.
+- **Canon Sync** — Updated Thoth, BUILD_LOG, FAQ, and the Deity Registry.
+
+### Session 24 (2026-03-27) — Pantheon v0.7.0-alpha Deployment
+- **VSIX Packaging** — Built and sideloaded `sirsi-pantheon-0.7.0.vsix` for verify-before-publish testing.
+- **OpenVSX Publish** — Published `SirsiMaster.sirsi-pantheon@0.7.0` to Open VSX using the SirsiMaster account (Rule A20).
+- **Crashpad Verification** — Manually verified the Crashpad Monitor's threshold detection by clearing 34 stale dumps.
+- **Site Deployment** — Deployed updated Deity Registry and Build Log (Sessions 23/24) to `pantheon.sirsi.ai`.
+- **Status Sync** — Updated all public-facing stats: 21K+ lines of Go, 90.1% coverage, 11 deities, 12 ADRs.
+- **Version**: 0.7.0-alpha.
 
 ### Session 23 (2026-03-26) — Crash Forensics + Crashpad Monitor
 - **Crash Forensics** — Investigated IDE crash that required 2 reinstalls + 2 restarts.

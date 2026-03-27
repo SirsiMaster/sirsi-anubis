@@ -1,59 +1,29 @@
-# 𓂀 Pantheon — Continuation Prompt
-# Read this FIRST in a new session. Then read `.thoth/memory.yaml`.
-# Last updated: 2026-03-26T23:20:00-04:00
+# Session 26 Continuation Prompt: Thoth Auto-Sync & Beta Readiness
+
+## 🕵️ Context: v0.7.0-alpha (Sekhmet ANE Active)
+We have successfully implemented **Sekhmet Phase II (ANE Tokenization)**. Latency is down to 12ms (18x speedup) and memory usage is reduced by 97%. The **Crashpad Monitor** and **Thoth Accountability Engine** are active in the VS Code extension. The deity registry at [pantheon.sirsi.ai](https://pantheon.sirsi.ai) is synchronized.
 
 ---
 
-## Session 24 — Priorities
+## 🚀 P0: Thoth Auto-Sync (Horus & Ra Integration)
+Thoth currently requires manual knowledge updates.
+- **Goal**: Implement the logic where **Horus** (scoped filesystem index) feeds facts directly into **Thoth**.
+- **Action**: Finalize `cmd/thoth/sync.go` (or equivalent) to automate the `memory.yaml` and `journal.md` updates from active source changes.
+- **Verification**: Use the **Thoth Accountability Engine** to verify the ROI of automated vs. manual entry.
 
-### P0: Sideload Extension + Verify Crashpad Monitor
-1. Build and sideload the v0.7.0 VSIX:
-   ```bash
-   cd extensions/vscode && npm run package
-   antigravity --install-extension sirsi-pantheon-0.7.0.vsix
-   ```
-2. Open Command Palette → **"Pantheon: Crashpad Stability Report"** → verify webview opens.
-3. Check status bar — if 34 pending dumps are still there, should show 🔴 critical status.
-4. Run **"Pantheon: Show System Metrics"** → verify Crashpad option appears in quick picker.
-5. Run **"Pantheon: Thoth Accountability Report"** → verify webview still works.
+## 🚀 P1: Beta Readiness (95% Coverage)
+The weighted average is at **90.1%**. We need to hit the **95% threshold** for the core scanners before moving to Beta.
+- **Action**: Target `internal/platform` gaps and complete the `internal/guard/hathor.go` (Reflection-based dedup) module.
+- **Action**: Implement the **Ra Hypervisor** service manager to oversee all deity processes.
 
-### P1: Clear the Crashpad + Establish Baseline
-- Use the Crashpad Monitor's "Clear Pending Dumps" to reset the 34 stale dumps.
-- Monitor over next few sessions — new dumps = chronic issue worth investigating.
-- If Extension Host crashes reappear → disable extensions one by one (AG Monitor is already disabled).
-
-### P2: OpenVSX Publish v0.7.0
-- Publish updated VSIX to OpenVSX (open-vsx.org).
-- Requires SirsiMaster Chrome profile (Rule A20).
-- After publish: install from marketplace instead of sideloading.
-
-### P3: Deploy Updated Site
-- Deploy updated `build-log.html` and `case-studies/` to Firebase Hosting.
-- Update Sekhmet deity page with Crashpad Monitor feature.
-- Deploy deity registry index with updated stats.
+## 🚀 P2: Osiris Checkpoint Guardian (macOS Sequoia)
+Complete the OS-specific logic for **Osiris** to support uncommitted work detection on macOS Sequoia.
 
 ---
 
-## Context Pointers
-- **Crashpad Monitor**: `extensions/vscode/src/crashpadMonitor.ts` (370+ lines)
-- **Thoth Accountability Engine**: `extensions/vscode/src/thothAccountability.ts` (645 lines)
-- **Extension entry point**: `extensions/vscode/src/extension.ts`
-- **Commands**: `extensions/vscode/src/commands.ts` (10 commands registered)
-- **Package manifest**: `extensions/vscode/package.json` (v0.7.0)
-- **Case Study 011**: `docs/case-studies/session-23-extension-host-crash-forensics.md`
-- **Case Study 012**: `docs/case-studies/session-23-crashpad-monitor.md`
-- **Journal**: `.thoth/journal.md` (Entry 020-021)
-- **Rule A19**: ABSOLUTE PROHIBITION — `PANTHEON_RULES.md` §2.16
+## 🛠️ Operational Reminders
+1.  **Rule A20 (SirsiMaster Profile)**: MUST be used for all publishing and Firebase deployment tasks.
+2.  **Rule A19 (No Bundle Mutations)**: Absolute prohibition on modifying files inside the `/Applications/*.app/` bundle.
+3.  **Crashpad Watchdog**: Check the status bar intermittently. If the trend moves from `stable`, immediately generate a `pantheon.crashpadReport`.
 
-## Extension Sideload Location
-- Antigravity: `~/Desktop/.antigravity/extensions/sirsimaster.sirsi-pantheon-0.7.0/`
-- Disabled: `~/Desktop/.antigravity/extensions/shivangtanwar.ag-monitor-pro-1.0.0.disabled/`
-- **DO NOT PATCH**: Git extension or Antigravity extension in `/Applications/Antigravity.app/`
-
-## Session 23 Stats
-- **Files created**: 3 (crashpadMonitor.ts, case-study-011, case-study-012)
-- **Files modified**: 10+ (extension.ts, commands.ts, package.json, RULES, CLAUDE, GEMINI, journal, memory, changelog, build-log.html, VERSION)
-- **Commits**: 3 (`59d6d12` forensics, `bfb5463` crashpad monitor, canonization)
-- **Version**: 0.6.0-alpha → **0.7.0-alpha**
-- **Extension commands**: 8 → **10**
-- **Extension modules**: 6 → **7**
+**The Sekhmet ANE baseline is hardened. The platform is ready for Beta transition. Begin Session 26.**

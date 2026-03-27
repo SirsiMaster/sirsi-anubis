@@ -77,7 +77,7 @@ func runHapiGPU() {
 		os.Exit(1)
 	}
 
-	if jsonOutput {
+	if JsonOutput {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		_ = enc.Encode(profile)
@@ -181,7 +181,7 @@ func runHapiDedup() {
 		os.Exit(1)
 	}
 
-	if jsonOutput {
+	if JsonOutput {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		_ = enc.Encode(result)
@@ -227,7 +227,7 @@ func runHapiSnapshots() {
 		return
 	}
 
-	if jsonOutput {
+	if JsonOutput {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		_ = enc.Encode(result)

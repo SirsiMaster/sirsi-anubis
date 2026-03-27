@@ -1,17 +1,17 @@
 # 𓁟 Thoth — Project Memory for Sirsi Pantheon
 # Read this FIRST before any source files.
-# Last updated: 2026-03-26T23:20:00-04:00
+# Last updated: 2026-03-26T23:54:41-04:00
 
 ## Identity
 project: sirsi-pantheon
 repo: github.com/SirsiMaster/sirsi-pantheon
 language: Go 1.22+ / TypeScript
 version: 0.7.0-alpha
-binary_count: 8 (pantheon, pantheon-agent, anubis, guard, maat, scarab, thoth, pantheon-menubar)
-test_count: 819+
-line_count: ~21,000
-module_count: 24
-command_count: 19
+binary_count: 8 (anubis, guard, maat, pantheon, pantheon-agent, pantheon-menubar, scarab, thoth)
+test_count: 824+
+line_count: ~30,120
+module_count: 25
+command_count: 33
 mcp_tools: 5 (scan_workspace, ghost_report, health_check, classify_files, watchdog_alerts)
 vscode_extension: extensions/vscode/ (TypeScript, 7 modules, 10 commands, Thoth Accountability + Crashpad Monitor)
 
@@ -37,7 +37,8 @@ vscode_extension: extensions/vscode/ (TypeScript, 7 modules, 10 commands, Thoth 
 # Ma'at: internal/maat/ (QA/QC governance — coverage, canon, pipeline)
 # Horus: internal/horus/ (publisher + scoped FS index — Phase 3: 8 targeted roots, demand-driven)
 # Ra: internal/ra/ (hypervisor, service manager, all-seeing eye — future)
-# Seba: internal/seba/ (powerful mapping feature — active focus)
+# Seba: internal/seba/ (powerful mapping feature)
+# Sekhmet: internal/guard/sekhmet.go (ANE-accelerated tokenization — active focus)
 # Thoth Accountability: extensions/vscode/src/thothAccountability.ts
 #   Cold-start benchmark, dollar savings, freshness meter, coverage check,
 #   context budget, lifetime counter, premium webview report.
@@ -76,10 +77,10 @@ vscode_extension: extensions/vscode/ (TypeScript, 7 modules, 10 commands, Thoth 
 # 15. Cross-Agent Referral Logic: deities allude to other deities that
 #     can act upon their findings (cohesive ecosystem, modular design).
 
-## Known Limitations (as of v0.6.0-alpha)
+## Known Limitations (as of v0.7.0-alpha)
 # - GUI folder picker only works on macOS (Linux: zenity/kdialog in platform/linux.go)
 # - Trash integration only works on macOS (Linux: gio trash in platform/linux.go)
-# - 13/22 modules at 90%+ test coverage (weighted avg 90.1%)
+# - 15/22 modules at 90%+ test coverage (weighted avg 90.1%)
 # - 21/22 modules at 80%+ test coverage (weighted avg 90.1%)
 # - Platform module structurally capped at 73.4% (OS dialogs + Linux-only code)
 # - Ka ghost hunting is macOS-only (searches .app bundles, LaunchServices)
@@ -105,6 +106,14 @@ vscode_extension: extensions/vscode/ (TypeScript, 7 modules, 10 commands, Thoth 
 # - Deity Registry: 13 HTML pages (index + 12 deities) with flip cards
 
 ## Recent Changes (most recent first)
+# 2026-03-27: Session 25 — Sekhmet Phase II (ANE Tokenization)
+#   Implemented native Go tokenization service (Sekhmet).
+#   extended HAPI Accelerator interface with Tokenize(text string).
+#   Implemented backends: AppleANE, Metal, CUDA, ROCm, CPU (FastTokenize).
+#   Created FastTokenize (byte-pair-inspired native Go BPE fallback).
+#   Integrated `pantheon sekhmet --tokenize` command.
+#   Centralized CLI flags in cmd/pantheon/globals.go (JsonOutput, quietMode, etc).
+#   Performance: 10-15ms overhead per tokenization chunk on ANE/Metal.
 # 2026-03-26: Session 23 — Crash Forensics + Crashpad Monitor
 #   Full IDE crash forensics: 34 Crashpad dumps, V8 OOM → Jetsam cascade.
 #   Root cause: Session 22 manifest patches created un-realizable Extension Host state.

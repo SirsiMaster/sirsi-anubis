@@ -139,7 +139,7 @@ func runMirror(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	if jsonOutput {
+	if JsonOutput {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		_ = enc.Encode(result)

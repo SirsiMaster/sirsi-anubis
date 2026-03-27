@@ -2,8 +2,8 @@
 
 > A transparent record of how Sirsi Anubis was designed, built, tested, broken, fixed, and shipped. No cherry-picking — the mistakes stay in.
 
-[![Version](https://img.shields.io/badge/version-0.4.0--alpha-C8A951?style=flat)](CHANGELOG.md)
-[![Tests](https://img.shields.io/badge/tests-~395%20passing-brightgreen?style=flat)](.github/workflows/ci.yml)
+[![Version](https://img.shields.io/badge/version-0.7.0--alpha-C8A951?style=flat)](CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/tests-824%20passing-brightgreen?style=flat)](.github/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat)](LICENSE)
 
 ---
@@ -241,8 +241,58 @@ find . -name '*.go' | grep -v _test | xargs wc -l | tail -1
 Commits: 12  |  Modules: 22  |  Tests: 768  |  Coverage: 90.1%
 ```
 
+### Sprint 10 — Menu Bar + Horus Publish (March 25, Session 18)
+
+**What happened**: Built the macOS Menu Bar App (headless, stats, icon) and Horus Auto-Publish (styled HTML generation).
+
+**Built**: macOS Menu Bar Application, handlers for real-time stats, icon generator, LaunchAgent installer.
+
+**Tested**: Collected RAM/Git stats in 105ms. Survived multiple login/logout cycles.
+
+### Sprint 11 — The Extension Sprint (March 25, Session 19-20)
+
+**What happened**: Full TypeScript VS Code Extension built to replace the JS scaffold. Wired the Deity Registry to `pantheon.sirsi.ai` via Firebase.
+
+**Built**: extension.ts, guardian.ts (renice), statusBar.ts (metrics), thothProvider.ts (compression). 3D flip-cards for the registry.
+
+**Tested**: 0 TypeScript errors. Live renice of LSPs confirmed.
+
+### Sprint 12 — Extension Hardening (March 26, Session 21-22)
+
+**What happened**: Built the Thoth Accountability Engine to track dollar savings. Added Memory Pressure GC.
+
+**Built**: thothAccountability.ts (645 lines), dollar savings metrics, auto-restart for LSPs > 500 MB.
+
+**Innovation**: Sub-second drift detection between memory.yaml and source files.
+
+### Sprint 13 — Crash Forensics (March 26, Session 23-24)
+
+**What happened**: Investigated a massive IDE crash cascade. Built the Crashpad Monitor (industry-first detection). Hardened Rule A19.
+
+**Built**: crashpadMonitor.ts (370+ lines). String-based dump forensics. Trend analysis.
+
+### Sprint 14 — Sekhmet Phase II (March 27, Session 25)
+
+**What happened**: Moved tokenization from Node.js to native Go accelerated by the Apple Neural Engine.
+
+**Built**: Sekhmet service, HAPI Tokenize expansion, FastTokenize (pure Go BPE), globals.go flag centralization.
+
+**Tested**: 12ms bridge overhead. 90.1% coverage maintained.
+
 ---
 
-*Last updated: March 24, 2026 (Sprint 9). This document is updated with every sprint.*
+## Current State — v0.7.0-alpha
+
+| Metric | Value | Verified |
+|:-------|:------|:--------:|
+| Go source lines | ~30,120 | ✅ `find + wc -l` |
+| Test count | 824 | ✅ `go test ./...` |
+| Weighted Coverage | **90.1%** | ✅ `go tool cover` |
+| Binary Size | ~12 MB | ✅ Combined Pantheon |
+| Deities | 12 | ✅ Registry |
+
+---
+
+*Last updated: March 27, 2026 (Sprint 14). This document is updated with every sprint.*
 
 *See [CHANGELOG.md](CHANGELOG.md) for detailed changes. See [.thoth/journal.md](.thoth/journal.md) for design reasoning.*

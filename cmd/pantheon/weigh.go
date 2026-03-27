@@ -114,7 +114,7 @@ func runWeigh() error {
 	}
 
 	// JSON output mode
-	if jsonOutput {
+	if JsonOutput {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		return enc.Encode(result)

@@ -16,14 +16,6 @@ import (
 // version is set by goreleaser at build time via -ldflags.
 var version = "dev"
 
-// Global flags
-var (
-	jsonOutput  bool
-	quietMode   bool
-	stealthMode bool
-	verboseMode bool
-)
-
 // rootCmd is the base command for pantheon.
 var rootCmd = &cobra.Command{
 	Use:   "pantheon",
@@ -54,7 +46,7 @@ and purge waste across workstations, containers, VMs, and networks.
 		_ = cmd.Help()
 	},
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		logging.Init(verboseMode, quietMode, jsonOutput)
+		logging.Init(verboseMode, quietMode, JsonOutput)
 		logging.Debug("pantheon starting", "version", version, "platform", runtime.GOOS+"/"+runtime.GOARCH)
 	},
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {
@@ -91,7 +83,7 @@ var versionCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
+	rootCmd.PersistentFlags().BoolVar(&JsonOutput, "json", false, "Output in JSON format")
 	rootCmd.PersistentFlags().BoolVar(&quietMode, "quiet", false, "Suppress all output except errors and summary")
 	rootCmd.PersistentFlags().BoolVarP(&verboseMode, "verbose", "v", false, "Enable debug logging (stderr)")
 	rootCmd.PersistentFlags().BoolVar(&stealthMode, "stealth", false, "Ephemeral mode — delete all Pantheon data after execution")
@@ -115,6 +107,7 @@ func init() {
 	rootCmd.AddCommand(mirrorCmd)
 	rootCmd.AddCommand(maatCmd)
 }
+
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {

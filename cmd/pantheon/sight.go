@@ -94,7 +94,7 @@ func runSight(cmd *cobra.Command, args []string) {
 	}
 
 	// Default: show ghost scan results
-	if jsonOutput {
+	if JsonOutput {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		_ = enc.Encode(result)

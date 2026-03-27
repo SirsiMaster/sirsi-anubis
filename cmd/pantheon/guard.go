@@ -97,7 +97,7 @@ func runGuard(cmd *cobra.Command, args []string) {
 			os.Exit(1)
 		}
 
-		if jsonOutput {
+		if JsonOutput {
 			enc := json.NewEncoder(os.Stdout)
 			enc.SetIndent("", "  ")
 			_ = enc.Encode(slayResult)
@@ -109,7 +109,7 @@ func runGuard(cmd *cobra.Command, args []string) {
 	}
 
 	// Default: show audit results
-	if jsonOutput {
+	if JsonOutput {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		_ = enc.Encode(result)
@@ -225,7 +225,7 @@ func runRenice() {
 		os.Exit(1)
 	}
 
-	if jsonOutput {
+	if JsonOutput {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		_ = enc.Encode(result)

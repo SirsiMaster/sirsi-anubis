@@ -81,7 +81,7 @@ func runBrainInstall() {
 	if brain.IsInstalled() {
 		status, err := brain.GetStatus()
 		if err == nil && status.Model != nil {
-			if jsonOutput {
+			if JsonOutput {
 				enc := json.NewEncoder(os.Stdout)
 				enc.SetIndent("", "  ")
 				_ = enc.Encode(status)
@@ -124,7 +124,7 @@ func runBrainInstall() {
 
 	local, err := brain.Install(onProgress)
 	if err != nil {
-		if jsonOutput {
+		if JsonOutput {
 			enc := json.NewEncoder(os.Stdout)
 			enc.SetIndent("", "  ")
 			_ = enc.Encode(map[string]string{"error": err.Error()})
@@ -149,7 +149,7 @@ func runBrainInstall() {
 		os.Exit(1)
 	}
 
-	if jsonOutput {
+	if JsonOutput {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		_ = enc.Encode(local)
@@ -196,7 +196,7 @@ func runBrainUpdate() {
 
 	local, updated, err := brain.Update(onProgress)
 	if err != nil {
-		if jsonOutput {
+		if JsonOutput {
 			enc := json.NewEncoder(os.Stdout)
 			enc.SetIndent("", "  ")
 			_ = enc.Encode(map[string]interface{}{"error": err.Error(), "updated": false})
@@ -213,7 +213,7 @@ func runBrainUpdate() {
 		os.Exit(1)
 	}
 
-	if jsonOutput {
+	if JsonOutput {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		_ = enc.Encode(map[string]interface{}{
@@ -240,7 +240,7 @@ func runBrainRemove() {
 	fmt.Println()
 
 	if !brain.IsInstalled() {
-		if jsonOutput {
+		if JsonOutput {
 			enc := json.NewEncoder(os.Stdout)
 			enc.SetIndent("", "  ")
 			_ = enc.Encode(map[string]interface{}{"removed": false, "reason": "not installed"})
@@ -255,7 +255,7 @@ func runBrainRemove() {
 
 	err := brain.Remove()
 	if err != nil {
-		if jsonOutput {
+		if JsonOutput {
 			enc := json.NewEncoder(os.Stdout)
 			enc.SetIndent("", "  ")
 			_ = enc.Encode(map[string]string{"error": err.Error()})
@@ -265,7 +265,7 @@ func runBrainRemove() {
 		os.Exit(1)
 	}
 
-	if jsonOutput {
+	if JsonOutput {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		_ = enc.Encode(map[string]interface{}{

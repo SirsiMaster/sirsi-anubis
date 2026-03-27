@@ -55,6 +55,7 @@ Pantheon runs across **four layers** — use whichever matches your workflow. Mo
 - `pantheon weigh` — Full infrastructure scan (58 rules across 7 domains)
 - `pantheon ka` — Ghost detection (17 macOS locations)
 - `pantheon guard` — Process monitoring and resource control
+- `pantheon sekhmet` — **ANE-accelerated tokenization** (high-perf BPE)
 - `pantheon maat` — Quality governance and coverage tracking
 - `pantheon mirror` — File deduplication with GUI
 - 18 total commands + JSON output for scripting

@@ -108,7 +108,7 @@ func runKa() error {
 	})
 
 	// JSON output
-	if jsonOutput {
+	if JsonOutput {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		return enc.Encode(ghosts)

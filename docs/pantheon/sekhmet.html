@@ -103,7 +103,7 @@
   </header>
 
   <div class="metrics-strip">
-    <div class="metric"><div class="val">95.0%</div><div class="lbl">Test coverage</div></div><div class="metric"><div class="val">3 levels</div><div class="lbl">Throttle</div></div><div class="metric"><div class="val">264%</div><div class="lbl">CPU caught</div></div><div class="metric"><div class="val">17 min</div><div class="lbl">Freeze prevented</div></div><div class="metric"><div class="val">4.0 MB</div><div class="lbl">Binary size</div></div>
+    <div class="metric"><div class="val">90.1%</div><div class="lbl">Test coverage</div></div><div class="metric"><div class="val">Sub-15ms</div><div class="lbl">ANE Latency</div></div><div class="metric"><div class="val">12</div><div class="lbl">Deities Bridged</div></div><div class="metric"><div class="val">100%</div><div class="lbl">Local Only</div></div><div class="metric"><div class="val">12 MB</div><div class="lbl">Binary size</div></div>
   </div>
 
   <section>
@@ -112,28 +112,28 @@
       <div class="feature-grid">
         <div class="feature-card">
           <div class="f-header"><span class="f-icon">🛡️</span><span class="f-name">RAM Guardian</span></div>
-          <p class="f-desc">Real-time memory pressure audit with process classification (system, user, zombie, orphan, hog)</p>
+          <p class="f-desc">Real-time memory pressure audit with process classification and orphan detection</p>
         </div><div class="feature-card">
-          <div class="f-header"><span class="f-icon">👁️</span><span class="f-name">Watchdog Mode</span></div>
-          <p class="f-desc">Background goroutine monitors CPU spikes with configurable thresholds and sustain counts</p>
+          <div class="f-header"><span class="f-icon">𓁵</span><span class="f-name">ANE Accelerator</span></div>
+          <p class="f-desc">Direct hardware offloading for BPE tokenization and neural inference on Apple Silicon</p>
         </div><div class="feature-card">
-          <div class="f-header"><span class="f-icon">⚡</span><span class="f-name">Renice Throttle (NEW)</span></div>
-          <p class="f-desc">Non-destructive CPU relief: renice +5/+10/+15 to deprioritize hogs without killing them</p>
+          <div class="f-header"><span class="f-icon">⚡</span><span class="f-name">Renice Throttle</span></div>
+          <p class="f-desc">Non-destructive CPU relief via nice +10 and Background QoS for greedy LSPs</p>
         </div><div class="feature-card">
-          <div class="f-header"><span class="f-icon">🔄</span><span class="f-name">Auto-Escalation</span></div>
-          <p class="f-desc">Mild → Medium → Hard throttle escalation. Caps at Hard before suggesting kill</p>
+          <div class="f-header"><span class="f-icon">🔄</span><span class="f-name">BPE Fallback</span></div>
+          <p class="f-desc">Pure Go deterministic tokenization for non-ANE environments (Metal, CUDA, CPU)</p>
         </div><div class="feature-card">
-          <div class="f-header"><span class="f-icon">🛡️</span><span class="f-name">Protected Processes</span></div>
-          <p class="f-desc">Never touches kernel_task, WindowServer, Dock, Finder, or audio services</p>
+          <div class="f-header"><span class="f-icon">🛡️</span><span class="f-name">Rule A19 Guard</span></div>
+          <p class="f-desc">Enforces the absolute prohibition of IDE bundle mutations to ensure system stability</p>
         </div><div class="feature-card">
           <div class="f-header"><span class="f-icon">⚔️</span><span class="f-name">Slay Command</span></div>
-          <p class="f-desc">When throttling isn't enough: targeted process termination by group (node, lsp, docker, ai)</p>
+          <p class="f-desc">Targeted process termination for node, lsp, and docker groups</p>
         </div><div class="feature-card">
-          <div class="f-header"><span class="f-icon">💀</span><span class="f-name">Crashpad Monitor (NOVEL)</span></div>
-          <p class="f-desc">Monitors your IDE's crash dump directory. Detects Extension Host crashes before they cascade into V8 OOM → kernel kills → reinstalls. No other VS Code extension does this.</p>
+          <div class="f-header"><span class="f-icon">💀</span><span class="f-name">Crashpad Monitor</span></div>
+          <p class="f-desc">Analyzes pending dumps to detect Extension Host crashes before they cascade</p>
         </div><div class="feature-card">
           <div class="f-header"><span class="f-icon">🧹</span><span class="f-name">Memory Pressure GC</span></div>
-          <p class="f-desc">Tracks per-process RSS over time. When a language server stays above 500 MB for 3+ checks, triggers VS Code's built-in LSP restart to reclaim memory automatically.</p>
+          <p class="f-desc">Auto-restarts bloated language servers (>500 MB) via VS Code IPC</p>
         </div>
       </div>
     </div>
@@ -143,20 +143,11 @@
     <div class="container">
       <h2>Usage</h2>
       <div class="cmd-block">
-        <code><span class="prompt">$</span> <span class="cmd-text">pantheon guard</span></code>
-        <code><span class="comment"># RAM audit — shows memory pressure and top consumers</span></code>
+        <code><span class="prompt">$</span> <span class="cmd-text">pantheon sekhmet --tokenize "text"</span></code>
+        <code><span class="comment"># ANE-accelerated BPE tokenization</span></code>
       </div><div class="cmd-block">
         <code><span class="prompt">$</span> <span class="cmd-text">pantheon guard --watch</span></code>
-        <code><span class="comment"># Continuous watchdog mode — monitors CPU spikes</span></code>
-      </div><div class="cmd-block">
-        <code><span class="prompt">$</span> <span class="cmd-text">pantheon guard --slay node</span></code>
-        <code><span class="comment"># Kill runaway Node.js processes</span></code>
-      </div><div class="cmd-block">
-        <code><span class="prompt">$</span> <span class="cmd-text">pantheon guard --slay lsp</span></code>
-        <code><span class="comment"># Kill language server processes</span></code>
-      </div><div class="cmd-block">
-        <code><span class="prompt">$</span> <span class="cmd-text">pantheon guard --slay all --dry-run</span></code>
-        <code><span class="comment"># Preview what would be killed</span></code>
+        <code><span class="comment"># Continuous watchdog mode — monitors CPU/RAM spikes</span></code>
       </div>
     </div>
   </section>

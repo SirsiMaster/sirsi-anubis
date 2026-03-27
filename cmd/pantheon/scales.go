@@ -107,7 +107,7 @@ func runScalesEnforce(cmd *cobra.Command, args []string) {
 	for _, policy := range pf.Policies {
 		result, err := scales.Enforce(policy)
 		if err != nil {
-			if jsonOutput {
+			if JsonOutput {
 				enc := json.NewEncoder(os.Stdout)
 				enc.SetIndent("", "  ")
 				_ = enc.Encode(map[string]string{"error": err.Error()})
@@ -120,7 +120,7 @@ func runScalesEnforce(cmd *cobra.Command, args []string) {
 	}
 
 	// JSON output
-	if jsonOutput {
+	if JsonOutput {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		_ = enc.Encode(allResults)
@@ -181,7 +181,7 @@ func runScalesValidate(cmd *cobra.Command, args []string) {
 
 	errs := scales.ValidatePolicy(scalesPolicyFile)
 
-	if jsonOutput {
+	if JsonOutput {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		if len(errs) == 0 {
