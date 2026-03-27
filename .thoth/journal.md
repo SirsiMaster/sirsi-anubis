@@ -448,3 +448,71 @@ Issues 3 and 4 required modifying files inside `/Applications/Antigravity.app/`.
 **Strategic note**: The user expressed frustration with Antigravity's bundled extension bugs and the realization that they can't be fixed safely. The Crashpad Monitor is the pragmatic answer — you can't fix the upstream bugs, but you can detect when they're about to crash your IDE. This positions Pantheon as the "IDE health insurance" that no other extension provides.
 
 ---
+
+## Entry 022 — 2026-03-27 00:19 — "Move the heavy work to the right silicon" (RECONSTRUCTED)
+
+> ⚠️ This entry was reconstructed from git commit `bc62920`, case study 013, and memory.yaml after the original conversation was lost due to an upstream Antigravity IDE bug (no `overview.txt` files are written — ever).
+
+**Context**: Session 25. The AG Monitor Pro extension (disabled in Session 22) used `js-tiktoken` for tokenization — a WASM BPE implementation inside the Extension Host. Its 1988ms profile time and 150MB RSS were symptoms of the same root cause: running ML primitives in the wrong runtime.
+
+**Decision**: Move tokenization out of Node.js entirely. Build a native Go BPE tokenizer (`FastTokenize`) that runs as a CPU fallback, then route to Apple Neural Engine via HAPI's `Accelerator` interface.
+
+**What was built**:
+- Extended `Accelerator` interface with `Tokenize(text string) ([]int, error)` — backends: AppleANE, Metal, CUDA, ROCm, CPU.
+- `FastTokenize` — pure Go BPE using a pre-compiled trie for sub-millisecond lookup.
+- `cmd/pantheon/sekhmet.go` — new `pantheon sekhmet --tokenize` command.
+- `cmd/pantheon/globals.go` — centralized `--json`, `--quiet`, `--verbose` flags (were duplicated per command).
+- `cmd/thoth/main.go` — standalone `thoth` binary entry point (the first step toward `thoth sync`).
+- `internal/thoth/sync.go` (171 lines) — auto-sync logic to keep memory.yaml current. **Started but not wired in.**
+
+**Result**: 215ms → 12ms (17.9x faster). 155MB → 4MB (97.4% less memory). Zero UI lag because the work runs on the NPU, not the CPU.
+
+**Lesson**: "Integrated Independence" isn't just an architecture buzzword — it means putting each primitive on the silicon that was designed for it. BPE hashing is embarrassingly parallel. The ANE exists for exactly this.
+
+---
+
+## Entry 023 — 2026-03-27 02:31 — "The Triple Ankh Problem" (RECONSTRUCTED)
+
+> ⚠️ This entry was reconstructed from git commits `bc62920` and `6a322ca`, BUILD_LOG.md Session 26, and memory.yaml after the original conversation was lost.
+
+**Context**: Sessions 26-27. Three Pantheon processes were running simultaneously: the Menu Bar app, the Guard CLI daemon, and the MCP server. Each one displayed the ankh (𓂀) icon in the macOS menu bar. The user saw three identical tray icons. This is the "Triple Ankh" problem.
+
+**Root cause**: No process-level exclusion. Each entry point (`cmd/pantheon-menubar/main.go`, `cmd/pantheon/guard.go`, `cmd/pantheon/mcp.go`) started independently without checking if another Pantheon instance was already running.
+
+**Solution**: `internal/platform/singleton.go` (43 lines). Unix domain socket lock at `/tmp/pantheon.<id>.lock`. Each entry point calls `platform.TryLock()` on activation — if the lock is held, it exits cleanly instead of starting a second instance.
+
+**The LaunchAgent subtlety**: The original plist had `KeepAlive: true`, meaning macOS would respawn the process if TryLock caused a clean `exit(0)`. This created an infinite respawn loop — the OS kept launching the menu bar, TryLock kept killing it, the OS kept launching it again. Fix: `KeepAlive: { SuccessfulExit: false }` — only respawn on crash (non-zero exit), not on intentional shutdown.
+
+**Also built**:
+- `internal/brain/hapi_bridge.go` (50 lines) — routes inference to CoreML (ANE) or ONNX based on hardware detection.
+- `internal/guard/bridge.go` (213 lines) — rewrote the Antigravity IPC bridge.
+- `detect_hardware` MCP tool — AI assistants can now query the machine's accelerator profile.
+- Sekhmet watchdog: 1.5GB memory governance threshold integrated into `watchdog.go`.
+
+**Lesson**: Singleton enforcement must happen at the OS level, not the application level. Mutexes don't survive process boundaries. Unix domain sockets do.
+
+---
+
+## Entry 024 — 2026-03-27 11:14 — "The conversation logs were never there"
+
+**Context**: Session 28 (this session). User returned after 3 sessions (25-27) with a different agent. Found 4 uncommitted test files. Asked for full recovery.
+
+**Discovery**: While reconstructing the lost sessions, I checked every single conversation directory in `~/.gemini/antigravity/brain/` (90+ conversations). **Not a single one has an `overview.txt` file.** The system prompt claims conversation logs are stored at `.system_generated/logs/overview.txt` — they never were.
+
+**What this means**: Antigravity IDE's conversation persistence is architecturally broken. The browser scratchpads, screenshots, click feedback, and artifacts persist — but the actual conversation transcript is never written to disk. Every "lost conversation" since the project's inception has been lost for the same reason.
+
+**What survived and what didn't**:
+- Git: 100%. Every line of code from all 3 sessions.
+- Thoth memory.yaml: Summaries for all 3 sessions.
+- CHANGELOG + BUILD_LOG.md: Summaries for Sessions 25-26.
+- Case Study 013: Full documentation for Session 25.
+- Test Performance Audit artifact: Full documentation for Session 27.
+- Journal entries: **Missing.** Entries 022-023 were never written.
+- Conversation transcripts: **Missing.** Never existed.
+
+**Strategic implication**: Pantheon's multi-source-of-truth architecture (Git + Thoth + Ma'at + Horus + Case Studies) is the only reason these sessions are recoverable at all. The IDE's own persistence layer failed silently. This validates the "forensics-first" philosophy from Case Study 011 — if you can't trust the tool to save your work, you build your own safety net.
+
+**Action**: The `internal/thoth/sync.go` started in Session 25 needs to be completed and wired in. Thoth should auto-generate journal entries from git diffs at the end of every session. The journal should never depend on the IDE's conversation persistence again.
+
+---
+
