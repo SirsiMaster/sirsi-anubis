@@ -12,6 +12,9 @@ import (
 // signature and that it returns non-nil metrics when the system is available.
 
 func TestCollectMetrics_Runs(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping live scan in short mode")
+	}
 	// CollectMetrics runs real scans — just verify it doesn't panic
 	// and returns a valid structure or a reasonable error.
 	metrics, err := CollectMetrics()
@@ -36,6 +39,9 @@ func TestCollectMetrics_Runs(t *testing.T) {
 // ─── Enforce ──────────────────────────────────────────────────────────────
 
 func TestEnforce_Integration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping live enforcement in short mode")
+	}
 	policy := DefaultPolicy().Policies[0]
 	result, err := Enforce(policy)
 	if err != nil {

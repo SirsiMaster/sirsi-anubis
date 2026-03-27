@@ -230,6 +230,9 @@ func TestRouteWorkload_UnavailableSkipped(t *testing.T) {
 // ── DetectAccelerators Integration ──────────────────────────────────────
 
 func TestDetectAccelerators(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping live hardware detection in short mode")
+	}
 	profile := DetectAccelerators()
 
 	if profile == nil {

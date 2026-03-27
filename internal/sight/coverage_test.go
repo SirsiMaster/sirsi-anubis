@@ -5,6 +5,9 @@ import (
 )
 
 func TestScan(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping live lsregister scan in short mode")
+	}
 	result, err := Scan()
 	if err != nil {
 		t.Logf("Scan: %v (expected in non-macOS or CI)", err)

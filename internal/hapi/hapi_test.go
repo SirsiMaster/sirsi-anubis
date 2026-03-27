@@ -72,6 +72,9 @@ func TestFormatBytes(t *testing.T) {
 // ═══════════════════════════════════════════
 
 func TestDetectHardware_ReturnsProfile(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping live system_profiler call in short mode")
+	}
 	profile, err := DetectHardware()
 	if err != nil {
 		t.Fatalf("DetectHardware() error: %v", err)
@@ -380,6 +383,9 @@ func TestPruneSnapshot_DryRun(t *testing.T) {
 }
 
 func TestListSnapshots_DoesNotCrash(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping live tmutil call in short mode")
+	}
 	// ListSnapshots should return a valid result on any platform
 	result, err := ListSnapshots()
 	if err != nil {
