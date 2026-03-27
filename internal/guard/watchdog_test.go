@@ -209,17 +209,17 @@ func TestMin64(t *testing.T) {
 
 func saveAndRestoreSampler(t *testing.T) {
 	t.Helper()
-	orig := sampleTopCPUFn
-	t.Cleanup(func() { sampleTopCPUFn = orig })
+	orig := getSampleFn()
+	t.Cleanup(func() { setSampleFn(orig) })
 }
 
 func TestWatchdog_SustainedAlert_Mocked(t *testing.T) {
 	saveAndRestoreSampler(t)
-	sampleTopCPUFn = func(n int) ([]ProcessInfo, error) {
+	setSampleFn(func(n int) ([]ProcessInfo, error) {
 		return []ProcessInfo{
 			{PID: 999, Name: "hot-proc", CPUPercent: 95.0, RSS: 1024 * 1024},
 		}, nil
-	}
+	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
@@ -253,10 +253,10 @@ func TestWatchdog_SustainedAlert_Mocked(t *testing.T) {
 func TestWatchdog_Backoff_Mocked(t *testing.T) {
 	saveAndRestoreSampler(t)
 	// Simulate slow sampling by sleeping
-	sampleTopCPUFn = func(n int) ([]ProcessInfo, error) {
+	setSampleFn(func(n int) ([]ProcessInfo, error) {
 		time.Sleep(20 * time.Millisecond) // Slow sampler
 		return []ProcessInfo{}, nil
-	}
+	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancel()
@@ -282,13 +282,13 @@ func TestWatchdog_Backoff_Mocked(t *testing.T) {
 func TestWatchdog_SamplerError_Mocked(t *testing.T) {
 	saveAndRestoreSampler(t)
 	calls := 0
-	sampleTopCPUFn = func(n int) ([]ProcessInfo, error) {
+	setSampleFn(func(n int) ([]ProcessInfo, error) {
 		calls++
 		if calls <= 2 {
 			return nil, fmt.Errorf("transient error")
 		}
 		return []ProcessInfo{}, nil
-	}
+	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancel()
@@ -313,11 +313,11 @@ func TestWatchdog_SamplerError_Mocked(t *testing.T) {
 
 func TestWatch_WithAlerts_Mocked(t *testing.T) {
 	saveAndRestoreSampler(t)
-	sampleTopCPUFn = func(n int) ([]ProcessInfo, error) {
+	setSampleFn(func(n int) ([]ProcessInfo, error) {
 		return []ProcessInfo{
 			{PID: 42, Name: "alert-proc", CPUPercent: 99.0, RSS: 1024},
 		}, nil
-	}
+	})
 
 	cfg := WatchConfig{
 		Interval:     10 * time.Millisecond,
@@ -343,11 +343,11 @@ func TestWatch_WithAlerts_Mocked(t *testing.T) {
 
 func TestWatch_NilCallback_Mocked(t *testing.T) {
 	saveAndRestoreSampler(t)
-	sampleTopCPUFn = func(n int) ([]ProcessInfo, error) {
+	setSampleFn(func(n int) ([]ProcessInfo, error) {
 		return []ProcessInfo{
 			{PID: 42, Name: "test", CPUPercent: 99.0, RSS: 1024},
 		}, nil
-	}
+	})
 
 	cfg := WatchConfig{
 		Interval:     10 * time.Millisecond,
@@ -368,7 +368,7 @@ func TestWatch_NilCallback_Mocked(t *testing.T) {
 func TestWatchdog_CoolDown_Mocked(t *testing.T) {
 	saveAndRestoreSampler(t)
 	calls := 0
-	sampleTopCPUFn = func(n int) ([]ProcessInfo, error) {
+	setSampleFn(func(n int) ([]ProcessInfo, error) {
 		calls++
 		// Hot for first 3 calls, then cool down
 		if calls <= 3 {
@@ -379,7 +379,7 @@ func TestWatchdog_CoolDown_Mocked(t *testing.T) {
 		return []ProcessInfo{
 			{PID: 77, Name: "cooling", CPUPercent: 1.0, RSS: 1024}, // Below threshold
 		}, nil
-	}
+	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancel()

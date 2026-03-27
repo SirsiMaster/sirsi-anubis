@@ -34,7 +34,24 @@ import (
 )
 
 // Injectable sampler for testability.
-var sampleTopCPUFn = defaultSampleTopCPU
+var (
+	sampleMu       sync.RWMutex
+	sampleTopCPUFn = defaultSampleTopCPU
+)
+
+// getSampleFn returns the current sampler function under lock.
+func getSampleFn() func(int) ([]ProcessInfo, error) {
+	sampleMu.RLock()
+	defer sampleMu.RUnlock()
+	return sampleTopCPUFn
+}
+
+// setSampleFn sets the sampler function under lock.
+func setSampleFn(fn func(int) ([]ProcessInfo, error)) {
+	sampleMu.Lock()
+	defer sampleMu.Unlock()
+	sampleTopCPUFn = fn
+}
 
 // WatchConfig configures the Sekhmet watchdog.
 type WatchConfig struct {
@@ -157,7 +174,7 @@ func (w *Watchdog) run() {
 			_ = ag.CheckSelf()
 
 			start := time.Now()
-			procs, err := sampleTopCPUFn(w.cfg.SampleSize)
+			procs, err := getSampleFn()(w.cfg.SampleSize)
 			if err != nil {
 				continue // Transient — retry next tick
 			}
@@ -242,7 +259,7 @@ func (w *Watchdog) run() {
 // sampleTopCPU returns the top-N processes by CPU usage.
 // Uses a single fork to `ps` sorted by CPU descending — one syscall per poll.
 func sampleTopCPU(topN int) ([]ProcessInfo, error) {
-	return sampleTopCPUFn(topN)
+	return getSampleFn()(topN)
 }
 
 func defaultSampleTopCPU(topN int) ([]ProcessInfo, error) {
