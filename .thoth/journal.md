@@ -432,3 +432,19 @@ Issues 3 and 4 required modifying files inside `/Applications/Antigravity.app/`.
 **Strategic implication**: The user's IDE has bugs in its bundled extensions that can't be fixed safely. This creates a legitimate case for either (a) forking the IDE, (b) building an extension that hardens against upstream bugs, or (c) advocating for upstream fixes. Option (b) is the pragmatic path — Pantheon's extension already does some of this, and Guardian's Crashpad monitoring would be genuinely novel.
 
 ---
+
+## Entry 021 — 2026-03-26 23:20 — "The Watchman: Crashpad Monitor Ships"
+
+**Context**: Session 23 continued. After crash forensics and Rule A19 hardening, the user approved building Option (b) — a hardening layer that monitors crash dumps rather than trying to fix upstream bugs.
+
+**What was built**: `extensions/vscode/src/crashpadMonitor.ts` (370+ lines). A module that polls `Crashpad/pending/*.dmp` every 5 minutes, tracks trends, detects Extension Host crashes via 8KB string extraction, and surfaces stability status in the status bar and a webview report.
+
+**Why this is novel**: No VS Code extension monitors Crashpad. Extensions monitor CPU, memory, network — nobody watches the crash dump directory. The Crashpad Monitor is a leading indicator: a growing dump count means your IDE is silently dying. We proved this in Session 22 when 34 pending dumps went unnoticed before the cascade.
+
+**Canonization sprint**: VERSION → 0.7.0-alpha. CHANGELOG, memory.yaml, journal, continuation prompt, build-log.html, README, case studies all updated. PANTHEON_RULES.md, CLAUDE.md, GEMINI.md synced.
+
+**Extension commands**: 8 → 10 (added `crashpadReport`). Modules: 6 → 7 (added `crashpadMonitor`).
+
+**Strategic note**: The user expressed frustration with Antigravity's bundled extension bugs and the realization that they can't be fixed safely. The Crashpad Monitor is the pragmatic answer — you can't fix the upstream bugs, but you can detect when they're about to crash your IDE. This positions Pantheon as the "IDE health insurance" that no other extension provides.
+
+---

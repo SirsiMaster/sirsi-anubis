@@ -4,7 +4,7 @@
 
 [![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go&logoColor=white)](https://go.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-C8A951?style=flat)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-0.5.1--alpha-1A1A5E?style=flat)](VERSION)
+[![Version](https://img.shields.io/badge/Version-0.7.0--alpha-1A1A5E?style=flat)](VERSION)
 [![Tests](https://img.shields.io/badge/tests-819%2B%20passing-brightgreen?style=flat)](.github/workflows/ci.yml)
 [![OpenVSX](https://img.shields.io/badge/OpenVSX-v0.5.1-purple?style=flat)](https://open-vsx.org/extension/SirsiMaster/sirsi-pantheon)
 [![MCP](https://img.shields.io/badge/MCP-2025--03--26-purple?style=flat)](https://modelcontextprotocol.io)
@@ -417,9 +417,11 @@ The Pantheon extension brings Guardian auto-renice, memory GC, and live metrics 
 |:--------|:-----------|
 | **Guardian Auto-Renice** | Deprioritizes LSP processes (gopls, tsserver, rust-analyzer) to nice +10 / Background QoS |
 | **Memory Pressure GC** | Restarts bloated language servers when >500 MB sustained for 3+ checks |
-| **Status Bar** | `$(eye) PANTHEON 4.8 GB` — live RAM metrics, color-coded health |
-| **Command Palette** | 7 commands: Scan, Guard, Renice, Ka, Thoth, Metrics, Settings |
+| **Crashpad Monitor** | 🆕 Monitors crash dumps — detects Extension Host instability before cascade crashes. No other extension does this. |
+| **Status Bar** | `$(eye) PANTHEON 4.8 GB` — live RAM metrics + crash stability indicator |
+| **Command Palette** | 10 commands: Scan, Guard, Renice, Ka, Thoth, Metrics, Accountability, Crashpad, Settings |
 | **Thoth Context** | Reads `.thoth/memory.yaml` for instant project context |
+| **Thoth Accountability** | Cold-start benchmark proving 371K tokens saved per session |
 
 **Install**: Search "Pantheon" in extensions, or visit [OpenVSX](https://open-vsx.org/extension/SirsiMaster/sirsi-pantheon).
 **Works in**: VS Code, Antigravity, Cursor, Windsurf — any VS Code-based IDE.

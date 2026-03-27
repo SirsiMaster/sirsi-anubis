@@ -13,6 +13,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 - P1: CoreML embeddings on ANE (60x speedup)
 - P2: npm publish thoth-init, VS Code extension on OpenVSX
 
+### Session 23 (2026-03-26) — Crash Forensics + Crashpad Monitor
+- **Crash Forensics** — Investigated IDE crash that required 2 reinstalls + 2 restarts.
+  - 34 pending crash dumps in `Crashpad/pending/` — dating back weeks.
+  - Root cause: Session 22 manifest patches created un-realizable Extension Host state.
+  - Chain: V8 OOM (`electron.v8-oom.is_heap_oom`) → macOS Jetsam (`libMemoryResourceException`) → cascade.
+  - V8 GC efficiency dropped to `mu = 0.132` (normal: >0.9) before heap exhaustion.
+  - Crash dumps 2 & 3 confirmed as `libMemoryResourceException` — kernel memory pressure kills.
+- **Rule A19 Hardened to ABSOLUTE PROHIBITION** — No `.app` bundle modifications ever.
+  - Previous exception ("manifest-only patches are safe with re-signing") proven wrong.
+  - Semantic integrity matters more than code signing — valid JSON can crash the Extension Host.
+  - Case Study 011: `docs/case-studies/session-23-extension-host-crash-forensics.md`.
+- **Crashpad Monitor** (`extensions/vscode/src/crashpadMonitor.ts`, 370+ lines) — **NOVEL FEATURE**.
+  - Auto-detects Crashpad directory for Antigravity, VS Code, Cursor, Windsurf.
+  - Polls `pending/*.dmp` every 5 minutes with rolling trend detection (3-reading window).
+  - Extension Host crash identification via first-8KB string extraction from `.dmp` files.
+  - Trend classification: `stable` / `growing` / `critical` with threshold-based alerts.
+  - Status bar indicator: hidden when stable, 🟡 at 5+ dumps, 🔴 at 15+ dumps.
+  - Premium webview report with timeline, forensics reference, and cleanup recommendations.
+  - One-time session warning when trend shifts from stable.
+  - New command: `pantheon.crashpadReport` (10 total commands, 7 modules).
+  - Case Study 012: `docs/case-studies/session-23-crashpad-monitor.md`.
+- **Canon Updated** — Journal Entry 020-021, build-log.html, PANTHEON_RULES.md, CLAUDE.md, GEMINI.md.
+- **Version**: 0.7.0-alpha. Extension: 10 commands, 7 modules.
+
 ### Session 22 (2026-03-26) — Thoth Accountability Engine + Extension Triage
 - **Thoth Accountability Engine** (`extensions/vscode/src/thothAccountability.ts`, 645 lines)
   - Cold-start benchmark: walks workspace source, compares against memory.yaml.

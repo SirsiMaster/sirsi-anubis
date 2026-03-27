@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>𓁵 Sekhmet — Warrior Guardian | Sirsi Pantheon</title>
-  <meta name="description" content="Guards your system against CPU and RAM hogs. Part of the Sirsi Pantheon infrastructure hygiene platform.">
+  <meta name="description" content="Guards your system against CPU and RAM hogs. Monitors crash dumps and IDE stability. Part of the Sirsi Pantheon infrastructure hygiene platform.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -99,7 +99,7 @@
     <h1>Sekhmet</h1>
     <div class="role">Warrior Guardian</div>
     <div class="domain-tag">System Protection</div>
-    <p class="desc">Sekhmet is the warrior goddess who protects your system from resource abuse. She audits RAM pressure, classifies every process, detects CPU hogs, and now offers non-destructive throttling via renice. When your IDE starts lagging because a language server is eating 2 GB RAM, Sekhmet catches it and can automatically deprioritize the offender — no killing required.</p>
+    <p class="desc">Sekhmet is the warrior goddess who protects your system from resource abuse. She audits RAM pressure, classifies every process, detects CPU hogs, monitors crash dumps for IDE instability, and offers non-destructive throttling via renice. When your IDE starts lagging because a language server is eating 2 GB RAM — or silently crashing in the background — Sekhmet catches it before it cascades.</p>
   </header>
 
   <div class="metrics-strip">
@@ -128,6 +128,12 @@
         </div><div class="feature-card">
           <div class="f-header"><span class="f-icon">⚔️</span><span class="f-name">Slay Command</span></div>
           <p class="f-desc">When throttling isn't enough: targeted process termination by group (node, lsp, docker, ai)</p>
+        </div><div class="feature-card">
+          <div class="f-header"><span class="f-icon">💀</span><span class="f-name">Crashpad Monitor (NOVEL)</span></div>
+          <p class="f-desc">Monitors your IDE's crash dump directory. Detects Extension Host crashes before they cascade into V8 OOM → kernel kills → reinstalls. No other VS Code extension does this.</p>
+        </div><div class="feature-card">
+          <div class="f-header"><span class="f-icon">🧹</span><span class="f-name">Memory Pressure GC</span></div>
+          <p class="f-desc">Tracks per-process RSS over time. When a language server stays above 500 MB for 3+ checks, triggers VS Code's built-in LSP restart to reclaim memory automatically.</p>
         </div>
       </div>
     </div>
@@ -160,7 +166,7 @@
       <h2>Usability Surface</h2>
       <table class="surface-table">
         <thead><tr><th>Interface</th><th>Status</th><th>Detail</th></tr></thead>
-        <tbody><tr><td>CLI</td><td>✅ Full</td><td>pantheon guard, --watch, --slay</td></tr><tr><td>MCP</td><td>✅ Full</td><td>health_check tool</td></tr><tr><td>Menu Bar</td><td>✅ Active</td><td>CPU/RAM pressure in stats</td></tr><tr><td>Watchdog</td><td>✅ Background</td><td>Runs as LaunchAgent</td></tr></tbody>
+        <tbody><tr><td>CLI</td><td>✅ Full</td><td>pantheon guard, --watch, --slay</td></tr><tr><td>VS Code Extension</td><td>✅ Full</td><td>Auto-renice, Memory GC, Crashpad Monitor, 10 commands</td></tr><tr><td>MCP</td><td>✅ Full</td><td>health_check tool</td></tr><tr><td>Menu Bar</td><td>✅ Active</td><td>CPU/RAM pressure in stats</td></tr><tr><td>Watchdog</td><td>✅ Background</td><td>Runs as LaunchAgent</td></tr></tbody>
       </table>
     </div>
   </section>
@@ -200,7 +206,7 @@
       <a href="/build-log">Build Log</a>
       <a href="https://sirsi.ai">Sirsi Nexus</a>
     </div>
-    <p>𓁵 Sekhmet — Part of <a href="/">Sirsi Pantheon</a> v0.4.0-alpha</p>
+    <p>𓁵 Sekhmet — Part of <a href="/">Sirsi Pantheon</a> v0.7.0-alpha</p>
   </footer>
 </body>
 </html>
