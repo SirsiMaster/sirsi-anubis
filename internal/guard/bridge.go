@@ -22,6 +22,7 @@ type AntigravityBridge struct {
 
 // AlertRing is a fixed-size buffer for system alerts.
 type AlertRing struct {
+	mu      sync.Mutex
 	entries []AlertEntry
 	head    int
 	size    int
@@ -51,12 +52,16 @@ func NewAlertRing(capacity int) *AlertRing {
 
 // Add appends an alert to the ring.
 func (r *AlertRing) Add(alert AlertEntry) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	r.entries[r.head] = alert
 	r.head = (r.head + 1) % r.size
 }
 
 // GetAll returns all alerts in the ring, ordered by timestamp.
 func (r *AlertRing) GetAll() []AlertEntry {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	result := make([]AlertEntry, 0, r.size)
 	for i := 0; i < r.size; i++ {
 		idx := (r.head + r.size - 1 - i) % r.size // Reverse order (newest first)
@@ -69,6 +74,8 @@ func (r *AlertRing) GetAll() []AlertEntry {
 
 // Stats returns buffered and lifetime counts for the ring.
 func (r *AlertRing) Stats() (int, int) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	count := 0
 	for _, e := range r.entries {
 		if !e.Timestamp.IsZero() {
