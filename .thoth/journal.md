@@ -516,3 +516,50 @@ Issues 3 and 4 required modifying files inside `/Applications/Antigravity.app/`.
 
 ---
 
+## Entry 025 — 2026-03-27 12:15 — "The Race Condition That Wouldn't Die"
+
+**Context**: Session 29. P0 was CI green. Lint was the easy part — 22 errors across 10 files, all mechanical fixes. The real boss fight was a data race in the Guard module that survived 4 consecutive fix attempts.
+
+### The Problem
+
+`sampleTopCPUFn` is a package-level function pointer in `watchdog.go` (line 37). Tests inject mock samplers by assigning to it directly. The watchdog's `run()` goroutine reads it every poll cycle (line 160). Go's `-race` detector flagged every test that used this pattern:
+
+```
+WARNING: DATA RACE
+Write at 0x0001045160c8 by goroutine 28: TestStartBridge_LifecycleWithAlerts()
+Read at 0x0001045160c8 by goroutine 29: (*Watchdog).run()
+```
+
+### The Fix Progression
+
+1. **Attempt 1**: Added `sync.Mutex` to `AlertRing`. ❌ Wrong target — the ring wasn't the racing variable.
+2. **Attempt 2**: Changed `defer func() { sampleTopCPUFn = old }()` to explicit `cancel()` → `sleep(100ms)` → `sampleTopCPUFn = old`. ❌ The goroutine runs on `runtime.LockOSThread()` — 100ms wasn't enough for OS thread scheduling.
+3. **Attempt 3**: Same as #2 but on all 5 bridge tests. ❌ Same reason — sleep-based timing is fundamentally fragile.
+4. **Attempt 4**: Protected `sampleTopCPUFn` with `sync.RWMutex` via `getSampleFn()`/`setSampleFn()` accessors. ✅ **Correct.** No timing dependency. All 8 tests pass with `-race -count=1`.
+
+### The Rule
+
+**Rule A21 — Concurrency-Safe Injectable Mocks**: Package-level function pointers used for test injection MUST be protected by a `sync.RWMutex`. `defer` restore is dangerous because it runs after the test returns but before spawned goroutines complete. The correct pattern is:
+
+```go
+var (
+    sampleMu sync.RWMutex
+    sampleFn = defaultImpl
+)
+func getSampleFn() func(...) { sampleMu.RLock(); defer sampleMu.RUnlock(); return sampleFn }
+func setSampleFn(fn func(...)) { sampleMu.Lock(); defer sampleMu.Unlock(); sampleFn = fn }
+```
+
+### Which Deity Owns This?
+
+**𓆄 Ma'at** — the QA Sovereign (Rule A17). She governs test quality, pipeline health, and canonical standards. Rule A21 is her jurisdiction because it sits at the intersection of test patterns (A16: Injectable Providers) and CI pipeline health (A6: QA Gate). A module that passes locally but fails under `-race` on CI is a Ma'at governance failure.
+
+### Also Completed
+
+- **Thoth Journal Sync (P1)**: Built `internal/thoth/journal.go` (230 lines). `thoth sync` now harvests git commits and auto-generates journal entries. The ghost transcript gap from Entry 024 is permanently closed.
+- **Firebase Deploy (P2)**: 17 files to `sirsi-pantheon.web.app`.
+- **gh CLI (P3)**: Upgraded 2.87.3 → 2.89.0.
+
+**Session total**: 5 commits, 20 files modified, Rule A21 canonized, Thoth auto-journal shipped.
+
+---

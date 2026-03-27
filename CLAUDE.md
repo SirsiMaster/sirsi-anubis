@@ -262,6 +262,32 @@ Anubis scans filesystems and processes. Scan results may contain sensitive infor
 *   **Rationale**: The SirsiMaster profile contains all stored credentials (Eclipse/OpenVSX, GitHub, GoDaddy, Firebase) for Sirsi ecosystem services. Using the wrong profile leads to authentication failures and identity mismatches.
 *   **Enforcement**: Browser subagents MUST be instructed to use the SirsiMaster Chrome profile in their task description. Thoth MUST propagate this requirement to all session continuations.
 
+### 2.18 Concurrency-Safe Injectable Mocks (Rule A21)
+> Established March 27, 2026, after 4 consecutive CI failures caused by data races on `sampleTopCPUFn`. **𓆄 Ma'at governs this rule as QA Sovereign.**
+
+*   **Rule**: Package-level function pointers used for test injection (the "Injectable Provider" pattern from Rule A16) MUST be protected by a `sync.RWMutex`. Direct assignment (`pkgFn = mockFn`) is a **race condition** when goroutines spawned by previous tests may still be reading the variable.
+*   **Pattern**: Every injectable function pointer MUST have a paired accessor:
+    ```go
+    var (
+        sampleMu    sync.RWMutex
+        sampleFn    = defaultImpl
+    )
+    func getSampleFn() func(...) { sampleMu.RLock(); defer sampleMu.RUnlock(); return sampleFn }
+    func setSampleFn(fn func(...)) { sampleMu.Lock(); defer sampleMu.Unlock(); sampleFn = fn }
+    ```
+*   **Test Pattern**: Tests MUST use `setSampleFn()` to install mocks and `getSampleFn()` to save/restore:
+    ```go
+    old := getSampleFn()
+    setSampleFn(mockFn)
+    // ... test logic ...
+    cancel()                         // stop goroutines first
+    time.Sleep(100 * time.Millisecond) // drain
+    setSampleFn(old)                 // restore under lock
+    ```
+*   **Why `defer` is dangerous**: `defer func() { sampleFn = old }()` runs AFTER the test function returns, but goroutines from `StartBridge`/`StartWatch` may still be reading `sampleFn` on a locked OS thread. The race detector sees the write (restore) and read (goroutine) on the same address without synchronization.
+*   **Enforcement**: Any module using Rule A16 (Injectable Providers) with goroutine-based consumers MUST comply with this rule. A package-level `var fn = defaultFn` without a mutex is a governance failure under Ma'at.
+*   **Evidence**: Sessions 29-30 — 4 consecutive CI failures, all `WARNING: DATA RACE` on `sampleTopCPUFn` at `watchdog.go:160`. Fixed by `getSampleFn()`/`setSampleFn()` accessor pattern.
+
 ---
 
 ## 3. Technology Stack

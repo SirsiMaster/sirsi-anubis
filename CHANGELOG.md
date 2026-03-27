@@ -8,9 +8,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 
 ## [Unreleased]
 ### Planned
-- P0: Wire `thoth sync` auto-journal from git diffs
 - P1: Reach 95%+ coverage on remaining modules
 - P2: npm publish thoth-init
+
+### Session 29 (2026-03-27) — CI Green Sprint + Thoth Journal Sync + Rule A21
+- **CI Remediation (P0)** — Resolved 22 lint errors across 16 files:
+  - `errcheck`: 4 suppressed `fmt.Sscanf` returns in `stats.go`
+  - `unused`: 3 wired/removed dead functions in menubar
+  - `goimports`: 1 formatting fix in `sekhmet.go`
+  - `shadow`: 6 renamed inner `err` vars in 5 test files + `publish.go`
+  - `unusedwrite`: 8 added struct field assertions in 4 test files
+- **Windows CI Fix** — Added `shell: bash` to test step (PowerShell splits `-coverprofile=coverage.out`).
+- **Data Race Fix** — `AlertRing` mutex + `sampleTopCPUFn` accessor pattern (`getSampleFn()`/`setSampleFn()`).
+  - Root cause: `defer func() { sampleTopCPUFn = old }()` raced with watchdog goroutines on locked OS thread.
+  - Fix: `sync.RWMutex`-protected accessors. All 8 bridge tests pass with `-race -count=1`.
+- **Rule A21 Canonized** — Concurrency-Safe Injectable Mocks. Ma'at governs: all package-level function pointers used for test injection MUST use mutex-protected accessors.
+- **Thoth Journal Sync (P1)** — `internal/thoth/journal.go` (230 lines): auto-generates journal entries from git history.
+  - `thoth sync` now runs Phase 1 (memory.yaml) + Phase 2 (journal.md from `git log`).
+  - Supports `--since` and `--dry-run` flags. Closes the ghost transcript gap permanently.
+- **Firebase Deploy (P2)** — 17 files deployed to `sirsi-pantheon.web.app`.
+- **gh CLI Upgrade (P3)** — `gh` 2.87.3 → 2.89.0.
+
 
 ### Session 28 (2026-03-27) — Ghost Transcripts Recovery + CI Remediation
 - **Case Study 014** — "The Ghost Transcripts": discovered Antigravity IDE never writes `overview.txt` — 90+ conversations with zero transcripts.

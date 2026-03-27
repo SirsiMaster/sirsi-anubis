@@ -105,6 +105,16 @@ vscode_extension: extensions/vscode/ (TypeScript, 7 modules, 10 commands, Thoth 
 # - Website: sirsi-pantheon.web.app / pantheon.sirsi.ai (Firebase Hosting)
 # - Deity Registry: 13 HTML pages (index + 12 deities) with flip cards
 
+# 2026-03-27: Session 29 — CI Green Sprint + Thoth Journal Sync + Rule A21
+#   P0: Fixed 22 lint errors (errcheck, shadow, unusedwrite, goimports, unused).
+#   Windows: shell: bash fixes PowerShell -coverprofile splitting.
+#   DATA RACE FIX: sampleTopCPUFn protected by sync.RWMutex via getSampleFn()/setSampleFn().
+#   Root cause: defer restore races with watchdog goroutines on LockOSThread. 4 fix attempts.
+#   Rule A21 canonized: Concurrency-Safe Injectable Mocks. Ma'at governs (QA Sovereign).
+#   P1: internal/thoth/journal.go (230 lines) — auto-generates journal entries from git log.
+#     thoth sync runs Phase 1 (memory.yaml) + Phase 2 (journal.md). --since, --dry-run flags.
+#   P2: Firebase deployed (17 files → sirsi-pantheon.web.app).
+#   P3: gh CLI 2.87.3 → 2.89.0.
 # 2026-03-27: Session 28 — Ghost Transcripts Recovery + CI Remediation
 #   CRITICAL FINDING: Antigravity IDE never writes overview.txt — 90+ conversations, zero transcripts.
 #   Recovered 3 lost sessions (25-27) using git forensics, Thoth memory, CHANGELOG, case studies.
