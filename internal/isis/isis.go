@@ -182,7 +182,7 @@ func (r *Report) Format() string {
 		mode = "DRY RUN"
 	}
 
-	sb.WriteString(fmt.Sprintf("𓁐 Isis Healing Report [%s]\n", mode))
+	sb.WriteString(fmt.Sprintf("𓆄 Isis Healing Report [%s]\n", mode))
 	sb.WriteString(fmt.Sprintf("  Findings: %d | Healed: %d | Skipped: %d | Failed: %d\n",
 		r.TotalFindings, r.Healed, r.Skipped, r.Failed))
 	sb.WriteString(fmt.Sprintf("  Duration: %s\n\n", r.Duration.Round(time.Millisecond)))
@@ -207,9 +207,9 @@ func (r *Report) Format() string {
 	// Overall verdict
 	sb.WriteString("\n")
 	if r.TotalFindings == 0 {
-		sb.WriteString("  𓂀 The feather is already balanced. Nothing to heal.\n")
+		sb.WriteString("  𓁢 The feather is already balanced. Nothing to heal.\n")
 	} else if r.Failed == 0 && r.Healed > 0 {
-		sb.WriteString("  𓂀 Isis has restored the weight of the feather.\n")
+		sb.WriteString("  𓁢 Isis has restored the weight of the feather.\n")
 	} else if r.Failed > 0 {
 		sb.WriteString("  ⚠️ Some wounds remain. Manual intervention required.\n")
 	} else {

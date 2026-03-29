@@ -1,6 +1,6 @@
 // Package main — pantheon-menubar
 //
-// 𓂀 Pantheon Menu Bar Application (ADR-010)
+// 𓁢 Pantheon Menu Bar Application (ADR-010)
 package main
 
 import (
@@ -20,7 +20,7 @@ func main() {
 	// Check if this is the only instance running
 	unlock, err := platform.TryLock("menubar")
 	if err != nil {
-		fmt.Printf("𓂀 Pantheon Menubar is already running. Exiting.\n")
+		fmt.Printf("𓁢 Pantheon Menubar is already running. Exiting.\n")
 		os.Exit(0)
 	}
 	defer unlock()
@@ -35,7 +35,7 @@ func main() {
 }
 
 func runHeadless() {
-	fmt.Printf("𓂀 Pantheon Menubar %s (Headless Mode)\n", version)
+	fmt.Printf("𓁢 Pantheon Menubar %s (Headless Mode)\n", version)
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	<-sigCh

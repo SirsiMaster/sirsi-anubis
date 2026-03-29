@@ -69,7 +69,7 @@ func (s *Server) Serve() error {
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 		<-sig
-		fmt.Fprintf(os.Stderr, "\n  𓂀 Mirror shutting down...\n")
+		fmt.Fprintf(os.Stderr, "\n  𓁢 Mirror shutting down...\n")
 		_ = srv.Shutdown(context.Background())
 	}()
 
@@ -240,7 +240,7 @@ func mirrorHTML() string {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>𓂀 Anubis Mirror — Duplicate File Scanner</title>
+<title>𓁢 Anubis Mirror — Duplicate File Scanner</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -499,7 +499,7 @@ footer {
 <body>
 <div class="container">
   <header>
-    <h1>𓂀 Mirror</h1>
+    <h1>𓁢 Mirror</h1>
     <p>Find duplicate files • Smart keep recommendations • Zero data leaves your device</p>
   </header>
 
@@ -568,7 +568,7 @@ footer {
   <!-- Step 3: Results -->
   <div id="results"></div>
 
-  <footer>𓂀 Sirsi Anubis • Mirror — all analysis stays on-device</footer>
+  <footer>𓁢 Sirsi Anubis • Mirror — all analysis stays on-device</footer>
 </div>
 
 <script>

@@ -233,7 +233,7 @@ func (s *Server) RegisterResource(resource Resource, handler ResourceHandler) {
 // Run starts the MCP server, reading from stdin and writing to stdout.
 // This blocks until stdin is closed or an error occurs.
 func (s *Server) Run() error {
-	s.logger.Println("𓂀 Anubis MCP server starting (stdio mode)")
+	s.logger.Println("𓁢 Anubis MCP server starting (stdio mode)")
 
 	reader := bufio.NewReader(os.Stdin)
 	writer := os.Stdout
@@ -328,7 +328,7 @@ func (s *Server) handleInitialize(req *Request) *Response {
 			Name:    ServerName,
 			Version: ServerVersion,
 		},
-		Instructions: "𓂀 Sirsi Anubis — Context Sanitizer for AI Development. " +
+		Instructions: "𓁢 Sirsi Anubis — Context Sanitizer for AI Development. " +
 			"Use scan_workspace to check a project directory for waste, " +
 			"ghost_report to find remnants of uninstalled apps, and " +
 			"health_check for a quick system health summary. " +

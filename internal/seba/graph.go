@@ -124,7 +124,7 @@ func (g *InfraGraph) RenderHTML(outputPath string) error {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>𓂀 Seba — %s</title>
+<title>𓁢 Seba — %s</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#06060F;color:#C8A951;font-family:-apple-system,system-ui,sans-serif;overflow:hidden;user-select:none}
@@ -151,7 +151,7 @@ canvas{display:block;cursor:crosshair}
 </style>
 </head>
 <body>
-<div id="hdr"><h1>𓂀 Seba — Infrastructure Map</h1><p>%s • %s • %s</p></div>
+<div id="hdr"><h1>𓁢 Seba — Infrastructure Map</h1><p>%s • %s • %s</p></div>
 <canvas id="c"></canvas>
 <div id="leg" class="panel"></div>
 <div id="sta" class="panel"></div>
@@ -328,7 +328,7 @@ function render(){
     X.globalAlpha=1});
 
   X.font='300 9px -apple-system,system-ui,sans-serif';X.fillStyle='rgba(200,169,81,.08)';
-  X.textAlign='right';X.fillText('𓂀 Seba',W-14,H-8);
+  X.textAlign='right';X.fillText('𓁢 Seba',W-14,H-8);
   requestAnimationFrame(render)}
 requestAnimationFrame(render);
 

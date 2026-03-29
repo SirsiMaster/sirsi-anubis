@@ -1,4 +1,4 @@
-# 𓂀 Sirsi Pantheon: Case Studies
+# 𓁢 Sirsi Pantheon: Case Studies
 **The Origin Stories of the Deities**
 
 Every deity in the Pantheon was born from a real-world infrastructure crisis at Sirsi Technologies. We didn't set out to build a platform — we were just trying to survive our own development environment. These are the nitty-gritty post-mortems and architectural insights that shaped the deities.
@@ -22,7 +22,7 @@ Recovery took **20 minutes**. 100% of the architecture was reconstructed because
 
 ---
 
-## 𓂀 Case Study 1: ANUBIS & THE 47 GB (Origin Story)
+## 𓁢 Case Study 1: ANUBIS & THE 47 GB (Origin Story)
 **Status:** Shipped | **Deity:** Anubis (Judge) | **Waste Found:** 47.2 GB
 
 ### The Crisis

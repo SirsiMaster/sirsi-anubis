@@ -25,7 +25,7 @@ and perceptible click latency in the IDE.
 |-------|-----------|----------------------|
 | **𓁟 Thoth** | The Memory | Context compressor — ensures no consumer reads raw history |
 | **𓆄 Ma'at** | The Feather | Quality & truth validation, weighing of the heart |
-| **𓁐 Isis** | The Healer | Autonomous remediation — restores quality after Ma'at's weigh |
+| **𓆄 Isis** | The Healer | Autonomous remediation — restores quality after Ma'at's weigh |
 |-------|-----------|----------------------|
 | **𓀰 The Machine Gods** | **Infrastructure & OS** | **Safety, Resource, Network, Hardware** |
 |-------|-----------|----------------------|

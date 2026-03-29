@@ -1,4 +1,4 @@
-# 𓂀 The Pantheon Hierarchy — Canonical Ruleset
+# 𓁢 The Pantheon Hierarchy — Canonical Ruleset
 **Version:** 1.0.0
 **Date:** March 27, 2026
 **Custodian:** 𓁯 Net (The Weaver)
@@ -30,7 +30,7 @@
 |:------|:----------|:-----|:---------------|
 | **𓁟 Thoth** | The Memory | Scribe | Context compression & persistent AI knowledge. |
 | **𓆄 Ma'at** | The Standard | Weigher | QA/QC Governance. Weighs the heart (code) against the feather. |
-| **𓁐 Isis** | The Healer | Restorer | **Remediation engine**. Heals findings from Ma'at to restore quality. |
+| **𓆄 Isis** | The Healer | Restorer | **Remediation engine**. Heals findings from Ma'at to restore quality. |
 | **𓁆 Seshat** | The Scribe | Bridge | **Gemini Bridge**. Bidirectional sync: Gemini ↔ NotebookLM ↔ Antigravity. |
 
 **Dependencies**:
@@ -51,7 +51,7 @@
 | **𓁵 Sekhmet**| The Warrior | Guardian | Watchdog: Process prioritization, RAM safety, & NPU hardening. |
 | **𓈗 Hapi** | The Flow | Optimizer | Hardware accelerator detection (GPU/ANE/CUDA). |
 | **𓆣 Khepri** | The Scarab | Scavenger | Fleet discovery: Subnets, containers, and network hygiene. |
-| **𓇼 Seba** | The Star | Mapper | Visual topology, dependency graphs, and **Architectural Mapping**. |
+| **𓇽 Seba** | The Star | Mapper | Visual topology, dependency graphs, and **Architectural Mapping**. |
 
 **Dependencies**:
 - **Machine Gods** depend on **Horus** (for the unified filesystem manifest).
@@ -73,4 +73,4 @@ Every deity is **self-contained** and can be implemented, installed, or run inde
 6. **Net** re-aligns the Weave.
 
 ---
-*𓂀 Nothing escapes the Weighing. Nothing unbalances the Weave.*
+*𓁢 Nothing escapes the Weighing. Nothing unbalances the Weave.*

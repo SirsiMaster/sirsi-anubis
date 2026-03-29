@@ -29,7 +29,7 @@ var (
 
 var anubisCmd = &cobra.Command{
 	Use:   "anubis",
-	Short: "𓂀 Anubis — Infrastructure & Digital Hygiene Engine",
+	Short: "𓁢 Anubis — Infrastructure & Digital Hygiene Engine",
 	Long: `Anubis is the root of the Pantheon hygiene engine. Use it to scan for
 infrastructure waste, purge residuals, and fix system drifts.
 
@@ -45,13 +45,13 @@ infrastructure waste, purge residuals, and fix system drifts.
 
 var anubisWeighCmd = &cobra.Command{
 	Use:   "weigh",
-	Short: "𓂀 Scan your workstation for infrastructure waste",
+	Short: "𓁢 Scan your workstation for infrastructure waste",
 	RunE:  func(cmd *cobra.Command, args []string) error { return runWeigh(cmd.Context()) },
 }
 
 var anubisJudgeCmd = &cobra.Command{
 	Use:   "judge",
-	Short: "𓂀 Clean artifacts and reclaim storage space",
+	Short: "𓁢 Clean artifacts and reclaim storage space",
 	RunE:  func(cmd *cobra.Command, args []string) error { return runJudge(cmd.Context()) },
 }
 

@@ -22,8 +22,8 @@ var (
 
 var maatCmd = &cobra.Command{
 	Use:   "maat",
-	Short: "𓁐 Ma'at — QA/QC Governance & Policy Enforcement",
-	Long: `𓁐 Ma'at — The Goddess of Truth, Balance, and Cosmic Order
+	Short: "𓆄 Ma'at — QA/QC Governance & Policy Enforcement",
+	Long: `𓆄 Ma'at — The Goddess of Truth, Balance, and Cosmic Order
 
 Ma'at manages your workstation's governance and ensures all infrastructure
 complies with the Pantheon Charter. It balances the Scale of Truth.
@@ -38,7 +38,7 @@ complies with the Pantheon Charter. It balances the Scale of Truth.
 
 var maatAuditCmd = &cobra.Command{
 	Use:   "audit",
-	Short: "𓁐 Full workstation governance and compliance scan",
+	Short: "𓆄 Full workstation governance and compliance scan",
 	RunE:  runMaatAudit,
 }
 
@@ -50,7 +50,7 @@ var maatScalesCmd = &cobra.Command{
 
 var maatHealCmd = &cobra.Command{
 	Use:   "heal",
-	Short: "𓁐 Autonomous remediation cycle (Ma'at → Isis)",
+	Short: "𓆄 Autonomous remediation cycle (Ma'at → Isis)",
 	RunE:  runMaatHeal,
 }
 

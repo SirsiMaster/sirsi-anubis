@@ -269,7 +269,7 @@ func collectAccelerator(snap *StatsSnapshot) {
 
 var knownDeities = map[string]string{
 	"pantheon":       "🏛 Pantheon",
-	"anubis":         "𓂀 Anubis",
+	"anubis":         "𓁢 Anubis",
 	"pantheon-agent": "🤖 Agent",
 	"guard":          "🛡 Guard",
 	"maat":           "🪶 Ma'at",

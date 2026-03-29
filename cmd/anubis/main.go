@@ -16,8 +16,8 @@ func main() {
 
 	rootCmd := &cobra.Command{
 		Use:   "anubis",
-		Short: "𓂀 Anubis — Pantheon Infrastructure Hygiene",
-		Long: `𓂀 Anubis is the foundational deity of the Sirsi Pantheon.
+		Short: "𓁢 Anubis — Pantheon Infrastructure Hygiene",
+		Long: `𓁢 Anubis is the foundational deity of the Sirsi Pantheon.
 It manages workstation cleanup, artifact purging, and rule-based governance.`,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			logging.Init(verboseMode, false, false)

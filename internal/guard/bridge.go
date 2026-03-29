@@ -148,7 +148,7 @@ func (b *AntigravityBridge) AddAlert(entry AlertEntry) {
 	defer b.mu.Unlock()
 	b.alerts.Add(entry)
 	b.alertsTotal++
-	logging.Debug("𓂀 AntigravityBridge: alert cached", "msg", entry.Message)
+	logging.Debug("𓁢 AntigravityBridge: alert cached", "msg", entry.Message)
 }
 
 // StatusJSON returns a JSON string of the current bridge summary.

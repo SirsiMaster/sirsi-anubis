@@ -59,12 +59,12 @@ func CheckPlatformIntegrity(claimed string) error {
 
 	// Check hardware
 	if !strings.Contains(claimedLower, "m1 max") && !strings.Contains(claimedLower, actualHWLower) {
-		return fmt.Errorf("𓂀 Ma'at Rule Violation: Claimed hardware in (%s) does not match actual hardware (%s)", claimed, actualName)
+		return fmt.Errorf("𓁢 Ma'at Rule Violation: Claimed hardware in (%s) does not match actual hardware (%s)", claimed, actualName)
 	}
 
 	// Check OS
 	if !strings.Contains(claimedLower, "tahoe") && !strings.Contains(claimedLower, actualOSLower) {
-		return fmt.Errorf("𓂀 Ma'at Rule Violation: Claimed OS in (%s) does not match actual OS (%s)", claimed, actualOS)
+		return fmt.Errorf("𓁢 Ma'at Rule Violation: Claimed OS in (%s) does not match actual OS (%s)", claimed, actualOS)
 	}
 
 	return nil

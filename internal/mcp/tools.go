@@ -138,7 +138,7 @@ func handleScanWorkspace(args map[string]interface{}) (*ToolResult, error) {
 
 	// Format results
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("𓂀 Anubis Scan Results for: %s\n\n", scanPath))
+	sb.WriteString(fmt.Sprintf("𓁢 Anubis Scan Results for: %s\n\n", scanPath))
 	sb.WriteString(fmt.Sprintf("Total waste found: %s\n", jackal.FormatSize(result.TotalSize)))
 	sb.WriteString(fmt.Sprintf("Findings: %d across %d rules\n\n", len(result.Findings), result.RulesRan))
 
@@ -255,7 +255,7 @@ func handleGhostReport(args map[string]interface{}) (*ToolResult, error) {
 func handleHealthCheck(_ map[string]interface{}) (*ToolResult, error) {
 	start := time.Now()
 	var sb strings.Builder
-	sb.WriteString("𓂀 Anubis Health Check\n\n")
+	sb.WriteString("𓁢 Anubis Health Check\n\n")
 
 	// System info — instant (runtime constants)
 	sb.WriteString(fmt.Sprintf("Platform: %s/%s\n", runtime.GOOS, runtime.GOARCH))
@@ -452,7 +452,7 @@ func handleDetectHardware(_ map[string]interface{}) (*ToolResult, error) {
 
 	return &ToolResult{
 		Content: []ContentBlock{
-			{Type: "text", Text: fmt.Sprintf("𓂀 Hardware Profile Detected:\n\n```json\n%s\n```\nRecommended Backend: %s", string(data), bridge.BackendPreference())},
+			{Type: "text", Text: fmt.Sprintf("𓁢 Hardware Profile Detected:\n\n```json\n%s\n```\nRecommended Backend: %s", string(data), bridge.BackendPreference())},
 		},
 	}, nil
 }

@@ -5,13 +5,13 @@
 
 ---
 
-## 𓉴 I. The Monumental Baseline (v1.0.0-rc1)
+## 𓇳 I. The Monumental Baseline (v1.0.0-rc1)
 
-The **Sirsi Pantheon** project has reached the **Monumental Baseline**. This session achieved the absolute unification of 12 fragmented engines into 6 integrated pillars, promoted the **Great Pyramid (𓉴)** as the platform anchor, and restored the **⚠️ Universal Warning** for maximum safety.
+The **Sirsi Pantheon** project has reached the **Monumental Baseline**. This session achieved the absolute unification of 12 fragmented engines into 6 integrated pillars, promoted the **Great Pyramid (𓇳)** as the platform anchor, and restored the **⚠️ Universal Warning** for maximum safety.
 
 ### 🧬 Session 37 Technical Achievements ✅
 1. **Architectural Unification (v1.0.0-rc1)**: Unified the fragmented CLI scripts into a single hardened structure. 
-2. **Monumental Branding (𓉴)**: Promoted the **Great Pyramid (𓉴)** as the primary root and registry anchor, replacing legacy indicators and established architectural stability.
+2. **Monumental Branding (𓇳)**: Promoted the **Great Pyramid (𓇳)** as the primary root and registry anchor, replacing legacy indicators and established architectural stability.
 3. **Safety Restoration (⚠️)**: Reverted hierarchy warning signals to the universal **⚠️ signal** to ensure immediate recognition for critical operations.
 4. **Hieroglyphic Menu**: Published the `glyph_menu.md` artifact (Hieroglyphic Menu) for selection, featuring over 25 categorized high-fidelity hieroglyphs.
 5. **Registry Remaster**: Updated `docs/index.html` with the v1.0.0 Pillar Hierarchy and click-to-flip documentation.
@@ -22,11 +22,11 @@ The **Sirsi Pantheon** project has reached the **Monumental Baseline**. This ses
 
 | Pillar | Anchor | Domain | Role |
 |:-------|:-------|:-------|:-----|
-| **Anubis** | 𓂀 | Hygiene | One-command system cleansing & protection. |
-| **Ma'at** | 𓁐 | Governance | Codebase governance, policy (Scales), and healing (Isis). |
+| **Anubis** | 𓁢 | Hygiene | One-command system cleansing & protection. |
+| **Ma'at** | 𓆄 | Governance | Codebase governance, policy (Scales), and healing (Isis). |
 | **Thoth** | 𓁟 | Wisdom | Persistent AI project memory & zero-token sync. |
 | **Hapi** | 𓈗 | Power | GPU/VRAM flow, hardware profiling, & ANE acceleration. |
-| **Seba** | 𓇼 | Star Mapper | Infrastructure topology, fleet discovery, & project book. |
+| **Seba** | 𓇽 | Star Mapper | Infrastructure topology, fleet discovery, & project book. |
 | **Seshat** | 𓁆 | The Scribe | 6-directional knowledge bridge (Gemini/NotebookLM). |
 
 ---
@@ -39,4 +39,4 @@ The **Sirsi Pantheon** project has reached the **Monumental Baseline**. This ses
 4. **Knowledge Audit**: Conduct a final 6-directional sync validation for the Seshat bridge.
 
 ---
-*𓉴 Architecture Consolidated. Monumental Baseline Hardened. v1.0.0-rc1 Stable. 𓂀⚠️*
+*𓇳 Architecture Consolidated. Monumental Baseline Hardened. v1.0.0-rc1 Stable. 𓁢⚠️*

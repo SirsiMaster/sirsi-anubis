@@ -31,7 +31,7 @@ extensions/vscode/
 ├── src/
 │   ├── extension.ts      # activate() — starts Guardian, Horus, Thoth
 │   ├── guardian.ts        # Background renice + memory pressure monitor
-│   ├── statusBar.ts       # Ankh (𓂀) icon with live metrics
+│   ├── statusBar.ts       # Ankh (𓁢) icon with live metrics
 │   ├── commands.ts        # Command palette (7 commands)
 │   └── thothProvider.ts   # Context compression from .thoth/memory.yaml
 ├── resources/
@@ -64,8 +64,8 @@ extensions/vscode/
 
 | State | Icon | Meaning |
 |-------|------|---------|
-| Healthy | `𓂀 1.2 GB` | Guardian active, normal RAM |
-| Warning | `𓂀 3.5 GB ▲` | RAM > 3 GB, yellow background |
+| Healthy | `𓁢 1.2 GB` | Guardian active, normal RAM |
+| Warning | `𓁢 3.5 GB ▲` | RAM > 3 GB, yellow background |
 | Error | `⚠️ Pantheon` | Binary not found or system error |
 | Initializing | `⏳ Pantheon` | First metric fetch pending |
 

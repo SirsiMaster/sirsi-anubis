@@ -114,14 +114,14 @@ func Banner() {
    Unified DevOps Intel Platform
    "One Install. All Deities."
 
-   𓂀 Anubis  𓁟 Thoth  𓁆 Seshat
+   𓁢 Anubis  𓁟 Thoth  𓁆 Seshat
 `)
 	fmt.Fprintln(os.Stderr, banner)
 }
 
-// Header prints a section header with the 𓂀 prefix.
+// Header prints a section header with the 𓁢 prefix.
 func Header(text string) {
-	fmt.Fprintf(os.Stderr, "\n%s\n", HeaderStyle.Render("𓂀 "+text))
+	fmt.Fprintf(os.Stderr, "\n%s\n", HeaderStyle.Render("𓁢 "+text))
 }
 
 // Info prints a themed informational message.
@@ -139,7 +139,7 @@ func Dim(format string, args ...interface{}) {
 // Success prints a themed success message.
 func Success(format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
-	fmt.Fprintf(os.Stderr, "  %s %s\n", SuccessStyle.Render("𓁐"), BodyStyle.Render(msg))
+	fmt.Fprintf(os.Stderr, "  %s %s\n", SuccessStyle.Render("𓆄"), BodyStyle.Render(msg))
 }
 
 // Warn prints a themed warning message.
@@ -211,7 +211,7 @@ func Summary(totalSize string, findingCount int, ruleCount int) {
 		BodyStyle.Render(fmt.Sprintf("%d findings", findingCount)),
 		DimStyle.Render(fmt.Sprintf("%d", ruleCount)),
 	)
-	fmt.Fprintf(os.Stderr, "\n%s\n", BoxStyle.Render("𓂀 "+content))
+	fmt.Fprintf(os.Stderr, "\n%s\n", BoxStyle.Render("𓁢 "+content))
 }
 
 // Footer prints the completion ritual with elapsed time.
@@ -223,7 +223,7 @@ func Footer(elapsed time.Duration) {
 }
 
 func Section(title string) {
-	fmt.Fprintf(os.Stderr, "\n%s\n", TitleStyle.Render("𓂀 "+title))
+	fmt.Fprintf(os.Stderr, "\n%s\n", TitleStyle.Render("𓁢 "+title))
 }
 
 // shortenPath replaces home dir with ~ and truncates long paths.

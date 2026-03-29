@@ -1,4 +1,4 @@
-# 𓂀 Investor Demo Script — 5-Minute Walkthrough
+# 𓁢 Investor Demo Script — 5-Minute Walkthrough
 
 ## Target Audience
 Angel investors / VCs evaluating Sirsi Technologies for seed round.

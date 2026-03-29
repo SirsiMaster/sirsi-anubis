@@ -1,4 +1,4 @@
-# 𓂀 Sirsi Pantheon — Canonical Roadmap
+# 𓁢 Sirsi Pantheon — Canonical Roadmap
 **Version:** 3.0.0 (The Unified Platform)
 **Date:** March 27, 2026
 **Status:** **ACTIVE — Phase 3: Hardening & Coverage breakthrough (Session 33)**
@@ -10,16 +10,16 @@ Pantheon is the single, modular brand for all Sirsi automation deities. One bina
 
 | Deity | Status | Role | Domain | Coverage |
 |:------|:-------|:-----|:-------|:---------|
-| 𓂀 **Anubis** | ✅ Shipped | The Judge | Infrastructure hygiene, scans, judge | 93% |
+| 𓁢 **Anubis** | ✅ Shipped | The Judge | Infrastructure hygiene, scans, judge | 93% |
 | ⚠️ **Ka** | ✅ Shipped | The Spirit | Ghost app detection, LaunchServices | 94.4% |
 | 𓆄 **Ma'at** | ✅ Shipped | The Truth | QA/QC Governance, scores, pipeline | 88% |
 | 𓁹 **Horus** | ✅ Shipped | The Eye | Shared filesystem index, Spotlight fix | 82% |
 | 𓆣 **Khepri** | ✅ Shipped | The Scarab | Network discovery, container scans | 94.8% |
 | 𓁟 **Thoth** | ✅ Shipped | The Wisdom | Persistent AI memory, MCP toolkit | 60% |
-| 𓇼 **Seba** | 🚧 Active | The Map | Visual infrastructure topology | 0% |
+| 𓇽 **Seba** | 🚧 Active | The Map | Visual infrastructure topology | 0% |
 | 𓁢 **Sekhmet** | ✅ Shipped | The Warrior | Guard, CPU/RAM yield, process kill | 91% |
 | 𓁶 **Hapi** | ✅ Shipped | The Flow | Hardware detection (GPU, ANE, CUDA) | 84% |
-| 𓁐 **Isis** | 🚧 Active | The Healer | Autonomous Remediation & Quality Restoration | -- |
+| 𓆄 **Isis** | 🚧 Active | The Healer | Autonomous Remediation & Quality Restoration | -- |
 | 𓁯 **Net** | 🚧 Active | The Weaver | Tapestry of Time — Plan vs Log Alignment | -- |
 | ☀️ **Ra** | 📋 Planned | The Boss | Supreme Overseer — hypervisor & portal | -- |
 

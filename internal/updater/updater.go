@@ -213,7 +213,7 @@ func FormatUpdateNotice(result *UpdateResult) string {
 	}
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("\n  𓂀 Update available: %s → %s\n", result.CurrentVersion, result.LatestVersion))
+	sb.WriteString(fmt.Sprintf("\n  𓁢 Update available: %s → %s\n", result.CurrentVersion, result.LatestVersion))
 	if result.DownloadURL != "" {
 		sb.WriteString(fmt.Sprintf("     Download: %s\n", result.DownloadURL))
 	}

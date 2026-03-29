@@ -46,10 +46,10 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m MainModel) View() string {
 	if m.quitting {
-		return "𓂀 Pantheon ritual complete.\n"
+		return "𓁢 Pantheon ritual complete.\n"
 	}
 
-	header := TitleStyle.Render("   𓂀  Pantheon Command Center  ")
+	header := TitleStyle.Render("   𓁢  Pantheon Command Center  ")
 
 	// Stats Grid
 	stats := lipgloss.JoinHorizontal(lipgloss.Top,
@@ -60,7 +60,7 @@ func (m MainModel) View() string {
 
 	// Deity Status
 	deities := lipgloss.JoinVertical(lipgloss.Left,
-		fmt.Sprintf("  𓂀 Anubis  %s %s", m.spinner.View(), lipgloss.NewStyle().Foreground(Green).Render("Scanning")),
+		fmt.Sprintf("  𓁢 Anubis  %s %s", m.spinner.View(), lipgloss.NewStyle().Foreground(Green).Render("Scanning")),
 		fmt.Sprintf("  🪶 Ma'at   %s %s", "✓", DimStyle.Render("Stable")),
 		fmt.Sprintf("  𓁟 Thoth   %s %s", "✓", DimStyle.Render("Synced")),
 	)

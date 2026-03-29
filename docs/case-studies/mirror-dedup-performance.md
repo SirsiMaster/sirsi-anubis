@@ -1,4 +1,4 @@
-# 𓂀 Case Study: Mirror — 27.3x Faster File Deduplication
+# 𓁢 Case Study: Mirror — 27.3x Faster File Deduplication
 
 > **We were scanning 709 files and reading 97.8 MB of data. The user said: "hash the first 4KB then pick a random hash point... could be the last 4KB." That one suggestion changed everything.**
 

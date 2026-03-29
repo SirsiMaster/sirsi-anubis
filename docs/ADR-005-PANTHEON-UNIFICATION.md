@@ -45,7 +45,7 @@ Sirsi Technologies (super-repo / company)
 └── Pantheon (product / monorepo / brand)
     ├── 𓇳 Ra        — Hypervisor (future) — v0.1.0-alpha
     ├── 𓏞 Seba      — Mapping (Go)        — within Anubis
-    ├── 𓂀 Anubis    — Hygiene (Go)        — v0.3.0-alpha
+    ├── 𓁢 Anubis    — Hygiene (Go)        — v0.3.0-alpha
     ├── 𓁟 Thoth     — Knowledge (JS/Go)   — v1.0.0
     ├── 🪶 Ma'at     — Governance (Go)     — v0.1.0
     ├── ⚖️ Scales    — Policy (Go)         — within Anubis

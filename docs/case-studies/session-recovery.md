@@ -74,7 +74,7 @@ Ma'at's quality documents provided the **verification framework**:
 - The pre-push gate **caught formatting issues** in the recovered files,
   preventing broken code from reaching the remote
 
-### 3. Horus Index (𓂀) + Git Forensics
+### 3. Horus Index (𓁢) + Git Forensics
 
 The combination of git's working tree preservation and Horus's filesystem awareness
 allowed us to:

@@ -1,4 +1,4 @@
-# 𓂀 Mirror — Semantic File Deduplication & Importance Ranking
+# 𓁢 Mirror — Semantic File Deduplication & Importance Ranking
 
 > **Status**: Design Document — v0.1  
 > **Filed**: March 21, 2026  

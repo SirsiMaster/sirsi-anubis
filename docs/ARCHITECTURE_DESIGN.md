@@ -12,11 +12,11 @@ Sirsi Pantheon is a unified infrastructure intelligence and DevSecOps platform b
 ### 1.1 The Six Master Pillars
 The Pantheon is organized into six divine pillars, each assigned a canonical Ancient Egyptian Hieroglyph. This consolidation removes architectural fragmentation and ensures absolute aesthetic purity across all interfaces.
 
-- **𓂀 ANUBIS (Hygiene)**: Infrastructure hygiene, ghost app hunting (Ka), file deduplication (Mirror), and resource protection (Guard).
-- **𓁐 MA'AT (Governance)**: Codebase auditing (Scales), QA standards, and autonomous remediation (Isis).
+- **𓁢 ANUBIS (Hygiene)**: Infrastructure hygiene, ghost app hunting (Ka), file deduplication (Mirror), and resource protection (Guard).
+- **𓆄 MA'AT (Governance)**: Codebase auditing (Scales), QA standards, and autonomous remediation (Isis).
 - **𓁟 THOTH (Knowledge)**: Persistent project memory, rule-grounded intelligence, and the zero-token brain ledger.
 - **𓈗 HAPI (Compute)**: Hardware optimization, GPU/VRAM flow, and ANE/NPU acceleration (Sekhmet).
-- **𓇼 SEBA (Mapping)**: Infrastructure topology, project registry (Book), and fleet discovery (Scarab).
+- **𓇽 SEBA (Mapping)**: Infrastructure topology, project registry (Book), and fleet discovery (Scarab).
 - **𓁆 SESHAT (Scribe)**: Knowledge bridge (Gemini/NotebookLM), MCP context server, and AI sync.
 
 ```
@@ -55,12 +55,12 @@ The Pantheon is organized into six divine pillars, each assigned a canonical Anc
 
 ## 2. Pillar Architecture
 
-### 2.1 Anubis — The Hygiene Pillar (𓂀)
+### 2.1 Anubis — The Hygiene Pillar (𓁢)
 - **Engine:** Jackal (File Scanning), Ka (Ghost Detection).
 - **Scope:** Workstation hygiene, cache purging, orphan application hunting.
 - **Functions:** `weigh`, `judge`, `ka`, `mirror`, `guard`.
 
-### 2.2 Ma'at — The Governance Pillar (𓁐)
+### 2.2 Ma'at — The Governance Pillar (𓆄)
 - **Engine:** Scales (Policy Auditing), Isis (Remediation).
 - **Scope:** Code quality, ADR compliance, autonomous healing of lint/test wounds.
 - **Functions:** `audit`, `scales`, `heal`.
@@ -75,7 +75,7 @@ The Pantheon is organized into six divine pillars, each assigned a canonical Anc
 - **Scope:** GPU/VRAM optimization, hardware profiling, NPU-driven workflows.
 - **Functions:** `scan`, `profile`, `compute`.
 
-### 2.5 Seba — The Mapping Pillar (𓇼)
+### 2.5 Seba — The Mapping Pillar (𓇽)
 - **Engine:** Scarab (Discovery), Book (Project Registry).
 - **Scope:** Visual dependency graphs, fleet discovery, VLAN/subnet mapping.
 - **Functions:** `scan`, `book`, `fleet`.
@@ -110,11 +110,11 @@ graph TD
     end
 
     subgraph "The Six Master Pillars"
-        ANUBIS["𓂀 Anubis (Hygiene)"]
-        MAAT["𓁐 Ma'at (Truth)"]
+        ANUBIS["𓁢 Anubis (Hygiene)"]
+        MAAT["𓆄 Ma'at (Truth)"]
         THOTH["𓁟 Thoth (Wisdom)"]
         HAPI["𓈗 Hapi (Power)"]
-        SEBA["𓇼 Seba (Maps)"]
+        SEBA["𓇽 Seba (Maps)"]
         SESHAT["𓁆 Seshat (Bridge)"]
     end
 

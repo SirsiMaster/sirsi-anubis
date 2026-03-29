@@ -22,8 +22,8 @@ var (
 
 var sebaCmd = &cobra.Command{
 	Use:   "seba",
-	Short: "𓇼 Seba — Infrastructure Mapping & Project Registry",
-	Long: `𓇼 Seba — The Star and the Map of the Soul
+	Short: "𓇽 Seba — Infrastructure Mapping & Project Registry",
+	Long: `𓇽 Seba — The Star and the Map of the Soul
 
 Seba manages your strategic infrastructure map and project registry.
 Use it to visualize dependencies, audit architecture, and map the fleet.
@@ -38,7 +38,7 @@ Use it to visualize dependencies, audit architecture, and map the fleet.
 
 var sebaScanCmd = &cobra.Command{
 	Use:   "scan",
-	Short: "𓇼 Master architecture map of the current system",
+	Short: "𓇽 Master architecture map of the current system",
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		output.Banner()
@@ -55,7 +55,7 @@ var sebaScanCmd = &cobra.Command{
 
 var sebaBookCmd = &cobra.Command{
 	Use:   "book",
-	Short: "𓇼 Build the \"Pantheon Book\" project registry",
+	Short: "𓇽 Build the \"Pantheon Book\" project registry",
 	Run: func(cmd *cobra.Command, args []string) {
 		output.Banner()
 		output.Header("SEBA — The Pantheon Book")

@@ -1,4 +1,4 @@
-# 𓂀 Sirsi Anubis — Launch Copy
+# 𓁢 Sirsi Anubis — Launch Copy
 
 ## Product Hunt Copy
 
@@ -62,7 +62,7 @@ GitHub: https://github.com/SirsiMaster/sirsi-pantheon
 ## Twitter/X Launch Thread
 
 **Tweet 1:**
-𓂀 Introducing Sirsi Anubis — infrastructure hygiene for the AI era.
+𓁢 Introducing Sirsi Anubis — infrastructure hygiene for the AI era.
 
 Every Mac cleaner treats your machine as a consumer device.
 Anubis treats it as a developer workstation.
@@ -96,7 +96,7 @@ No telemetry. No tracking. Zero footprint.
 
 Written in Go. Under 10 MB. Ships today.
 
-*The jackal sees everything. Nothing escapes the Weighing.* 𓂀
+*The jackal sees everything. Nothing escapes the Weighing.* 𓁢
 
 ---
 

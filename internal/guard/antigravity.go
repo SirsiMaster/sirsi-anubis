@@ -45,14 +45,14 @@ func (ag *AntiGravity) CheckSelf() error {
 	logging.Debug("AntiGravity: Current memory footprint", "pid", pid, "rss_mb", rssMB)
 
 	if rssMB > ag.MaxMemoryMB {
-		logging.Warn("𓂀 AntiGravity: Pantheon memory pressure critical!", "rss_mb", rssMB, "limit_mb", ag.MaxMemoryMB)
+		logging.Warn("𓁢 AntiGravity: Pantheon memory pressure critical!", "rss_mb", rssMB, "limit_mb", ag.MaxMemoryMB)
 
 		// Attempt to free memory
 		debug.FreeOSMemory()
 
 		// If still too high after GC, we might be leaking
 		if rssMB > ag.MaxMemoryMB+512 {
-			logging.Error("𓂀 AntiGravity: PANIC — memory leak detected. Invoking self-judgment.", "rss_mb", rssMB)
+			logging.Error("𓁢 AntiGravity: PANIC — memory leak detected. Invoking self-judgment.", "rss_mb", rssMB)
 		}
 	}
 

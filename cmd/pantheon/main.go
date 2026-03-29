@@ -17,7 +17,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show Pantheon version and check for updates",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("𓉴 Sirsi Pantheon %s\n", version)
+		fmt.Printf("𓇶 Sirsi Pantheon %s\n", version)
 		fmt.Println("  Unified DevOps Intelligence Platform")
 		fmt.Println("  \"One Install. All Deities.\"")
 	},
@@ -25,18 +25,18 @@ var versionCmd = &cobra.Command{
 
 var rootCmd = &cobra.Command{
 	Use:   "pantheon",
-	Short: "𓉴 Sirsi Pantheon — Unified DevOps Intelligence Platform",
-	Long: `𓉴 Sirsi Pantheon — Unified DevOps Intelligence Platform
+	Short: "𓇶 Sirsi Pantheon — Unified DevOps Intelligence Platform",
+	Long: `𓇶 Sirsi Pantheon — Unified DevOps Intelligence Platform
 "One Install. All Deities."
 
 Pantheon unifies the entire Sirsi ecosystem into a single, hardened platform.
 Functionality is organized by Deity pillars:
 
-  𓂀 Anubis     Infrastructure Hygiene, Resource Guarding & Mirroring
-  𓁐 Ma'at      Governance, Compliance & Autonomous Healing
+  𓁢 Anubis     Infrastructure Hygiene, Resource Guarding & Mirroring
+  𓆄 Ma'at      Governance, Compliance & Autonomous Healing
   𓁟 Thoth      Knowledge Management & AI Intelligence
   𓈗 Hapi       Hardware Profiling & ML Accelerated Compute
-  𓇼 Seba       Architectural Mapping & Fleet Network Discovery
+  𓇽 Seba       Architectural Mapping & Fleet Network Discovery
   𓁆 Seshat     Gemini Knowledge Bridge & AI Context Server
 
 Run any deity for subcommands:
