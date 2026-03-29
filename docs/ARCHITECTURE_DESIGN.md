@@ -137,6 +137,31 @@ graph TD
     SESHAT <--> GEMINI["Gemini AI Mobile/Web"]
 ```
 
+## 5. Recommended Implementation Order ⚠️ MANDATORY (Neith's Triad §2)
+
+```mermaid
+gantt
+    title Pantheon v1.0.0-rc1 Hardening Timeline
+    dateFormat  YYYY-MM-DD
+    section Core Stability
+    Terminal Metric Overflow Fix      :active, a1, 2026-03-29, 1d
+    LSP Renice Logic Audit            :a2, after a1, 2d
+    section Deity Alignment
+    Hieroglyphic Canon Selection      :a3, 2026-03-29, 2d
+    Pillar Unification Verification   :a4, after a3, 2d
+    section Release
+    Fleet Validation Sweep            :a5, 2026-04-01, 3d
+    v1.0.0-rc1 Final Tag              :a6, after a5, 1d
+```
+
+## 6. Key Decision Points ⚠️ MANDATORY (Neith's Triad §3)
+
+| Decision | Options | Recommendation | Rationale |
+| :--- | :--- | :--- | :--- |
+| **Pillar Count** | 12 Standalone vs 6 Integrated | **6 Integrated** | Reduces cognitive load and simplifies the CLI hierarchy while maintaining all functionality. |
+| **LSP Thresholds** | Static (1GB) vs Dynamic (% of total) | **Static (1GB)** | Third-party LSPs should remain lean. Host LSP is excluded from this threshold as it handles core AI reasoning. |
+| **Branding Anchor** | Pyramid vs Deity Icon | **Pyramid (𓇳)** | The Pyramid represents the unified platform root, while Deities represent specialized modules. |
+
 ---
 
-*𓁯 This document follows Neith's Architecture Triad (Rule A22). Updated to v2.1.0 for the Great Pantheon Consolidation (v0.7.1-alpha).*
+*𓁯 This document follows Neith's Architecture Triad (Rule A22). Updated to v2.2.0 for the v1.0.0-rc1 Stability Hardening (Session 37).*

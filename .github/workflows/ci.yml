@@ -48,6 +48,20 @@ jobs:
           name: coverage
           path: coverage.out
 
+      - name: Ma'at Pulse — Dynamic Metrics
+        shell: bash
+        run: |
+          go build -o pantheon ./cmd/pantheon/
+          ./pantheon maat pulse --skip-test --json > metrics.json
+          echo "=== Ma'at Pulse Metrics ==="
+          cat metrics.json
+
+      - name: Upload metrics
+        uses: actions/upload-artifact@v4
+        with:
+          name: metrics
+          path: metrics.json
+
   build:
     name: Build
     runs-on: ${{ matrix.os }}

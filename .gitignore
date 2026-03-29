@@ -40,3 +40,6 @@ tmp/
 bin/
 coverage_target_modules.out
 Pantheon.app/
+
+# Ma'at Pulse — dynamic measurement output (local only)
+.pantheon/

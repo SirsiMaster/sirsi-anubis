@@ -78,7 +78,7 @@ export class PantheonStatusBar implements vscode.Disposable {
             // (avoid spawning full Pantheon binary every 5s)
             const { stdout } = await execFileAsync('ps', [
                 '-axo', 'pid,rss,%cpu,comm'
-            ], { timeout: 5000 });
+            ], { timeout: 5000, maxBuffer: 1024 * 1024 }); // 1MB buffer for large process lists
 
             const lines = stdout.split('\n');
             let totalRAM = 0;
@@ -162,7 +162,7 @@ export class PantheonStatusBar implements vscode.Disposable {
                 );
                 break;
             case 'error':
-                this.statusBarItem.text = '$(warning) PANTHEON';
+                this.statusBarItem.text = `$(warning) PANTHEON ${this.metrics.ramHuman}`;
                 this.statusBarItem.backgroundColor = new vscode.ThemeColor(
                     'statusBarItem.errorBackground'
                 );

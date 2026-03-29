@@ -13,8 +13,8 @@ import (
 
 var initiateCmd = &cobra.Command{
 	Use:   "initiate",
-	Short: "𓂋 Grant macOS permissions for deep scanning",
-	Long: `𓂋 Initiate — The Ritual of Access
+	Short: "𓎿 Grant macOS permissions for deep scanning",
+	Long: `𓎿 Initiate — The Ritual of Access
 
 Grant Anubis the permissions it needs for deep scanning on macOS.
 This walks you through enabling Full Disk Access, which is required
@@ -35,12 +35,12 @@ func init() {
 
 func runInitiate(cmd *cobra.Command, args []string) {
 	if runtime.GOOS != "darwin" {
-		output.Info("𓂋 Initiate is only needed on macOS")
+		output.Info("𓎿 Initiate is only needed on macOS")
 		output.Info("   On Linux, run pantheon with sudo for full access")
 		return
 	}
 
-	output.Header("𓂋 Initiate — The Ritual of Access")
+	output.Header("𓎿 Initiate — The Ritual of Access")
 	fmt.Println()
 
 	// Check current permissions

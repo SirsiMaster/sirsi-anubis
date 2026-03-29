@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -18,6 +20,10 @@ var (
 	// Isis / Heal flags
 	healFull bool
 	healLint bool
+
+	// Pulse flags
+	pulseSkipTests bool
+	pulseJSON      bool
 )
 
 var maatCmd = &cobra.Command{
@@ -30,7 +36,8 @@ complies with the Pantheon Charter. It balances the Scale of Truth.
 
   pantheon maat audit            Run full governance assessment
   pantheon maat scales           Enforce infrastructure policies (Scales)
-  pantheon maat heal             Autonomous remediation cycle (Isis)`,
+  pantheon maat heal             Autonomous remediation cycle (Isis)
+  pantheon maat pulse            Dynamic measurement heartbeat`,
 	Run: func(cmd *cobra.Command, args []string) {
 		_ = cmd.Help()
 	},
@@ -54,6 +61,25 @@ var maatHealCmd = &cobra.Command{
 	RunE:  runMaatHeal,
 }
 
+var maatPulseCmd = &cobra.Command{
+	Use:   "pulse",
+	Short: "𓆄 Dynamic measurement heartbeat — the single source of truth",
+	Long: `𓆄 Ma'at Pulse — The Heartbeat of Truth
+
+Runs real measurements across the entire Pantheon codebase and writes
+a structured .pantheon/metrics.json that all downstream consumers can read:
+
+  • CI pipeline uploads it as an artifact
+  • VS Code extension reads it for dynamic status bar numbers
+  • BUILD_LOG references it instead of hardcoded strings
+  • Thoth sync reads it to update memory.yaml with real numbers
+
+  pantheon maat pulse              Run all measurements
+  pantheon maat pulse --skip-test  Skip go test (fast mode, ~2s)
+  pantheon maat pulse --json       Output metrics as JSON to stdout`,
+	RunE: runMaatPulse,
+}
+
 func init() {
 	maatAuditCmd.Flags().BoolVar(&maatSudo, "sudo", false, "Scan system-level governance")
 	maatScalesCmd.Flags().BoolVar(&maatFix, "fix", false, "Actually apply policy fixes")
@@ -61,9 +87,13 @@ func init() {
 	maatHealCmd.Flags().BoolVar(&maatFix, "fix", false, "Apply healing remedies")
 	maatHealCmd.Flags().BoolVar(&healFull, "full", false, "Run full (slow) test suite")
 
+	maatPulseCmd.Flags().BoolVar(&pulseSkipTests, "skip-test", false, "Skip go test (fast mode)")
+	maatPulseCmd.Flags().BoolVar(&pulseJSON, "json", false, "Output metrics as JSON to stdout")
+
 	maatCmd.AddCommand(maatAuditCmd)
 	maatCmd.AddCommand(maatScalesCmd)
 	maatCmd.AddCommand(maatHealCmd)
+	maatCmd.AddCommand(maatPulseCmd)
 }
 
 func runMaatAudit(cmd *cobra.Command, args []string) error {
@@ -116,6 +146,52 @@ func runMaatHeal(cmd *cobra.Command, args []string) error {
 		"Healed":   fmt.Sprintf("%d", res.Healed),
 		"Failed":   fmt.Sprintf("%d", res.Failed),
 	})
+	output.Footer(time.Since(start))
+	return nil
+}
+
+func runMaatPulse(cmd *cobra.Command, args []string) error {
+	start := time.Now()
+
+	if !pulseJSON {
+		output.Banner()
+		output.Header("MA'AT — The Pulse of Truth")
+		output.Info("Measuring all vital signs...")
+	}
+
+	cfg := maat.DefaultPulseConfig(".")
+	cfg.SkipTests = pulseSkipTests
+	cfg.Version = version
+
+	// Try to find the built binary
+	if _, err := os.Stat("pantheon"); err == nil {
+		cfg.BinaryPath = "pantheon"
+	}
+
+	metrics, err := maat.Pulse(cfg)
+	if err != nil {
+		return fmt.Errorf("pulse failed: %w", err)
+	}
+
+	if pulseJSON {
+		// Pure JSON to stdout — perfect for CI consumption
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(metrics)
+	}
+
+	// ── Beautiful dashboard output ──────────────────────────────
+	output.Dashboard(map[string]string{
+		"Tests":     fmt.Sprintf("%d passed / %d failed / %d skipped", metrics.TestsPassed, metrics.TestsFailed, metrics.TestsSkipped),
+		"Coverage":  fmt.Sprintf("%.1f%%", metrics.Coverage),
+		"Source":    fmt.Sprintf("%d lines (%d files)", metrics.SourceLines, metrics.SourceFiles),
+		"Go Source": fmt.Sprintf("%d lines", metrics.GoSourceLines),
+		"Binary":    metrics.BinarySizeHuman,
+		"Deities":   fmt.Sprintf("%d", metrics.Deities),
+		"Modules":   fmt.Sprintf("%d", metrics.Modules),
+	})
+
+	output.Success("Metrics written to .pantheon/metrics.json")
 	output.Footer(time.Since(start))
 	return nil
 }
