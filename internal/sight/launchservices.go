@@ -4,10 +4,12 @@
 package sight
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"runtime"
 	"strings"
+	"time"
 )
 
 // CommandRunner executes a system command and returns its error.
@@ -46,7 +48,7 @@ func ScanWith(p CommandRunner) (*SightResult, error) {
 
 	result := &SightResult{CanFix: true}
 
-	// Dump Launch Services database
+	// Dump Launch Services database (can be very large — 30s timeout)
 	lsregister := "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister"
 	out, err := p.Output(lsregister, "-dump")
 	if err != nil {
@@ -113,10 +115,14 @@ func ReindexSpotlightWith(dryRun bool, runner CommandRunner) error {
 type defaultRunner struct{}
 
 func (r defaultRunner) Run(name string, args ...string) error {
-	return exec.Command(name, args...).Run()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	return exec.CommandContext(ctx, name, args...).Run()
 }
 func (r defaultRunner) Output(name string, args ...string) ([]byte, error) {
-	return exec.Command(name, args...).CombinedOutput()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	return exec.CommandContext(ctx, name, args...).CombinedOutput()
 }
 
 // parseLSRegisterDump extracts ghost registrations from lsregister output.

@@ -152,7 +152,8 @@ func runBookOfTheDead(cmd *cobra.Command, args []string) {
 	for _, r := range rules.AllRules() {
 		engine.Register(r)
 	}
-	scanResult, _ := engine.Scan(context.Background(), jackal.ScanOptions{})
+	homeDir, _ := os.UserHomeDir()
+	scanResult, _ := engine.Scan(context.Background(), jackal.ScanOptions{HomeDir: homeDir})
 	if scanResult != nil {
 		printField("Rules Matched", fmt.Sprintf("%d", scanResult.RulesWithFindings))
 		printField("Findings", fmt.Sprintf("%d", len(scanResult.Findings)))
@@ -178,7 +179,7 @@ func runBookOfTheDead(cmd *cobra.Command, args []string) {
 	printChapter("V", "THE SPIRITS", "Ghost Applications")
 
 	scanner := ka.NewScanner()
-	ghosts, _ := scanner.Scan(false)
+	ghosts, _ := scanner.Scan(context.Background(), false)
 	printField("Ghost Apps", fmt.Sprintf("%d detected", len(ghosts)))
 	if bookVerbose && len(ghosts) > 0 {
 		limit := 10

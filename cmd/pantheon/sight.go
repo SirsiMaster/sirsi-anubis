@@ -43,6 +43,11 @@ func init() {
 }
 
 func runSight(cmd *cobra.Command, args []string) {
+	output.Header("👁️ Sight — Ghost App Scan")
+	fmt.Println()
+	output.Info("Scanning Launch Services database (this may take 10-30s)...")
+	fmt.Println()
+
 	// Scan for ghosts
 	result, err := sight.Scan()
 	if err != nil {

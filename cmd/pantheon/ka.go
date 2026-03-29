@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -45,7 +46,7 @@ Anubis Ka finds these spirits and releases them.
   pantheon ka --clean --confirm   Release the spirits (delete residuals)
   pantheon ka --target "Parallels"  Hunt a specific ghost by name`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runKa()
+		return runKa(cmd.Context())
 	},
 }
 
@@ -58,7 +59,7 @@ func init() {
 	kaCmd.Flags().StringVar(&kaTarget, "target", "", "Hunt a specific ghost by name or bundle ID")
 }
 
-func runKa() error {
+func runKa(ctx context.Context) error {
 	if kaClean && !kaDryRun && !kaConfirm {
 		output.Error("You must specify --dry-run or --confirm with --clean")
 		output.Info("")
@@ -86,7 +87,10 @@ func runKa() error {
 	// Skip lsregister -dump unless --deep (saves ~5 seconds).
 	scanner.SkipLaunchServices = !kaDeep
 
-	ghosts, err := scanner.Scan(kaSudo)
+	scanCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	ghosts, err := scanner.Scan(scanCtx, kaSudo)
 	if err != nil {
 		return fmt.Errorf("ka scan failed: %w", err)
 	}

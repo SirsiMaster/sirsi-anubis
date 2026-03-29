@@ -1,6 +1,7 @@
 package ka
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -34,14 +35,14 @@ func TestScanner_BuildInstalledAppIndex_Mocked(t *testing.T) {
 		return nil, nil
 	}
 
-	s.ReadBundleIDFn = func(path string) (string, error) {
+	s.ReadBundleIDFn = func(ctx context.Context, path string) (string, error) {
 		if strings.Contains(path, "TestApp.app") {
 			return "com.mock.testapp", nil
 		}
 		return "", nil
 	}
 
-	err := s.buildInstalledAppIndex()
+	err := s.buildInstalledAppIndex(context.Background())
 	if err != nil {
 		t.Fatalf("buildInstalledAppIndex failed: %v", err)
 	}
@@ -88,7 +89,7 @@ func TestScanner_ScanForOrphans_Mocked(t *testing.T) {
 		return nil, nil
 	}
 
-	orphans := s.scanForOrphans(false)
+	orphans := s.scanForOrphans(context.Background(), false)
 
 	if len(orphans) != 1 {
 		t.Errorf("expected 1 orphan, got %d", len(orphans))
@@ -132,9 +133,9 @@ func TestScanner_Scan_Mocked(t *testing.T) {
 		}
 		return nil, nil
 	}
-	s.ReadBundleIDFn = func(path string) (string, error) { return "com.live.app", nil }
+	s.ReadBundleIDFn = func(ctx context.Context, path string) (string, error) { return "com.live.app", nil }
 
-	ghosts, err := s.Scan(false)
+	ghosts, err := s.Scan(context.Background(), false)
 	if err != nil {
 		t.Fatalf("Scan: %v", err)
 	}
@@ -234,15 +235,15 @@ func TestScanner_MergeOrphans_Isolation(t *testing.T) {
 func TestScanner_ScanLaunchServices_Mocked(t *testing.T) {
 	s := NewScanner()
 	// Mock lsregister -dump output
-	s.ExecCommand = func(name string, arg ...string) *exec.Cmd {
+	s.ExecCommand = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 		// Verify it's calling lsregister
 		if strings.Contains(name, "lsregister") {
-			return exec.Command("printf", "bundle id: com.ghost.id\npath: /Applications/Ghost.app\n")
+			return exec.CommandContext(ctx, "printf", "bundle id: com.ghost.id\npath: /Applications/Ghost.app\n")
 		}
-		return exec.Command("true")
+		return exec.CommandContext(ctx, "true")
 	}
 
-	ghosts := s.scanLaunchServices()
+	ghosts := s.scanLaunchServices(context.Background())
 	if !ghosts["com.ghost.id"] {
 		t.Error("expected com.ghost.id to be found in LS")
 	}
@@ -250,14 +251,14 @@ func TestScanner_ScanLaunchServices_Mocked(t *testing.T) {
 
 func TestScanner_IndexHomebrewCasks_Mocked(t *testing.T) {
 	s := NewScanner()
-	s.ExecCommand = func(name string, arg ...string) *exec.Cmd {
+	s.ExecCommand = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
 		if name == "brew" {
-			return exec.Command("printf", "firefox\ngoogle-chrome\n")
+			return exec.CommandContext(ctx, "printf", "firefox\ngoogle-chrome\n")
 		}
-		return exec.Command("true")
+		return exec.CommandContext(ctx, "true")
 	}
 
-	s.indexHomebrewCasks()
+	s.indexHomebrewCasks(context.Background())
 	if !s.installedNames["firefox"] {
 		t.Error("expected firefox to be indexed from brew")
 	}
@@ -273,7 +274,7 @@ func TestScanner_Scan_Sudo_Mocked(t *testing.T) {
 	s.DirReader = func(path string) ([]os.DirEntry, error) {
 		return nil, nil // Just testing branch coverage for sudo
 	}
-	s.Scan(true) // Should append system residual locations
+	s.Scan(context.Background(), true) // Should append system residual locations
 }
 
 func TestScanner_Scan_ErrorPaths_Mocked(t *testing.T) {
@@ -284,7 +285,7 @@ func TestScanner_Scan_ErrorPaths_Mocked(t *testing.T) {
 	s.DirReader = func(path string) ([]os.DirEntry, error) {
 		return nil, os.ErrPermission
 	}
-	_, err := s.Scan(false)
+	_, err := s.Scan(context.Background(), false)
 	if err != nil {
 		t.Errorf("Scan should handle dir read errors gracefully: %v", err)
 	}
@@ -332,7 +333,7 @@ func TestScanner_ScanForOrphans_ManifestMocked(t *testing.T) {
 		return nil, nil
 	}
 
-	orphans := s.scanForOrphans(false)
+	orphans := s.scanForOrphans(context.Background(), false)
 	if len(orphans) != 1 {
 		t.Fatalf("expected 1 orphan, got %d", len(orphans))
 	}

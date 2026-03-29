@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -70,7 +71,11 @@ func runSeba(cmd *cobra.Command, args []string) {
 		engine.Register(r)
 	}
 
-	scanResult, _ := engine.Scan(context.Background(), jackal.ScanOptions{})
+	scanCtx, scanCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer scanCancel()
+
+	homeDir, _ := os.UserHomeDir()
+	scanResult, _ := engine.Scan(scanCtx, jackal.ScanOptions{HomeDir: homeDir})
 	if scanResult != nil {
 		for _, f := range scanResult.Findings {
 			nodeID := fmt.Sprintf("cache_%s", f.RuleName)

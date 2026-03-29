@@ -1,6 +1,7 @@
 package ka
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -163,14 +164,14 @@ func TestScanner_BuildInstalledAppIndex(t *testing.T) {
 	s := NewScanner()
 	s.appDirs = []string{appDir}
 	s.SkipBrew = true // Don't try to call brew
-	s.ReadBundleIDFn = func(path string) (string, error) {
+	s.ReadBundleIDFn = func(ctx context.Context, path string) (string, error) {
 		if strings.HasSuffix(path, "Test.app") {
 			return "com.test.app", nil
 		}
 		return "", nil
 	}
 
-	err := s.buildInstalledAppIndex()
+	err := s.buildInstalledAppIndex(context.Background())
 	if err != nil {
 		t.Fatalf("buildInstalledAppIndex() error: %v", err)
 	}
@@ -188,7 +189,7 @@ func TestScanner_IndexHomebrewCasks_Skip(t *testing.T) {
 	s.appDirs = []string{}
 	s.SkipBrew = true
 
-	err := s.buildInstalledAppIndex() // Should skip brew list
+	err := s.buildInstalledAppIndex(context.Background()) // Should skip brew list
 	if err != nil {
 		t.Fatalf("buildInstalledAppIndex with SkipBrew=true error: %v", err)
 	}
@@ -263,7 +264,7 @@ func TestScanner_ScanForOrphans(t *testing.T) {
 	}
 	defer func() { userResidualLocations = originalLocations }()
 
-	orphans := s.scanForOrphans(false)
+	orphans := s.scanForOrphans(context.Background(), false)
 
 	if len(orphans) != 1 {
 		t.Fatalf("expected 1 orphan bundle ID, got %d", len(orphans))

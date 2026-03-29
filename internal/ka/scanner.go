@@ -13,6 +13,7 @@ package ka
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -136,8 +137,8 @@ type Scanner struct {
 	installedNames     map[string]bool   // Names of currently installed apps (lowercase)
 	knownBundleIDs     map[string]string // Bundle ID → app name mapping
 	DirReader          func(string) ([]os.DirEntry, error)
-	ExecCommand        func(string, ...string) *exec.Cmd
-	ReadBundleIDFn     func(string) (string, error)
+	ExecCommand        func(context.Context, string, ...string) *exec.Cmd
+	ReadBundleIDFn     func(context.Context, string) (string, error)
 	SkipLaunchServices bool
 	SkipBrew           bool
 	Manifest           HorusManifest
@@ -156,17 +157,17 @@ func NewScanner() *Scanner {
 		installedNames: make(map[string]bool),
 		knownBundleIDs: make(map[string]string),
 		DirReader:      os.ReadDir,          // Default implementation
-		ExecCommand:    exec.Command,        // Default implementation
+		ExecCommand:    exec.CommandContext, // Default implementation
 		ReadBundleIDFn: readBundleIDDefault, // Default implementation
 	}
 	return s
 }
 
 // readBundleIDDefault reads the CFBundleIdentifier from an app's Info.plist.
-func readBundleIDDefault(appPath string) (string, error) {
+func readBundleIDDefault(ctx context.Context, appPath string) (string, error) {
 	plistPath := filepath.Join(appPath, "Contents", "Info.plist")
 
-	cmd := exec.Command("defaults", "read", plistPath, "CFBundleIdentifier")
+	cmd := exec.CommandContext(ctx, "defaults", "read", plistPath, "CFBundleIdentifier")
 	output, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -177,13 +178,13 @@ func readBundleIDDefault(appPath string) (string, error) {
 
 // Scan discovers all ghosts (Kas) on the system.
 // This method has ZERO side effects — it only reads.
-func (s *Scanner) Scan(includeSudo bool) ([]Ghost, error) {
+func (s *Scanner) Scan(ctx context.Context, includeSudo bool) ([]Ghost, error) {
 	logging.Info("Ka: starting ghost scan", "sudo", includeSudo)
 	start := time.Now()
 
 	// Step 1: Build inventory of currently installed apps
 	logging.Debug("ka scan starting", "includeSudo", includeSudo)
-	if err := s.buildInstalledAppIndex(); err != nil {
+	if err := s.buildInstalledAppIndex(ctx); err != nil {
 		return nil, fmt.Errorf("failed to index installed apps: %w", err)
 	}
 	logging.Debug("installed apps indexed", "bundleIDs", len(s.installedApps), "names", len(s.installedNames))
@@ -195,19 +196,32 @@ func (s *Scanner) Scan(includeSudo bool) ([]Ghost, error) {
 
 	if s.SkipLaunchServices {
 		// Fast path: filesystem-only scan (finds 95%+ of ghosts).
-		orphans = s.scanForOrphans(includeSudo)
+		orphans = s.scanForOrphans(ctx, includeSudo)
 		lsGhosts = make(map[string]bool)
 	} else {
 		// Full path: parallel filesystem + lsregister.
-		done := make(chan struct{})
+		type scanResult struct {
+			ghosts map[string]bool
+			err    error
+		}
+		resChan := make(chan scanResult, 1)
+		
 		go func() {
 			runtime.LockOSThread()
 			defer runtime.UnlockOSThread()
-			lsGhosts = s.scanLaunchServices()
-			close(done)
+			ghosts := s.scanLaunchServices(ctx)
+			resChan <- scanResult{ghosts: ghosts}
 		}()
-		orphans = s.scanForOrphans(includeSudo)
-		<-done
+
+		orphans = s.scanForOrphans(ctx, includeSudo)
+
+		select {
+		case res := <-resChan:
+			lsGhosts = res.ghosts
+		case <-ctx.Done():
+			logging.Warn("ka: Launch Services scan timed out or cancelled")
+			lsGhosts = make(map[string]bool)
+		}
 	}
 
 	// Step 4: Merge orphans into Ghost structures
@@ -236,8 +250,14 @@ func (s *Scanner) Clean(ghost Ghost, dryRun bool, useTrash bool) (int64, int, er
 }
 
 // buildInstalledAppIndex scans configured app directories for .app bundles.
-func (s *Scanner) buildInstalledAppIndex() error {
+func (s *Scanner) buildInstalledAppIndex(ctx context.Context) error {
 	for _, dir := range s.appDirs {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
 		entries, err := s.DirReader(dir)
 		if err != nil {
 			continue
@@ -253,7 +273,7 @@ func (s *Scanner) buildInstalledAppIndex() error {
 			s.installedNames[strings.ToLower(appName)] = true
 
 			// Read bundle ID from Info.plist
-			bundleID, err := s.ReadBundleIDFn(appPath)
+			bundleID, err := s.ReadBundleIDFn(ctx, appPath)
 			if err != nil {
 				continue
 			}
@@ -266,14 +286,14 @@ func (s *Scanner) buildInstalledAppIndex() error {
 
 	// Also index Homebrew casks if not skipped
 	if !s.SkipBrew {
-		s.indexHomebrewCasks()
+		s.indexHomebrewCasks(ctx)
 	}
 
 	return nil
 }
 
 // scanForOrphans scans residual locations for entries that don't match installed apps.
-func (s *Scanner) scanForOrphans(includeSudo bool) map[string][]Residual {
+func (s *Scanner) scanForOrphans(ctx context.Context, includeSudo bool) map[string][]Residual {
 	orphans := make(map[string][]Residual)
 
 	locations := userResidualLocations
@@ -282,6 +302,12 @@ func (s *Scanner) scanForOrphans(includeSudo bool) map[string][]Residual {
 	}
 
 	for _, loc := range locations {
+		select {
+		case <-ctx.Done():
+			return orphans
+		default:
+		}
+
 		dir := expandPath(loc.Dir, s.homeDir)
 		entries, err := s.DirReader(dir)
 		if err != nil {
@@ -347,11 +373,11 @@ func (s *Scanner) scanForOrphans(includeSudo bool) map[string][]Residual {
 }
 
 // scanLaunchServices queries the Launch Services database for registered ghost apps.
-func (s *Scanner) scanLaunchServices() map[string]bool {
+func (s *Scanner) scanLaunchServices(ctx context.Context) map[string]bool {
 	ghosts := make(map[string]bool)
 
 	path := "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
-	cmd := s.ExecCommand(path, "-dump")
+	cmd := s.ExecCommand(ctx, path, "-dump")
 	output, err := cmd.Output()
 	if err != nil {
 		return ghosts
@@ -449,14 +475,14 @@ func (s *Scanner) isInstalled(bundleID, fileName string) bool {
 }
 
 // indexHomebrewCasks adds Homebrew cask apps to the installed app index.
-func (s *Scanner) indexHomebrewCasks() map[string]bool {
+func (s *Scanner) indexHomebrewCasks(ctx context.Context) map[string]bool {
 	casks := make(map[string]bool)
 
 	if s.SkipBrew {
 		return casks
 	}
 
-	command := s.ExecCommand("brew", "list", "--cask", "-1")
+	command := s.ExecCommand(ctx, "brew", "list", "--cask", "-1")
 	output, err := command.Output()
 	if err != nil {
 		logging.Debug("brew list --cask error", "err", err)

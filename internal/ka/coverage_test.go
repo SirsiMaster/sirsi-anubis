@@ -1,6 +1,7 @@
 package ka
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"testing"
@@ -15,11 +16,11 @@ func TestScan_SkipLaunchServices(t *testing.T) {
 	scanner.DirReader = func(path string) ([]os.DirEntry, error) {
 		return nil, nil // Return empty to avoid slow walk
 	}
-	scanner.ExecCommand = func(string, ...string) *exec.Cmd {
-		return exec.Command("true")
+	scanner.ExecCommand = func(ctx context.Context, name string, args ...string) *exec.Cmd {
+		return exec.CommandContext(ctx, "true")
 	}
 
-	ghosts, err := scanner.Scan(false)
+	ghosts, err := scanner.Scan(context.Background(), false)
 	if err != nil {
 		t.Fatalf("Scan: %v", err)
 	}
@@ -36,11 +37,11 @@ func TestScan_WithLaunchServices(t *testing.T) {
 	scanner.DirReader = func(path string) ([]os.DirEntry, error) {
 		return nil, nil // Return empty to avoid slow walk
 	}
-	scanner.ExecCommand = func(string, ...string) *exec.Cmd {
-		return exec.Command("true")
+	scanner.ExecCommand = func(ctx context.Context, name string, args ...string) *exec.Cmd {
+		return exec.CommandContext(ctx, "true")
 	}
 
-	ghosts, err := scanner.Scan(false)
+	ghosts, err := scanner.Scan(context.Background(), false)
 	if err != nil {
 		t.Fatalf("Scan: %v", err)
 	}
@@ -57,13 +58,13 @@ func TestScanLaunchServices(t *testing.T) {
 	scanner.DirReader = func(path string) ([]os.DirEntry, error) {
 		return nil, nil
 	}
-	scanner.ExecCommand = func(string, ...string) *exec.Cmd {
-		return exec.Command("true")
+	scanner.ExecCommand = func(ctx context.Context, name string, args ...string) *exec.Cmd {
+		return exec.CommandContext(ctx, "true")
 	}
 	// Build installed app index first (required for scanLaunchServices)
-	scanner.buildInstalledAppIndex()
+	scanner.buildInstalledAppIndex(context.Background())
 
-	ghosts := scanner.scanLaunchServices()
+	ghosts := scanner.scanLaunchServices(context.Background())
 	if ghosts == nil {
 		t.Fatal("scanLaunchServices returned nil")
 	}
@@ -75,12 +76,12 @@ func TestScanLaunchServices(t *testing.T) {
 func TestIndexHomebrewCasks(t *testing.T) {
 	scanner := NewScanner()
 
-	scanner.ExecCommand = func(string, ...string) *exec.Cmd {
+	scanner.ExecCommand = func(ctx context.Context, name string, args ...string) *exec.Cmd {
 		// Return a command that fails so it doesn't try to run 'brew'
-		return exec.Command("false")
+		return exec.CommandContext(ctx, "false")
 	}
 	// This calls `brew list --cask` — may fail if brew is not installed.
-	scanner.indexHomebrewCasks()
+	scanner.indexHomebrewCasks(context.Background())
 
 	// Just verify it doesn't panic and populates the index.
 	t.Logf("Homebrew cask names indexed: %d", len(scanner.installedNames))
@@ -90,7 +91,7 @@ func TestIndexHomebrewCasks(t *testing.T) {
 
 func TestReadBundleID_ValidApp(t *testing.T) {
 	// Safari is always installed on macOS
-	bundleID, err := readBundleIDDefault("/Applications/Safari.app")
+	bundleID, err := readBundleIDDefault(context.Background(), "/Applications/Safari.app")
 	if err != nil {
 		t.Logf("readBundleIDDefault returned error for Safari (expected in CI): %v", err)
 		return
@@ -105,7 +106,7 @@ func TestReadBundleID_ValidApp(t *testing.T) {
 }
 
 func TestReadBundleID_InvalidApp(t *testing.T) {
-	bundleID, err := readBundleIDDefault("/nonexistent/app.app")
+	bundleID, err := readBundleIDDefault(context.Background(), "/nonexistent/app.app")
 	if err == nil && bundleID != "" {
 		t.Errorf("expected empty bundleID or error for nonexistent app, got %q", bundleID)
 	}

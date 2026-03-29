@@ -3,12 +3,13 @@ package scales
 import (
 	"context"
 	"fmt"
+	"os"
+	"sync"
 	"time"
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal/rules"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/ka"
-	"sync"
 )
 
 var (
@@ -106,10 +107,11 @@ func CollectMetrics() (*ScanMetrics, error) {
 	// Run Jackal scan for waste metrics
 	engine := getJackalEngine()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	result, err := engine.Scan(ctx, jackal.ScanOptions{})
+	homeDir, _ := os.UserHomeDir()
+	result, err := engine.Scan(ctx, jackal.ScanOptions{HomeDir: homeDir})
 	if err != nil {
 		return nil, fmt.Errorf("scan for metrics: %w", err)
 	}
@@ -117,9 +119,9 @@ func CollectMetrics() (*ScanMetrics, error) {
 	metrics.TotalSize = result.TotalSize
 	metrics.FindingCount = len(result.Findings)
 
-	// Run Ka scan for ghost count
+	// Run Ka scan for ghost count (with timeout — Ka can be slow on first run)
 	scanner := getKaScanner()
-	ghosts, err := scanner.Scan(false) // no sudo
+	ghosts, err := scanner.Scan(ctx, false) // no sudo
 	if err == nil {
 		metrics.GhostCount = len(ghosts)
 	}

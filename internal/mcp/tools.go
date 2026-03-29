@@ -179,7 +179,11 @@ func handleGhostReport(args map[string]interface{}) (*ToolResult, error) {
 	target, _ := args["target"].(string)
 
 	scanner := ka.NewScanner()
-	ghosts, err := scanner.Scan(false) // no sudo in MCP mode
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	ghosts, err := scanner.Scan(ctx, false) // no sudo in MCP mode
 	if err != nil {
 		return textResult(fmt.Sprintf("Ghost scan failed: %v", err), true), nil
 	}
