@@ -13,8 +13,8 @@ import (
 
 var initiateCmd = &cobra.Command{
 	Use:   "initiate",
-	Short: "🔑 Grant macOS permissions for deep scanning",
-	Long: `🔑 Initiate — The Ritual of Access
+	Short: "𓂋 Grant macOS permissions for deep scanning",
+	Long: `𓂋 Initiate — The Ritual of Access
 
 Grant Anubis the permissions it needs for deep scanning on macOS.
 This walks you through enabling Full Disk Access, which is required

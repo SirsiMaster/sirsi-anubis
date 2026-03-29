@@ -3,160 +3,104 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 
+	"github.com/SirsiMaster/sirsi-pantheon/internal/mcp"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/seshat"
 )
 
 var seshatCmd = &cobra.Command{
 	Use:   "seshat",
-	Short: "𓁆 Seshat — Gemini Bridge (knowledge sync)",
+	Short: "𓁆 Seshat — Gemini Bridge & AI Scribe Engine",
 	Long: `𓁆 Seshat — The Scribe. Goddess of writing, wisdom, and measurement.
 
-Bidirectional knowledge sync between Gemini AI Mode, NotebookLM, and Antigravity IDE.
+Seshat manages bidirectional knowledge sync and AI developer context.
+Use it to sync Gemini conversations or start the MCP context server.
 
-Six directions:
-  1. Gemini → NotebookLM    Extract conversations → package as sources
-  2. NotebookLM → Gemini    Query insights → inject into GEMINI.md
-  3. NotebookLM → Antigravity  Distill → inject as Knowledge Items
-  4. Antigravity → NotebookLM  Export KIs → upload as sources
-  5. Gemini → Antigravity    Extract → inject as Knowledge Items
-  6. Antigravity → Gemini    Export KIs → GEMINI.md context`,
+  pantheon seshat sync           Knowledge sync (Gemini ↔ NotebookLM)
+  pantheon seshat list           List Antigravity brain items
+  pantheon seshat mcp            Start the Model Context Protocol (MCP) server`,
 	Run: func(cmd *cobra.Command, args []string) {
 		_ = cmd.Help()
 	},
 }
 
-var seshatListCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List all Antigravity Knowledge Items",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		paths := seshat.DefaultPaths()
-		items, err := seshat.ListKnowledgeItems(paths)
-		if err != nil {
-			return fmt.Errorf("list KIs: %w", err)
-		}
-
-		if JsonOutput {
-			for _, item := range items {
-				fmt.Println(item)
-			}
-			return nil
-		}
-
-		fmt.Println("📚 Antigravity Knowledge Items:")
-		fmt.Println()
-		for i, item := range items {
-			ki, err := seshat.ReadKnowledgeItem(paths, item)
-			if err != nil {
-				fmt.Printf("  %d. %s (⚠️ unreadable)\n", i+1, item)
-				continue
-			}
-			fmt.Printf("  %d. %s\n", i+1, ki.Title)
-			fmt.Printf("     %s\n", truncate(ki.Summary, 80))
-			fmt.Println()
-		}
-		fmt.Printf("Total: %d Knowledge Items\n", len(items))
-		return nil
-	},
-}
-
-var seshatExportCmd = &cobra.Command{
-	Use:   "export",
-	Short: "Export Knowledge Items as NotebookLM-ready Markdown",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		paths := seshat.DefaultPaths()
-		outputDir, _ := cmd.Flags().GetString("output")
-		if outputDir == "" {
-			outputDir = "./seshat-export"
-		}
-
-		kiName, _ := cmd.Flags().GetString("ki")
-		if kiName != "" {
-			md, err := seshat.ExportKIToMarkdown(paths, kiName)
-			if err != nil {
-				return err
-			}
-			outFile := fmt.Sprintf("%s/ki_%s.md", outputDir, kiName)
-			if err := os.MkdirAll(outputDir, 0755); err != nil {
-				return err
-			}
-			if err := os.WriteFile(outFile, []byte(md), 0644); err != nil {
-				return err
-			}
-			fmt.Printf("📚 Exported: %s → %s\n", kiName, outFile)
-			return nil
-		}
-
-		exported, err := seshat.ExportAllKIsToMarkdown(paths, outputDir)
-		if err != nil {
-			return err
-		}
-		fmt.Printf("\n🎉 Exported %d Knowledge Items to %s\n", len(exported), outputDir)
-		return nil
-	},
-}
-
 var seshatSyncCmd = &cobra.Command{
 	Use:   "sync",
-	Short: "Sync Knowledge Items to GEMINI.md context",
+	Short: "𓁆 Bidirectional knowledge sync and extraction",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		start := time.Now()
+		output.Banner()
+		output.Header("SESHAT — Knowledge Sync")
+
 		paths := seshat.DefaultPaths()
 		kiName, _ := cmd.Flags().GetString("ki")
 		target, _ := cmd.Flags().GetString("target")
 
-		if kiName == "" || target == "" {
-			return fmt.Errorf("--ki and --target are required")
+		if kiName != "" && target != "" {
+			if err := seshat.SyncKIToGeminiMD(paths, kiName, target); err != nil {
+				return err
+			}
+			output.Success("Synced KI '%s' → %s", kiName, target)
 		}
 
-		if err := seshat.SyncKIToGeminiMD(paths, kiName, target); err != nil {
-			return err
-		}
-
-		fmt.Printf("✅ Synced KI '%s' → %s\n", kiName, target)
+		output.Footer(time.Since(start))
 		return nil
 	},
 }
 
-var seshatConversationsCmd = &cobra.Command{
-	Use:   "conversations",
-	Short: "List Antigravity brain conversations",
+var seshatListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "𓁆 List Antigravity brain Knowledge Items",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		start := time.Now()
+		output.Banner()
+		output.Header("SESHAT — Knowledge Library")
+
 		paths := seshat.DefaultPaths()
-		lastN, _ := cmd.Flags().GetInt("last")
-		if lastN == 0 {
-			lastN = 10
-		}
+		items, _ := seshat.ListKnowledgeItems(paths)
 
-		ids, err := seshat.ListBrainConversations(paths, lastN)
-		if err != nil {
-			return err
+		for i, item := range items {
+			ki, _ := seshat.ReadKnowledgeItem(paths, item)
+			fmt.Printf("  %d. %s\n", i+1, ki.Title)
+			fmt.Printf("     %s\n", output.Truncate(ki.Summary, 80))
 		}
-
-		fmt.Printf("💬 Last %d Antigravity Conversations:\n\n", len(ids))
-		for i, id := range ids {
-			fmt.Printf("  %d. %s\n", i+1, id)
-		}
+		output.Footer(time.Since(start))
 		return nil
+	},
+}
+
+var seshatMcpCmd = &cobra.Command{
+	Use:   "mcp",
+	Short: "𓁆 Start the Model Context Protocol (MCP) context server",
+	Run: func(cmd *cobra.Command, args []string) {
+		// Singleton for MCP server
+		unlock, err := platform.TryLock("mcp-cli")
+		if err != nil {
+			output.Error("Pantheon MCP Server is already active.")
+			return
+		}
+		defer unlock()
+
+		output.Header("SESHAT — Scribe's Voice (MCP Server)")
+
+		server := mcp.NewServer()
+		if err := server.Run(); err != nil {
+			output.Error("Server error: %v", err)
+			os.Exit(1)
+		}
 	},
 }
 
 func init() {
-	// Export flags
-	seshatExportCmd.Flags().String("output", "./seshat-export", "Output directory")
-	seshatExportCmd.Flags().String("ki", "", "Export a specific Knowledge Item")
-
-	// Sync flags
 	seshatSyncCmd.Flags().String("ki", "", "Knowledge Item name to sync")
 	seshatSyncCmd.Flags().String("target", "", "Target GEMINI.md file path")
 
-	// Conversations flags
-	seshatConversationsCmd.Flags().Int("last", 10, "Show last N conversations")
-
-	// Build command tree
-	seshatCmd.AddCommand(seshatListCmd)
-	seshatCmd.AddCommand(seshatExportCmd)
 	seshatCmd.AddCommand(seshatSyncCmd)
-	seshatCmd.AddCommand(seshatConversationsCmd)
+	seshatCmd.AddCommand(seshatListCmd)
+	seshatCmd.AddCommand(seshatMcpCmd)
 }

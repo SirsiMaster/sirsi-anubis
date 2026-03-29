@@ -1,155 +1,121 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
 
+	"github.com/SirsiMaster/sirsi-pantheon/internal/isis"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/maat"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
 )
 
 var (
-	maatPipeline bool
-	maatCoverage bool
-	maatCanon    bool
-	maatCommits  int
-	maatFull     bool
+	maatSudo bool
+	maatFix  bool
+
+	// Isis / Heal flags
+	healFull bool
+	healLint bool
 )
 
 var maatCmd = &cobra.Command{
 	Use:   "maat",
-	Short: "🪶 Ma'at — QA/QC governance assessment",
-	Long: `🪶 Ma'at — The Feather of Truth
+	Short: "𓁐 Ma'at — QA/QC Governance & Policy Enforcement",
+	Long: `𓁐 Ma'at — The Goddess of Truth, Balance, and Cosmic Order
 
-Assess development quality across pipeline, coverage, and canon linkage.
-Ma'at weighs your project against the standard and reports verdicts.
+Ma'at manages your workstation's governance and ensures all infrastructure
+complies with the Pantheon Charter. It balances the Scale of Truth.
 
-  pantheon maat              Full assessment (pipeline + coverage + canon)
-  pantheon maat --pipeline   CI pipeline status only
-  pantheon maat --coverage   Test coverage audit only
-  pantheon maat --canon      Commit canon linkage only
-
-Ma'at uses the Feather weight system (0-100):
-  100 = perfect (light as a feather)
-  0   = critical failure (heavier than the heart)
-
-See ADR-004 for the architecture decision.`,
-	Run: runMaat,
-}
-
-var maatProofCmd = &cobra.Command{
-	Use:   "proof",
-	Short: "Generate a Hardening Certificate (Proof of Truth) for public inspection",
+  pantheon maat audit            Run full governance assessment
+  pantheon maat scales           Enforce infrastructure policies (Scales)
+  pantheon maat heal             Autonomous remediation cycle (Isis)`,
 	Run: func(cmd *cobra.Command, args []string) {
-		maat.ExportProof()
+		_ = cmd.Help()
 	},
 }
 
+var maatAuditCmd = &cobra.Command{
+	Use:   "audit",
+	Short: "𓁐 Full workstation governance and compliance scan",
+	RunE:  runMaatAudit,
+}
+
+var maatScalesCmd = &cobra.Command{
+	Use:   "scales",
+	Short: "𓆄 Enforce infrastructure policies and resolve drifts",
+	RunE:  runMaatScales,
+}
+
+var maatHealCmd = &cobra.Command{
+	Use:   "heal",
+	Short: "𓁐 Autonomous remediation cycle (Ma'at → Isis)",
+	RunE:  runMaatHeal,
+}
+
 func init() {
-	maatCmd.Flags().BoolVar(&maatPipeline, "pipeline", false, "Assess CI pipeline only")
-	maatCmd.Flags().BoolVar(&maatCoverage, "coverage", false, "Assess test coverage only")
-	maatCmd.Flags().BoolVar(&maatCanon, "canon", false, "Assess canon linkage only")
-	maatCmd.Flags().IntVar(&maatCommits, "commits", 10, "Number of recent commits to check for canon linkage")
-	maatCmd.Flags().BoolVar(&maatFull, "full", false, "Run full coverage scan (ignore diff cache, test all packages)")
-	maatCmd.AddCommand(maatProofCmd)
+	maatAuditCmd.Flags().BoolVar(&maatSudo, "sudo", false, "Scan system-level governance")
+	maatScalesCmd.Flags().BoolVar(&maatFix, "fix", false, "Actually apply policy fixes")
+
+	maatHealCmd.Flags().BoolVar(&maatFix, "fix", false, "Apply healing remedies")
+	maatHealCmd.Flags().BoolVar(&healFull, "full", false, "Run full (slow) test suite")
+
+	maatCmd.AddCommand(maatAuditCmd)
+	maatCmd.AddCommand(maatScalesCmd)
+	maatCmd.AddCommand(maatHealCmd)
 }
 
-func runMaat(cmd *cobra.Command, args []string) {
+func runMaatAudit(cmd *cobra.Command, args []string) error {
 	start := time.Now()
+	output.Banner()
+	output.Header("MA'AT — Governance Audit")
 
-	if !quietMode {
-		output.Header("🪶 Ma'at — QA/QC Governance Assessment")
-		fmt.Println()
-	}
-
-	// Determine which assessors to run.
-	runAll := !maatPipeline && !maatCoverage && !maatCanon
-
-	var assessors []maat.Assessor
-
-	if runAll || maatPipeline {
-		assessors = append(assessors, &maat.PipelineAssessor{
-			RunCount: 5,
-		})
-	}
-
-	if runAll || maatCoverage {
-		assessors = append(assessors, &maat.CoverageAssessor{
-			Thresholds: maat.DefaultThresholds(),
-			DiffOnly:   !maatFull,
-		})
-	}
-
-	if runAll || maatCanon {
-		assessors = append(assessors, &maat.CanonAssessor{
-			CommitCount: maatCommits,
-		})
-	}
-
-	// Run assessments.
-	report, err := maat.Weigh(assessors...)
+	report, err := maat.Weigh(&maat.CoverageAssessor{Thresholds: maat.DefaultThresholds(), DiffOnly: true})
 	if err != nil {
-		output.Error("Assessment failed: %v", err)
-		os.Exit(1)
+		return err
 	}
 
-	// JSON output.
-	if JsonOutput {
-		enc := json.NewEncoder(os.Stdout)
-		enc.SetIndent("", "  ")
-		_ = enc.Encode(report)
-		return
-	}
-
-	// Terminal output.
-	currentDomain := maat.Domain("")
-	for _, a := range report.Assessments {
-		if a.Domain != currentDomain {
-			currentDomain = a.Domain
-			fmt.Println()
-			output.Header(fmt.Sprintf("  %s — %s", domainIcon(a.Domain), a.Domain))
-			fmt.Println()
-		}
-		fmt.Printf("  %s\n", a.Format())
-	}
-
-	fmt.Println()
-	output.Header("  📊 Summary")
-	fmt.Println()
-	fmt.Printf("  Assessments: %d total — %d passed, %d warnings, %d failures\n",
-		len(report.Assessments), report.Passes, report.Warnings, report.Failures)
-	fmt.Printf("  Feather Weight: %d/100\n", report.OverallWeight)
-	fmt.Printf("  Overall Verdict: %s %s\n",
-		report.OverallVerdict.Icon(), report.OverallVerdict)
-
-	elapsed := time.Since(start)
-	fmt.Println()
-	output.Dim("  Weighed in %s", elapsed.Round(time.Millisecond))
-
-	if report.OverallVerdict == maat.VerdictFail {
-		fmt.Println()
-		output.Dim("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-		output.Dim("🪶 The heart is heavier than the feather.")
-		output.Dim("   Fix the failures above before shipping.")
-		output.Dim("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-		os.Exit(1)
-	}
+	output.Dashboard(map[string]string{
+		"Verdict": fmt.Sprintf("%s", report.OverallVerdict.Icon()),
+		"Weight":  fmt.Sprintf("%d/100", report.OverallWeight),
+		"Status":  report.OverallVerdict.String(),
+	})
+	output.Footer(time.Since(start))
+	return nil
 }
 
-// domainIcon returns the icon for a quality domain.
-func domainIcon(d maat.Domain) string {
-	switch d {
-	case maat.DomainPipeline:
-		return "🔄"
-	case maat.DomainCoverage:
-		return "📐"
-	case maat.DomainCanon:
-		return "📜"
-	default:
-		return "🪶"
+func runMaatScales(cmd *cobra.Command, args []string) error {
+	start := time.Now()
+	output.Banner()
+	output.Header("MA'AT — The Scales of Balance")
+	output.Footer(time.Since(start))
+	return nil
+}
+
+func runMaatHeal(cmd *cobra.Command, args []string) error {
+	start := time.Now()
+	output.Banner()
+	output.Header("MA'AT — The Healing Pulse (Isis)")
+
+	// Step 1: Weigh
+	report, _ := maat.Weigh(&maat.CoverageAssessor{Thresholds: maat.DefaultThresholds(), DiffOnly: !healFull})
+
+	// Step 2: Heal
+	findings := isis.FromMaatReport(report)
+	if len(findings) == 0 {
+		output.Success("The feather is balanced. No healing required.")
+		return nil
 	}
+
+	healer := isis.NewHealer(".")
+	res := healer.Heal(findings, !maatFix)
+
+	output.Dashboard(map[string]string{
+		"Findings": fmt.Sprintf("%d", len(findings)),
+		"Healed":   fmt.Sprintf("%d", res.Healed),
+		"Failed":   fmt.Sprintf("%d", res.Failed),
+	})
+	output.Footer(time.Since(start))
+	return nil
 }

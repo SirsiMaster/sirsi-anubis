@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/table"
 )
 
 // Anubis brand colors (Rule A10)
@@ -57,6 +59,10 @@ var (
 	WarningStyle = lipgloss.NewStyle().
 			Foreground(Yellow)
 
+	// Info style (Thoth Lapis)
+	InfoStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#51A9C8"))
+
 	// Size style — gold, for file sizes
 	SizeStyle = lipgloss.NewStyle().
 			Foreground(Gold).
@@ -73,7 +79,26 @@ var (
 	BoxStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(Gold).
-			Padding(0, 2)
+			Padding(0, 2).
+			MarginTop(1)
+
+	// Column style
+	ColumnStyle = lipgloss.NewStyle().
+			Border(lipgloss.NormalBorder(), false, true, false, false).
+			BorderForeground(Lapis).
+			Padding(0, 1).
+			MarginRight(2)
+
+	// Value style
+	ValueStyle = lipgloss.NewStyle().
+			Foreground(White).
+			Bold(true)
+
+	// Dashboard style
+	DashboardStyle = lipgloss.NewStyle().
+			Padding(1, 2).
+			Border(lipgloss.DoubleBorder()).
+			BorderForeground(Gold)
 
 	// Severity styles
 	SeveritySafe    = lipgloss.NewStyle().Foreground(Green)
@@ -84,12 +109,12 @@ var (
 // Banner prints the Pantheon banner.
 func Banner() {
 	banner := TitleStyle.Render(`
-  🏛️  Sirsi Pantheon
-  ═══════════════════════════════
-  Unified DevOps Intelligence Platform
-  "One Install. All Deities."
+   P A N T H E O N
+   ───────────────────────────────
+   Unified DevOps Intel Platform
+   "One Install. All Deities."
 
-  𓂀 Anubis · 🪶 Ma'at · 𓁟 Thoth
+   𓂀 Anubis  𓁟 Thoth  𓁆 Seshat
 `)
 	fmt.Fprintln(os.Stderr, banner)
 }
@@ -99,10 +124,10 @@ func Header(text string) {
 	fmt.Fprintf(os.Stderr, "\n%s\n", HeaderStyle.Render("𓂀 "+text))
 }
 
-// Info prints an informational message.
+// Info prints a themed informational message.
 func Info(format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
-	fmt.Fprintf(os.Stderr, "  %s\n", BodyStyle.Render(msg))
+	fmt.Fprintf(os.Stderr, "  %s %s\n", InfoStyle.Render("𓁟"), BodyStyle.Render(msg))
 }
 
 // Dim prints a dimmed message.
@@ -111,22 +136,22 @@ func Dim(format string, args ...interface{}) {
 	fmt.Fprintf(os.Stderr, "  %s\n", DimStyle.Render(msg))
 }
 
-// Success prints a success message.
+// Success prints a themed success message.
 func Success(format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
-	fmt.Fprintf(os.Stderr, "  %s %s\n", SuccessStyle.Render("✓"), BodyStyle.Render(msg))
+	fmt.Fprintf(os.Stderr, "  %s %s\n", SuccessStyle.Render("𓁐"), BodyStyle.Render(msg))
 }
 
-// Warn prints a warning message.
+// Warn prints a themed warning message.
 func Warn(format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
-	fmt.Fprintf(os.Stderr, "  %s %s\n", WarningStyle.Render("⚠"), BodyStyle.Render(msg))
+	fmt.Fprintf(os.Stderr, "  %s %s\n", WarningStyle.Render("𓂓"), BodyStyle.Render(msg))
 }
 
-// Error prints an error message.
+// Error prints a themed error message.
 func Error(format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
-	fmt.Fprintf(os.Stderr, "  %s %s\n", ErrorStyle.Render("✗"), BodyStyle.Render(msg))
+	fmt.Fprintf(os.Stderr, "  %s %s\n", ErrorStyle.Render("𓁵"), BodyStyle.Render(msg))
 }
 
 // FindingRow formats a single finding as a table row.
@@ -149,6 +174,35 @@ func FindingRow(name, path, size, severity string) string {
 	)
 }
 
+// Dashboard prints a multi-column summary dashboard.
+func Dashboard(metrics map[string]string) {
+	var cols []string
+
+	for label, value := range metrics {
+		col := ColumnStyle.Render(
+			fmt.Sprintf("%s\n%s",
+				DimStyle.Render(label),
+				ValueStyle.Render(value),
+			),
+		)
+		cols = append(cols, col)
+	}
+
+	dash := lipgloss.JoinHorizontal(lipgloss.Top, cols...)
+	fmt.Fprintf(os.Stderr, "\n%s\n", DashboardStyle.Render(dash))
+}
+
+// Table displays results in a beautiful TUI table.
+func Table(headers []string, rows [][]string) {
+	t := table.New().
+		Border(lipgloss.NormalBorder()).
+		BorderStyle(lipgloss.NewStyle().Foreground(Gold)).
+		Headers(headers...).
+		Rows(rows...)
+
+	fmt.Fprintf(os.Stderr, "\n%s\n", t.Render())
+}
+
 // Summary prints a summary box with totals.
 func Summary(totalSize string, findingCount int, ruleCount int) {
 	content := fmt.Sprintf(
@@ -158,4 +212,37 @@ func Summary(totalSize string, findingCount int, ruleCount int) {
 		DimStyle.Render(fmt.Sprintf("%d", ruleCount)),
 	)
 	fmt.Fprintf(os.Stderr, "\n%s\n", BoxStyle.Render("𓂀 "+content))
+}
+
+// Footer prints the completion ritual with elapsed time.
+func Footer(elapsed time.Duration) {
+	fmt.Fprintf(os.Stderr, "\n  %s %s\n",
+		DimStyle.Render("Completed in"),
+		ValueStyle.Render(elapsed.Round(time.Millisecond).String()),
+	)
+}
+
+// Section starts a new visual section with a glyph.
+func Section(title string) {
+	fmt.Fprintf(os.Stderr, "\n%s\n", TitleStyle.Render("⬥ "+title))
+}
+
+// shortenPath replaces home dir with ~ and truncates long paths.
+func ShortenPath(path string) string {
+	home, _ := os.UserHomeDir()
+	if strings.HasPrefix(path, home) {
+		path = "~" + strings.TrimPrefix(path, home)
+	}
+	if len(path) > 60 {
+		return "..." + path[len(path)-57:]
+	}
+	return path
+}
+
+// Truncate shortens a string to a max length with an ellipsis.
+func Truncate(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	return s[:max-3] + "..."
 }

@@ -205,7 +205,7 @@ func (s *Scanner) Scan(ctx context.Context, includeSudo bool) ([]Ghost, error) {
 			err    error
 		}
 		resChan := make(chan scanResult, 1)
-		
+
 		go func() {
 			runtime.LockOSThread()
 			defer runtime.UnlockOSThread()

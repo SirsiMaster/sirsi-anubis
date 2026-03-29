@@ -3,120 +3,73 @@ package main
 import (
 	"fmt"
 	"os"
-	"runtime"
 
 	"github.com/spf13/cobra"
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/logging"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
-	"github.com/SirsiMaster/sirsi-pantheon/internal/stealth"
-	"github.com/SirsiMaster/sirsi-pantheon/internal/updater"
 )
 
-// version is set by goreleaser at build time via -ldflags.
-var version = "dev"
-
-// rootCmd is the base command for pantheon.
-var rootCmd = &cobra.Command{
-	Use:   "pantheon",
-	Short: "🏛️ Sirsi Pantheon — Unified DevOps Intelligence Platform",
-	Long: `🏛️ Sirsi Pantheon — Unified DevOps Intelligence Platform
-"One Install. All Deities."
-
-Pantheon unifies every deity in the Sirsi ecosystem into a single binary.
-Anubis (infrastructure hygiene) is the foundational module — scan, judge,
-and purge waste across workstations, containers, VMs, and networks.
-
-  𓂀 Anubis — Infrastructure Hygiene
-  pantheon weigh          Scan your workstation (The Weighing)
-  pantheon judge          Clean artifacts (The Judgment)
-  pantheon guard          Manage RAM pressure (The Guardian)
-  pantheon sight          Fix ghost apps in Spotlight (The Sight)
-  pantheon hapi           Optimize VRAM & storage (The Flow)
-  pantheon scarab         Fleet sweep across networks (The Transformer)
-  pantheon scales         Enforce policies (The Judgment)
-
-  🪶 Ma'at — QA/QC Governance
-  pantheon maat           Run governance assessments
-
-  𓁐 Isis — Autonomous Remediation
-  pantheon isis heal      Run Ma'at→Isis healing cycle (--fix to apply)
-
-  𓁟 Thoth — Persistent Knowledge
-  pantheon thoth sync     Auto-sync memory.yaml + journal.md from source/git
-  pantheon mcp            AI IDE integration (includes thoth_read_memory)
-
-  𓁆 Seshat — Gemini Bridge
-  pantheon seshat          Knowledge sync (Gemini ↔ NotebookLM ↔ Antigravity)`,
-	Run: func(cmd *cobra.Command, args []string) {
-		output.Banner()
-		_ = cmd.Help()
-	},
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		logging.Init(verboseMode, quietMode, JsonOutput)
-		logging.Debug("pantheon starting", "version", version, "platform", runtime.GOOS+"/"+runtime.GOARCH)
-	},
-	PersistentPostRun: func(cmd *cobra.Command, args []string) {
-		if stealthMode {
-			_ = stealth.CleanExit()
-		}
-	},
-}
+var version = "v1.0.0-rc1"
 
 // versionCmd prints the version and optionally checks for updates.
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show Pantheon version and check for updates",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("🏛️ Sirsi Pantheon %s\n", version)
+		fmt.Printf("𓂀 Sirsi Pantheon %s\n", version)
 		fmt.Println("  Unified DevOps Intelligence Platform")
 		fmt.Println("  \"One Install. All Deities.\"")
-		fmt.Printf("  Platform: %s/%s\n", runtime.GOOS, runtime.GOARCH)
-		fmt.Println()
-		fmt.Println("  Deities:")
-		fmt.Println("    𓂀 Anubis  — Infrastructure Hygiene (foundational)")
-		fmt.Println("    🪶 Ma'at   — QA/QC Governance")
-		fmt.Println("    𓁟 Thoth   — Persistent Knowledge")
-		fmt.Println("    𓁆 Seshat  — Gemini Bridge")
+	},
+}
 
-		// Phone home — check for updates and advisories
-		result := updater.Check(version)
-		if notice := updater.FormatUpdateNotice(result); notice != "" {
-			fmt.Print(notice)
+var rootCmd = &cobra.Command{
+	Use:   "pantheon",
+	Short: "𓂀 Sirsi Pantheon — Unified DevOps Intelligence Platform",
+	Long: `𓂀 Sirsi Pantheon — Unified DevOps Intelligence Platform
+"One Install. All Deities."
+
+Pantheon unifies the entire Sirsi ecosystem into a single, hardened platform.
+Functionality is organized by Deity pillars:
+
+  𓂀 Anubis     Infrastructure Hygiene, Resource Guarding & Mirroring
+  𓁐 Ma'at      Governance, Compliance & Autonomous Healing
+  𓁟 Thoth      Knowledge Management & AI Intelligence
+  𓈗 Hapi       Hardware Profiling & ML Accelerated Compute
+  𓇼 Seba       Architectural Mapping & Fleet Network Discovery
+  𓁆 Seshat     Gemini Knowledge Bridge & AI Context Server
+
+Run any deity for subcommands:
+  pantheon anubis --help`,
+	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) == 0 {
+			if err := output.LaunchDashboard(); err != nil {
+				output.Banner()
+				_ = cmd.Help()
+			}
+			return
 		}
-		if advisory := updater.FormatAdvisories(result.Advisories); advisory != "" {
-			fmt.Print(advisory)
-		}
+		output.Banner()
+		_ = cmd.Help()
+	},
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		logging.Init(verboseMode, quietMode, JsonOutput)
 	},
 }
 
 func init() {
 	rootCmd.PersistentFlags().BoolVar(&JsonOutput, "json", false, "Output in JSON format")
-	rootCmd.PersistentFlags().BoolVar(&quietMode, "quiet", false, "Suppress all output except errors and summary")
-	rootCmd.PersistentFlags().BoolVarP(&verboseMode, "verbose", "v", false, "Enable debug logging (stderr)")
-	rootCmd.PersistentFlags().BoolVar(&stealthMode, "stealth", false, "Ephemeral mode — delete all Pantheon data after execution")
+	rootCmd.PersistentFlags().BoolVar(&quietMode, "quiet", false, "Suppress output")
+	rootCmd.PersistentFlags().BoolVarP(&verboseMode, "verbose", "v", false, "Debug logging")
 
-	rootCmd.AddCommand(versionCmd)
-	rootCmd.AddCommand(weighCmd)
-	rootCmd.AddCommand(judgeCmd)
-	rootCmd.AddCommand(kaCmd)
-	rootCmd.AddCommand(guardCmd)
-	rootCmd.AddCommand(sightCmd)
-	rootCmd.AddCommand(profileCmd)
-	rootCmd.AddCommand(sebaCmd)
-	rootCmd.AddCommand(bookCmd)
-	rootCmd.AddCommand(initiateCmd)
-	rootCmd.AddCommand(hapiCmd)
-	rootCmd.AddCommand(scarabCmd)
-	rootCmd.AddCommand(installBrainCmd)
-	rootCmd.AddCommand(uninstallBrainCmd)
-	rootCmd.AddCommand(mcpCmd)
-	rootCmd.AddCommand(scalesCmd)
-	rootCmd.AddCommand(mirrorCmd)
-	rootCmd.AddCommand(maatCmd)
-	rootCmd.AddCommand(seshatCmd)
+	rootCmd.AddCommand(anubisCmd)
 	rootCmd.AddCommand(thothCmd)
-	rootCmd.AddCommand(isisCmd)
+	rootCmd.AddCommand(maatCmd)
+	rootCmd.AddCommand(hapiCmd)
+	rootCmd.AddCommand(sebaCmd)
+	rootCmd.AddCommand(seshatCmd)
+	rootCmd.AddCommand(initiateCmd)
+	rootCmd.AddCommand(versionCmd)
 }
 
 func main() {

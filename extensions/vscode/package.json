@@ -1,8 +1,8 @@
 {
   "name": "sirsi-pantheon",
-  "displayName": "𓂀 Pantheon — Anubis Suite",
-  "description": "Always-on infrastructure hygiene: auto-renice, RAM guardian, context compression. The Anubis Suite operates without oversight.",
-  "version": "0.7.0",
+  "displayName": "𓂀 Sirsi Pantheon",
+  "description": "One Install. All Deities. The unified DevOps intelligence platform. Infrastructure hygiene, codebase governance, and persistent AI knowledge.",
+  "version": "0.7.1",
   "publisher": "SirsiMaster",
   "license": "MPL-2.0",
   "engines": {
@@ -19,11 +19,11 @@
   "keywords": [
     "infrastructure",
     "hygiene",
-    "renice",
-    "guardian",
+    "governance",
     "performance",
     "mcp",
     "pantheon",
+    "thoth",
     "anubis"
   ],
   "icon": "resources/icon.png",
@@ -45,19 +45,19 @@
       },
       {
         "command": "pantheon.guard",
-        "title": "𓁵 Pantheon: Start Guardian",
+        "title": "𓂀 Pantheon: Start Guardian",
         "category": "Pantheon",
         "icon": "$(shield)"
       },
       {
         "command": "pantheon.reniceLSP",
-        "title": "𓁵 Pantheon: Renice LSP Processes",
+        "title": "𓂀 Pantheon: Renice LSP Processes",
         "category": "Pantheon",
         "icon": "$(arrow-down)"
       },
       {
         "command": "pantheon.ghostReport",
-        "title": "𓂓 Pantheon: Ghost Report (Ka)",
+        "title": "𓂀 Pantheon: Ghost Report (Ka)",
         "category": "Pantheon",
         "icon": "$(ghost)"
       },
@@ -87,13 +87,13 @@
       },
       {
         "command": "pantheon.crashpadReport",
-        "title": "𓁵 Pantheon: Crashpad Stability Report",
+        "title": "𓂀 Pantheon: Crashpad Stability Report",
         "category": "Pantheon",
         "icon": "$(warning)"
       }
     ],
     "configuration": {
-      "title": "Pantheon — Anubis Suite",
+      "title": "Sirsi Pantheon Platform",
       "properties": {
         "pantheon.binaryPath": {
           "type": "string",

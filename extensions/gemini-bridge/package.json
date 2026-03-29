@@ -1,8 +1,8 @@
 {
   "name": "seshat-gemini-bridge",
   "displayName": "𓁆 Seshat — Gemini Bridge",
-  "description": "Bidirectional knowledge sync: Gemini AI Mode ↔ NotebookLM ↔ Antigravity IDE. Extract, package, distill, and bridge conversations across three knowledge systems.",
-  "version": "0.1.0",
+  "description": "The Scribe Pillar of Sirsi Pantheon. Bidirectional knowledge sync across 6 directions: Gemini AI Mode ↔ NotebookLM ↔ Antigravity IDE. One Pillar. Three Systems.",
+  "version": "0.2.0",
   "publisher": "SirsiMaster",
   "license": "MPL-2.0",
   "engines": {
@@ -106,7 +106,7 @@
       ]
     },
     "configuration": {
-      "title": "Seshat — Gemini Bridge",
+      "title": "Seshat Pillar — Sirsi Pantheon",
       "properties": {
         "seshat.defaultProfile": {
           "type": "string",

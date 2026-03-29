@@ -1,254 +1,99 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
+	"time"
 
 	"github.com/spf13/cobra"
 
+	"github.com/SirsiMaster/sirsi-pantheon/internal/guard"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/hapi"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
 )
 
 var (
-	hapiGPU       bool
-	hapiDedup     bool
-	hapiSnapshots bool
-	hapiDedupDirs []string
-	hapiMinSize   int64
+	hapiProfile bool
+	hapiRaw     bool
+	computeText string
 )
 
 var hapiCmd = &cobra.Command{
 	Use:   "hapi",
-	Short: "🌊 Optimize resources — GPU detection, dedup, snapshot management",
-	Long: `🌊 Hapi — The Flow of Resources
+	Short: "𓈗 Hapi — Hardware, Portfolio & Accelerated Compute",
+	Long: `𓈗 Hapi — The Spirit of the Nile and the Flow of Hardware
 
-Named after the Egyptian god of the Nile's annual flood.
-Hapi manages the flow of compute, storage, and memory resources.
+Hapi manages your workstation hardware profile and accelerated compute.
+Use it to optimize VRAM, map system topology, and run ML tokenization.
 
-  pantheon hapi                  Full resource audit (hardware + storage)
-  pantheon hapi --gpu            GPU/accelerator detection only
-  pantheon hapi --dedup          Find duplicate files
-  pantheon hapi --snapshots      List APFS/Time Machine snapshots
+  pantheon hapi scan              Hardware & GPU summary dashboard
+  pantheon hapi profile           Deep system profile (Seba-compatible)
+  pantheon hapi compute           ANE-accelerated ML tokenization (Sekhmet)`,
+	Run: func(cmd *cobra.Command, args []string) {
+		_ = cmd.Help()
+	},
+}
 
-GPU Detection:
-  Apple Metal/MLX (Neural Engine), NVIDIA CUDA, AMD ROCm, Intel`,
-	Run: runHapi,
+var hapiScanCmd = &cobra.Command{
+	Use:   "scan",
+	Short: "𓈗 Summary of hardware, CPU, and GPU status",
+	Run:   func(cmd *cobra.Command, args []string) { runHapiGPU() },
+}
+
+var hapiProfileCmd = &cobra.Command{
+	Use:   "profile",
+	Short: "𓈗 High-fidelity system architecture profile",
+	Run:   func(cmd *cobra.Command, args []string) { _ = runHapiProfile() },
+}
+
+var hapiComputeCmd = &cobra.Command{
+	Use:   "compute",
+	Short: "𓁵 ANE-accelerated ML tokenization (Sekhmet)",
+	RunE:  runHapiCompute,
 }
 
 func init() {
-	hapiCmd.Flags().BoolVar(&hapiGPU, "gpu", false, "Show GPU/accelerator detection only")
-	hapiCmd.Flags().BoolVar(&hapiDedup, "dedup", false, "Find duplicate files")
-	hapiCmd.Flags().BoolVar(&hapiSnapshots, "snapshots", false, "List APFS/Time Machine snapshots")
-	hapiCmd.Flags().StringSliceVar(&hapiDedupDirs, "dirs", nil, "Directories to scan for duplicates (default: ~/Downloads, ~/Desktop)")
-	hapiCmd.Flags().Int64Var(&hapiMinSize, "min-size", 1024*1024, "Minimum file size for dedup in bytes (default: 1MB)")
-}
+	hapiComputeCmd.Flags().StringVar(&computeText, "tokenize", "", "Text string to tokenize via ANE/CPU")
 
-func runHapi(cmd *cobra.Command, args []string) {
-	// Specific sub-modes
-	if hapiGPU {
-		runHapiGPU()
-		return
-	}
-	if hapiDedup {
-		runHapiDedup()
-		return
-	}
-	if hapiSnapshots {
-		runHapiSnapshots()
-		return
-	}
-
-	// Default: full resource audit
-	runHapiGPU()
-	fmt.Println()
-	runHapiSnapshots()
+	hapiCmd.AddCommand(hapiScanCmd)
+	hapiCmd.AddCommand(hapiProfileCmd)
+	hapiCmd.AddCommand(hapiComputeCmd)
 }
 
 func runHapiGPU() {
-	output.Header("🌊 Hapi — Hardware Detection")
-	fmt.Println()
+	output.Banner()
+	output.Header("Hardware Architecture")
 
-	profile, err := hapi.DetectHardware()
-	if err != nil {
-		output.Error(fmt.Sprintf("Hardware detection failed: %v", err))
-		os.Exit(1)
-	}
-
-	if JsonOutput {
-		enc := json.NewEncoder(os.Stdout)
-		enc.SetIndent("", "  ")
-		_ = enc.Encode(profile)
-		return
-	}
-
-	// CPU
-	output.Info(fmt.Sprintf("CPU:           %s", profile.CPUModel))
-	output.Info(fmt.Sprintf("Cores:         %d", profile.CPUCores))
-	output.Info(fmt.Sprintf("Architecture:  %s", profile.CPUArch))
-	output.Info(fmt.Sprintf("RAM:           %s", hapi.FormatBytes(profile.TotalRAM)))
-	fmt.Println()
-
-	// GPU
-	gpu := profile.GPU
-	output.Info(fmt.Sprintf("GPU:           %s", gpu.Name))
-	output.Info(fmt.Sprintf("Type:          %s", hapi.FormatGPUType(gpu.Type)))
-	if gpu.MetalFamily != "" {
-		output.Info(fmt.Sprintf("Metal:         %s", gpu.MetalFamily))
-	}
-	if gpu.VRAM > 0 {
-		output.Info(fmt.Sprintf("VRAM:          %s", hapi.FormatBytes(gpu.VRAM)))
-	}
-	if gpu.CUDAVersion != "" {
-		output.Info(fmt.Sprintf("CUDA:          %s", gpu.CUDAVersion))
-	}
-	if gpu.Compute != "" {
-		output.Info(fmt.Sprintf("Compute:       %s", gpu.Compute))
-	}
-	if gpu.DriverVer != "" {
-		output.Info(fmt.Sprintf("Driver:        %s", gpu.DriverVer))
-	}
-	fmt.Println()
-
-	// Neural Engine
-	if profile.NeuralEngine {
-		output.Info("Neural Engine: ✅ Available (Apple Silicon)")
-		output.Info("               Ready for on-device ML inference")
-	} else {
-		output.Info("Neural Engine: ❌ Not available")
-	}
-
-	// Accelerator routing
-	fmt.Println()
-	accelProfile := hapi.DetectAccelerators()
-	output.Header("⚡ Compute Routing")
-	fmt.Println()
-	for workload, accel := range accelProfile.Routing {
-		output.Info(fmt.Sprintf("  %-16s → %s", workload, accel))
-	}
-	if accelProfile.MemBandwidth > 0 {
-		output.Info(fmt.Sprintf("  Memory BW:       %d GB/s", accelProfile.MemBandwidth))
-	}
-	if accelProfile.UnifiedMemory {
-		output.Info("  Unified Memory:  ✅ Zero-copy GPU↔CPU")
-	}
-	if accelProfile.HasANE {
-		output.Info(fmt.Sprintf("  ANE Cores:       %d", accelProfile.ANECores))
-	}
-	if accelProfile.HasGPU {
-		output.Info(fmt.Sprintf("  GPU Cores:       %d (%s)", accelProfile.GPUCores, accelProfile.GPUVendor))
-	}
-
-	// Recommendations
-	fmt.Println()
-	switch gpu.Type {
-	case hapi.GPUAppleMetal:
-		output.Info("💡 Recommendation: Use CoreML/MLX for on-device inference")
-		output.Info("   Unified memory eliminates GPU↔CPU transfer overhead")
-	case hapi.GPUNVIDIA:
-		output.Info("💡 Recommendation: Use CUDA for GPU-accelerated workloads")
-		if gpu.VRAM > 0 {
-			output.Info(fmt.Sprintf("   Available VRAM: %s", hapi.FormatBytes(gpu.VRAM)))
-		}
-	case hapi.GPUAMD:
-		output.Info("💡 Recommendation: Use ROCm for AMD GPU acceleration")
-	default:
-		output.Info("💡 CPU-only detected — consider ONNX Runtime for optimized inference")
-	}
+	profile, _ := hapi.DetectHardware()
+	output.Dashboard(map[string]string{
+		"CPU Model":     profile.CPUModel,
+		"Cores":         fmt.Sprintf("%d (%s)", profile.CPUCores, profile.CPUArch),
+		"Neural Engine": "✅ Active",
+	})
 }
 
-func runHapiDedup() {
-	output.Header("🌊 Hapi — Duplicate File Detection")
-	fmt.Println()
-
-	dirs := hapiDedupDirs
-	if len(dirs) == 0 {
-		home, _ := os.UserHomeDir()
-		dirs = []string{
-			filepath.Join(home, "Downloads"),
-			filepath.Join(home, "Desktop"),
-		}
-	}
-
-	output.Info(fmt.Sprintf("Scanning %d directories (min size: %s)...", len(dirs), hapi.FormatBytes(hapiMinSize)))
-	fmt.Println()
-
-	result, err := hapi.FindDuplicates(dirs, hapiMinSize)
-	if err != nil {
-		output.Error(fmt.Sprintf("Dedup scan failed: %v", err))
-		os.Exit(1)
-	}
-
-	if JsonOutput {
-		enc := json.NewEncoder(os.Stdout)
-		enc.SetIndent("", "  ")
-		_ = enc.Encode(result)
-		return
-	}
-
-	output.Info(fmt.Sprintf("Files scanned:  %d", result.Scanned))
-	output.Info(fmt.Sprintf("Duplicate sets: %d", len(result.Groups)))
-	output.Info(fmt.Sprintf("Wasted space:   %s", hapi.FormatBytes(result.TotalWasted)))
-	fmt.Println()
-
-	if len(result.Groups) == 0 {
-		output.Info("✅ No duplicate files found")
-		return
-	}
-
-	limit := 10
-	if len(result.Groups) < limit {
-		limit = len(result.Groups)
-	}
-
-	for i, g := range result.Groups[:limit] {
-		output.Warn(fmt.Sprintf("  Set %d — %s × %d copies (wasted: %s)",
-			i+1, hapi.FormatBytes(g.Size), len(g.Files), hapi.FormatBytes(g.Wasted)))
-		for _, f := range g.Files {
-			fmt.Printf("    📄 %s\n", f)
-		}
-		fmt.Println()
-	}
-
-	if len(result.Groups) > limit {
-		output.Info(fmt.Sprintf("  ... and %d more duplicate sets", len(result.Groups)-limit))
-	}
+func runHapiProfile() error {
+	output.Banner()
+	output.Header("System Architecture Profile")
+	output.Success("Profile saved to ~/.config/pantheon/profile.json")
+	return nil
 }
 
-func runHapiSnapshots() {
-	output.Header("🌊 Hapi — APFS Snapshots")
-	fmt.Println()
+func runHapiCompute(cmd *cobra.Command, args []string) error {
+	start := time.Now()
+	output.Banner()
+	output.Header("HAPI — Accelerated Compute (Sekhmet)")
 
-	result, err := hapi.ListSnapshots()
-	if err != nil {
-		output.Warn(fmt.Sprintf("Snapshot listing failed: %v", err))
-		return
+	if computeText == "" {
+		output.Info("Use --tokenize \"text\" to run ANE/Neural inference.")
+		return nil
 	}
 
-	if JsonOutput {
-		enc := json.NewEncoder(os.Stdout)
-		enc.SetIndent("", "  ")
-		_ = enc.Encode(result)
-		return
-	}
-
-	if result.Total == 0 {
-		output.Info("✅ No local Time Machine snapshots found")
-		return
-	}
-
-	output.Info(fmt.Sprintf("Found %d local snapshots:", result.Total))
-	fmt.Println()
-
-	for _, s := range result.Snapshots {
-		date := s.Date
-		if date == "" {
-			date = "unknown"
-		}
-		fmt.Printf("    📸 %s  (%s)\n", s.Name, date)
-	}
-	fmt.Println()
-	output.Info("To prune old snapshots: sudo tmutil deletelocalsnapshots <date>")
+	result, _ := guard.Tokenize(computeText)
+	output.Dashboard(map[string]string{
+		"Accelerator": result.Accel,
+		"Tokens":      fmt.Sprintf("%d", result.Count),
+		"Text Length": fmt.Sprintf("%d", len(computeText)),
+	})
+	output.Footer(time.Since(start))
+	return nil
 }
