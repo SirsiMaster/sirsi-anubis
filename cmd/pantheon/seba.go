@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -18,6 +21,10 @@ var (
 	// Fleet / Scarab flags
 	fleetContainers bool
 	fleetConfirmNet bool
+
+	// Diagram flags
+	diagramType string
+	diagramHTML bool
 )
 
 var sebaCmd = &cobra.Command{
@@ -70,6 +77,26 @@ var sebaFleetCmd = &cobra.Command{
 	RunE:  runSebaFleet,
 }
 
+var sebaDiagramCmd = &cobra.Command{
+	Use:   "diagram",
+	Short: "𓇽 Generate architectural Mermaid diagrams",
+	Long: `𓇽 Seba Diagram Engine — Multi-Format Architectural Mapping
+
+Available diagram types:
+  hierarchy    Divine Hierarchy — deity relationships & governance tree
+  dataflow     Data Flow — CLI → Deities → Resources
+  modules      Module Map — internal/ Go import dependency graph
+  memory       Memory Architecture — Thoth/Seshat knowledge flow
+  governance   Governance Cycle — Ma'at → Isis → Thoth loop
+  pipeline     CI/CD Pipeline — push → gate → CI → artifacts
+  all          Generate all diagrams
+
+Examples:
+  pantheon seba diagram --type hierarchy
+  pantheon seba diagram --type all --html`,
+	RunE: runSebaDiagram,
+}
+
 func init() {
 	sebaScanCmd.Flags().StringVar(&sebaFormat, "format", "mermaid", "Output format")
 	sebaBookCmd.Flags().StringVar(&sebaOutput, "output", "dist/book", "Output directory")
@@ -77,9 +104,62 @@ func init() {
 	sebaFleetCmd.Flags().BoolVar(&fleetContainers, "containers", false, "Audit Docker only")
 	sebaFleetCmd.Flags().BoolVar(&fleetConfirmNet, "confirm-network", false, "Confirm active scan")
 
+	sebaDiagramCmd.Flags().StringVar(&diagramType, "type", "all", "Diagram type (hierarchy|dataflow|modules|memory|governance|pipeline|all)")
+	sebaDiagramCmd.Flags().BoolVar(&diagramHTML, "html", false, "Generate self-contained HTML with rendered diagrams")
+
 	sebaCmd.AddCommand(sebaScanCmd)
 	sebaCmd.AddCommand(sebaBookCmd)
 	sebaCmd.AddCommand(sebaFleetCmd)
+	sebaCmd.AddCommand(sebaDiagramCmd)
+}
+
+func runSebaDiagram(cmd *cobra.Command, args []string) error {
+	start := time.Now()
+	output.Banner()
+	output.Header("SEBA — Diagram Engine")
+
+	// Find project root
+	projectRoot, _ := os.Getwd()
+
+	var diagrams []*seba.DiagramResult
+
+	if diagramType == "all" {
+		results, err := seba.GenerateAllDiagrams(projectRoot)
+		if err != nil {
+			return fmt.Errorf("generate all: %w", err)
+		}
+		diagrams = results
+		output.Success("Generated %d diagrams", len(diagrams))
+	} else {
+		dt := seba.DiagramType(diagramType)
+		result, err := seba.GenerateDiagram(projectRoot, dt)
+		if err != nil {
+			return fmt.Errorf("generate %s: %w", diagramType, err)
+		}
+		diagrams = append(diagrams, result)
+		output.Success("Generated: %s", result.Title)
+	}
+
+	if diagramHTML {
+		htmlPath := filepath.Join(".pantheon", "diagrams.html")
+		if err := seba.RenderDiagramsHTML(diagrams, htmlPath); err != nil {
+			return fmt.Errorf("render HTML: %w", err)
+		}
+		abs, _ := filepath.Abs(htmlPath)
+		output.Success("HTML → %s", abs)
+	} else {
+		for _, d := range diagrams {
+			sep := strings.Repeat("─", 60)
+			fmt.Printf("\n%s\n%s\n%s\n\n```mermaid\n%s\n```\n", sep, d.Title, sep, d.Mermaid)
+		}
+	}
+
+	output.Dashboard(map[string]string{
+		"Diagrams": fmt.Sprintf("%d", len(diagrams)),
+		"Format":   map[bool]string{true: "HTML", false: "Mermaid"}[diagramHTML],
+	})
+	output.Footer(time.Since(start))
+	return nil
 }
 
 func runSebaFleet(cmd *cobra.Command, args []string) error {
