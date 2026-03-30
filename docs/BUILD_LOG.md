@@ -3,7 +3,7 @@
 > A transparent record of how Sirsi Anubis was designed, built, tested, broken, fixed, and shipped. No cherry-picking — the mistakes stay in.
 
 [![Version](https://img.shields.io/badge/version-v1.0.0--rc1-C8A951?style=flat)](CHANGELOG.md)
-[![Tests](https://img.shields.io/badge/tests-1324%20passing-brightgreen?style=flat)](.github/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-1386%20passing-brightgreen?style=flat)](.github/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat)](LICENSE)
 
 ---
@@ -331,7 +331,7 @@ Commits: 1  |  Files: 14  |  Lines: +1,765  |  Tests: 843+  |  Isis heal: 41ms
 | Total source lines | 24,532 | ✅ `maat pulse` |
 | Source files | 115 | ✅ `maat pulse` |
 | Test files | 69 | ✅ `maat pulse` |
-| Test count | **1,324** | ✅ `go test -v ./...` |
+| Test count | **1,386** | ✅ `go test -v ./...` |
 | Packages passing | 26/26 | ✅ `go test ./...` |
 | Weighted Coverage | ~76.6% | ✅ `go test -cover` |
 | Binary Size | 11.4 MB | ✅ `maat pulse` |
