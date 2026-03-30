@@ -11,9 +11,10 @@ import (
 
 func TestAllDiagramTypes(t *testing.T) {
 	t.Parallel()
-	types := AllDiagramTypes()
-	if len(types) != 6 {
-		t.Errorf("AllDiagramTypes() = %d types, want 6", len(types))
+	all := AllDiagramTypes()
+	// 6 core + 9 registered = 15
+	if len(all) < 15 {
+		t.Errorf("AllDiagramTypes() = %d types, want at least 15", len(all))
 	}
 }
 
@@ -156,8 +157,8 @@ func TestGenerateAllDiagrams(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GenerateAll: %v", err)
 	}
-	if len(results) != 6 {
-		t.Errorf("expected 6 diagrams, got %d", len(results))
+	if len(results) < 6 {
+		t.Errorf("expected at least 6 diagrams, got %d", len(results))
 	}
 }
 

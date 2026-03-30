@@ -47,7 +47,7 @@ const (
 
 // AllDiagramTypes returns every available diagram type.
 func AllDiagramTypes() []DiagramType {
-	return []DiagramType{
+	core := []DiagramType{
 		DiagramHierarchy,
 		DiagramDataFlow,
 		DiagramModules,
@@ -55,6 +55,11 @@ func AllDiagramTypes() []DiagramType {
 		DiagramGovernance,
 		DiagramPipeline,
 	}
+	// Append all registered Phase 1+ mappers
+	for dtype := range mapperRegistry {
+		core = append(core, dtype)
+	}
+	return core
 }
 
 // DiagramResult holds a generated diagram.
@@ -80,6 +85,10 @@ func GenerateDiagram(projectRoot string, dtype DiagramType) (*DiagramResult, err
 	case DiagramPipeline:
 		return generatePipeline()
 	default:
+		// Fall through to registered mappers
+		if m, ok := mapperRegistry[dtype]; ok {
+			return m.fn(projectRoot)
+		}
 		return nil, fmt.Errorf("unknown diagram type: %s", dtype)
 	}
 }
