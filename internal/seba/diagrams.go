@@ -607,10 +607,8 @@ func RenderDiagramsHTML(diagrams []*DiagramResult, outputPath string) error {
 			if slideIdx == 0 {
 				display = "block"
 			}
-			// HTML-encode the mermaid source for the hidden script tag
-			safeMermaid := strings.ReplaceAll(d.Mermaid, "&", "&amp;")
-			safeMermaid = strings.ReplaceAll(safeMermaid, "<", "&lt;")
-			safeMermaid = strings.ReplaceAll(safeMermaid, ">", "&gt;")
+			// Script tags treat content as raw text — only need to escape </script>
+			safeMermaid := strings.ReplaceAll(d.Mermaid, "</script>", "<\\/script>")
 			slides.WriteString(fmt.Sprintf(`
     <div class="slide" id="slide-%d" data-category="%s" style="display:%s">
       <div class="slide-header">
@@ -647,19 +645,19 @@ func RenderDiagramsHTML(diagrams []*DiagramResult, outputPath string) error {
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Outfit:wght@300;400;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
 <style>
 :root {
-  --gold: hsl(45, 52%%, 55%%);
+  --gold: hsl(45, 52%%, 55%%);       /* Accent/highlights ONLY */
   --gold-light: hsl(45, 60%%, 70%%);
-  --gold-glow: hsla(45, 52%%, 55%%, 0.3);
-  --emerald: hsl(160, 84%%, 39%%);
-  --emerald-dim: hsl(160, 60%%, 25%%);
-  --emerald-glow: hsla(160, 84%%, 39%%, 0.15);
+  --gold-glow: hsla(45, 52%%, 55%%, 0.15);
+  --emerald: hsl(160, 84%%, 39%%);   /* Sirsi canonical emerald */
+  --emerald-dim: hsl(160, 50%%, 28%%);
+  --emerald-glow: hsla(160, 84%%, 39%%, 0.12);
   --bg: hsl(165, 80%%, 3%%);
   --bg-alt: hsl(165, 80%%, 5%%);
-  --sidebar-bg: hsla(165, 80%%, 5%%, 0.85);
-  --card-bg: hsl(165, 40%%, 7%%);
-  --text: hsl(0, 0%%, 95%%);
-  --text-dim: hsl(0, 0%%, 60%%);
-  --border: hsla(0, 0%%, 100%%, 0.08);
+  --sidebar-bg: hsla(165, 60%%, 6%%, 0.92);
+  --card-bg: hsl(165, 30%%, 8%%);
+  --text: #F2F2F2;                   /* White — primary body text */
+  --text-dim: #8A8A8A;               /* Muted supporting text */
+  --border: hsla(0, 0%%, 100%%, 0.1);
   --heading: 'Cinzel', serif;
   --body: 'Outfit', sans-serif;
   --mono: 'JetBrains Mono', monospace;
@@ -699,22 +697,35 @@ body {
 .sidebar-header h1 {
   font-family: var(--heading);
   color: var(--gold);
-  font-size: 1.1rem;
-  font-weight: 400;
-  letter-spacing: 2px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 3px;
 }
 .sidebar-header p {
   color: var(--text-dim);
-  font-size: 0.75rem;
-  margin-top: 0.3rem;
+  font-size: 0.85rem;
+  margin-top: 0.4rem;
   letter-spacing: 0.5px;
+}
+.sidebar-back {
+  display: block;
+  padding: 0.8rem 1.5rem;
+  color: var(--emerald);
+  text-decoration: none;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--border);
+  transition: all 0.2s;
+}
+.sidebar-back:hover {
+  background: var(--emerald-glow);
+  color: var(--text);
 }
 .nav-category {
   padding: 0.5rem 0;
 }
 .nav-cat-label {
-  padding: 0.8rem 1.5rem 0.4rem;
-  font-size: 0.65rem;
+  padding: 1rem 1.5rem 0.4rem;
+  font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 1.5px;
@@ -722,10 +733,10 @@ body {
 }
 .nav-item {
   display: block;
-  padding: 0.5rem 1.5rem 0.5rem 2rem;
+  padding: 0.55rem 1.5rem 0.55rem 2rem;
   color: var(--text-dim);
   text-decoration: none;
-  font-size: 0.82rem;
+  font-size: 0.92rem;
   cursor: pointer;
   transition: all 0.2s;
   border-left: 2px solid transparent;
@@ -736,22 +747,26 @@ body {
   border-left-color: var(--emerald);
 }
 .nav-item.active {
-  color: var(--gold);
-  background: var(--gold-glow);
-  border-left-color: var(--gold);
+  color: var(--text);
+  background: var(--emerald-glow);
+  border-left-color: var(--emerald);
   font-weight: 600;
 }
 .sidebar-footer {
   margin-top: auto;
   padding: 1.5rem;
   border-top: 1px solid var(--border);
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   color: var(--text-dim);
   text-align: center;
 }
 .sidebar-footer a {
-  color: var(--gold);
+  color: var(--emerald);
   text-decoration: none;
+  transition: color 0.2s;
+}
+.sidebar-footer a:hover {
+  color: var(--text);
 }
 
 /* ── Main Content ───────────────────────────── */
@@ -798,9 +813,9 @@ body {
 }
 .kbd-hint {
   font-family: var(--mono);
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   color: var(--text-dim);
-  opacity: 0.5;
+  opacity: 0.6;
 }
 
 .content {
@@ -821,7 +836,7 @@ body {
   margin-bottom: 1rem;
 }
 .breadcrumb {
-  font-size: 0.75rem;
+  font-size: 0.88rem;
   color: var(--text-dim);
   letter-spacing: 0.5px;
 }
@@ -832,17 +847,17 @@ body {
 }
 .slide-counter {
   font-family: var(--mono);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   color: var(--text-dim);
 }
 .btn-copy {
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text-dim);
-  padding: 4px 12px;
+  padding: 6px 16px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   font-family: var(--body);
   transition: all 0.2s;
 }
@@ -853,10 +868,10 @@ body {
 .slide h2 {
   font-family: var(--heading);
   color: var(--gold);
-  font-size: 1.3rem;
+  font-size: 1.6rem;
   font-weight: 400;
   margin-bottom: 1.5rem;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
 }
 .mermaid-viewport {
   background: var(--card-bg);
@@ -905,6 +920,7 @@ script[type="text/mermaid"] {
     <h1>𓇽 SEBA</h1>
     <p>The Star Map · %d diagrams</p>
   </div>
+  <a class="sidebar-back" href="index.html">← Back to Pantheon</a>
   %s
   <div class="sidebar-footer">
     <p>𓇶 Sirsi Pantheon v1.0.0-rc1</p>

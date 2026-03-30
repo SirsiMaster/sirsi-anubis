@@ -147,6 +147,14 @@ func runSebaDiagram(cmd *cobra.Command, args []string) error {
 		}
 		abs, _ := filepath.Abs(htmlPath)
 		output.Success("HTML → %s", abs)
+
+		// Also write to docs/ for deployment as Pantheon sub-page
+		docsPath := filepath.Join("docs", "seba.html")
+		if err := seba.RenderDiagramsHTML(diagrams, docsPath); err != nil {
+			return fmt.Errorf("render docs HTML: %w", err)
+		}
+		docsAbs, _ := filepath.Abs(docsPath)
+		output.Success("Prod → %s", docsAbs)
 	} else {
 		for _, d := range diagrams {
 			sep := strings.Repeat("─", 60)
