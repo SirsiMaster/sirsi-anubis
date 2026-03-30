@@ -222,9 +222,9 @@ func TestTryLock_DoubleAcquireFails(t *testing.T) {
 func TestMock_Accessors(t *testing.T) {
 	t.Parallel()
 	m := &Mock{
-		NameStr:      "mock-test",
-		HomeDir:      "/mock/home",
-		WorkDir:      "/mock/work",
+		NameStr: "mock-test",
+		HomeDir: "/mock/home",
+		WorkDir: "/mock/work",
 	}
 	if m.Name() != "mock-test" {
 		t.Errorf("Name() = %q", m.Name())

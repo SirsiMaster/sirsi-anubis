@@ -12,15 +12,15 @@ import (
 func TestGeneralRules_Constructors(t *testing.T) {
 	t.Parallel()
 	constructors := map[string]func() jackal.ScanRule{
-		"system_caches":           NewSystemCachesRule,
-		"system_logs":             NewSystemLogsRule,
-		"crash_reports":           NewCrashReportsRule,
-		"downloads_junk":          NewDownloadsJunkRule,
-		"trash":                   NewTrashRule,
-		"browser_caches":          NewBrowserCachesRule,
-		"timemachine_local":      NewTimeMachineLocalRule,
-		"mail_attachments":       NewMailAttachmentsCacheRule,
-		"font_caches":             NewFontCachesRule,
+		"system_caches":     NewSystemCachesRule,
+		"system_logs":       NewSystemLogsRule,
+		"crash_reports":     NewCrashReportsRule,
+		"downloads_junk":    NewDownloadsJunkRule,
+		"trash":             NewTrashRule,
+		"browser_caches":    NewBrowserCachesRule,
+		"timemachine_local": NewTimeMachineLocalRule,
+		"mail_attachments":  NewMailAttachmentsCacheRule,
+		"font_caches":       NewFontCachesRule,
 	}
 	for name, constructor := range constructors {
 		rule := constructor()
@@ -47,8 +47,8 @@ func TestVirtualizationRules_Constructors(t *testing.T) {
 	constructors := map[string]func() jackal.ScanRule{
 		"parallels_full": NewParallelsFullRule,
 		"vmware_fusion":  NewVMwareFusionRule,
-		"utm":             NewUTMRule,
-		"virtualbox":      NewVirtualBoxRule,
+		"utm":            NewUTMRule,
+		"virtualbox":     NewVirtualBoxRule,
 	}
 	for name, constructor := range constructors {
 		rule := constructor()
@@ -70,8 +70,8 @@ func TestVirtualizationRules_Constructors(t *testing.T) {
 func TestAIRules_Constructors(t *testing.T) {
 	t.Parallel()
 	constructors := map[string]func() jackal.ScanRule{
-		"mlx_cache":          NewMLXCacheRule,
-		"metal_shaders":     NewMetalShaderCacheRule,
+		"mlx_cache":     NewMLXCacheRule,
+		"metal_shaders": NewMetalShaderCacheRule,
 	}
 	for name, constructor := range constructors {
 		rule := constructor()
@@ -114,9 +114,9 @@ func TestExpandedRules_AllConstructors(t *testing.T) {
 		"vscode_caches":      NewVSCodeCachesRule,
 		"jetbrains_caches":   NewJetBrainsCachesRule,
 		"android_studio":     NewAndroidStudioRule,
-		"cursor_caches":       NewCursorCacheRule,
-		"windsurf_caches":   NewWindsurfCacheRule,
-		"zed_caches":        NewZedCacheRule,
+		"cursor_caches":      NewCursorCacheRule,
+		"windsurf_caches":    NewWindsurfCacheRule,
+		"zed_caches":         NewZedCacheRule,
 	}
 	for name, constructor := range ideRules {
 		rule := constructor()
@@ -131,9 +131,9 @@ func TestExpandedRules_AllConstructors(t *testing.T) {
 
 	// Package manager rules
 	pkgRules := map[string]func() jackal.ScanRule{
-		"homebrew_cache":   NewHomebrewCacheRule,
-		"cocoapods_cache":  NewCocoaPodsCacheRule,
-		"spm_cache":        NewSPMCacheRule,
+		"homebrew_cache":  NewHomebrewCacheRule,
+		"cocoapods_cache": NewCocoaPodsCacheRule,
+		"spm_cache":       NewSPMCacheRule,
 	}
 	for name, constructor := range pkgRules {
 		rule := constructor()
@@ -148,10 +148,10 @@ func TestExpandedRules_AllConstructors(t *testing.T) {
 
 	// Cloud storage rules
 	cloudRules := map[string]func() jackal.ScanRule{
-		"onedrive_cache":       NewOneDriveCacheRule,
-		"google_drive_cache":   NewGoogleDriveCacheRule,
-		"dropbox_cache":        NewDropboxCacheRule,
-		"icloud_cache":         NewICloudCacheRule,
+		"onedrive_cache":     NewOneDriveCacheRule,
+		"google_drive_cache": NewGoogleDriveCacheRule,
+		"dropbox_cache":      NewDropboxCacheRule,
+		"icloud_cache":       NewICloudCacheRule,
 	}
 	for name, constructor := range cloudRules {
 		rule := constructor()
