@@ -163,6 +163,9 @@ func TestHandleThothReadMemory_LongJournal(t *testing.T) {
 // --- handleScanWorkspace tests ---
 
 func TestHandleScanWorkspace_DefaultPath(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping live workspace scan in short mode")
+	}
 	result, err := handleScanWorkspace(map[string]interface{}{})
 	if err != nil {
 		t.Fatalf("handleScanWorkspace: %v", err)
@@ -189,6 +192,9 @@ func TestHandleScanWorkspace_InvalidCategory(t *testing.T) {
 }
 
 func TestHandleScanWorkspace_ValidCategory(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping live workspace scan in short mode")
+	}
 	result, err := handleScanWorkspace(map[string]interface{}{
 		"category": "dev",
 	})
