@@ -9,7 +9,7 @@
 
 | Metric | Value | Source |
 |:---|:---|:---|
-| **Test Count** | **1,386+** | `go test -v ./... \| grep -c "=== RUN"` |
+| **Test Count** | **1,401+** | `go test -v ./... \| grep -c "=== RUN"` |
 | **Packages Passing** | **28/28** | `go test ./...` |
 | **Weighted Coverage** | **~86.2%** | `go test -cover ./...` |
 | **Binary Size** | 11.4 MB | `ls -lh pantheon` |
@@ -55,7 +55,7 @@
 ### 🔴 < 70% (Requires Remediation)
 | Package | Coverage | Action |
 |:---|:---|:---|
-| isis | 71.0% | Add strategy-specific tests |
+| isis | **80.1%** | Strategy tests added (up from 71%) |
 | mirror | 65.9% | Server paths unmocked |
 | jackal/rules | **64.5%** | Rule execution paths (up from 35%) |
 | platform | 62.4% | OS-specific branches |
