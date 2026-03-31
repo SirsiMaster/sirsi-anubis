@@ -57,26 +57,68 @@ type CoverageAssessor struct {
 	CachePath string
 }
 
-// DefaultThresholds returns the canonical coverage thresholds for Anubis.
+// safetyCriticalModules are modules where coverage is paramount (delete/kill operations).
+var safetyCriticalModules = map[string]bool{
+	"cleaner": true,
+	"guard":   true,
+}
+
+// elevatedThresholds are modules with higher-than-default coverage requirements.
+var elevatedThresholds = map[string]float64{
+	"cleaner": 80,
+	"guard":   80,
+	"scales":  80,
+}
+
+// DefaultThresholds dynamically discovers all internal/* packages and returns
+// coverage thresholds for each. Modules not in elevatedThresholds get a default
+// minimum of 50%. This ensures new modules are never invisible to Ma'at.
 func DefaultThresholds() []CoverageThreshold {
+	return DefaultThresholdsFromDir("")
+}
+
+// DefaultThresholdsFromDir discovers internal packages from a given project root.
+// If root is empty, it uses the current working directory.
+func DefaultThresholdsFromDir(root string) []CoverageThreshold {
+	internalDir := filepath.Join(root, "internal")
+	entries, err := os.ReadDir(internalDir)
+	if err != nil {
+		// Fallback: return a minimal set so tests and CI don't break.
+		return fallbackThresholds()
+	}
+
+	var thresholds []CoverageThreshold
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		minCov := 50.0 // default threshold
+		if elevated, ok := elevatedThresholds[name]; ok {
+			minCov = elevated
+		}
+		thresholds = append(thresholds, CoverageThreshold{
+			Module:         name,
+			MinCoverage:    minCov,
+			SafetyCritical: safetyCriticalModules[name],
+		})
+	}
+
+	if len(thresholds) == 0 {
+		return fallbackThresholds()
+	}
+	return thresholds
+}
+
+// fallbackThresholds returns a hardcoded minimum set for when directory scanning fails.
+func fallbackThresholds() []CoverageThreshold {
 	return []CoverageThreshold{
 		{Module: "cleaner", MinCoverage: 80, SafetyCritical: true},
-		{Module: "guard", MinCoverage: 60, SafetyCritical: true},
-		{Module: "ka", MinCoverage: 50, SafetyCritical: false},
-		{Module: "mirror", MinCoverage: 50, SafetyCritical: false},
-		{Module: "jackal", MinCoverage: 50, SafetyCritical: false},
-		{Module: "brain", MinCoverage: 50, SafetyCritical: false},
-		{Module: "hapi", MinCoverage: 50, SafetyCritical: false},
-		{Module: "scales", MinCoverage: 50, SafetyCritical: false},
-		{Module: "scarab", MinCoverage: 50, SafetyCritical: false},
-		{Module: "sight", MinCoverage: 50, SafetyCritical: false},
-		{Module: "profile", MinCoverage: 50, SafetyCritical: false},
-		{Module: "stealth", MinCoverage: 50, SafetyCritical: false},
-		{Module: "ignore", MinCoverage: 50, SafetyCritical: false},
-		{Module: "logging", MinCoverage: 50, SafetyCritical: false},
-		{Module: "platform", MinCoverage: 50, SafetyCritical: false},
-		{Module: "mcp", MinCoverage: 50, SafetyCritical: false},
-		{Module: "updater", MinCoverage: 50, SafetyCritical: false},
+		{Module: "guard", MinCoverage: 80, SafetyCritical: true},
+		{Module: "jackal", MinCoverage: 50},
+		{Module: "ka", MinCoverage: 50},
+		{Module: "mirror", MinCoverage: 50},
+		{Module: "scales", MinCoverage: 80},
 	}
 }
 
