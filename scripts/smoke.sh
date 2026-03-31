@@ -78,7 +78,7 @@ MIRROR_TMP=$(mktemp -d)
 # Create 2 identical 1KB files
 dd if=/dev/urandom of="$MIRROR_TMP/file_a.dat" bs=1024 count=1 2>/dev/null
 cp "$MIRROR_TMP/file_a.dat" "$MIRROR_TMP/file_b.dat"
-MIRROR_OUTPUT=$("$BINARY" mirror "$MIRROR_TMP" 2>&1)
+MIRROR_OUTPUT=$(timeout 30 "$BINARY" mirror "$MIRROR_TMP" 2>&1 || true)
 if echo "$MIRROR_OUTPUT" | grep -qEi "duplicate|group|match|hash|waste|1,024|1.0 KB|identical"; then
     pass "Mirror detected known duplicates"
 else
