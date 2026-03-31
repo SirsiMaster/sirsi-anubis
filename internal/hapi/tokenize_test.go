@@ -5,7 +5,7 @@ import (
 )
 
 // ── FastTokenize Tests ──────────────────────────────────────────────────
-// These cover the BPE-style tokenizer and all Accelerator.Tokenize() paths.
+// These cover the BPE-style tokenizer via the hapi backward-compat wrapper.
 
 func TestFastTokenize_Empty(t *testing.T) {
 	t.Parallel()
@@ -103,96 +103,6 @@ func TestFastTokenize_LargeInput(t *testing.T) {
 	tokens := FastTokenize(string(large))
 	if len(tokens) == 0 {
 		t.Error("should produce tokens for large input")
-	}
-}
-
-// ── Accelerator.Tokenize Tests ──────────────────────────────────────────
-
-func TestANETokenize(t *testing.T) {
-	t.Parallel()
-	ane := &AppleANEAccelerator{cores: 16}
-	tokens, err := ane.Tokenize("test tokenize")
-	if err != nil {
-		t.Fatalf("ANE.Tokenize error: %v", err)
-	}
-	if len(tokens) == 0 {
-		t.Error("ANE.Tokenize should return tokens")
-	}
-}
-
-func TestMetalTokenize(t *testing.T) {
-	t.Parallel()
-	metal := &MetalAccelerator{cores: 18, model: "M3 Pro"}
-	tokens, err := metal.Tokenize("metal shader test")
-	if err != nil {
-		t.Fatalf("Metal.Tokenize error: %v", err)
-	}
-	if len(tokens) == 0 {
-		t.Error("Metal.Tokenize should return tokens")
-	}
-}
-
-func TestCUDATokenize(t *testing.T) {
-	t.Parallel()
-	cuda := &CUDAAccelerator{model: "RTX 4090", vram: 24 * 1024 * 1024 * 1024}
-	tokens, err := cuda.Tokenize("cuda kernel")
-	if err != nil {
-		t.Fatalf("CUDA.Tokenize error: %v", err)
-	}
-	if len(tokens) == 0 {
-		t.Error("CUDA.Tokenize should return tokens")
-	}
-}
-
-func TestROCmTokenize(t *testing.T) {
-	t.Parallel()
-	rocm := &ROCmAccelerator{model: "RX 7900 XTX"}
-	tokens, err := rocm.Tokenize("rocm test")
-	if err != nil {
-		t.Fatalf("ROCm.Tokenize error: %v", err)
-	}
-	if len(tokens) == 0 {
-		t.Error("ROCm.Tokenize should return tokens")
-	}
-}
-
-func TestCPUTokenize(t *testing.T) {
-	t.Parallel()
-	cpu := &CPUAccelerator{cores: 8}
-	tokens, err := cpu.Tokenize("cpu fallback test")
-	if err != nil {
-		t.Fatalf("CPU.Tokenize error: %v", err)
-	}
-	if len(tokens) == 0 {
-		t.Error("CPU.Tokenize should return tokens")
-	}
-}
-
-// ── Tokenize Consistency ─────────────────────────────────────────────────
-// All accelerators should produce identical results since they all route
-// to FastTokenize under the hood.
-
-func TestTokenize_Consistency(t *testing.T) {
-	t.Parallel()
-	text := "consistency check across all backends"
-
-	ane := &AppleANEAccelerator{cores: 16}
-	metal := &MetalAccelerator{cores: 18}
-	cuda := &CUDAAccelerator{model: "RTX 4090"}
-	rocm := &ROCmAccelerator{model: "RX 7900"}
-	cpu := &CPUAccelerator{cores: 8}
-
-	t1, _ := ane.Tokenize(text)
-	t2, _ := metal.Tokenize(text)
-	t3, _ := cuda.Tokenize(text)
-	t4, _ := rocm.Tokenize(text)
-	t5, _ := cpu.Tokenize(text)
-
-	all := [][]int{t1, t2, t3, t4, t5}
-	for i := 1; i < len(all); i++ {
-		if len(all[0]) != len(all[i]) {
-			t.Errorf("accelerator[%d] produced %d tokens, accelerator[0] produced %d", i, len(all[i]), len(all[0]))
-		}
 	}
 }
 

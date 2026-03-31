@@ -171,9 +171,9 @@ func TestScanner_BuildInstalledAppIndex(t *testing.T) {
 		return "", nil
 	}
 
-	err := s.buildInstalledAppIndex(context.Background())
+	err := s.Provider.BuildInstalledIndex(context.Background(), s)
 	if err != nil {
-		t.Fatalf("buildInstalledAppIndex() error: %v", err)
+		t.Fatalf("BuildInstalledIndex() error: %v", err)
 	}
 
 	if !s.installedApps["com.test.app"] {
@@ -189,9 +189,9 @@ func TestScanner_IndexHomebrewCasks_Skip(t *testing.T) {
 	s.appDirs = []string{}
 	s.SkipBrew = true
 
-	err := s.buildInstalledAppIndex(context.Background()) // Should skip brew list
+	err := s.Provider.BuildInstalledIndex(context.Background(), s) // Should skip brew list
 	if err != nil {
-		t.Fatalf("buildInstalledAppIndex with SkipBrew=true error: %v", err)
+		t.Fatalf("BuildInstalledIndex with SkipBrew=true error: %v", err)
 	}
 	if len(s.installedNames) != 0 {
 		t.Errorf("expected 0 installed names, got %d", len(s.installedNames))
@@ -256,13 +256,12 @@ func TestScanner_ScanForOrphans(t *testing.T) {
 	s.homeDir = home
 	s.installedApps["com.live.app"] = true
 
-	// Mock locations to only look in our temp dir
-	// Save current locations to restore later
-	originalLocations := userResidualLocations
-	userResidualLocations = []residualLocation{
-		{ResidualPreferences, "~/Library/Preferences", false},
+	// Inject mock provider with custom locations
+	s.Provider = &TestMockProvider{
+		Locations: []residualLocation{
+			{ResidualPreferences, "~/Library/Preferences", false},
+		},
 	}
-	defer func() { userResidualLocations = originalLocations }()
 
 	orphans := s.scanForOrphans(context.Background(), false)
 
@@ -523,13 +522,15 @@ func TestResidual_Defaults(t *testing.T) {
 // Residual location constants
 // ═══════════════════════════════════════════
 
-func TestUserResidualLocations_Complete(t *testing.T) {
-	if len(userResidualLocations) < 12 {
-		t.Errorf("expected at least 12 user residual locations, got %d", len(userResidualLocations))
+func TestDarwinUserResidualLocations_Complete(t *testing.T) {
+	p := &DarwinProvider{}
+	locations := p.ResidualLocations(false)
+	if len(locations) < 12 {
+		t.Errorf("expected at least 12 user residual locations, got %d", len(locations))
 	}
 
 	// All user locations should NOT require sudo
-	for _, loc := range userResidualLocations {
+	for _, loc := range locations {
 		if loc.RequiresSudo {
 			t.Errorf("user location %q should not require sudo", loc.Dir)
 		}
@@ -539,13 +540,18 @@ func TestUserResidualLocations_Complete(t *testing.T) {
 	}
 }
 
-func TestSystemResidualLocations_Complete(t *testing.T) {
-	if len(systemResidualLocations) < 5 {
-		t.Errorf("expected at least 5 system residual locations, got %d", len(systemResidualLocations))
+func TestDarwinSystemResidualLocations_Complete(t *testing.T) {
+	p := &DarwinProvider{}
+	allLocations := p.ResidualLocations(true)
+	userLocations := p.ResidualLocations(false)
+	systemOnly := allLocations[len(userLocations):]
+
+	if len(systemOnly) < 5 {
+		t.Errorf("expected at least 5 system residual locations, got %d", len(systemOnly))
 	}
 
 	// All system locations SHOULD require sudo
-	for _, loc := range systemResidualLocations {
+	for _, loc := range systemOnly {
 		if !loc.RequiresSudo {
 			t.Errorf("system location %q should require sudo", loc.Dir)
 		}

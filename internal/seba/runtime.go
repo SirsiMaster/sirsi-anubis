@@ -18,9 +18,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-
-	"github.com/SirsiMaster/sirsi-pantheon/internal/guard"
-	"github.com/SirsiMaster/sirsi-pantheon/internal/hapi"
 )
 
 func init() {
@@ -47,10 +44,10 @@ const (
 )
 
 // ── Memory Pressure ─────────────────────────────────────────────────
-// Uses guard.Audit() to get live RAM usage and process groups.
+// Uses guardAudit() to get live RAM usage and process groups.
 
 func generateMemoryPressure(_ string) (*DiagramResult, error) {
-	audit, err := guard.Audit()
+	audit, err := guardAudit()
 	if err != nil {
 		return nil, fmt.Errorf("guard audit: %w", err)
 	}
@@ -110,12 +107,12 @@ func generateMemoryPressure(_ string) (*DiagramResult, error) {
 }
 
 // ── CPU Topology ────────────────────────────────────────────────────
-// Uses hapi.DetectHardware() + runtime info.
+// Uses DetectHardware() + runtime info.
 
 func generateCPUTopology(_ string) (*DiagramResult, error) {
-	hw, err := hapi.DetectHardware()
+	hw, err := DetectHardware()
 	if err != nil {
-		return nil, fmt.Errorf("hapi detect: %w", err)
+		return nil, fmt.Errorf("hardware detect: %w", err)
 	}
 
 	var sb strings.Builder
@@ -164,12 +161,12 @@ func generateCPUTopology(_ string) (*DiagramResult, error) {
 }
 
 // ── GPU Architecture ────────────────────────────────────────────────
-// Uses hapi.DetectHardware() for GPU/ANE info.
+// Uses DetectHardware() for GPU/ANE info.
 
 func generateGPUArchitecture(_ string) (*DiagramResult, error) {
-	hw, err := hapi.DetectHardware()
+	hw, err := DetectHardware()
 	if err != nil {
-		return nil, fmt.Errorf("hapi detect: %w", err)
+		return nil, fmt.Errorf("hardware detect: %w", err)
 	}
 
 	var sb strings.Builder
@@ -177,7 +174,7 @@ func generateGPUArchitecture(_ string) (*DiagramResult, error) {
 	sb.WriteString(fmt.Sprintf("    SoC[\"🔲 %s<br/>%s\"]\n", hw.CPUModel, hw.OS))
 
 	// GPU
-	gpuLabel := hapi.FormatGPUType(hw.GPU.Type)
+	gpuLabel := FormatGPUType(hw.GPU.Type)
 	sb.WriteString(fmt.Sprintf("    GPU[\"🎮 %s<br/>%s\"]\n", hw.GPU.Name, gpuLabel))
 	sb.WriteString("    SoC --> GPU\n")
 
@@ -212,11 +209,11 @@ func generateGPUArchitecture(_ string) (*DiagramResult, error) {
 
 	// Color based on GPU type
 	switch hw.GPU.Type {
-	case hapi.GPUAppleMetal:
+	case GPUAppleMetal:
 		sb.WriteString("    style GPU fill:#333333,stroke:#C8A951,color:#C8A951\n")
-	case hapi.GPUNVIDIA:
+	case GPUNVIDIA:
 		sb.WriteString("    style GPU fill:#76B900,stroke:#5A8F00,color:#000\n")
-	case hapi.GPUAMD:
+	case GPUAMD:
 		sb.WriteString("    style GPU fill:#ED1C24,stroke:#B8171C,color:#fff\n")
 	}
 	sb.WriteString("    style SoC fill:#2C3E50,stroke:#1A252F,color:#fff\n")
@@ -232,13 +229,13 @@ func generateGPUArchitecture(_ string) (*DiagramResult, error) {
 // Top processes by RSS with group classification.
 
 func generateProcessMap(_ string) (*DiagramResult, error) {
-	audit, err := guard.Audit()
+	audit, err := guardAudit()
 	if err != nil {
 		return nil, fmt.Errorf("guard audit: %w", err)
 	}
 
 	// Extract top 20 processes by RSS from all groups
-	var allProcs []guard.ProcessInfo
+	var allProcs []ProcessInfo
 	for _, g := range audit.Groups {
 		allProcs = append(allProcs, g.Processes...)
 	}
@@ -587,12 +584,12 @@ func generateDiskUsage(_ string) (*DiagramResult, error) {
 // Combines CPU + GPU + RAM + Disk into one diagram. The "master map".
 
 func generateSystemOverview(_ string) (*DiagramResult, error) {
-	hw, err := hapi.DetectHardware()
+	hw, err := DetectHardware()
 	if err != nil {
-		return nil, fmt.Errorf("hapi detect: %w", err)
+		return nil, fmt.Errorf("hardware detect: %w", err)
 	}
 
-	audit, err := guard.Audit()
+	audit, err := guardAudit()
 	if err != nil {
 		return nil, fmt.Errorf("guard audit: %w", err)
 	}
@@ -619,7 +616,7 @@ func generateSystemOverview(_ string) (*DiagramResult, error) {
 	sb.WriteString("    Machine --> RAM\n")
 
 	// GPU
-	gpuLabel := hapi.FormatGPUType(hw.GPU.Type)
+	gpuLabel := FormatGPUType(hw.GPU.Type)
 	sb.WriteString(fmt.Sprintf("    GPU[\"🎮 %s<br/>%s\"]\n", hw.GPU.Name, gpuLabel))
 	sb.WriteString("    Machine --> GPU\n")
 
@@ -658,9 +655,9 @@ func generateSystemOverview(_ string) (*DiagramResult, error) {
 		sb.WriteString("    style RAM fill:#1A1A5E,stroke:#C8A951,color:#C8A951\n")
 	}
 	switch hw.GPU.Type {
-	case hapi.GPUAppleMetal:
+	case GPUAppleMetal:
 		sb.WriteString("    style GPU fill:#333333,stroke:#C8A951,color:#C8A951\n")
-	case hapi.GPUNVIDIA:
+	case GPUNVIDIA:
 		sb.WriteString("    style GPU fill:#76B900,stroke:#5A8F00,color:#000\n")
 	}
 

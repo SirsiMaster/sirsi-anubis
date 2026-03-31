@@ -10,7 +10,7 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
 )
 
-var version = "v0.8.0-beta"
+var version = "v1.0.0-rc1"
 
 // versionCmd prints the version and optionally checks for updates.
 var versionCmd = &cobra.Command{
@@ -68,6 +68,7 @@ func init() {
 	rootCmd.AddCommand(hapiCmd)
 	rootCmd.AddCommand(sebaCmd)
 	rootCmd.AddCommand(seshatCmd)
+	rootCmd.AddCommand(neithCmd)
 	rootCmd.AddCommand(initiateCmd)
 	rootCmd.AddCommand(versionCmd)
 }

@@ -52,7 +52,7 @@ func TestScan_WithLaunchServices(t *testing.T) {
 
 // ─── scanLaunchServices ──────────────────────────────────────────────────
 
-func TestScanLaunchServices(t *testing.T) {
+func TestScanRegistry(t *testing.T) {
 	scanner := NewScanner()
 	scanner.SkipBrew = true
 	scanner.DirReader = func(path string) ([]os.DirEntry, error) {
@@ -61,14 +61,14 @@ func TestScanLaunchServices(t *testing.T) {
 	scanner.ExecCommand = func(ctx context.Context, name string, args ...string) *exec.Cmd {
 		return exec.CommandContext(ctx, "true")
 	}
-	// Build installed app index first (required for scanLaunchServices)
-	scanner.buildInstalledAppIndex(context.Background())
+	// Build installed app index first (required for registry scan)
+	scanner.Provider.BuildInstalledIndex(context.Background(), scanner)
 
-	ghosts := scanner.scanLaunchServices(context.Background())
+	ghosts := scanner.Provider.ScanRegistry(context.Background(), scanner)
 	if ghosts == nil {
-		t.Fatal("scanLaunchServices returned nil")
+		t.Fatal("ScanRegistry returned nil")
 	}
-	t.Logf("Launch Services ghosts found: %d", len(ghosts))
+	t.Logf("Registry ghosts found: %d", len(ghosts))
 }
 
 // ─── indexHomebrewCasks ─────────────────────────────────────────────────

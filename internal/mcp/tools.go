@@ -14,6 +14,8 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal/rules"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/ka"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/maat"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/thoth"
 )
 
 // registerTools adds all Anubis tools to the MCP server.
@@ -96,6 +98,71 @@ func registerTools(s *Server) {
 			Properties: map[string]SchemaField{},
 		},
 	}, handleDetectHardware)
+
+	s.RegisterTool(Tool{
+		Name:        "thoth_sync",
+		Description: "Trigger Thoth memory sync — auto-discovers codebase facts and updates .thoth/memory.yaml and journal.md.",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]SchemaField{
+				"path": {
+					Type:        "string",
+					Description: "Path to the project root. Defaults to current working directory.",
+				},
+			},
+		},
+	}, handleThothSync)
+
+	s.RegisterTool(Tool{
+		Name:        "maat_audit",
+		Description: "Run coverage governance audit across all modules. Returns per-module coverage and pass/fail verdicts.",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]SchemaField{
+				"skip_tests": {
+					Type:        "boolean",
+					Description: "Skip running go test, use cached coverage only. Defaults to true for speed.",
+				},
+			},
+		},
+	}, handleMaatAudit)
+
+	s.RegisterTool(Tool{
+		Name:        "anubis_weigh",
+		Description: "Run a full disk waste analysis and return a dashboard summary of infrastructure waste.",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]SchemaField{
+				"path": {
+					Type:        "string",
+					Description: "Path to scan. Defaults to current working directory.",
+				},
+			},
+		},
+	}, handleAnubisWeigh)
+
+	s.RegisterTool(Tool{
+		Name:        "judge_cleanup",
+		Description: "DRY RUN ONLY — Preview what would be cleaned without deleting anything. Use the CLI 'pantheon anubis judge --confirm' for actual cleanup.",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]SchemaField{
+				"path": {
+					Type:        "string",
+					Description: "Path to scan. Defaults to current working directory.",
+				},
+			},
+		},
+	}, handleJudgeCleanup)
+
+	s.RegisterTool(Tool{
+		Name:        "pantheon_status",
+		Description: "Overall Pantheon system status — modules, version, brain status, and operational readiness.",
+		InputSchema: InputSchema{
+			Type:       "object",
+			Properties: map[string]SchemaField{},
+		},
+	}, makePantheonStatusHandler(s))
 }
 
 // handleScanWorkspace runs the Jackal scan engine on a workspace.
@@ -430,6 +497,185 @@ func shortenHomePath(path string) string {
 		return "~" + path[len(home):]
 	}
 	return path
+}
+
+// handleThothSync triggers Thoth memory and journal sync.
+func handleThothSync(args map[string]interface{}) (*ToolResult, error) {
+	projectPath, _ := args["path"].(string)
+	if projectPath == "" {
+		var err error
+		projectPath, err = os.Getwd()
+		if err != nil {
+			return textResult("Could not determine working directory", true), nil
+		}
+	}
+
+	// Sync memory
+	err := thoth.Sync(thoth.SyncOptions{RepoRoot: projectPath, UpdateDate: true})
+	if err != nil {
+		return textResult(fmt.Sprintf("Thoth memory sync failed: %v", err), true), nil
+	}
+
+	// Sync journal
+	commitCount, err := thoth.SyncJournal(thoth.JournalSyncOptions{
+		RepoRoot: projectPath,
+		Since:    "24 hours ago",
+	})
+	if err != nil {
+		// Journal sync failure is non-fatal
+		return textResult(fmt.Sprintf("Memory synced. Journal sync failed: %v", err), false), nil
+	}
+
+	return textResult(fmt.Sprintf("Thoth sync complete.\n- Memory updated: %s/.thoth/memory.yaml\n- Journal: %d commits processed", projectPath, commitCount), false), nil
+}
+
+// handleMaatAudit runs a coverage governance audit.
+func handleMaatAudit(args map[string]interface{}) (*ToolResult, error) {
+	skipTests := true // default to true for MCP (speed)
+	if v, ok := args["skip_tests"].(bool); ok {
+		skipTests = v
+	}
+
+	assessor := &maat.CoverageAssessor{
+		Thresholds: maat.DefaultThresholds(),
+		SkipTests:  skipTests,
+	}
+
+	report, err := maat.Weigh(assessor)
+	if err != nil {
+		return textResult(fmt.Sprintf("Ma'at audit failed: %v", err), true), nil
+	}
+
+	var sb strings.Builder
+	sb.WriteString("Ma'at Governance Audit\n\n")
+	sb.WriteString(fmt.Sprintf("Verdict: %s\n", report.OverallVerdict))
+	sb.WriteString(fmt.Sprintf("Weight: %d / 100\n", report.OverallWeight))
+	sb.WriteString(fmt.Sprintf("Assessments: %d passed, %d warned, %d failed\n\n",
+		report.Passes, report.Warnings, report.Failures))
+
+	for _, a := range report.Assessments {
+		sb.WriteString(fmt.Sprintf("  [%s] %s — weight %d\n",
+			a.Verdict, a.Subject, a.FeatherWeight))
+	}
+
+	return textResult(sb.String(), false), nil
+}
+
+// handleAnubisWeigh runs a full disk waste scan.
+func handleAnubisWeigh(args map[string]interface{}) (*ToolResult, error) {
+	scanPath, _ := args["path"].(string)
+	if scanPath == "" {
+		var err error
+		scanPath, err = os.Getwd()
+		if err != nil {
+			return textResult("Could not determine working directory", true), nil
+		}
+	}
+
+	engine := jackal.NewEngine()
+	engine.RegisterAll(rules.AllRules()...)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	result, err := engine.Scan(ctx, jackal.ScanOptions{})
+	if err != nil {
+		return textResult(fmt.Sprintf("Weigh failed: %v", err), true), nil
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Anubis Weigh — %s\n\n", scanPath))
+	sb.WriteString(fmt.Sprintf("Total waste: %s\n", jackal.FormatSize(result.TotalSize)))
+	sb.WriteString(fmt.Sprintf("Findings: %d across %d rules\n\n", len(result.Findings), result.RulesRan))
+
+	if len(result.ByCategory) > 0 {
+		sb.WriteString("By Category:\n")
+		for cat, summary := range result.ByCategory {
+			sb.WriteString(fmt.Sprintf("  %s: %s (%d items)\n",
+				string(cat), jackal.FormatSize(summary.TotalSize), summary.Findings))
+		}
+	}
+
+	return textResult(sb.String(), false), nil
+}
+
+// handleJudgeCleanup returns a dry-run cleanup preview. NEVER deletes anything.
+func handleJudgeCleanup(_ map[string]interface{}) (*ToolResult, error) {
+	engine := jackal.NewEngine()
+	engine.RegisterAll(rules.AllRules()...)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	result, err := engine.Scan(ctx, jackal.ScanOptions{})
+	if err != nil {
+		return textResult(fmt.Sprintf("Scan failed: %v", err), true), nil
+	}
+
+	var sb strings.Builder
+	sb.WriteString("Judge Cleanup Preview (DRY RUN)\n\n")
+	sb.WriteString(fmt.Sprintf("Would clean: %s across %d items\n\n",
+		jackal.FormatSize(result.TotalSize), len(result.Findings)))
+
+	limit := 30
+	if len(result.Findings) < limit {
+		limit = len(result.Findings)
+	}
+
+	for _, f := range result.Findings[:limit] {
+		sb.WriteString(fmt.Sprintf("  [REMOVE] %s — %s\n",
+			shortenHomePath(f.Path), jackal.FormatSize(f.SizeBytes)))
+	}
+
+	if len(result.Findings) > limit {
+		sb.WriteString(fmt.Sprintf("\n  ... and %d more items\n", len(result.Findings)-limit))
+	}
+
+	sb.WriteString("\nThis is a DRY RUN preview. No files were deleted.")
+	sb.WriteString("\nRun 'pantheon anubis judge --confirm' in terminal for actual cleanup.")
+
+	return textResult(sb.String(), false), nil
+}
+
+// makePantheonStatusHandler creates a handler that captures the server reference.
+func makePantheonStatusHandler(s *Server) func(map[string]interface{}) (*ToolResult, error) {
+	return func(_ map[string]interface{}) (*ToolResult, error) {
+		var sb strings.Builder
+		sb.WriteString("Pantheon System Status\n\n")
+		sb.WriteString(fmt.Sprintf("Version: %s\n", ServerVersion))
+		sb.WriteString(fmt.Sprintf("Platform: %s/%s\n", runtime.GOOS, runtime.GOARCH))
+		sb.WriteString(fmt.Sprintf("CPUs: %d\n", runtime.NumCPU()))
+		sb.WriteString(fmt.Sprintf("MCP Tools: %d registered\n", len(s.tools)))
+		sb.WriteString(fmt.Sprintf("MCP Resources: %d registered\n", len(s.resources)))
+
+		// Brain status
+		if brain.IsInstalled() {
+			sb.WriteString("Brain: installed\n")
+		} else {
+			sb.WriteString("Brain: not installed\n")
+		}
+
+		// Horus index
+		m, err := horus.LoadManifest(horus.DefaultCachePath())
+		if err == nil {
+			sb.WriteString(fmt.Sprintf("Horus Index: %d files, age %s\n",
+				m.Stats.FilesIndexed, time.Since(m.Timestamp).Truncate(time.Second)))
+		} else {
+			sb.WriteString("Horus Index: not cached\n")
+		}
+
+		// Watchdog
+		bridge := GetWatchdogBridge()
+		if bridge != nil {
+			sb.WriteString("Watchdog: active\n")
+		} else {
+			sb.WriteString("Watchdog: dormant\n")
+		}
+
+		sb.WriteString("\nModules: jackal, ka, guard, sight, hapi, seba, scarab, thoth, seshat, neith, maat, mcp, brain")
+
+		return textResult(sb.String(), false), nil
+	}
 }
 
 // handleDetectHardware returns the system hardware profile via Hapi.

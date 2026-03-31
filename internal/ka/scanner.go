@@ -98,31 +98,6 @@ type residualLocation struct {
 	RequiresSudo bool
 }
 
-// userResidualLocations are directories under ~/Library where app remnants hide.
-var userResidualLocations = []residualLocation{
-	{ResidualPreferences, "~/Library/Preferences", false},
-	{ResidualAppSupport, "~/Library/Application Support", false},
-	{ResidualCaches, "~/Library/Caches", false},
-	{ResidualContainers, "~/Library/Containers", false},
-	{ResidualGroupContainers, "~/Library/Group Containers", false},
-	{ResidualSavedState, "~/Library/Saved Application State", false},
-	{ResidualHTTPStorages, "~/Library/HTTPStorages", false},
-	{ResidualWebKit, "~/Library/WebKit", false},
-	{ResidualCookies, "~/Library/Cookies", false},
-	{ResidualAppScripts, "~/Library/Application Scripts", false},
-	{ResidualLogs, "~/Library/Logs", false},
-	{ResidualCrashReports, "~/Library/Logs/DiagnosticReports", false},
-}
-
-// systemResidualLocations require sudo access.
-var systemResidualLocations = []residualLocation{
-	{ResidualPreferences, "/Library/Preferences", true},
-	{ResidualLaunchAgent, "/Library/LaunchAgents", true},
-	{ResidualLaunchDaemon, "/Library/LaunchDaemons", true},
-	{ResidualReceipts, "/var/db/receipts", true},
-	{ResidualAppSupport, "/Library/Application Support", true},
-}
-
 // HorusManifest is the interface for the shared filesystem index.
 type HorusManifest interface {
 	DirSizeAndCount(dir string) (int64, int)
@@ -142,9 +117,10 @@ type Scanner struct {
 	SkipLaunchServices bool
 	SkipBrew           bool
 	Manifest           HorusManifest
+	Provider           GhostProvider // Platform-specific detection strategy
 }
 
-// NewScanner creates a new Ka scanner.
+// NewScanner creates a new Ka scanner with the appropriate platform provider.
 func NewScanner() *Scanner {
 	homeDir, _ := os.UserHomeDir()
 	s := &Scanner{
@@ -160,6 +136,17 @@ func NewScanner() *Scanner {
 		ExecCommand:    exec.CommandContext, // Default implementation
 		ReadBundleIDFn: readBundleIDDefault, // Default implementation
 	}
+
+	// Select platform provider
+	switch runtime.GOOS {
+	case "linux":
+		s.Provider = &LinuxProvider{}
+	case "windows":
+		s.Provider = &WindowsProvider{}
+	default:
+		s.Provider = &DarwinProvider{}
+	}
+
 	return s
 }
 
@@ -184,7 +171,7 @@ func (s *Scanner) Scan(ctx context.Context, includeSudo bool) ([]Ghost, error) {
 
 	// Step 1: Build inventory of currently installed apps
 	logging.Debug("ka scan starting", "includeSudo", includeSudo)
-	if err := s.buildInstalledAppIndex(ctx); err != nil {
+	if err := s.Provider.BuildInstalledIndex(ctx, s); err != nil {
 		return nil, fmt.Errorf("failed to index installed apps: %w", err)
 	}
 	logging.Debug("installed apps indexed", "bundleIDs", len(s.installedApps), "names", len(s.installedNames))
@@ -199,7 +186,7 @@ func (s *Scanner) Scan(ctx context.Context, includeSudo bool) ([]Ghost, error) {
 		orphans = s.scanForOrphans(ctx, includeSudo)
 		lsGhosts = make(map[string]bool)
 	} else {
-		// Full path: parallel filesystem + lsregister.
+		// Full path: parallel filesystem + registry scan.
 		type scanResult struct {
 			ghosts map[string]bool
 		}
@@ -208,7 +195,7 @@ func (s *Scanner) Scan(ctx context.Context, includeSudo bool) ([]Ghost, error) {
 		go func() {
 			runtime.LockOSThread()
 			defer runtime.UnlockOSThread()
-			ghosts := s.scanLaunchServices(ctx)
+			ghosts := s.Provider.ScanRegistry(ctx, s)
 			resChan <- scanResult{ghosts: ghosts}
 		}()
 
@@ -248,57 +235,11 @@ func (s *Scanner) Clean(ghost Ghost, dryRun bool, useTrash bool) (int64, int, er
 	return totalFreed, totalCleaned, nil
 }
 
-// buildInstalledAppIndex scans configured app directories for .app bundles.
-func (s *Scanner) buildInstalledAppIndex(ctx context.Context) error {
-	for _, dir := range s.appDirs {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
-
-		entries, err := s.DirReader(dir)
-		if err != nil {
-			continue
-		}
-
-		for _, entry := range entries {
-			if !strings.HasSuffix(entry.Name(), ".app") {
-				continue
-			}
-
-			appPath := filepath.Join(dir, entry.Name())
-			appName := strings.TrimSuffix(entry.Name(), ".app")
-			s.installedNames[strings.ToLower(appName)] = true
-
-			// Read bundle ID from Info.plist
-			bundleID, err := s.ReadBundleIDFn(ctx, appPath)
-			if err != nil {
-				continue
-			}
-			if bundleID != "" {
-				s.installedApps[bundleID] = true
-				s.knownBundleIDs[bundleID] = appName
-			}
-		}
-	}
-
-	// Also index Homebrew casks if not skipped
-	if !s.SkipBrew {
-		s.indexHomebrewCasks(ctx)
-	}
-
-	return nil
-}
-
 // scanForOrphans scans residual locations for entries that don't match installed apps.
 func (s *Scanner) scanForOrphans(ctx context.Context, includeSudo bool) map[string][]Residual {
 	orphans := make(map[string][]Residual)
 
-	locations := userResidualLocations
-	if includeSudo {
-		locations = append(locations, systemResidualLocations...)
-	}
+	locations := s.Provider.ResidualLocations(includeSudo)
 
 	for _, loc := range locations {
 		select {
@@ -315,19 +256,19 @@ func (s *Scanner) scanForOrphans(ctx context.Context, includeSudo bool) map[stri
 
 		for _, entry := range entries {
 			name := entry.Name()
-			bundleID := extractBundleID(name)
+			appID := s.Provider.ExtractAppID(name)
 
-			if bundleID == "" {
+			if appID == "" {
 				continue // Can't identify — skip
 			}
 
-			// Skip known system/platform bundle IDs — these are NOT ghosts
-			if isSystemBundleID(bundleID) {
+			// Skip known system/platform IDs — these are NOT ghosts
+			if s.Provider.IsSystemID(appID) {
 				continue
 			}
 
 			// Is this app still installed?
-			if s.isInstalled(bundleID, name) {
+			if s.isInstalled(appID, name) {
 				continue // Not a ghost
 			}
 
@@ -363,55 +304,12 @@ func (s *Scanner) scanForOrphans(ctx context.Context, includeSudo bool) map[stri
 				RequiresSudo: loc.RequiresSudo,
 			}
 
-			// Group by bundle ID
-			orphans[bundleID] = append(orphans[bundleID], residual)
+			// Group by app ID
+			orphans[appID] = append(orphans[appID], residual)
 		}
 	}
 
 	return orphans
-}
-
-// scanLaunchServices queries the Launch Services database for registered ghost apps.
-func (s *Scanner) scanLaunchServices(ctx context.Context) map[string]bool {
-	ghosts := make(map[string]bool)
-
-	path := "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
-	cmd := s.ExecCommand(ctx, path, "-dump")
-	output, err := cmd.Output()
-	if err != nil {
-		return ghosts
-	}
-
-	scanner := bufio.NewScanner(strings.NewReader(string(output)))
-	var currentBundle string
-	var currentPath string
-
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-
-		if strings.HasPrefix(line, "bundle id:") {
-			currentBundle = strings.TrimSpace(strings.TrimPrefix(line, "bundle id:"))
-		}
-		if strings.HasPrefix(line, "path:") {
-			currentPath = strings.TrimSpace(strings.TrimPrefix(line, "path:"))
-		}
-
-		// When we have both bundle and path, check if the app exists
-		if currentBundle != "" && currentPath != "" {
-			if strings.HasSuffix(currentPath, ".app") {
-				if _, err := os.Stat(currentPath); os.IsNotExist(err) {
-					// App path doesn't exist — it's a ghost in Launch Services
-					if !s.installedApps[currentBundle] {
-						ghosts[currentBundle] = true
-					}
-				}
-			}
-			currentBundle = ""
-			currentPath = ""
-		}
-	}
-
-	return ghosts
 }
 
 // mergeOrphans combines filesystem orphans and Launch Services ghosts into Ghost structs.

@@ -104,3 +104,141 @@ func TestWeave_FieldAccess(t *testing.T) {
 		t.Error("DriftFound should be true")
 	}
 }
+
+// ── AssessLogs real logic ───────────────────────────────────────────
+
+func TestAssessLogs_FullMatch(t *testing.T) {
+	t.Parallel()
+	w := &Weave{Plan: []string{"build scanner", "fix tests"}}
+	score, err := w.AssessLogs("We build the scanner module and fix tests across the board.")
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+	if score < 0.99 {
+		t.Errorf("score = %f, want ~1.0 (all keywords present)", score)
+	}
+}
+
+func TestAssessLogs_NoMatch(t *testing.T) {
+	t.Parallel()
+	w := &Weave{Plan: []string{"deploy kubernetes cluster"}}
+	score, err := w.AssessLogs("This log talks about nothing related at all xyz.")
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+	if score > 0.01 {
+		t.Errorf("score = %f, want ~0.0 (no keywords match)", score)
+	}
+}
+
+func TestAssessLogs_PartialMatch(t *testing.T) {
+	t.Parallel()
+	w := &Weave{Plan: []string{"build pulse engine", "deploy to production"}}
+	// "build" and "engine" match first item (2/3), nothing matches second (0/3)
+	score, err := w.AssessLogs("We build the engine for local testing.")
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+	if score < 0.2 || score > 0.8 {
+		t.Errorf("score = %f, want partial match between 0.2 and 0.8", score)
+	}
+}
+
+// ── Tapestry.Align — all deity checks ───────────────────────────────
+
+func TestAlign_AnubisIncorrect(t *testing.T) {
+	t.Parallel()
+	tap := &Tapestry{MaatConsistent: true, AnubisCorrect: false, KaExtinguished: true, ThothAccurate: true, SekhmetHardened: true}
+	err := tap.Align()
+	if err == nil {
+		t.Fatal("expected error for AnubisCorrect=false")
+	}
+	if !contains(err.Error(), "Anubis") {
+		t.Errorf("error should mention Anubis: %v", err)
+	}
+}
+
+func TestAlign_KaNotExtinguished(t *testing.T) {
+	t.Parallel()
+	tap := &Tapestry{MaatConsistent: true, AnubisCorrect: true, KaExtinguished: false, ThothAccurate: true, SekhmetHardened: true}
+	err := tap.Align()
+	if err == nil {
+		t.Fatal("expected error for KaExtinguished=false")
+	}
+	if !contains(err.Error(), "Ka") {
+		t.Errorf("error should mention Ka: %v", err)
+	}
+}
+
+func TestAlign_ThothInaccurate(t *testing.T) {
+	t.Parallel()
+	tap := &Tapestry{MaatConsistent: true, AnubisCorrect: true, KaExtinguished: true, ThothAccurate: false, SekhmetHardened: true}
+	err := tap.Align()
+	if err == nil {
+		t.Fatal("expected error for ThothAccurate=false")
+	}
+	if !contains(err.Error(), "Thoth") {
+		t.Errorf("error should mention Thoth: %v", err)
+	}
+}
+
+func TestAlign_SekhmetNotHardened(t *testing.T) {
+	t.Parallel()
+	tap := &Tapestry{MaatConsistent: true, AnubisCorrect: true, KaExtinguished: true, ThothAccurate: true, SekhmetHardened: false}
+	err := tap.Align()
+	if err == nil {
+		t.Fatal("expected error for SekhmetHardened=false")
+	}
+	if !contains(err.Error(), "Sekhmet") {
+		t.Errorf("error should mention Sekhmet: %v", err)
+	}
+}
+
+// ── CheckDrift ──────────────────────────────────────────────────────
+
+func TestCheckDrift_NoDrift(t *testing.T) {
+	t.Parallel()
+	w := &Weave{
+		Plan:         []string{"Build scanner", "Fix tests"},
+		Achievements: []string{"build scanner", "fix tests"},
+	}
+	w.CheckDrift()
+	if w.DriftFound {
+		t.Error("expected no drift when all plan items achieved (case-insensitive)")
+	}
+}
+
+func TestCheckDrift_HasDrift(t *testing.T) {
+	t.Parallel()
+	w := &Weave{
+		Plan:         []string{"Build scanner", "Deploy to prod"},
+		Achievements: []string{"Build scanner"},
+	}
+	w.CheckDrift()
+	if !w.DriftFound {
+		t.Error("expected drift when plan items are unachieved")
+	}
+}
+
+func TestCheckDrift_EmptyPlan(t *testing.T) {
+	t.Parallel()
+	w := &Weave{DriftFound: true} // start true to verify it gets set false
+	w.CheckDrift()
+	if w.DriftFound {
+		t.Error("expected no drift for empty plan")
+	}
+}
+
+// helper
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(substr) == 0 || findSubstring(s, substr))
+}
+
+func findSubstring(s, sub string) bool {
+	for i := 0; i+len(sub) <= len(s); i++ {
+		if s[i:i+len(sub)] == sub {
+			return true
+		}
+	}
+	return false
+}

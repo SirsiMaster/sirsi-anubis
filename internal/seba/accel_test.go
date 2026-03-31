@@ -1,4 +1,4 @@
-package hapi
+package seba
 
 import (
 	"crypto/sha256"

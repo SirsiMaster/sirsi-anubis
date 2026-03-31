@@ -6,6 +6,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 
 ---
 
+## [1.0.0-rc1] — 2026-03-31
+
+### Added
+- **Neith Module** — Real plan alignment engine with keyword-based log assessment, full tapestry validation (all 5 deity checks), drift detection, and CLI (`pantheon neith status`, `pantheon neith align`).
+- **Ka Cross-Platform Ghost Detection** — `GhostProvider` interface with platform-specific implementations. macOS (full), Linux (XDG + dpkg + .desktop files), Windows (stub). All providers testable from any platform via `TestMockProvider`.
+- **5 New MCP Tools** — `thoth_sync`, `maat_audit`, `anubis_weigh`, `judge_cleanup` (dry-run only), `pantheon_status`. Total: 11 tools, 4 resources.
+- **Thoth /compact Integration** — `pantheon thoth compact -s "summary"` persists session decisions into memory.yaml and journal.md before context compression. Includes `PruneJournal()` for age/count-based cleanup.
+- **Claude Code Custom Command** — `.claude/commands/compact.md` for `/compact` integration.
+
+### Changed
+- **Hapi → Seba Consolidation** — Hardware detection and accelerator logic moved from `internal/hapi/` to `internal/seba/`. Hapi retains backward-compatible wrappers (type aliases + delegation). Hapi now contains only APFS snapshot management + wrappers. Circular import resolved via guard bridge pattern.
+- **Hapi dedup.go removed** — Duplicate detection is handled by the mirror module; hapi's version was redundant.
+
+### Fixed
+- All 28 packages pass tests on macOS and Ubuntu CI
+- Zero golangci-lint errors
+
+### Not Included (deferred)
+- **Ra** — Web portal / hypervisor orchestration (not started)
+- **Windows Ka** — Stub only; real implementation deferred
+- **Flatpak/Snap/RPM** — Linux package managers beyond dpkg deferred
+
+---
+
 ## [0.8.0-beta] — 2026-03-31 (The Honest Measurement)
 
 ### What This Release Is

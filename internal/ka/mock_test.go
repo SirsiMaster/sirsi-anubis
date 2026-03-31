@@ -43,9 +43,9 @@ func TestScanner_BuildInstalledAppIndex_Mocked(t *testing.T) {
 		return "", nil
 	}
 
-	err := s.buildInstalledAppIndex(context.Background())
+	err := s.Provider.BuildInstalledIndex(context.Background(), s)
 	if err != nil {
-		t.Fatalf("buildInstalledAppIndex failed: %v", err)
+		t.Fatalf("BuildInstalledIndex failed: %v", err)
 	}
 
 	if !s.installedApps["com.mock.testapp"] {
@@ -72,12 +72,12 @@ func TestScanner_ScanForOrphans_Mocked(t *testing.T) {
 	s.homeDir = homeDir
 	s.installedApps["com.installed.app"] = true
 
-	// Mock locations to point to our temp prefs dir
-	originalLocations := userResidualLocations
-	userResidualLocations = []residualLocation{
-		{Type: ResidualPreferences, Dir: "~/Library/Preferences", RequiresSudo: false},
+	// Inject mock provider with custom locations
+	s.Provider = &TestMockProvider{
+		Locations: []residualLocation{
+			{Type: ResidualPreferences, Dir: "~/Library/Preferences", RequiresSudo: false},
+		},
 	}
-	defer func() { userResidualLocations = originalLocations }()
 
 	// We still use DirReader to return ONLY our two files
 	s.DirReader = func(path string) ([]os.DirEntry, error) {
@@ -118,12 +118,28 @@ func TestScanner_Scan_Mocked(t *testing.T) {
 	s.SkipLaunchServices = true
 	s.SkipBrew = true
 
-	// Mock locations to point to our temp prefs dir
-	originalLocations := userResidualLocations
-	userResidualLocations = []residualLocation{
-		{Type: ResidualPreferences, Dir: "~/Library/Preferences", RequiresSudo: false},
+	// Inject mock provider
+	s.Provider = &TestMockProvider{
+		Locations: []residualLocation{
+			{Type: ResidualPreferences, Dir: "~/Library/Preferences", RequiresSudo: false},
+		},
+		BuildIndexFn: func(ctx context.Context, sc *Scanner) error {
+			// Simulate finding Live.app with bundle ID com.live.app
+			entries, err := sc.DirReader(appDir)
+			if err != nil {
+				return nil
+			}
+			for _, e := range entries {
+				if strings.HasSuffix(e.Name(), ".app") {
+					bundleID, _ := sc.ReadBundleIDFn(ctx, filepath.Join(appDir, e.Name()))
+					if bundleID != "" {
+						sc.installedApps[bundleID] = true
+					}
+				}
+			}
+			return nil
+		},
 	}
-	defer func() { userResidualLocations = originalLocations }()
 
 	s.DirReader = func(path string) ([]os.DirEntry, error) {
 		if path == appDir {
@@ -236,20 +252,20 @@ func TestScanner_MergeOrphans_Isolation(t *testing.T) {
 	}
 }
 
-func TestScanner_ScanLaunchServices_Mocked(t *testing.T) {
+func TestScanner_ScanRegistry_DarwinMocked(t *testing.T) {
 	s := NewScanner()
+	s.Provider = &DarwinProvider{}
 	// Mock lsregister -dump output
 	s.ExecCommand = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
-		// Verify it's calling lsregister
 		if strings.Contains(name, "lsregister") {
 			return exec.CommandContext(ctx, "printf", "bundle id: com.ghost.id\npath: /Applications/Ghost.app\n")
 		}
 		return exec.CommandContext(ctx, "true")
 	}
 
-	ghosts := s.scanLaunchServices(context.Background())
+	ghosts := s.Provider.ScanRegistry(context.Background(), s)
 	if !ghosts["com.ghost.id"] {
-		t.Error("expected com.ghost.id to be found in LS")
+		t.Error("expected com.ghost.id to be found in registry")
 	}
 }
 
@@ -275,10 +291,15 @@ func TestScanner_Scan_Sudo_Mocked(t *testing.T) {
 	s := NewScanner()
 	s.SkipLaunchServices = true
 	s.SkipBrew = true
+	s.Provider = &TestMockProvider{
+		Locations: []residualLocation{
+			{Type: ResidualPreferences, Dir: "/tmp/test", RequiresSudo: true},
+		},
+	}
 	s.DirReader = func(path string) ([]os.DirEntry, error) {
 		return nil, nil // Just testing branch coverage for sudo
 	}
-	s.Scan(context.Background(), true) // Should append system residual locations
+	s.Scan(context.Background(), true) // Should use provider locations
 }
 
 func TestScanner_Scan_ErrorPaths_Mocked(t *testing.T) {
@@ -286,6 +307,15 @@ func TestScanner_Scan_ErrorPaths_Mocked(t *testing.T) {
 	s.SkipLaunchServices = true
 	s.SkipBrew = true
 	s.appDirs = []string{"/bad/dir"}
+	s.Provider = &TestMockProvider{
+		Locations: []residualLocation{
+			{Type: ResidualPreferences, Dir: "/bad/dir", RequiresSudo: false},
+		},
+		BuildIndexFn: func(ctx context.Context, sc *Scanner) error {
+			// DirReader will fail but that's handled gracefully
+			return nil
+		},
+	}
 	s.DirReader = func(path string) ([]os.DirEntry, error) {
 		return nil, os.ErrPermission
 	}
@@ -323,12 +353,12 @@ func TestScanner_ScanForOrphans_ManifestMocked(t *testing.T) {
 	s.homeDir = homeDir
 	s.Manifest = &MockManifest{Size: 1000, Count: 10}
 
-	// Mock locations
-	originalLocations := userResidualLocations
-	userResidualLocations = []residualLocation{
-		{Type: ResidualPreferences, Dir: "~/Library/Preferences", RequiresSudo: false},
+	// Inject mock provider with custom locations
+	s.Provider = &TestMockProvider{
+		Locations: []residualLocation{
+			{Type: ResidualPreferences, Dir: "~/Library/Preferences", RequiresSudo: false},
+		},
 	}
-	defer func() { userResidualLocations = originalLocations }()
 
 	s.DirReader = func(path string) ([]os.DirEntry, error) {
 		if strings.Contains(path, "Preferences") {

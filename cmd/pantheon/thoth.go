@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -13,14 +14,17 @@ import (
 )
 
 var (
-	thothSince       string
-	thothDryRun      bool
-	brainUpdate      bool
-	brainRemove      bool
-	thothInitYes     bool
-	thothInitName    string
-	thothInitLang    string
-	thothInitVersion string
+	thothSince          string
+	thothDryRun         bool
+	brainUpdate         bool
+	brainRemove         bool
+	thothInitYes        bool
+	thothInitName       string
+	thothInitLang       string
+	thothInitVersion    string
+	thothCompactSummary string
+	thothCompactMaxAge  int
+	thothCompactMaxKeep int
 )
 
 var thothCmd = &cobra.Command{
@@ -101,9 +105,58 @@ func init() {
 	thothBrainCmd.Flags().BoolVar(&brainUpdate, "update", false, "Update to latest weights")
 	thothBrainCmd.Flags().BoolVar(&brainRemove, "remove", false, "Remove weights")
 
+	// Compact Flags
+	thothCompactCmd.Flags().StringVarP(&thothCompactSummary, "summary", "s", "", "Session summary text (reads stdin if empty)")
+	thothCompactCmd.Flags().IntVar(&thothCompactMaxAge, "max-age", 0, "Prune journal entries older than N days (0 = no pruning)")
+	thothCompactCmd.Flags().IntVar(&thothCompactMaxKeep, "max-keep", 0, "Keep only the last N journal entries (0 = no limit)")
+
 	thothCmd.AddCommand(thothInitCmd)
 	thothCmd.AddCommand(thothSyncCmd)
 	thothCmd.AddCommand(thothBrainCmd)
+	thothCmd.AddCommand(thothCompactCmd)
+}
+
+// thothCompactCmd persists session decisions before context compression.
+var thothCompactCmd = &cobra.Command{
+	Use:   "compact",
+	Short: "Persist session decisions before context compression",
+	Long: `Captures key decisions and patterns from the current session into
+.thoth/memory.yaml and .thoth/journal.md before context is compressed.
+
+  pantheon thoth compact -s "Use interface providers for Ka"
+  echo "decision text" | pantheon thoth compact`,
+	RunE: runThothCompact,
+}
+
+func runThothCompact(cmd *cobra.Command, args []string) error {
+	repoRoot, err := findRepoRoot()
+	if err != nil {
+		return err
+	}
+
+	summary := thothCompactSummary
+	if summary == "" {
+		// Read from stdin
+		data, readErr := io.ReadAll(os.Stdin)
+		if readErr != nil {
+			return fmt.Errorf("failed to read stdin: %w", readErr)
+		}
+		summary = string(data)
+	}
+
+	output.Header("Thoth Compact")
+	err = thoth.Compact(thoth.CompactOptions{
+		RepoRoot: repoRoot,
+		Summary:  summary,
+		MaxAge:   thothCompactMaxAge,
+		MaxKeep:  thothCompactMaxKeep,
+	})
+	if err != nil {
+		return err
+	}
+
+	output.Success("Session decisions persisted to .thoth/")
+	return nil
 }
 
 func runThothSync(cmd *cobra.Command, args []string) error {
