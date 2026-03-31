@@ -1,107 +1,113 @@
 # 𓁢 Sirsi Pantheon — Canonical Roadmap
-**Version:** 4.0.0 (The Measured Platform)
-**Date:** March 29, 2026
-**Status:** **ACTIVE — Phase 3: Hardening & RC1 Stabilization (Session 38)**
+**Version:** 5.0.0 (The Honest Measurement)
+**Date:** March 31, 2026
+**Status:** **v0.8.0-beta — Preparing for Public Release**
 
-> **All metrics in this document are dynamically measured by `pantheon maat pulse`.**
-> No hardcoded numbers. No aspirational snapshots. Truth only.
+> **All metrics in this document are verified by `go test -cover ./...` (March 31, 2026).**
+> Previous versions of this document contained false coverage numbers due to a hardcoded
+> module registry in Ma'at. This has been fixed — Ma'at now dynamically discovers all modules.
 
-## 1. Vision: The Unified DevOps Intelligence Platform
-Pantheon is the single, modular brand for all Sirsi automation deities. One binary gives you all features, though each deity can be installed standalone if preferred.
+## 1. Vision: Pantheon Anubis — Standalone DevOps Intelligence CLI
+Pantheon is the single, modular brand for all Sirsi automation deities. The standalone CLI (Pantheon Anubis) gives you all features in one binary. Each deity can also be installed independently.
 
-## 2. The Six Integrated Pillars (v1.0.0-rc1)
+## 2. Deity Pillars (v0.8.0-beta)
 
-| Pillar | Glyph | Role | Coverage | Tests | Status |
-|:-------|:------|:-----|:---------|:------|:-------|
-| **Anubis** | 𓁢 | Infrastructure Hygiene | 85-95% | ✅ | ✅ Shipped |
-| **Ma'at** | 𓆄 | Governance & Healing | 79.4% | ✅ | ✅ Shipped |
-| **Thoth** | 𓁟 | Knowledge & Memory | 0.0% | ❌ | ⚠️ **No Go tests** |
-| **Hapi** | 𓈗 | Hardware & Compute | 55.3% | ✅ | ⚠️ **Regressed** |
-| **Seba** | 𓇽 | Mapping & Discovery | 90.0% | ✅ | ✅ Shipped |
-| **Seshat** | 𓁆 | Knowledge Bridge | 2.1% | ⚠️ | ❌ **Critical** |
+| Pillar | Glyph | Role | Coverage | Status |
+|:-------|:------|:-----|:---------|:-------|
+| **Anubis** | 𓁢 | Infrastructure Hygiene (Jackal, Ka, Mirror, Cleaner) | 80-95% | ✅ Shipped |
+| **Ma'at** | 𓆄 | Governance & Diagnostics (Scales, Isis) | 79-95% | ✅ Shipped |
+| **Thoth** | 𓁟 | Knowledge & Memory (Sync, Init, Journal) | 83.0% | ✅ Shipped |
+| **Seba** | 𓇽 | Mapping, Discovery & Hardware (Scarab, Seba, Hapi) | 62-95% | ✅ Shipped |
+| **Seshat** | 𓁆 | Knowledge Export (MCP bridge) | 63-85% | ⚠️ Minimal |
+| **Neith** | 𓇼 | Orchestration | 100% (stub) | 📋 Deferred to v1.0 |
 
-### Sub-module Coverage (Live `go test -cover`, March 29 2026)
+### Sub-module Coverage (Verified `go test -cover`, March 31, 2026)
 
-| Module | Coverage | Verdict |
-|:-------|:---------|:--------|
-| brain | 90.0% | ✅ |
-| cleaner | 85.7% | ✅ |
-| guard | 87.8% | ✅ |
-| hapi | 55.3% | ❌ Regressed from 84% |
-| horus | 89.5% | ✅ |
-| ignore | 91.8% | ✅ |
-| isis | 71.0% | ⚠️ |
-| jackal | 94.6% | ✅ |
-| jackal/rules | 35.0% | ❌ |
-| ka | 92.6% | ✅ |
-| logging | 95.2% | ✅ |
-| maat | 79.4% | ⚠️ Regressed from 88% |
-| mcp | 71.8% | ⚠️ |
-| mirror | 65.9% | ⚠️ |
-| neith | 0.0% | ❌ No test files |
-| osiris | 92.8% | ✅ |
-| output | 32.8% | ❌ |
-| platform | 62.4% | ⚠️ |
-| profile | 85.1% | ✅ |
-| scales | 94.6% | ✅ |
-| scarab | 94.8% | ✅ |
-| seba | 90.0% | ✅ |
-| seshat | 2.1% | ❌ Critical |
-| sight | 68.4% | ⚠️ |
-| stealth | 82.6% | ✅ |
-| thoth | 0.0% | ❌ No test files |
-| updater | 87.7% | ✅ |
-| yield | 83.9% | ✅ |
+| Module | Coverage | Verdict | Notes |
+|:-------|:---------|:--------|:------|
+| brain | 90.0% | ✅ | Neural weight management |
+| cleaner | 85.7% | ✅ | Safety-critical (29 protected paths) |
+| guard | 87.8% | ✅ | Safety-critical (RAM pressure) |
+| hapi | 62.5% | ⚠️ | Hardware detection works; ANE path untested |
+| horus | 89.5% | ✅ | Eye of Horus monitoring |
+| ignore | 91.8% | ✅ | Gitignore-style path matching |
+| isis | 80.1% | ✅ | Diagnostic (lint, vet, AST analysis) |
+| jackal | 94.6% | ✅ | Core scan engine |
+| jackal/rules | 64.5% | ⚠️ | 58 rules, 37 tested |
+| ka | 92.6% | ✅ | Ghost app detection (macOS) |
+| logging | 95.2% | ✅ | Structured logging |
+| maat | 79.3% | ⚠️ | Governance engine (dynamic discovery fixed) |
+| mcp | 62.5% | ⚠️ | Model Context Protocol server |
+| mirror | 80.0% | ✅ | Dedup engine (27x partial hash speedup) |
+| neith | 100.0% | ✅ | Stub — 2 tests only, deferred to v1.0 |
+| osiris | 92.8% | ✅ | Resurrection/recovery |
+| output | 87.5% | ✅ | Terminal rendering (lipgloss) |
+| platform | 66.5% | ⚠️ | OS detection (structurally capped) |
+| profile | 85.1% | ✅ | User profile management |
+| scales | 94.6% | ✅ | YAML policy enforcement |
+| scarab | 94.8% | ✅ | Container/fleet scanning |
+| seba | 87.1% | ✅ | Mermaid diagram generation |
+| seshat | 84.9% | ✅ | Knowledge export (Markdown) |
+| sight | 68.4% | ⚠️ | macOS LaunchServices (OS-specific) |
+| stealth | 82.6% | ✅ | Process stealth detection |
+| thoth | 83.0% | ✅ | Knowledge system (sync + init) |
+| updater | 87.7% | ✅ | Binary self-update |
+| yield | 82.1% | ✅ | Resource yield management |
 
-## 3. Global Metrics (Ma'at Pulse)
+**Weighted Average:** ~83.5% across 28 packages (27 modules + jackal/rules)
+
+## 3. Global Metrics (Verified March 31, 2026)
 
 | Metric | Value | Source |
 |:-------|:------|:-------|
-| **Tests Passing** | 1,202 | `go test -v -short ./...` |
-| **Packages Passing** | 26/26 | `go test ./...` |
-| **Weighted Coverage** | ~76.6% | `go test -cover ./...` |
-| **Go Source Lines** | 19,786 | `maat pulse` |
-| **Total Source Lines** | 24,532 | `maat pulse` |
-| **Source Files** | 115 | `maat pulse` |
-| **Test Files** | 69 | `maat pulse` |
-| **Binary Size** | 11.4 MB | `maat pulse` |
+| **Tests Passing** | 1,450+ | `go test -short ./...` |
+| **Packages Passing** | 28/28 | `go test ./...` (27 modules + jackal/rules) |
+| **Weighted Coverage** | ~83.5% | `go test -cover ./...` |
 | **Internal Modules** | 27 | `ls internal/` |
-| **Total Commits** | 230 | `git log --oneline` |
+| **Binary Size** | ~12 MB | Compiled `pantheon` binary |
+| **Lint Errors** | 0 | `golangci-lint run ./...` |
+| **CI Status** | ✅ Green | All 5 jobs passing |
+| **E2E Smoke Tests** | 9 | `scripts/smoke.sh` |
 
 ## 4. Phase Schedule (2026)
 
 ### Phase 1: Foundation (Anubis Launch) — ✅ March 21
-- CLI, engine, safety, 64 rules, ghost hunter.
+- CLI, scan engine, safety system, 58 rules, ghost hunter.
 
 ### Phase 2: Unification (Pantheon Launch) — ✅ March 23
 - Ma'at, Horus, Thoth integrated into unified CLI.
 
-### Phase 3: Hardening & Bridge (CURRENT) — 🚧 Now
-- **230 commits** across 9 days.
-- **1,202 tests** passing across 26 packages.
-- **Ma'at Pulse** dynamic measurement engine operational.
-- **Status Bar Hardening**: 1MB buffer, metric overflow remediation.
-- **Neith's Triad**: Architecture doc compliance (Rule A22).
-- **Hieroglyphic Canonization**: Great Pyramid (𓉴) root anchor.
+### Phase 3: Hardening & Honest Measurement (CURRENT) — 🚧 v0.8.0-beta
+- Fixed Ma'at dynamic module discovery (was reporting false 0% for 10 modules)
+- Thoth folded from standalone repo into Pantheon (Go port + subtree merge)
+- All golangci-lint errors resolved (40+ fixes across 19 files)
+- CI/CD fully green (Go 1.24, golangci-lint v6)
+- E2E smoke test suite (9 tests against compiled binary)
+- Honest version: v0.8.0-beta (not premature RC1)
 
-### Phase 4: Intelligence & Portal (NEXT) — 📋 April
-- **Ra Portal** (Web dashboard/Admin portal).
-- **Seba Data Visualization** (Interactive 2D/3D map).
-- **CoreML/ANE Inference** (Local neural classifier).
+### Phase 4: Public Beta Release — 📋 Next
+- Tag v0.8.0-beta and trigger GoReleaser
+- Close jackal/rules coverage gap (64.5% → 85%)
+- MCP test performance optimization
+- Release notes and installation docs
 
-## 5. P0 Remediation Queue
+### Phase 5: v1.0.0-rc1 (Earned, Not Declared) — 📋 April
+- 30-day dogfooding on production machines
+- Cross-platform testing (Linux, Windows)
+- Neith orchestration implementation
+- Ra portal (inside SirsiNexusApp)
 
-| # | Action | Current | Target | Impact |
-|:--|:-------|:--------|:-------|:-------|
-| 1 | Tag v1.0.0-rc1 in git | No tag | Tagged | Formal release |
-| 2 | Add tests to `thoth` Go module | 0% | 60%+ | Pillar integrity |
-| 3 | Add tests to `neith` | 0% | 50%+ | Weaver integrity |
-| 4 | Investigate `hapi` regression | 55.3% | 84%+ | Silent failure |
-| 5 | Add tests to `seshat` | 2.1% | 50%+ | Pillar integrity |
-| 6 | Optimize `mcp` test duration | 52s | <10s | Suite speed |
+## 5. Remaining Work for v0.8.0-beta Release
+
+| # | Action | Current | Target | Est. |
+|:--|:-------|:--------|:-------|:-----|
+| 1 | Close jackal/rules coverage | 64.5% | 85%+ | 4-6 hrs |
+| 2 | MCP test performance | 52s | <15s | 2-3 hrs |
+| 3 | Release notes + docs | Missing | Complete | 2 hrs |
+| 4 | Tag + GoReleaser publish | No tag | v0.8.0-beta | 30 min |
 
 ---
-**Custodian**: 𓁯 Net & 𓆄 Ma'at
-**Last Assessment**: Session 38 — 1,202 tests / 76.6% coverage / 26 packages green.
-**Measurement**: `pantheon maat pulse` (dynamic, 66ms).
+**Custodian**: 𓆄 Ma'at (dynamic measurement, not hardcoded)
+**Last Verified**: March 31, 2026 — 1,450+ tests / ~83.5% coverage / 28 packages green / 0 lint errors.
+**Measurement**: `go test -cover ./...` (verified) + `golangci-lint run` (clean).
 *Building in public. The feather weighs true. No excuses.*

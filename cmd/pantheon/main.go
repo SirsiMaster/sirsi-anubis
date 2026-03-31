@@ -10,7 +10,7 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
 )
 
-var version = "v1.0.0-rc1"
+var version = "v0.8.0-beta"
 
 // versionCmd prints the version and optionally checks for updates.
 var versionCmd = &cobra.Command{
