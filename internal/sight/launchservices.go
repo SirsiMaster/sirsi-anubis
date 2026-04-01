@@ -4,6 +4,7 @@
 package sight
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"os/exec"
@@ -17,6 +18,14 @@ import (
 type CommandRunner interface {
 	Run(name string, args ...string) error
 	Output(name string, args ...string) ([]byte, error)
+}
+
+// StreamingRunner is an optional extension of CommandRunner that supports
+// streaming stdout line-by-line instead of buffering the entire output.
+// defaultRunner implements this; test mocks fall back to Output().
+type StreamingRunner interface {
+	CommandRunner
+	StreamLines(name string, args ...string) (func() (string, bool), func() error, error)
 }
 
 // GhostRegistration represents an app registered in Launch Services
@@ -48,15 +57,26 @@ func ScanWith(p CommandRunner) (*SightResult, error) {
 
 	result := &SightResult{CanFix: true}
 
-	// Dump Launch Services database (can be very large — 30s timeout)
+	// Dump Launch Services database (can be very large — 30s timeout).
+	// Use streaming when available to avoid buffering 20-50MB in memory.
 	lsregister := "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister"
-	out, err := p.Output(lsregister, "-dump")
+
+	var ghosts []GhostRegistration
+	var err error
+	if sr, ok := p.(StreamingRunner); ok {
+		ghosts, err = parseLSRegisterStream(sr, lsregister, p)
+	} else {
+		// Fallback for test mocks that only implement CommandRunner.
+		var out []byte
+		out, err = p.Output(lsregister, "-dump")
+		if err == nil {
+			ghosts = parseLSRegisterDump(string(out), p)
+		}
+	}
 	if err != nil {
 		return nil, fmt.Errorf("sight: lsregister dump failed: %w", err)
 	}
 
-	// Parse registrations for missing .app bundles
-	ghosts := parseLSRegisterDump(string(out), p)
 	result.GhostRegistrations = ghosts
 	result.TotalGhosts = len(ghosts)
 
@@ -123,6 +143,138 @@ func (r defaultRunner) Output(name string, args ...string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	return exec.CommandContext(ctx, name, args...).CombinedOutput()
+}
+
+// StreamLines starts a command and returns an iterator over stdout lines.
+// The first return is a next function: call it repeatedly to get (line, ok).
+// The second return is a cleanup function that waits for the process.
+func (r defaultRunner) StreamLines(name string, args ...string) (func() (string, bool), func() error, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	cmd := exec.CommandContext(ctx, name, args...)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		cancel()
+		return nil, nil, err
+	}
+	if err := cmd.Start(); err != nil {
+		cancel()
+		return nil, nil, err
+	}
+	scanner := bufio.NewScanner(stdout)
+	scanner.Buffer(make([]byte, 256*1024), 1024*1024)
+
+	next := func() (string, bool) {
+		if scanner.Scan() {
+			return scanner.Text(), true
+		}
+		return "", false
+	}
+	cleanup := func() error {
+		defer cancel()
+		return cmd.Wait()
+	}
+	return next, cleanup, nil
+}
+
+// parseLSRegisterStream extracts ghost registrations by streaming lsregister
+// output line-by-line, avoiding buffering the full 20-50MB dump in memory.
+func parseLSRegisterStream(sr StreamingRunner, lsregister string, p CommandRunner) ([]GhostRegistration, error) {
+	next, cleanup, err := sr.StreamLines(lsregister, "-dump")
+	if err != nil {
+		return nil, err
+	}
+	defer cleanup()
+
+	var ghosts []GhostRegistration
+	seen := make(map[string]bool)
+
+	// Accumulate lines per block (separated by dashes).
+	var block []string
+	separator := "--------------------------------------------------------------------------------"
+
+	processBlock := func(lines []string) {
+		var bundleID, path, name string
+		hasApp := false
+		hasBundleID := false
+
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "bundle id:") {
+				parts := strings.SplitN(line, ":", 2)
+				if len(parts) == 2 {
+					bundleID = strings.TrimSpace(parts[1])
+					hasBundleID = true
+				}
+			}
+			if strings.HasPrefix(line, "path:") {
+				parts := strings.SplitN(line, ":", 2)
+				if len(parts) == 2 {
+					path = strings.TrimSpace(parts[1])
+				}
+			}
+			if strings.HasPrefix(line, "name:") {
+				parts := strings.SplitN(line, ":", 2)
+				if len(parts) == 2 {
+					name = strings.TrimSpace(parts[1])
+				}
+			}
+			if strings.Contains(line, ".app") {
+				hasApp = true
+			}
+		}
+
+		if !hasBundleID || !hasApp || bundleID == "" || path == "" {
+			return
+		}
+		if strings.HasPrefix(bundleID, "com.apple.") {
+			return
+		}
+		if !strings.Contains(path, ".app") {
+			return
+		}
+
+		appPath := path
+		if idx := strings.Index(path, ".app"); idx > 0 {
+			appPath = path[:idx+4]
+		}
+
+		if seen[bundleID] {
+			return
+		}
+
+		if err := p.Run("test", "-d", appPath); err != nil {
+			seen[bundleID] = true
+			if name == "" {
+				name = bundleID
+			}
+			ghosts = append(ghosts, GhostRegistration{
+				BundleID: bundleID,
+				Path:     appPath,
+				Name:     name,
+			})
+		}
+	}
+
+	for {
+		line, ok := next()
+		if !ok {
+			break
+		}
+		if strings.TrimSpace(line) == separator {
+			if len(block) > 0 {
+				processBlock(block)
+				block = block[:0]
+			}
+			continue
+		}
+		block = append(block, line)
+	}
+	// Process final block.
+	if len(block) > 0 {
+		processBlock(block)
+	}
+
+	return ghosts, nil
 }
 
 // parseLSRegisterDump extracts ghost registrations from lsregister output.

@@ -63,7 +63,7 @@ type StatsConfig struct {
 func DefaultStatsConfig() StatsConfig {
 	return StatsConfig{
 		RepoDir:  ".",
-		Interval: 10 * time.Second,
+		Interval: 60 * time.Second,
 	}
 }
 
@@ -106,29 +106,8 @@ func collectRAM(snap *StatsSnapshot) {
 	_, _ = fmt.Sscanf(strings.TrimSpace(string(out)), "%d", &total)
 	snap.TotalRAM = total
 
-	// Get memory pressure
-	out, err = exec.Command("memory_pressure").Output()
-	if err == nil {
-		pressure := strings.TrimSpace(string(out))
-		switch {
-		case strings.Contains(pressure, "System-wide memory free percentage:"):
-			// Parse free percentage
-			for _, line := range strings.Split(pressure, "\n") {
-				if strings.Contains(line, "free percentage") {
-					var pct int
-					_, _ = fmt.Sscanf(line, "System-wide memory free percentage: %d%%", &pct)
-					snap.RAMPercent = float64(100 - pct)
-					snap.FreeRAM = total * int64(pct) / 100
-					snap.UsedRAM = total - snap.FreeRAM
-				}
-			}
-		}
-	}
-
-	// Fallback to vm_stat if memory_pressure didn't work
-	if snap.RAMPercent == 0 {
-		collectRAMFromVMStat(snap)
-	}
+	// Use vm_stat for memory info (lightweight — avoids expensive memory_pressure command)
+	collectRAMFromVMStat(snap)
 
 	// Set pressure level
 	switch {

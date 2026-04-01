@@ -180,6 +180,35 @@ func (t *Throttler) ThrottledPIDs() []int {
 	return pids
 }
 
+// Prune removes entries from the throttled map whose PIDs are no longer alive.
+// Returns the number of pruned (dead) entries.
+func (t *Throttler) Prune() int {
+	t.mu.RLock()
+	pids := make([]int, 0, len(t.throttled))
+	for pid := range t.throttled {
+		pids = append(pids, pid)
+	}
+	t.mu.RUnlock()
+
+	var dead []int
+	for _, pid := range pids {
+		pidStr := strconv.Itoa(pid)
+		if _, err := t.cmdRunner("kill", "-0", pidStr); err != nil {
+			dead = append(dead, pid)
+		}
+	}
+
+	if len(dead) > 0 {
+		t.mu.Lock()
+		for _, pid := range dead {
+			delete(t.throttled, pid)
+		}
+		t.mu.Unlock()
+	}
+
+	return len(dead)
+}
+
 // IsThrottled returns true if the given PID is currently throttled.
 func (t *Throttler) IsThrottled(pid int) bool {
 	t.mu.RLock()

@@ -140,15 +140,15 @@ func detectDarwinCompute(p Platform, cc *ComputeCapability) {
 	sysctlInt("hw.perflevel0.logicalcpu", &cc.PCores)
 	sysctlInt("hw.perflevel1.logicalcpu", &cc.ECores)
 
-	// ANE + GPU detection (heavier commands)
+	// ANE detection (lightweight sysctl probe — replaces ioreg -l -w0 which dumped 8MB+)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
-		if out, err := p.Command("ioreg", "-l", "-w0"); err == nil {
-			outStr := string(out)
-			if strings.Contains(outStr, "appleane") || strings.Contains(strings.ToLower(outStr), "ane") {
+		if out, err := p.Command("sysctl", "-n", "hw.optional.ane"); err == nil {
+			val := strings.TrimSpace(string(out))
+			if val == "1" {
 				mu.Lock()
 				cc.ANEAvailable = true
 				cc.ANECores = 16

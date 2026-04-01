@@ -105,7 +105,10 @@ func estimateTestCount(root string) int {
 		if err != nil || info.IsDir() || !strings.HasSuffix(path, "_test.go") {
 			return nil
 		}
-		f, _ := os.Open(path)
+		f, err := os.Open(path)
+		if err != nil {
+			return nil
+		}
 		defer f.Close()
 		scanner := bufio.NewScanner(f)
 		for scanner.Scan() {
@@ -150,7 +153,10 @@ func estimateCommandCount(root string) int {
 		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".go") {
 			return nil
 		}
-		f, _ := os.Open(path)
+		f, err := os.Open(path)
+		if err != nil {
+			return nil
+		}
 		defer f.Close()
 		scanner := bufio.NewScanner(f)
 		for scanner.Scan() {

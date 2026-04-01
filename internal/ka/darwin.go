@@ -87,12 +87,17 @@ func (d *DarwinProvider) ScanRegistry(ctx context.Context, s *Scanner) map[strin
 
 	path := "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
 	cmd := s.ExecCommand(ctx, path, "-dump")
-	output, err := cmd.Output()
+
+	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return ghosts
 	}
+	if err := cmd.Start(); err != nil {
+		return ghosts
+	}
 
-	scanner := bufio.NewScanner(strings.NewReader(string(output)))
+	scanner := bufio.NewScanner(stdout)
+	scanner.Buffer(make([]byte, 256*1024), 1024*1024)
 	var currentBundle string
 	var currentPath string
 
@@ -118,6 +123,8 @@ func (d *DarwinProvider) ScanRegistry(ctx context.Context, s *Scanner) map[strin
 			currentPath = ""
 		}
 	}
+
+	_ = cmd.Wait()
 
 	logging.Debug("darwin: scanned Launch Services", "ghosts", len(ghosts))
 	return ghosts

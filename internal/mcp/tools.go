@@ -267,6 +267,7 @@ func handleHealthCheck(_ map[string]interface{}) (*ToolResult, error) {
 	// LoadManifest returns in <1ms (gob decode) or fails instantly (no file).
 	m, err := horus.LoadManifest(horus.DefaultCachePath())
 	if err == nil {
+		defer m.Release()
 		sb.WriteString(fmt.Sprintf("Indexed: %d dirs, %d files\n",
 			m.Stats.DirsWalked, m.Stats.FilesIndexed))
 		sb.WriteString(fmt.Sprintf("Index age: %s\n",

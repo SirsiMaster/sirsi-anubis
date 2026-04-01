@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -151,5 +153,61 @@ func runAnubisGuard(cmd *cobra.Command, args []string) error {
 		"Total":     stats.TotalMemory,
 		"Status":    stats.PressureLevel,
 	})
+	return nil
+}
+
+func runDoctor(cmd *cobra.Command, args []string) error {
+	start := time.Now()
+
+	if !JsonOutput {
+		output.Banner()
+		output.Header("SEKHMET — System Health Diagnostic")
+	}
+
+	report, err := guard.Doctor()
+	if err != nil {
+		return fmt.Errorf("doctor failed: %w", err)
+	}
+
+	if JsonOutput {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(report)
+	}
+
+	// Print findings as a table
+	var rows [][]string
+	for _, f := range report.Findings {
+		rows = append(rows, []string{
+			f.Severity.Icon(),
+			f.Check,
+			f.Message,
+		})
+	}
+	if len(rows) > 0 {
+		output.Table([]string{"", "Check", "Result"}, rows)
+	}
+
+	// Print details for non-OK findings
+	for _, f := range report.Findings {
+		if f.Detail != "" && f.Severity >= guard.SeverityWarn {
+			output.Dim("  %s: %s", f.Check, f.Detail)
+		}
+	}
+
+	// Score
+	scoreIcon := "🟢"
+	switch {
+	case report.Score < 50:
+		scoreIcon = "🔴"
+	case report.Score < 75:
+		scoreIcon = "🟡"
+	}
+
+	output.Dashboard(map[string]string{
+		"Health Score": fmt.Sprintf("%s %d/100", scoreIcon, report.Score),
+		"Checks Run":  fmt.Sprintf("%d", len(report.Findings)),
+	})
+	output.Footer(time.Since(start))
 	return nil
 }

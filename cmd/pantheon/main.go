@@ -35,6 +35,7 @@ Core commands:
   pantheon ghosts             Detect remnants of uninstalled applications
   pantheon dedup [dirs...]    Find duplicate files across directories
   pantheon guard              Monitor system resources and memory pressure
+  pantheon doctor             One-shot system health diagnostic
   pantheon thoth init         Initialize AI project memory (.thoth/)
   pantheon thoth sync         Sync project memory from source + git history
   pantheon thoth compact      Persist session decisions before context compression
@@ -88,6 +89,23 @@ var guardCmd = &cobra.Command{
 	RunE:  runAnubisGuard,
 }
 
+var doctorCmd = &cobra.Command{
+	Use:   "doctor",
+	Short: "𓁵 One-shot system health diagnostic (Sekhmet)",
+	Long: `𓁵 Sekhmet Doctor — System Health Diagnostic
+
+Runs a comprehensive one-shot health check covering:
+  • RAM pressure and swap usage
+  • Disk space
+  • Top memory consumers
+  • Recent kernel panics and Jetsam events
+  • Pantheon background process health
+
+  pantheon doctor              Run full diagnostic
+  pantheon doctor --json       Output as JSON`,
+	RunE: runDoctor,
+}
+
 var mcpCmd = &cobra.Command{
 	Use:   "mcp",
 	Short: "Start MCP server for IDE integration",
@@ -133,6 +151,7 @@ func init() {
 	rootCmd.AddCommand(ghostsCmd)
 	rootCmd.AddCommand(dedupCmd)
 	rootCmd.AddCommand(guardCmd)
+	rootCmd.AddCommand(doctorCmd)
 	rootCmd.AddCommand(mcpCmd)
 	rootCmd.AddCommand(thothCmd)
 	rootCmd.AddCommand(maatCmd)

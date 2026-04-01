@@ -56,7 +56,7 @@ func onReady() {
 			case <-mQuit.ClickedCh:
 				systray.Quit()
 				return
-			case <-time.After(5 * time.Second):
+			case <-time.After(60 * time.Second):
 				mStats.SetTitle("RAM: Optimized")
 			}
 		}

@@ -249,6 +249,64 @@ func TestAutoThrottle_CapsAtHard(t *testing.T) {
 	}
 }
 
+// ── Prune Tests ────────────────────────────────────────────────────────
+
+func TestPrune_RemovesDeadPIDs(t *testing.T) {
+	throttler, mock := newMockThrottler()
+
+	// Throttle three processes
+	_ = throttler.Throttle(100, "alive_proc", 20.0, ThrottleMedium)
+	_ = throttler.Throttle(200, "dead_proc", 30.0, ThrottleMedium)
+	_ = throttler.Throttle(300, "also_dead", 40.0, ThrottleMedium)
+
+	// Make kill -0 fail for PIDs 200 and 300 (they're dead)
+	mock.errors["kill -0 200"] = fmt.Errorf("no such process")
+	mock.errors["kill -0 300"] = fmt.Errorf("no such process")
+
+	pruned := throttler.Prune()
+
+	if pruned != 2 {
+		t.Errorf("Prune() = %d, want 2", pruned)
+	}
+	if throttler.ThrottledCount() != 1 {
+		t.Errorf("ThrottledCount = %d, want 1", throttler.ThrottledCount())
+	}
+	if !throttler.IsThrottled(100) {
+		t.Error("PID 100 should still be throttled (alive)")
+	}
+	if throttler.IsThrottled(200) {
+		t.Error("PID 200 should be pruned (dead)")
+	}
+	if throttler.IsThrottled(300) {
+		t.Error("PID 300 should be pruned (dead)")
+	}
+}
+
+func TestPrune_NothingToPrune(t *testing.T) {
+	throttler, _ := newMockThrottler()
+
+	_ = throttler.Throttle(100, "alive_proc", 20.0, ThrottleMedium)
+
+	// kill -0 succeeds by default (mock returns nil), so PID is alive
+	pruned := throttler.Prune()
+
+	if pruned != 0 {
+		t.Errorf("Prune() = %d, want 0", pruned)
+	}
+	if throttler.ThrottledCount() != 1 {
+		t.Errorf("ThrottledCount = %d, want 1", throttler.ThrottledCount())
+	}
+}
+
+func TestPrune_EmptyMap(t *testing.T) {
+	throttler, _ := newMockThrottler()
+
+	pruned := throttler.Prune()
+	if pruned != 0 {
+		t.Errorf("Prune() on empty map = %d, want 0", pruned)
+	}
+}
+
 // ── ThrottledPIDs Tests ─────────────────────────────────────────────────
 
 func TestThrottledPIDs(t *testing.T) {
