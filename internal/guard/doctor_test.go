@@ -175,10 +175,10 @@ Pages occupied by compressor:             40000.`
 
 func TestDoctorWith_SwapActive(t *testing.T) {
 	tests := []struct {
-		name           string
-		swapOutput     string
-		wantSeverity   DiagnosticSeverity
-		wantSubstring  string
+		name          string
+		swapOutput    string
+		wantSeverity  DiagnosticSeverity
+		wantSubstring string
 	}{
 		{
 			name:          "moderate swap with small total",

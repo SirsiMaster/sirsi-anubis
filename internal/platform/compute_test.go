@@ -39,7 +39,7 @@ func TestDetectComputeWith_MockDarwin(t *testing.T) {
 			"sysctl -n hw.physicalcpu":                             "12",
 			"sysctl -n hw.perflevel0.logicalcpu":                   "6",
 			"sysctl -n hw.perflevel1.logicalcpu":                   "6",
-			"sysctl -n hw.optional.ane":                             "1",
+			"sysctl -n hw.optional.ane":                            "1",
 			"system_profiler SPDisplaysDataType -detailLevel mini": "Total Number of Cores: 18\nChipset Model: Apple M3 Pro",
 		},
 	}
@@ -122,7 +122,7 @@ func TestDetectDarwinCompute(t *testing.T) {
 			"sysctl -n hw.physicalcpu":                             "10",
 			"sysctl -n hw.perflevel0.logicalcpu":                   "8",
 			"sysctl -n hw.perflevel1.logicalcpu":                   "2",
-			"sysctl -n hw.optional.ane":                             "1",
+			"sysctl -n hw.optional.ane":                            "1",
 			"system_profiler SPDisplaysDataType -detailLevel mini": "Total Number of Cores: 32\nChipset Model: Apple M1 Max",
 		},
 	}

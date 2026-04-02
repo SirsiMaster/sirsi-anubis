@@ -206,7 +206,7 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 
 	output.Dashboard(map[string]string{
 		"Health Score": fmt.Sprintf("%s %d/100", scoreIcon, report.Score),
-		"Checks Run":  fmt.Sprintf("%d", len(report.Findings)),
+		"Checks Run":   fmt.Sprintf("%d", len(report.Findings)),
 	})
 	output.Footer(time.Since(start))
 	return nil
