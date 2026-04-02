@@ -619,3 +619,12 @@ func setSampleFn(fn func(...)) { sampleMu.Lock(); defer sampleMu.Unlock(); sampl
 - `bbfc34ad` 𓁆 Seshat: Gemini Bridge + Rule A22 (Neith's Architecture Triad) (11 files, +1074/-17)
 
 ---
+
+## Entry 029 — 2026-04-01 15:47 — Session Compact (COMPACT)
+
+> Persisted via `thoth compact` before context compression.
+
+**Decisions**:
+- {"session_id":"b3eafb76-9e33-4114-9bf6-345bb2dd653b","transcript_path":"/Users/thekryptodragon/.claude/projects/-Users-thekryptodragon/b3eafb76-9e33-4114-9bf6-345bb2dd653b.jsonl","cwd":"/Users/thekryptodragon/Development/sirsi-pantheon","hook_event_name":"PreCompact","trigger":"manual","custom_instructions":""}
+
+---
