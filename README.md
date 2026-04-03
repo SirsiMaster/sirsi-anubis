@@ -1,6 +1,6 @@
 # 🏛️ Sirsi Pantheon
 
-**Unified DevOps Intelligence Platform — One Install, All Deities.**
+**Unified DevOps Intelligence Platform by [Sirsi Technologies](https://sirsi.ai) — One Install, All Deities.**
 
 [![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go&logoColor=white)](https://go.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-C8A951?style=flat)](LICENSE)
@@ -20,9 +20,9 @@
 | ☀️ | **Ra** | Supreme Overseer | The boss — orchestrates all deities automatically (planned) |
 
 ### 𓁯 The Weaver
-| Glyph | Deity | Domain | What It Does |
-|:------|:------|:-------|:-------------|
-| 𓁯 | **Net** | Weaver of Existence | Writer/Owner of the Development Plan, ADRs, and Canon |
+| Glyph | Deity | Domain | What It Does | Dependencies |
+|:------|:------|:-------|:-------------|:-------------|
+| 𓁯 | **Net (Neith)** | The Weaver | Architecture documentation and decision records | None |
 
 ### 𓀭 The Code Gods (Governance & Knowledge)
 *Decision-making, standards, memory, and healing.*
@@ -31,7 +31,8 @@
 |:------|:------|:------|:-------------|:-------------|
 | 𓁟 | **Thoth** | God of Knowledge | Cuts AI token waste by 98% via persistent memory | None |
 | 𓆄 | **Ma'at** | Goddess of Order | Grades code quality and enforces team standards | None |
-| 𓁐 | **Isis** | The Healer | **Remediation engine** — autonomously fixes Ma'at findings | Ma'at |
+| 𓁐 | **Isis** | The Healer | Autonomous remediation engine — fixes Ma'at findings (lint, vet, formatting) | Ma'at |
+| 𓁆 | **Seshat** | Goddess of Writing | Universal knowledge grafting engine — ingests from Gemini, Claude, Chrome, Apple Notes, Google Workspace; exports to Thoth, GEMINI.md, NotebookLM | Thoth |
 
 ### 𓀰 The Machine Gods (Infrastructure & OS)
 *Infrastructure hygiene, safety, and hardware flow.*
@@ -64,6 +65,11 @@ go install github.com/SirsiMaster/sirsi-pantheon/cmd/pantheon@latest
 # Or clone and build
 git clone https://github.com/SirsiMaster/sirsi-pantheon.git
 cd sirsi-pantheon && go build -o pantheon ./cmd/pantheon/
+
+# Install individual deities
+brew install SirsiMaster/tools/pantheon-anubis    # Infrastructure hygiene only
+brew install SirsiMaster/tools/pantheon-maat      # Code quality only
+brew install SirsiMaster/tools/pantheon-thoth     # AI memory only
 ```
 
 ### CLI (Windows)
@@ -198,6 +204,9 @@ Pantheon is built on modules named after Egyptian mythology. Every deity maintai
 | **Scales** | 𓆄 Ma'at | YAML policy engine + enforcement | ✅ |
 | **Ma'at** | 𓆄 Ma'at | Coverage, canon, pipeline assessments | ✅ |
 | **Seba** | 𓇼 Seba | Infrastructure topology graph | 🚧 |
+| **Seshat** | 𓁆 Seshat | Universal knowledge grafting engine | ✅ |
+| **Isis** | 𓁐 Isis | Autonomous remediation (lint, vet, fmt) | ✅ |
+| **Neith** | 𓁯 Net | Architecture docs and decision records | ✅ |
 
 ---
 
@@ -312,6 +321,38 @@ pantheon maat --json             # Machine-readable output
 ```
 
 57 tests, 3 governance domains, per-module threshold enforcement.
+
+---
+
+## 𓁆 Seshat — Universal Knowledge Grafting
+
+Seshat ingests knowledge from multiple sources and exports it to any target in the Sirsi ecosystem.
+
+### Chrome Profile Ingestion
+```bash
+pantheon seshat ingest --source chrome                    # Default Chrome profile
+pantheon seshat ingest --source chrome --profile "Work"   # Named profile
+pantheon seshat ingest --source chrome --all-profiles     # All Chrome profiles
+pantheon seshat profiles --source chrome                  # List available profiles
+```
+
+### Supported Sources
+- **Chrome** — bookmarks, history, saved tabs (per-profile or all profiles)
+- **Gemini** — conversation exports
+- **Claude** — session memory
+- **Apple Notes** — local note ingestion
+- **Google Workspace** — Docs, Sheets, Drive
+
+### Export Targets
+- **Thoth** — merge into `.thoth/memory.yaml` for AI context
+- **GEMINI.md** — export as Gemini-compatible project memory
+- **NotebookLM** — export for Google NotebookLM ingestion
+
+```bash
+pantheon seshat export --target notebooklm --output ./export/
+pantheon seshat export --target thoth
+pantheon seshat export --target gemini
+```
 
 ---
 
@@ -468,11 +509,13 @@ MIT License — free and open source forever. See [LICENSE](LICENSE).
 
 ---
 
-## 🏢 Sirsi Technologies
+## 🏢 Built by Sirsi Technologies
 
-Sirsi Pantheon is built by [Sirsi Technologies](https://sirsi.ai).
+**Sirsi Pantheon** is built and maintained by [Sirsi Technologies](https://sirsi.ai) — the company behind the "Own Your Intelligence" platform for on-device AI infrastructure.
 
-- 🌐 [sirsi.ai](https://sirsi.ai)
+- **Website**: [sirsi.ai](https://sirsi.ai)
+- **GitHub**: [github.com/SirsiMaster](https://github.com/SirsiMaster)
+- **Pantheon Hub**: [pantheon.sirsi.ai](https://pantheon.sirsi.ai)
 
 ## 𓂀 Documentation & Registry
 
