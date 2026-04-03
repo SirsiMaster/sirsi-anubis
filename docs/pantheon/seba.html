@@ -81,6 +81,26 @@
     footer a { color: var(--emerald-light); text-decoration: none; }
     footer a:hover { text-decoration: underline; }
     .footer-links { display: flex; justify-content: center; gap: 2rem; margin-bottom: 1rem; flex-wrap: wrap; }
+
+    .platform-badge { display: flex; justify-content: center; gap: 1rem; margin-top: 1rem; flex-wrap: wrap; }
+    .platform-badge span { font-family: var(--font-mono); font-size: 0.8rem; padding: 0.3rem 0.8rem; border-radius: 999px; border: 1px solid var(--border); }
+    .platform-badge .supported { color: var(--emerald-light); border-color: rgba(16,185,129,0.3); }
+    .platform-badge .partial { color: var(--gold); border-color: rgba(200,169,81,0.3); }
+    .platform-badge .unsupported { color: var(--text-muted); border-color: rgba(200,169,81,0.1); }
+
+    .howto { max-width: 800px; margin: 3rem auto; }
+    .howto h2 { font-family: var(--font-heading); color: var(--gold); margin-bottom: 1.5rem; }
+    .step { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
+    .step-num { font-family: var(--font-heading); color: var(--gold); font-size: 1.1rem; margin-bottom: 0.5rem; }
+    .step code { font-family: var(--font-mono); color: var(--emerald-light); background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; }
+    .step pre { background: rgba(0,0,0,0.4); border-radius: 8px; padding: 1rem; margin-top: 0.5rem; overflow-x: auto; }
+    .step p { color: var(--text-dim); line-height: 1.6; }
+
+    .faq { max-width: 800px; margin: 3rem auto; }
+    .faq h2 { font-family: var(--font-heading); color: var(--gold); margin-bottom: 1.5rem; }
+    .faq-item { border-bottom: 1px solid var(--border); padding: 1rem 0; }
+    .faq-q { font-weight: 600; color: var(--text); cursor: pointer; }
+    .faq-a { color: var(--text-dim); margin-top: 0.5rem; line-height: 1.7; }
   </style>
 </head>
 <body>
@@ -99,6 +119,11 @@
     <h1>Seba</h1>
     <div class="role">Star Map</div>
     <div class="domain-tag">Infrastructure Topology</div>
+    <div class="platform-badge">
+      <span class="supported">macOS &#10003;</span>
+      <span class="supported">Linux &#10003;</span>
+      <span class="supported">Windows &#10003;</span>
+    </div>
     <p class="desc">Seba takes the data from every other deity — network hosts from Khepri, Docker containers from Scarab, filesystems from Horus — and builds an interactive topology graph. See how services connect, where bottlenecks are, and how your infrastructure is structured. Currently the graph data engine is complete; the interactive D3.js visualization is in development.</p>
   </header>
 
@@ -171,6 +196,58 @@
       <div class="auto-update">
         <div class="url">pantheon.sirsi.ai/seba</div>
         <p>This page is the canonical source for Seba. Bundled offline copies auto-check for updates here.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
+      <div class="howto">
+        <h2>How To</h2>
+        <div class="step">
+          <div class="step-num">Step 1</div>
+          <p><strong>Generate a topology map</strong> — Build an infrastructure topology from all deity data sources.</p>
+          <pre><code>pantheon seba map</code></pre>
+        </div>
+        <div class="step">
+          <div class="step-num">Step 2</div>
+          <p><strong>View the topology</strong> — Open the interactive graph in your browser.</p>
+          <pre><code>pantheon seba map --open</code></pre>
+        </div>
+        <div class="step">
+          <div class="step-num">Step 3</div>
+          <p><strong>Export the diagram</strong> — Save the topology as JSON or SVG for documentation.</p>
+          <pre><code>pantheon seba map --export topology.json</code></pre>
+        </div>
+        <div class="step">
+          <div class="step-num">Step 4</div>
+          <p><strong>Compare over time</strong> — Diff two topology snapshots to see infrastructure drift.</p>
+          <pre><code>pantheon seba diff snapshot-a.json snapshot-b.json</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
+      <div class="faq">
+        <h2>Frequently Asked Questions</h2>
+        <div class="faq-item">
+          <div class="faq-q">Does Seba work on Linux or Windows?</div>
+          <div class="faq-a">Yes. Seba's topology engine is pure Go and runs on all platforms. The D3.js visualization works in any modern browser.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">What data sources does Seba use?</div>
+          <div class="faq-a">Seba aggregates data from Khepri (network hosts), Horus (filesystem), and Docker container data to build a unified topology graph.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">Does Seba send data anywhere?</div>
+          <div class="faq-a">No. All topology data is generated and stored locally. Zero telemetry.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">Is the interactive visualization ready?</div>
+          <div class="faq-a">The graph data engine is complete. The interactive D3.js visualization is currently in development. You can export topology as JSON today.</div>
+        </div>
       </div>
     </div>
   </section>
