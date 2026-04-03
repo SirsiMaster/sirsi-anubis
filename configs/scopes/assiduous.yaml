@@ -1,0 +1,16 @@
+name: assiduous
+display_name: "Assiduous"
+repo_path: "~/Development/assiduous"
+deadline: "2026-04-15"
+priority: "P0"
+max_turns: 50
+scope_of_work: |
+  1. Fix firebase.json: change "public": "public" to "public": "web/dist"
+  2. cd web && npm run build — verify dist/ output
+  3. Complete LoginPage with Firebase Auth + role-based redirect
+  4. Complete AdminDashboard with real Firestore queries via TanStack Query
+  5. Complete Properties page with listing data + filters
+  6. Build SharedComponents (Button, Card, Form, Modal) in web/src/components/
+  7. Layout + Sidebar wrapper consistency across all 34 pages
+  8. Deploy to Firebase Hosting and verify all routes
+  9. Commit, push, run pantheon thoth compact

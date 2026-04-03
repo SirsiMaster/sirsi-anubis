@@ -1,0 +1,13 @@
+name: finalwishes
+display_name: "FinalWishes"
+repo_path: "~/Development/FinalWishes"
+deadline: "2026-05-15"
+priority: "P1"
+max_turns: 50
+scope_of_work: |
+  1. Deploy Cloud SQL PII Vault to Cloud Run
+  2. Wire real GCS signed upload URLs (replace mock paths in Go API)
+  3. Complete Go API endpoint tests
+  4. Firebase Auth + Firestore integration hardening
+  5. Web app page completion (dashboard, vault, beneficiaries, attestation)
+  6. Commit, push, run pantheon thoth compact

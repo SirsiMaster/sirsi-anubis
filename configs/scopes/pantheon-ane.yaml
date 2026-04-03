@@ -1,0 +1,14 @@
+name: pantheon-ane
+display_name: "Pantheon ANE/Metal/MLX"
+repo_path: "~/Development/sirsi-pantheon"
+deadline: ""
+priority: "P2"
+max_turns: 50
+scope_of_work: |
+  1. CoreML classifier — CGO bridge in internal/brain/inference.go
+  2. Metal compute shaders — parallel SHA-256 in internal/seba/accel.go
+  3. Real ANE tokenization — replace Go BPE stub with CoreML-backed tokenizer
+  4. pantheon benchmark CLI command measuring ANE vs Metal vs CPU
+  5. Thoth memory compression — ANE-accelerated summarization to reduce memory.yaml
+  6. KV cache analysis — measure token usage per session, identify reduction opportunities
+  7. Commit, push, run pantheon thoth compact

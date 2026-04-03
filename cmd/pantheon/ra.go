@@ -332,9 +332,125 @@ var raPipelineCmd = &cobra.Command{
 	},
 }
 
+// ── Deploy commands (Neith → Ra → Ma'at governance loop) ───────────
+
+var raDeployScopes []string
+var raDeployITerm2 bool
+var raDeployWait bool
+var raDeployRecord bool
+var raDeployDryRun bool
+
+var raDeployCmd = &cobra.Command{
+	Use:   "deploy",
+	Short: "𓁯 Neith weaves scopes, ☀️ Ra spawns terminal windows",
+	Long: `Neith assembles scope prompts from each repo's canon documents
+(CLAUDE.md, Thoth memory, ADRs, blueprints, continuation prompts).
+Ra then spawns a macOS terminal window for each scope.
+
+  pantheon ra deploy                    Spawn all 4 windows
+  pantheon ra deploy --scope assiduous  Spawn one specific scope
+  pantheon ra deploy --wait --record    Spawn, wait, then pipeline
+  pantheon ra deploy --dry-run          Show assembled prompts, don't spawn`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		repoRoot, err := findRepoRoot()
+		if err != nil {
+			repoRoot, _ = os.Getwd()
+		}
+
+		configDir := filepath.Join(repoRoot, "configs", "scopes")
+		if _, err := os.Stat(configDir); os.IsNotExist(err) {
+			// Try relative to PANTHEON_ROOT
+			if root := os.Getenv("PANTHEON_ROOT"); root != "" {
+				configDir = filepath.Join(root, "configs", "scopes")
+			}
+		}
+
+		output.Header("☀️ Ra — Deploy")
+		if raDeployDryRun {
+			output.Info("Dry run — Neith will weave prompts but Ra will not spawn windows")
+		}
+		fmt.Println()
+
+		opts := ra.DeployOptions{
+			ConfigDir:  configDir,
+			ScopeNames: raDeployScopes,
+			UseITerm2:  raDeployITerm2,
+			Wait:       raDeployWait,
+			Record:     raDeployRecord,
+			DryRun:     raDeployDryRun,
+			RepoRoot:   repoRoot,
+		}
+
+		result, err := ra.Deploy(opts)
+		if err != nil {
+			output.Error("Deploy failed: %v", err)
+			return err
+		}
+
+		fmt.Printf("\n  ☀️ Deployed %d scope(s)\n\n", len(result.Spawned))
+		return nil
+	},
+}
+
+var raKillCmd = &cobra.Command{
+	Use:   "kill",
+	Short: "Terminate all deployed Ra windows",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		output.Header("☀️ Ra — Kill All Windows")
+		return ra.KillAll(ra.RADir())
+	},
+}
+
+var raCollectCmd = &cobra.Command{
+	Use:   "collect",
+	Short: "Collect results from completed windows and run pipeline",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		output.Header("☀️ Ra — Collect Results")
+
+		results, err := ra.CollectResults(ra.RADir())
+		if err != nil {
+			return fmt.Errorf("collect: %w", err)
+		}
+
+		for _, r := range results {
+			icon := "✅"
+			if r.ExitCode != 0 {
+				icon = "❌"
+			}
+			fmt.Printf("  %s %s — exit %d (%s)\n", icon, r.Name, r.ExitCode, r.Duration.Round(time.Second))
+		}
+
+		repoRoot, err := findRepoRoot()
+		if err != nil {
+			repoRoot, _ = os.Getwd()
+		}
+
+		pr, err := ra.IngestWindowResults(repoRoot, results)
+		if err != nil {
+			output.Error("Pipeline: %v", err)
+			return err
+		}
+
+		fmt.Printf("\n  ☀️ Ra → 𓁆 Seshat ingested %d items → 𓁟 Thoth %s\n\n",
+			pr.ItemsIngested, func() string {
+				if pr.ThothSynced {
+					return "synced ✅"
+				}
+				return "skipped ⚠️"
+			}())
+		return nil
+	},
+}
+
 func init() {
 	raCmd.PersistentFlags().BoolVar(&raDocs, "docs", false, "Open Ra web documentation")
 	raCmd.PersistentFlags().BoolVar(&raRecord, "record", false, "Record results through the Seshat/Thoth knowledge pipeline")
+
+	raDeployCmd.Flags().StringSliceVar(&raDeployScopes, "scope", nil, "Deploy specific scope(s) only (repeatable)")
+	raDeployCmd.Flags().BoolVar(&raDeployITerm2, "iterm2", false, "Use iTerm2 instead of Terminal.app")
+	raDeployCmd.Flags().BoolVar(&raDeployWait, "wait", false, "Block until all windows complete")
+	raDeployCmd.Flags().BoolVar(&raDeployRecord, "record", false, "Run Seshat/Thoth pipeline after completion")
+	raDeployCmd.Flags().BoolVar(&raDeployDryRun, "dry-run", false, "Show assembled prompts without spawning")
 
 	raCmd.AddCommand(raHealthCmd)
 	raCmd.AddCommand(raTestCmd)
@@ -344,4 +460,7 @@ func init() {
 	raCmd.AddCommand(raNightlyCmd)
 	raCmd.AddCommand(raStatusCmd)
 	raCmd.AddCommand(raPipelineCmd)
+	raCmd.AddCommand(raDeployCmd)
+	raCmd.AddCommand(raKillCmd)
+	raCmd.AddCommand(raCollectCmd)
 }

@@ -1,0 +1,12 @@
+name: nexus
+display_name: "SirsiNexusApp"
+repo_path: "~/Development/SirsiNexusApp"
+deadline: ""
+priority: "P2"
+max_turns: 50
+scope_of_work: |
+  1. Resolve remaining transitive Dependabot vulnerabilities
+  2. Portal-app component stability and test coverage
+  3. sirsi-component-library build-out
+  4. sirsi-sign improvements
+  5. Commit, push, run pantheon thoth compact
