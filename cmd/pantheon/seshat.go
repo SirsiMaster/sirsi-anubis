@@ -10,11 +10,14 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/SirsiMaster/sirsi-pantheon/internal/help"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/mcp"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/seshat"
 )
+
+var seshatDocs bool
 
 var seshatCmd = &cobra.Command{
 	Use:   "seshat",
@@ -37,8 +40,12 @@ reconciles it, and distributes to targets (Thoth, NotebookLM, Apple Notes).
   pantheon seshat open chrome            Open Chrome with a specific profile
   pantheon seshat auth google            Authenticate with Google Workspace
   pantheon seshat mcp                    Start the MCP context server`,
-	Run: func(cmd *cobra.Command, args []string) {
-		_ = cmd.Help()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if seshatDocs {
+			output.Info("Opening Seshat docs...")
+			return help.OpenDocs("seshat")
+		}
+		return cmd.Help()
 	},
 }
 
@@ -585,6 +592,8 @@ func formatSize(bytes int64) string {
 }
 
 func init() {
+	seshatCmd.Flags().BoolVar(&seshatDocs, "docs", false, "Open Seshat web documentation in browser")
+
 	seshatIngestCmd.Flags().String("source", "", "Specific source adapter (e.g., chrome-history, gemini, claude, apple-notes, google-workspace)")
 	seshatIngestCmd.Flags().String("since", "", "Ingest items since (duration: '168h' or date: '2026-01-01')")
 	seshatIngestCmd.Flags().String("export", "", "Auto-export to target after ingestion (e.g., thoth, notebooklm, apple-notes)")

@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/SirsiMaster/sirsi-pantheon/internal/help"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/isis"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/maat"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
@@ -16,6 +17,7 @@ import (
 var (
 	maatSudo bool
 	maatFix  bool
+	maatDocs bool
 
 	// Audit flags
 	auditSkipTests bool
@@ -40,8 +42,12 @@ complies with the Pantheon Charter. It balances the Scale of Truth.
   pantheon maat scales           Enforce infrastructure policies (Scales)
   pantheon maat heal             Autonomous remediation cycle (Isis)
   pantheon maat pulse            Dynamic measurement heartbeat`,
-	Run: func(cmd *cobra.Command, args []string) {
-		_ = cmd.Help()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if maatDocs {
+			output.Info("Opening Ma'at docs...")
+			return help.OpenDocs("maat")
+		}
+		return cmd.Help()
 	},
 }
 
@@ -83,6 +89,8 @@ a structured .pantheon/metrics.json that all downstream consumers can read:
 }
 
 func init() {
+	maatCmd.Flags().BoolVar(&maatDocs, "docs", false, "Open Ma'at web documentation in browser")
+
 	maatAuditCmd.Flags().BoolVar(&maatSudo, "sudo", false, "Scan system-level governance")
 	maatAuditCmd.Flags().BoolVar(&auditSkipTests, "skip-test", false, "Skip go test (use cached coverage only)")
 	maatScalesCmd.Flags().BoolVar(&maatFix, "fix", false, "Actually apply policy fixes")

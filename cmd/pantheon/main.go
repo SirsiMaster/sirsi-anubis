@@ -156,6 +156,7 @@ func init() {
 	rootCmd.AddCommand(thothCmd)
 	rootCmd.AddCommand(maatCmd)
 	rootCmd.AddCommand(seshatCmd)
+	rootCmd.AddCommand(anubisCmd)
 	rootCmd.AddCommand(versionCmd)
 }
 

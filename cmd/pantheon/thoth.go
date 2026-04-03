@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/brain"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/help"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/thoth"
 )
@@ -16,6 +17,7 @@ import (
 var (
 	thothSince          string
 	thothDryRun         bool
+	thothDocs           bool
 	brainUpdate         bool
 	brainRemove         bool
 	thothInitYes        bool
@@ -39,8 +41,12 @@ Use it to sync your development journal or manage AI weights.
   pantheon thoth sync          Sync memory.yaml and journal.md
   pantheon thoth brain         Install/Update neural weights (Anubis Pro)
   pantheon thoth status        Check brain and memory health`,
-	Run: func(cmd *cobra.Command, args []string) {
-		_ = cmd.Help()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if thothDocs {
+			output.Info("Opening Thoth docs...")
+			return help.OpenDocs("thoth")
+		}
+		return cmd.Help()
 	},
 }
 
@@ -91,6 +97,9 @@ var thothBrainCmd = &cobra.Command{
 }
 
 func init() {
+	// Docs flag
+	thothCmd.Flags().BoolVar(&thothDocs, "docs", false, "Open Thoth web documentation in browser")
+
 	// Init Flags
 	thothInitCmd.Flags().BoolVarP(&thothInitYes, "yes", "y", false, "Non-interactive mode (no prompts)")
 	thothInitCmd.Flags().StringVar(&thothInitName, "name", "", "Override project name")

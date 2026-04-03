@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/guard"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/help"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal/rules"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/ka"
@@ -22,6 +23,7 @@ var (
 	anubisAll     bool
 	anubisDryRun  bool
 	anubisConfirm bool
+	anubisDocs    bool
 )
 
 var anubisCmd = &cobra.Command{
@@ -35,8 +37,12 @@ infrastructure waste, purge residuals, and fix system drifts.
   pantheon anubis ka             Hunt ghost app residuals and spotlight phantoms
   pantheon anubis mirror         Find duplicate files (Reflection of Truth)
   pantheon anubis guard          Monitor workstation resources (The Sentry)`,
-	Run: func(cmd *cobra.Command, args []string) {
-		_ = cmd.Help()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if anubisDocs {
+			output.Info("Opening Anubis docs...")
+			return help.OpenDocs("anubis")
+		}
+		return cmd.Help()
 	},
 }
 
@@ -71,6 +77,8 @@ var anubisGuardCmd = &cobra.Command{
 }
 
 func init() {
+	anubisCmd.Flags().BoolVar(&anubisDocs, "docs", false, "Open Anubis web documentation in browser")
+
 	anubisWeighCmd.Flags().BoolVar(&anubisAll, "all", false, "Scan all categories")
 	anubisJudgeCmd.Flags().BoolVar(&anubisDryRun, "dry-run", true, "Preview mode")
 	anubisJudgeCmd.Flags().BoolVar(&anubisConfirm, "confirm", false, "Confirm and apply")
