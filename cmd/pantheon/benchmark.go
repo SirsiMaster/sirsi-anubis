@@ -58,12 +58,12 @@ func runBenchmark(_ *cobra.Command, _ []string) error {
 	}
 
 	output.Dashboard(map[string]string{
-		"CPU":      cpuModel,
-		"Cores":    fmt.Sprintf("%d", runtime.NumCPU()),
-		"Metal":    fmt.Sprintf("%v (GPU cores: %d)", profile.HasMetal, profile.GPUCores),
-		"ANE":      fmt.Sprintf("%v (cores: %d)", profile.HasANE, profile.ANECores),
-		"Blocks":   fmt.Sprintf("%d × %s", benchBlocks, benchFormatSize(benchSize)),
-		"Total":    benchFormatSize(benchBlocks * benchSize),
+		"CPU":    cpuModel,
+		"Cores":  fmt.Sprintf("%d", runtime.NumCPU()),
+		"Metal":  fmt.Sprintf("%v (GPU cores: %d)", profile.HasMetal, profile.GPUCores),
+		"ANE":    fmt.Sprintf("%v (cores: %d)", profile.HasANE, profile.ANECores),
+		"Blocks": fmt.Sprintf("%d × %s", benchBlocks, benchFormatSize(benchSize)),
+		"Total":  benchFormatSize(benchBlocks * benchSize),
 	})
 
 	// ── Generate test data ──────────────────────────────────────────
