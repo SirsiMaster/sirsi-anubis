@@ -298,6 +298,51 @@
   </header>
 
   <!-- ═══════════════════════════════════════════════════════ -->
+  <!--  CASE STUDY: KA v1.1 GHOST MATCHING (NEWEST — 2026-04) -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <section class="case-study">
+    <div class="container">
+      <div class="case-header">
+        <span class="case-glyph">Ka</span>
+        <div>
+          <span class="case-label label-solution">Architecture Fix</span>
+          <span style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); margin-left: 0.5rem;">2026-04 &middot; Ka v1.1.0</span>
+          <h2>Ka v1.1.0 — Multi-Layer Ghost Matching</h2>
+          <p class="case-subtitle">How four matching layers eliminated 91 false positives and prevented 6.2 GB of accidental data loss</p>
+        </div>
+      </div>
+
+      <div class="narrative">
+        <p>Ka's ghost scanner was flagging <strong>WhatsApp, Adobe Acrobat, and CleanMyMac as ghosts</strong> — recommending deletion of 6.2 GB of active application data. The root cause: shallow <code>/Applications</code> scanning missed nested app bundles, and exact-match-only dedup missed vendor-prefixed helpers and variant names.</p>
+
+        <p>The fix introduced a <strong>four-layer matching cascade</strong>: exact bundle ID, bundle ID prefix/family matching (catches all <em>com.adobe.*</em>), normalized name substring (WhatsApp matches WhatsAppSMB), and nested directory scanning (finds apps inside <code>.localized/</code> and vendor subdirs).</p>
+      </div>
+
+      <div class="metric-row">
+        <div class="metric-card">
+          <div class="metric-value" style="color: #34d399;">91 &rarr; 0</div>
+          <div class="metric-label">False positives eliminated</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value" style="color: #34d399;">6.2 GB &rarr; 165 MB</div>
+          <div class="metric-label">Ghost data (97% reduction)</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value" style="color: #34d399;">20</div>
+          <div class="metric-label">Real ghosts correctly identified</div>
+        </div>
+      </div>
+
+      <div class="pullquote">
+        "The multi-layer matching is permanent architecture, not a one-time fix. Any future app that installs in a subdirectory, spawns helpers under different names, or uses vendor-prefixed bundle IDs will be correctly attributed."
+        <div class="attr">— Ka v1.1.0 design rationale</div>
+      </div>
+
+      <p style="margin-top: 1rem;"><a href="case-studies/ka-ghost-matching-v1.1.html" style="color: var(--color-primary-light); text-decoration: none;">Read the full case study &rarr;</a></p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
   <!--  CASE STUDY 0: SESSION RECOVERY (NEWEST — 2026-03-25)  -->
   <!-- ═══════════════════════════════════════════════════════ -->
   <section class="case-study">

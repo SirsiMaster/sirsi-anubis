@@ -9,6 +9,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 ## [0.9.0-rc1] — 2026-04-03
 
 ### Added
+- **Ka v1.1.0 — Multi-Layer Ghost Matching** — Four-layer matching cascade (exact bundle ID, prefix/family, normalized name substring, nested directory scanning) eliminates 91 false positives. WhatsApp, Adobe Acrobat, and CleanMyMac no longer flagged as ghosts. Ghost residual size reduced from 6.2 GB to 165.2 MB. Case study: `docs/case-studies/ka-ghost-matching-v1.1.md`.
+- **Module Versioning System** — `internal/version/modules.go` tracks per-deity module versions. `pantheon version` now displays all 15 module versions in a two-column layout.
 - **Seshat v2.0 — Universal Knowledge Grafting** — 5 source adapters (Gemini, Claude, Chrome, Apple Notes, Google Workspace) + 3 target adapters (Thoth, GEMINI.md, NotebookLM). Secrets filter with regex-based detection and redaction.
 - **Seshat Chrome Profile Support** — `--profile` flag for per-profile ingestion, `--all-profiles` for multi-profile sweep, `pantheon seshat profiles chrome` to list all profiles, `pantheon seshat open chrome --profile <name>` to launch Chrome with a specific profile.
 - **Seshat NotebookLM Export** — `pantheon seshat notebooklm` exports KIs as Markdown and opens NotebookLM in the browser for drag-and-drop upload.

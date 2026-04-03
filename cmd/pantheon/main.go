@@ -10,6 +10,7 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/mcp"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
+	modversion "github.com/SirsiMaster/sirsi-pantheon/internal/version"
 )
 
 var version = "v0.9.0-rc1"
@@ -22,6 +23,39 @@ var versionCmd = &cobra.Command{
 		fmt.Printf("𓉴 Sirsi Pantheon %s\n", version)
 		fmt.Println("  Unified DevOps Intelligence Platform")
 		fmt.Println("  \"One Install. All Deities.\"")
+		fmt.Println()
+		fmt.Println("  Module Versions:")
+		// Display modules in a two-column layout for readability.
+		type entry struct {
+			display string
+			key     string
+		}
+		layout := []entry{
+			{"Ka", "ka"},
+			{"Anubis", "anubis"},
+			{"Thoth", "thoth"},
+			{"Ma'at", "maat"},
+			{"Seshat", "seshat"},
+			{"Hapi", "hapi"},
+			{"Seba", "seba"},
+			{"Horus", "horus"},
+			{"Sekhmet", "sekhmet"},
+			{"Khepri", "khepri"},
+			{"Isis", "isis"},
+			{"Neith", "neith"},
+			{"Ra", "ra"},
+			{"Osiris", "osiris"},
+			{"Hathor", "hathor"},
+		}
+		for i := 0; i < len(layout); i += 2 {
+			left := layout[i]
+			line := fmt.Sprintf("    %-10s%-8s", left.display, modversion.Get(left.key))
+			if i+1 < len(layout) {
+				right := layout[i+1]
+				line += fmt.Sprintf("%-10s%s", right.display, modversion.Get(right.key))
+			}
+			fmt.Println(line)
+		}
 	},
 }
 
