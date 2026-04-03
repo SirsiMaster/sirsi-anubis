@@ -39,11 +39,18 @@ func SpawnWindow(cfg SpawnConfig) (*SpawnResult, error) {
 		}
 	}
 
+	// Build the claude command with autonomy flags.
+	// --permission-mode auto: auto-approve common tool operations
+	// --allowedTools: whitelist the tools the agent needs
+	// --print: non-interactive mode (reads prompt from stdin)
+	claudeFlags := "--permission-mode auto --allowedTools \"Bash Edit Write Read Glob Grep Agent\""
+
 	// Build the shell command that records PID, runs claude, and captures exit code.
 	shellCmd := fmt.Sprintf(
-		"echo $$ > %s && cd %s && claude --print < %s 2>&1 | tee %s; echo $? > %s",
+		"echo $$ > %s && cd %s && claude %s --print < %s 2>&1 | tee %s; echo $? > %s",
 		escapeShell(cfg.PIDFile),
 		escapeShell(cfg.WorkDir),
+		claudeFlags,
 		escapeShell(cfg.PromptFile),
 		escapeShell(cfg.LogFile),
 		escapeShell(cfg.ExitFile),
