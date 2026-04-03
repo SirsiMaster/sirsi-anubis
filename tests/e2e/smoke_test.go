@@ -76,8 +76,8 @@ func TestSmoke_Version(t *testing.T) {
 		t.Skip("skipping E2E test in short mode")
 	}
 	out := run(t, testBinary, "version")
-	if !strings.Contains(out, "0.8.0-beta") {
-		t.Errorf("version output missing 0.8.0-beta: %s", out)
+	if !strings.Contains(out, "0.9.0-rc1") {
+		t.Errorf("version output missing 0.9.0-rc1: %s", out)
 	}
 }
 
