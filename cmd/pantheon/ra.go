@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,9 +13,11 @@ import (
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/help"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/ra"
 )
 
 var raDocs bool
+var raRecord bool
 
 var raCmd = &cobra.Command{
 	Use:   "ra",
@@ -99,15 +102,20 @@ func runOrchestrator(subcmd string, extraArgs ...string) error {
 		return err
 	}
 
+	output.Header(fmt.Sprintf("\u2600\uFE0F Ra \u2014 %s", subcmd))
+	output.Info("Orchestrator: %s", scriptPath)
+	fmt.Println()
+
+	// If --record is set, use the pipeline for automatic knowledge capture.
+	if raRecord {
+		return runOrchestratorWithPipeline(subcmd, scriptPath, extraArgs...)
+	}
+
 	cmdArgs := append([]string{scriptPath, subcmd}, extraArgs...)
 	proc := exec.Command("python3", cmdArgs...)
 	proc.Stdout = os.Stdout
 	proc.Stderr = os.Stderr
 	proc.Stdin = os.Stdin
-
-	output.Header(fmt.Sprintf("\u2600\uFE0F Ra \u2014 %s", subcmd))
-	output.Info("Orchestrator: %s", scriptPath)
-	fmt.Println()
 
 	start := time.Now()
 	if err := proc.Run(); err != nil {
@@ -115,6 +123,41 @@ func runOrchestrator(subcmd string, extraArgs ...string) error {
 		return err
 	}
 	output.Footer(time.Since(start))
+	return nil
+}
+
+// runOrchestratorWithPipeline executes the orchestrator through the Ra pipeline,
+// automatically feeding results to Seshat for ingestion and Thoth for persistence.
+func runOrchestratorWithPipeline(subcmd, scriptPath string, extraArgs ...string) error {
+	repoRoot, err := findRepoRoot()
+	if err != nil {
+		// Fallback to cwd if no .thoth/ found.
+		repoRoot, _ = os.Getwd()
+	}
+
+	pipeline := ra.NewPipeline(repoRoot)
+	pipeline.OrchestratorPath = scriptPath
+
+	task := ra.Task{
+		Subcmd:    subcmd,
+		ExtraArgs: extraArgs,
+	}
+
+	result, err := pipeline.RunAndRecord(context.Background(), task)
+	if err != nil {
+		output.Error("Pipeline failed: %v", err)
+		return err
+	}
+
+	// Print the feedback loop summary.
+	thothStatus := "synced"
+	if !result.ThothSynced {
+		thothStatus = "skipped (no .thoth/memory.yaml)"
+	}
+	fmt.Fprintf(os.Stderr, "\n  %s Ra complete -> %s Seshat ingested %d items -> %s Thoth %s\n",
+		"\u2600\uFE0F", "\U000130C6", result.ItemsIngested, "\U0001305F", thothStatus)
+
+	output.Footer(result.Duration)
 	return nil
 }
 
@@ -232,8 +275,66 @@ var raStatusCmd = &cobra.Command{
 	},
 }
 
+// raPipelineCmd shows the pipeline status — last recording, KI count, Thoth sync time.
+var raPipelineCmd = &cobra.Command{
+	Use:   "pipeline",
+	Short: "Show Ra pipeline status (last recording, KI count, Thoth sync)",
+	Run: func(cmd *cobra.Command, args []string) {
+		repoRoot, err := findRepoRoot()
+		if err != nil {
+			repoRoot, _ = os.Getwd()
+		}
+
+		output.Header("\u2600\uFE0F Ra Pipeline Status")
+
+		pipeline := ra.NewPipeline(repoRoot)
+		status, err := pipeline.ReadStatus()
+		if err != nil {
+			output.Error("Failed to read pipeline status: %v", err)
+			return
+		}
+
+		if status == nil {
+			output.Info("No pipeline runs recorded yet.")
+			output.Dim("Run any Ra subcommand with --record to start the feedback loop.")
+			fmt.Println()
+			return
+		}
+
+		fmt.Println()
+		output.Section("Last Recording")
+		if !status.LastRecorded.IsZero() {
+			output.Info("Time:  %s", status.LastRecorded.Format("2006-01-02 15:04:05"))
+			output.Info("Age:   %s ago", time.Since(status.LastRecorded).Round(time.Second))
+		}
+
+		output.Info("Items: %d knowledge items ingested", status.ItemCount)
+
+		if !status.ThothSynced.IsZero() {
+			output.Success("Thoth synced at %s", status.ThothSynced.Format("2006-01-02 15:04:05"))
+		} else {
+			output.Warn("Thoth not synced in last pipeline run")
+		}
+
+		// Show Seshat artifacts count.
+		seshatDir := filepath.Join(repoRoot, ".thoth", "seshat")
+		if entries, err := os.ReadDir(seshatDir); err == nil {
+			count := 0
+			for _, e := range entries {
+				if !e.IsDir() {
+					count++
+				}
+			}
+			output.Info("Seshat store: %d artifacts in .thoth/seshat/", count)
+		}
+
+		fmt.Println()
+	},
+}
+
 func init() {
 	raCmd.PersistentFlags().BoolVar(&raDocs, "docs", false, "Open Ra web documentation")
+	raCmd.PersistentFlags().BoolVar(&raRecord, "record", false, "Record results through the Seshat/Thoth knowledge pipeline")
 
 	raCmd.AddCommand(raHealthCmd)
 	raCmd.AddCommand(raTestCmd)
@@ -242,4 +343,5 @@ func init() {
 	raCmd.AddCommand(raBroadcastCmd)
 	raCmd.AddCommand(raNightlyCmd)
 	raCmd.AddCommand(raStatusCmd)
+	raCmd.AddCommand(raPipelineCmd)
 }
