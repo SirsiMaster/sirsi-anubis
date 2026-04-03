@@ -14,7 +14,7 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
 )
 
-var version = "v0.4.0-alpha"
+var version = "v0.9.0-rc1"
 
 func main() {
 	// Check if this is the only instance running
