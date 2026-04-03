@@ -148,21 +148,33 @@ func EnumerateApps(ctx context.Context) ([]InstalledApp, error) {
 		enrichApp(ctx, &apps[i], ghostByBundleID, ghostByName)
 	}
 
-	// Add pure ghost apps (apps no longer installed but with residuals)
+	// Add pure ghost apps (apps no longer installed but with residuals).
+	// Multi-layer matching prevents false positives on active apps:
+	//   Layer 1: Exact bundle ID match
+	//   Layer 2: Bundle ID prefix/family (com.adobe.* matches all Adobe residuals)
+	//   Layer 3: Normalized name substring (WhatsApp matches WhatsAppSMB)
+	//   Layer 4: Vendor prefix grouping (known vendor domains)
 	existingBundles := make(map[string]bool)
 	existingNames := make(map[string]bool)
+	existingBundlePrefixes := make(map[string]bool)
+	existingNameNorms := make(map[string]bool)
 	for _, app := range apps {
 		if app.BundleID != "" {
 			existingBundles[app.BundleID] = true
+			// Layer 2: Extract bundle ID family prefix (e.g. "com.adobe" from "com.adobe.Acrobat")
+			prefix := bundleIDPrefix(app.BundleID)
+			if prefix != "" {
+				existingBundlePrefixes[prefix] = true
+			}
 		}
-		existingNames[strings.ToLower(app.Name)] = true
+		norm := strings.ToLower(app.Name)
+		existingNames[norm] = true
+		// Layer 3: Store normalized variants for substring matching
+		existingNameNorms[normalizeAppName(norm)] = true
 	}
 
 	for _, g := range ghosts {
-		if g.BundleID != "" && existingBundles[g.BundleID] {
-			continue
-		}
-		if existingNames[strings.ToLower(g.AppName)] {
+		if ghostBelongsToInstalledApp(g, existingBundles, existingBundlePrefixes, existingNames, existingNameNorms) {
 			continue
 		}
 		apps = append(apps, InstalledApp{
@@ -284,10 +296,36 @@ func enumerateAppDirs(ctx context.Context, homeDir string) []InstalledApp {
 			continue
 		}
 		for _, entry := range entries {
-			if !strings.HasSuffix(entry.Name(), ".app") {
+			entryPath := filepath.Join(d.path, entry.Name())
+			if strings.HasSuffix(entry.Name(), ".app") {
+				// Direct .app at top level
+			} else if entry.IsDir() {
+				// Scan one level deeper for .app inside subdirs
+				// Handles: WhatsApp.localized/WhatsApp.app, Adobe Acrobat DC/Adobe Acrobat.app
+				subEntries, err := os.ReadDir(entryPath)
+				if err != nil {
+					continue
+				}
+				for _, sub := range subEntries {
+					if strings.HasSuffix(sub.Name(), ".app") {
+						subAppPath := filepath.Join(entryPath, sub.Name())
+						subAppName := strings.TrimSuffix(sub.Name(), ".app")
+						subApp := InstalledApp{
+							Name:   subAppName,
+							Path:   subAppPath,
+							Source: d.source,
+						}
+						if bid, err := readBundleIDDefault(ctx, subAppPath); err == nil && bid != "" {
+							subApp.BundleID = bid
+						}
+						apps = append(apps, subApp)
+					}
+				}
+				continue
+			} else {
 				continue
 			}
-			appPath := filepath.Join(d.path, entry.Name())
+			appPath := entryPath
 			appName := strings.TrimSuffix(entry.Name(), ".app")
 
 			app := InstalledApp{
@@ -551,4 +589,77 @@ type GhostRegistration struct {
 	BundleID string `json:"bundle_id"`
 	Path     string `json:"path"`
 	Name     string `json:"name"`
+}
+
+// ── Multi-layer ghost matching ─────────────────────────────────────────
+// Prevents false positives on active apps while maintaining full ghost detection.
+
+// ghostBelongsToInstalledApp returns true if a ghost residual belongs to
+// an app that is currently installed. Uses 4 matching layers.
+func ghostBelongsToInstalledApp(g Ghost, bundles, bundlePrefixes, names, nameNorms map[string]bool) bool {
+	// Layer 1: Exact bundle ID
+	if g.BundleID != "" && bundles[g.BundleID] {
+		return true
+	}
+
+	// Layer 2: Bundle ID family prefix
+	// e.g. ghost has "com.adobe.AdobeCRDaemon" → prefix "com.adobe" matches installed "com.adobe.Acrobat"
+	if g.BundleID != "" {
+		prefix := bundleIDPrefix(g.BundleID)
+		if prefix != "" && bundlePrefixes[prefix] {
+			return true
+		}
+	}
+
+	// Layer 3: Exact name match (case-insensitive)
+	ghostName := strings.ToLower(g.AppName)
+	if names[ghostName] {
+		return true
+	}
+
+	// Layer 4: Normalized name substring matching
+	// e.g. "WhatsAppSMB" normalizes to "whatsappsmb", which contains "whatsapp"
+	// e.g. "CleanMyMac4" normalizes to "cleanmymac", which matches "cleanmymac"
+	ghostNorm := normalizeAppName(ghostName)
+	for installedNorm := range nameNorms {
+		if installedNorm == "" || ghostNorm == "" {
+			continue
+		}
+		// Check bidirectional substring: ghost contains installed OR installed contains ghost
+		if strings.Contains(ghostNorm, installedNorm) || strings.Contains(installedNorm, ghostNorm) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// bundleIDPrefix extracts the vendor prefix from a bundle ID.
+// "com.adobe.Acrobat" → "com.adobe"
+// "net.whatsapp.WhatsApp" → "net.whatsapp"
+// Single-component IDs return empty.
+func bundleIDPrefix(bundleID string) string {
+	parts := strings.Split(bundleID, ".")
+	if len(parts) < 3 {
+		return ""
+	}
+	return strings.Join(parts[:2], ".")
+}
+
+// normalizeAppName strips version numbers, underscores, hyphens, and
+// trailing digits to produce a canonical name for fuzzy matching.
+// "CleanMyMac4" → "cleanmymac"
+// "WhatsAppSMB" → "whatsappsmb" (still matches "whatsapp" via substring)
+// "Acrobat_webcapture" → "acrobatweb capture"
+func normalizeAppName(name string) string {
+	name = strings.ToLower(name)
+	// Remove common separators
+	name = strings.ReplaceAll(name, "_", "")
+	name = strings.ReplaceAll(name, "-", "")
+	name = strings.ReplaceAll(name, " ", "")
+	// Strip trailing version numbers (e.g. "cleanmymac4" → "cleanmymac")
+	for len(name) > 0 && name[len(name)-1] >= '0' && name[len(name)-1] <= '9' {
+		name = name[:len(name)-1]
+	}
+	return name
 }
