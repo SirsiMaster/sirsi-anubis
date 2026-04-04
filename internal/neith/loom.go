@@ -183,6 +183,21 @@ func (l *Loom) LoadCanon(repoPath string) (*CanonContext, error) {
 		}
 	}
 
+	// Sirsi Master Plan — portfolio-wide execution plan.
+	// Lives in configs/ (Pantheon) or docs/ (tenant repos). Neith must always include it.
+	for _, masterPlanPath := range []string{
+		filepath.Join(root, "configs", "SIRSI_MASTER_PLAN.md"),
+		filepath.Join(root, "docs", "SIRSI_MASTER_PLAN.md"),
+	} {
+		if data, err := os.ReadFile(masterPlanPath); err == nil {
+			ctx.PlanningDocs = append(ctx.PlanningDocs, namedDoc{
+				Name:    "SIRSI_MASTER_PLAN.md",
+				Content: string(data),
+			})
+			break // only include once
+		}
+	}
+
 	// Deduplicate planning docs (patterns may overlap, e.g. ARCHITECTURE_DESIGN.md)
 	ctx.PlanningDocs = deduplicateDocs(ctx.PlanningDocs)
 
