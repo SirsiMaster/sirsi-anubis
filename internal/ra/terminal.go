@@ -9,6 +9,11 @@ import (
 	"strings"
 )
 
+// ProtectGlyph is the Eye of Horus — a sentinel stamped into the custom title
+// of any Terminal.app window that must survive KillAll. Ra checks for this
+// glyph before closing windows; if present, the window is untouchable.
+const ProtectGlyph = "𓂀"
+
 // SpawnConfig describes how to spawn a terminal window for a Ra scope.
 type SpawnConfig struct {
 	Name       string // scope name
@@ -309,11 +314,17 @@ chmod +x %s && claude %s --print < %s 2>/dev/null | %s`,
 }
 
 // buildTerminalScript generates AppleScript for macOS Terminal.app.
+// Sets the window to auto-close when the shell exits so KillAll doesn't
+// leave orphaned windows that the user has to close manually.
 func buildTerminalScript(shellCmd, title string) string {
 	return fmt.Sprintf(`tell application "Terminal"
 	activate
-	do script "%s"
-	set custom title of front window to "%s"
+	do script "%s; exit"
+	delay 0.5
+	tell front window
+		set custom title to "%s"
+		set current settings to settings set "Basic"
+	end tell
 end tell`, escapeAppleScript(shellCmd), escapeAppleScript(title))
 }
 
@@ -370,31 +381,55 @@ func KillAll(raDir string) error {
 		}
 	}
 
-	// Close stale Terminal.app windows left by killed Ra agents.
-	// Killing PIDs stops the process but leaves the shell window open.
-	closeScript := `tell application "Terminal"
+	// Close Terminal.app windows left by killed Ra agents.
+	// Killing PIDs stops the agent but the shell window stays open.
+	// We send `exit` to each window via AppleScript, then close it.
+	//
+	// Protection: any window whose custom title contains the ProtectGlyph (𓂀)
+	// is immune. Ra stamps this on the Claude Code session and Command Center
+	// before spawning agents. Everything else matching Ra patterns gets closed.
+	closeScript := fmt.Sprintf(`tell application "Terminal"
 		set windowCount to count of windows
 		repeat with i from windowCount to 1 by -1
 			try
 				set w to window i
-				set wName to name of w
-				if wName contains "Ra:" or wName contains "claude" or wName contains "python3" then
-					set tabList to every tab of w
-					set allIdle to true
-					repeat with t in tabList
-						if busy of t then set allIdle to false
-					end repeat
-					if allIdle then close w saving no
+				set cTitle to custom title of w
+				-- Protected: skip any window bearing the Eye of Horus
+				if cTitle contains "%s" then
+					-- inoculated, do not touch
+				else
+					-- Check both custom title and window name for Ra agent patterns
+					set wName to name of w
+					if cTitle contains "Ra:" or cTitle contains "Ra " or wName contains "Ra:" or wName contains "Ra " then
+						do script "exit" in w
+						delay 0.3
+						close w saving no
+					end if
 				end if
 			end try
 		end repeat
-	end tell`
+	end tell`, ProtectGlyph)
 	_ = exec.Command("osascript", "-e", closeScript).Run()
 
 	if len(errs) > 0 {
 		return fmt.Errorf("ra kill-all: %d errors: %s", len(errs), strings.Join(errs, "; "))
 	}
 	return nil
+}
+
+// ProtectFrontWindow stamps the frontmost Terminal.app window with the
+// ProtectGlyph, making it immune to KillAll. Call this before spawning
+// agent windows so the user's Claude Code session is inoculated.
+func ProtectFrontWindow() {
+	script := fmt.Sprintf(`tell application "Terminal"
+		try
+			set custom title of front window to "%s " & (custom title of front window)
+		on error
+			-- Front window has no custom title yet; set one.
+			set custom title of front window to "%s Claude Code"
+		end try
+	end tell`, ProtectGlyph, ProtectGlyph)
+	_ = exec.Command("osascript", "-e", script).Run()
 }
 
 // isWatchRunning checks if a Ra Command Center process is already running.
@@ -431,7 +466,7 @@ func SpawnWatchWindow(useITerm2 bool) {
 	}
 
 	shellCmd := fmt.Sprintf("%s ra watch", escapeShell(pantheon))
-	title := "𓇶 Ra Command Center"
+	title := ProtectGlyph + " 𓇶 Ra Command Center"
 
 	var script string
 	if useITerm2 {

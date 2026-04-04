@@ -69,7 +69,10 @@ func Deploy(opts DeployOptions) (*DeployResult, error) {
 	raDir := RADir()
 
 	// Kill any existing Ra windows before spawning new ones (prevents duplicates).
+	// First, inoculate the current window (Claude Code session) so KillAll
+	// never closes it — stamps the Eye of Horus (𓂀) into the custom title.
 	if !opts.DryRun {
+		ProtectFrontWindow()
 		_ = KillAll(raDir)
 		// Clear the Stele for a fresh deployment
 		_ = stele.Clear()
