@@ -1,5 +1,5 @@
 #!/bin/bash
-# 𓃣 Pantheon Pre-Push Gate
+# 𓆄 Ma'at Pre-Push Gate (Pantheon)
 # Guarantees CI stays green by running checks before push.
 # Install: git config core.hooksPath .githooks
 # Skip:    git push --no-verify (use sparingly)
@@ -19,7 +19,7 @@ set -e
 DEPTH="${MAAT_DEPTH:-fast}"
 
 echo ""
-echo "  𓇳 Pantheon pre-push gate... [depth: $DEPTH]"
+echo "  𓆄 Ma'at pre-push gate... [Pantheon | depth: $DEPTH]"
 echo ""
 
 # ── Detect tag-only pushes + capture push refs ───────────────────────
