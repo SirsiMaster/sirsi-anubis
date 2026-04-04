@@ -34,6 +34,17 @@ func PantheonHandlers() []Handler {
 	}
 }
 
+// RaHandlers returns Ra orchestration menu actions.
+func RaHandlers() []Handler {
+	pantheon := findPantheonBinary()
+	return []Handler{
+		{Name: "𓇶 Ra Deploy", Command: pantheon, Args: []string{"ra", "deploy"}},
+		{Name: "𓇶 Ra Kill All", Command: pantheon, Args: []string{"ra", "kill"}},
+		{Name: "𓇶 Ra Collect", Command: pantheon, Args: []string{"ra", "collect"}},
+		{Name: "𓇶 Ra Status", Command: pantheon, Args: []string{"ra", "status"}},
+	}
+}
+
 // QuickActions returns quick-access menu actions.
 func QuickActions() []Handler {
 	pantheon := findPantheonBinary()

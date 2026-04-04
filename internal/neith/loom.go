@@ -20,16 +20,24 @@ type ScopeConfig struct {
 	MaxTurns    int    `yaml:"max_turns"`
 }
 
-// CanonContext holds all canon documents loaded from a target repo.
+// CanonContext holds ALL canon documents loaded from a target repo.
+// Neith reads everything — no truncation, no summaries. She is the Weaver
+// and must see the full tapestry to keep the loom aligned.
 type CanonContext struct {
-	ClaudeMD           string
-	ThothMemory        string
-	ThothJournal       string // last 5 entries only
-	ContinuationPrompt string
-	ADRSummaries       []string // title + decision line per ADR
-	BlueprintSummaries []string
-	ChangelogRecent    string // last 2 entries
-	Version            string
+	ClaudeMD           string     // full CLAUDE.md or GEMINI.md
+	ThothMemory        string     // full .thoth/memory.yaml
+	ThothJournal       string     // full .thoth/journal.md
+	ContinuationPrompt string     // full docs/CONTINUATION-PROMPT.md
+	ADRs               []namedDoc // full text of every ADR
+	PlanningDocs       []namedDoc // full text of blueprints, plans, specs, roadmaps
+	Changelog          string     // full CHANGELOG.md
+	Version            string     // VERSION file
+}
+
+// namedDoc is a canon document with its filename for prompt labeling.
+type namedDoc struct {
+	Name    string // e.g. "ADR-002-IMPLEMENTATION-PLAN.md"
+	Content string
 }
 
 // DriftReport summarizes scope drift detected in a git diff.
@@ -96,12 +104,15 @@ func expandHome(path string) string {
 	return path
 }
 
-// LoadCanon reads canon documents from the target repository at repoPath.
+// LoadCanon reads ALL canon documents from the target repository at repoPath.
+// Neith sees everything — no truncation, no summaries, no artificial limits.
+// She is the Weaver and must have full visibility to keep the loom aligned
+// and to charge Thoth and Seshat with scribing the next continuation prompts.
 func (l *Loom) LoadCanon(repoPath string) (*CanonContext, error) {
 	root := expandHome(repoPath)
 	ctx := &CanonContext{}
 
-	// CLAUDE.md or GEMINI.md
+	// CLAUDE.md or GEMINI.md — full text
 	claudeData, err := os.ReadFile(filepath.Join(root, "CLAUDE.md"))
 	if err != nil {
 		geminiData, err2 := os.ReadFile(filepath.Join(root, "GEMINI.md"))
@@ -112,49 +123,69 @@ func (l *Loom) LoadCanon(repoPath string) (*CanonContext, error) {
 		ctx.ClaudeMD = string(claudeData)
 	}
 
-	// .thoth/memory.yaml
+	// .thoth/memory.yaml — full text
 	if data, err := os.ReadFile(filepath.Join(root, ".thoth", "memory.yaml")); err == nil {
 		ctx.ThothMemory = string(data)
 	}
 
-	// .thoth/journal.md — last 5 entries
+	// .thoth/journal.md — full text (every entry, every decision)
 	if data, err := os.ReadFile(filepath.Join(root, ".thoth", "journal.md")); err == nil {
-		ctx.ThothJournal = lastNJournalEntries(string(data), 5)
+		ctx.ThothJournal = string(data)
 	}
 
-	// docs/CONTINUATION-PROMPT.md
+	// docs/CONTINUATION-PROMPT.md — full text
 	if data, err := os.ReadFile(filepath.Join(root, "docs", "CONTINUATION-PROMPT.md")); err == nil {
 		ctx.ContinuationPrompt = string(data)
 	}
 
-	// ADR summaries — first 3 lines of each ADR-*.md
+	// ADRs — full text of every Architecture Decision Record.
+	// ADRs define what SHOULD be built and WHY. Neith needs all of them.
 	adrPattern := filepath.Join(root, "docs", "ADR-*.md")
 	if adrFiles, err := filepath.Glob(adrPattern); err == nil {
 		for _, f := range adrFiles {
-			if summary := readFirstNLines(f, 3); summary != "" {
-				ctx.ADRSummaries = append(ctx.ADRSummaries, summary)
+			if data, err := os.ReadFile(f); err == nil {
+				ctx.ADRs = append(ctx.ADRs, namedDoc{
+					Name:    filepath.Base(f),
+					Content: string(data),
+				})
 			}
 		}
 	}
 
-	// Blueprint/Plan/Scope summaries — first paragraph
+	// Planning docs — full text of everything in docs/ that describes
+	// what needs to be built: blueprints, plans, scopes, roadmaps, specs,
+	// status reports, build logs, architecture docs, design docs.
 	for _, pattern := range []string{
 		filepath.Join(root, "docs", "*BLUEPRINT*.md"),
 		filepath.Join(root, "docs", "*PLAN*.md"),
 		filepath.Join(root, "docs", "*SCOPE*.md"),
+		filepath.Join(root, "docs", "*ROADMAP*.md"),
+		filepath.Join(root, "docs", "*SPECIFICATION*.md"),
+		filepath.Join(root, "docs", "*PRODUCT*.md"),
+		filepath.Join(root, "docs", "*STATUS*.md"),
+		filepath.Join(root, "docs", "*BUILD_LOG*.md"),
+		filepath.Join(root, "docs", "*ARCHITECTURE*.md"),
+		filepath.Join(root, "docs", "*DESIGN*.md"),
+		filepath.Join(root, "docs", "*MIGRATION*.md"),
 	} {
 		if files, err := filepath.Glob(pattern); err == nil {
 			for _, f := range files {
-				if para := readFirstParagraph(f); para != "" {
-					ctx.BlueprintSummaries = append(ctx.BlueprintSummaries, para)
+				if data, err := os.ReadFile(f); err == nil {
+					ctx.PlanningDocs = append(ctx.PlanningDocs, namedDoc{
+						Name:    filepath.Base(f),
+						Content: string(data),
+					})
 				}
 			}
 		}
 	}
 
-	// CHANGELOG.md — first 2 version sections
+	// Deduplicate planning docs (patterns may overlap, e.g. ARCHITECTURE_DESIGN.md)
+	ctx.PlanningDocs = deduplicateDocs(ctx.PlanningDocs)
+
+	// CHANGELOG.md — full text
 	if data, err := os.ReadFile(filepath.Join(root, "CHANGELOG.md")); err == nil {
-		ctx.ChangelogRecent = firstNChangelogSections(string(data), 2)
+		ctx.Changelog = string(data)
 	}
 
 	// VERSION file
@@ -165,106 +196,135 @@ func (l *Loom) LoadCanon(repoPath string) (*CanonContext, error) {
 	return ctx, nil
 }
 
+// deduplicateDocs removes duplicate documents by filename.
+func deduplicateDocs(docs []namedDoc) []namedDoc {
+	seen := make(map[string]bool)
+	var unique []namedDoc
+	for _, d := range docs {
+		if !seen[d.Name] {
+			seen[d.Name] = true
+			unique = append(unique, d)
+		}
+	}
+	return unique
+}
+
 // WeaveScope assembles the final scope prompt for the given scope config.
+//
+// Neith sees everything. No truncation. The full canon is woven into the
+// prompt so the agent has complete context. Claude's 1M token context window
+// can hold all of it. The prompt is assembled in this order:
+//
+//  1. Ra Autonomy Directive
+//  2. Scope of Work — static (from YAML) OR dynamic (from canon)
+//  3. Continuation Prompt — current state and next phases
+//  4. Planning Docs — blueprints, dev plans, specs, roadmaps, architecture
+//  5. ADRs — every Architecture Decision Record, full text
+//  6. Thoth Memory + Journal — project state and every decision
+//  7. Project Identity — full CLAUDE.md
+//  8. Changelog + Version
 func (l *Loom) WeaveScope(scope ScopeConfig) (string, error) {
 	canon, err := l.LoadCanon(scope.RepoPath)
 	if err != nil {
 		return "", fmt.Errorf("load canon for %s: %w", scope.Name, err)
 	}
 
-	// Build the prompt in two parts: the critical directive+scope goes first
-	// (never truncated), then canon context fills remaining token budget.
+	var b strings.Builder
 
-	// Part 1: Directive and scope (must never be truncated)
-	var directive strings.Builder
+	// ── 1. Ra Autonomy Directive ────────────────────────────────────────
+	b.WriteString(fmt.Sprintf("# Scope: %s\n", scope.DisplayName))
+	b.WriteString(fmt.Sprintf("Deadline: %s | Priority: %s\n\n", scope.Deadline, scope.Priority))
 
-	directive.WriteString(fmt.Sprintf("# Scope: %s\n", scope.DisplayName))
-	directive.WriteString(fmt.Sprintf("Deadline: %s | Priority: %s\n\n", scope.Deadline, scope.Priority))
+	b.WriteString("## Ra Autonomy Directive\n")
+	b.WriteString("You are a Ra-deployed autonomous agent. This scope was pre-approved by the user.\n")
+	b.WriteString("**Override Rule 14 (Sprint Planning is Mandatory)**: The scope below IS the approved sprint plan.\n")
+	b.WriteString("Do NOT present a plan and ask for approval. Do NOT ask clarifying questions.\n")
+	b.WriteString("Execute tasks in order. If a task is ambiguous, use your best judgment.\n")
+	b.WriteString("If a task is blocked by a genuine technical issue, skip it, log the reason, and continue.\n")
+	b.WriteString("When all tasks are complete, commit, push, and run `pantheon thoth compact`.\n\n")
 
-	// Ra Autonomy Directive — overrides sprint-plan-approval gates in CLAUDE.md.
-	// Without this, agents block waiting for human approval that can never arrive
-	// in non-interactive --print mode.
-	directive.WriteString("## Ra Autonomy Directive\n")
-	directive.WriteString("You are a Ra-deployed autonomous agent. This scope was pre-approved by the user.\n")
-	directive.WriteString("**Override Rule 14 (Sprint Planning is Mandatory)**: The scope below IS the approved sprint plan.\n")
-	directive.WriteString("Do NOT present a plan and ask for approval. Do NOT ask clarifying questions.\n")
-	directive.WriteString("Execute the numbered tasks in order. If a task is ambiguous, use your best judgment.\n")
-	directive.WriteString("If a task is blocked by a genuine technical issue (missing dependency, broken build),\n")
-	directive.WriteString("skip it, log the reason, and continue with the next task.\n\n")
-
-	directive.WriteString("## Your Scope of Work\n")
-	directive.WriteString(scope.ScopeOfWork)
-	directive.WriteString("\n\nBegin by reading CLAUDE.md in this repo, then assess current state and execute the scope above.\n")
-	directive.WriteString("\n---\n\n")
-
-	// Part 2: Canon context (truncated to fit budget)
-	var context strings.Builder
-
-	// Project Identity
-	context.WriteString("## Project Identity\n")
-	claudeContent := canon.ClaudeMD
-	if len(claudeContent) > 2000 {
-		claudeContent = claudeContent[:2000] + "\n...(truncated)"
-	}
-	context.WriteString(claudeContent)
-	context.WriteString("\n\n")
-
-	// Project State
-	if canon.ThothMemory != "" {
-		context.WriteString("## Project State (Thoth Memory)\n")
-		context.WriteString(canon.ThothMemory)
-		context.WriteString("\n\n")
+	// ── 2. Scope of Work ────────────────────────────────────────────────
+	if strings.TrimSpace(scope.ScopeOfWork) != "" {
+		b.WriteString("## Your Scope of Work\n")
+		b.WriteString(scope.ScopeOfWork)
+		b.WriteString("\n\n")
+	} else {
+		b.WriteString("## Your Scope of Work (Dynamic — Derived from Canon)\n")
+		b.WriteString("No static scope was provided. Determine your scope from the full canon below.\n\n")
+		b.WriteString("**Instructions:**\n")
+		b.WriteString("1. Read the Continuation Prompt — it describes the current state and next phases.\n")
+		b.WriteString("2. Read the Planning Docs — they contain blueprints, dev plans, and specs.\n")
+		b.WriteString("3. Read the ADRs — they define architectural decisions and what should be built.\n")
+		b.WriteString("4. Check `git log --oneline -30` to see what was recently completed.\n")
+		b.WriteString("5. Identify the NEXT incomplete phase/sprint/milestone from the plans.\n")
+		b.WriteString("6. Execute it. Build working code. Do not just verify or audit.\n")
+		b.WriteString("7. When done, update docs/CONTINUATION-PROMPT.md with the new state.\n")
+		b.WriteString("8. Commit, push, and run `pantheon thoth compact`.\n\n")
 	}
 
-	// Recent Decisions
-	if canon.ThothJournal != "" {
-		context.WriteString("## Recent Decisions\n")
-		context.WriteString(canon.ThothJournal)
-		context.WriteString("\n\n")
-	}
+	b.WriteString("---\n\n")
 
-	// Continuation Context
+	// ── 3. Continuation Prompt ──────────────────────────────────────────
 	if canon.ContinuationPrompt != "" {
-		context.WriteString("## Continuation Context\n")
-		context.WriteString(canon.ContinuationPrompt)
-		context.WriteString("\n\n")
+		b.WriteString("## Continuation Prompt (Current State & Next Phases)\n")
+		b.WriteString(canon.ContinuationPrompt)
+		b.WriteString("\n\n")
 	}
 
-	// Architecture Decisions
-	if len(canon.ADRSummaries) > 0 {
-		context.WriteString("## Architecture Decisions\n")
-		for _, adr := range canon.ADRSummaries {
-			context.WriteString(adr)
-			context.WriteString("\n\n")
+	// ── 4. Planning Docs ────────────────────────────────────────────────
+	if len(canon.PlanningDocs) > 0 {
+		b.WriteString("## Planning Documents\n\n")
+		for _, doc := range canon.PlanningDocs {
+			b.WriteString(fmt.Sprintf("### %s\n", doc.Name))
+			b.WriteString(doc.Content)
+			b.WriteString("\n\n")
 		}
 	}
 
-	// Current Version
+	// ── 5. Architecture Decision Records ────────────────────────────────
+	if len(canon.ADRs) > 0 {
+		b.WriteString("## Architecture Decision Records\n\n")
+		for _, adr := range canon.ADRs {
+			b.WriteString(fmt.Sprintf("### %s\n", adr.Name))
+			b.WriteString(adr.Content)
+			b.WriteString("\n\n")
+		}
+	}
+
+	// ── 6. Thoth Memory + Journal ──────────────────────────────────────
+	if canon.ThothMemory != "" {
+		b.WriteString("## Project State (Thoth Memory)\n")
+		b.WriteString(canon.ThothMemory)
+		b.WriteString("\n\n")
+	}
+
+	if canon.ThothJournal != "" {
+		b.WriteString("## Engineering Journal (Thoth)\n")
+		b.WriteString(canon.ThothJournal)
+		b.WriteString("\n\n")
+	}
+
+	// ── 7. Project Identity ────────────────────────────────────────────
+	if canon.ClaudeMD != "" {
+		b.WriteString("## Project Identity (CLAUDE.md)\n")
+		b.WriteString(canon.ClaudeMD)
+		b.WriteString("\n\n")
+	}
+
+	// ── 8. Changelog + Version ─────────────────────────────────────────
 	if canon.Version != "" {
-		context.WriteString("## Current Version\n")
-		context.WriteString(canon.Version)
-		if canon.ChangelogRecent != "" {
-			context.WriteString(" — ")
-			context.WriteString(canon.ChangelogRecent)
-		}
-		context.WriteString("\n\n")
+		b.WriteString("## Current Version: ")
+		b.WriteString(canon.Version)
+		b.WriteString("\n\n")
 	}
 
-	// Token budget: ~8000 tokens ≈ 32K chars.
-	// Directive is sacred; truncate only the canon context if over budget.
-	const maxChars = 32000
-	directiveStr := directive.String()
-	contextStr := context.String()
-
-	remaining := maxChars - len(directiveStr)
-	if remaining < 0 {
-		remaining = 0
-	}
-	if len(contextStr) > remaining {
-		contextStr = contextStr[:remaining] + "\n\n...(canon context truncated to fit token budget)"
+	if canon.Changelog != "" {
+		b.WriteString("## Changelog\n")
+		b.WriteString(canon.Changelog)
+		b.WriteString("\n\n")
 	}
 
-	return directiveStr + contextStr, nil
+	return b.String(), nil
 }
 
 // WritePrompt writes the assembled prompt to ~/.config/ra/scopes/<name>-prompt.md.

@@ -14,9 +14,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -45,12 +49,24 @@ type StatsSnapshot struct {
 	ActiveDeities []string `json:"active_deities"`
 	DeityCount    int      `json:"deity_count"`
 
+	// Ra Deployment
+	RaDeployed bool              `json:"ra_deployed"`
+	RaScopes   []RaScopeStatus   `json:"ra_scopes"`
+	RaIcon     string            `json:"ra_icon"`
+
 	// Disk
 	DiskWasteEstimate string `json:"disk_waste_estimate"`
 
 	// Meta
 	Timestamp   time.Time `json:"timestamp"`
 	CollectedIn string    `json:"collected_in"`
+}
+
+// RaScopeStatus tracks one Ra-deployed agent window.
+type RaScopeStatus struct {
+	Name  string `json:"name"`
+	State string `json:"state"` // "running", "completed", "failed", "idle"
+	Icon  string `json:"icon"`
 }
 
 // StatsConfig configures what to collect and how often.
@@ -86,6 +102,9 @@ func CollectStats(cfg StatsConfig) *StatsSnapshot {
 
 	// Active deities (process scan)
 	collectDeities(snap)
+
+	// Ra deployment status
+	collectRa(snap)
 
 	snap.CollectedIn = time.Since(start).Round(time.Millisecond).String()
 	return snap
@@ -271,6 +290,105 @@ func collectDeities(snap *StatsSnapshot) {
 	snap.DeityCount = len(snap.ActiveDeities)
 }
 
+// ── Ra Deployment Collection ────────────────────────────────────────────
+
+func collectRa(snap *StatsSnapshot) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+	raDir := filepath.Join(home, ".config", "ra")
+
+	// Read deployment.json for scope names
+	metaPath := filepath.Join(raDir, "deployment.json")
+	metaData, err := os.ReadFile(metaPath)
+	if err != nil {
+		snap.RaIcon = "⚫"
+		return
+	}
+
+	// Parse scope names from deployment.json
+	var meta struct {
+		Scopes []string `json:"scopes"`
+	}
+	if err := json.Unmarshal(metaData, &meta); err != nil || len(meta.Scopes) == 0 {
+		snap.RaIcon = "⚫"
+		return
+	}
+
+	snap.RaDeployed = true
+	allDone := true
+	anyRunning := false
+	anyFailed := false
+
+	for _, scope := range meta.Scopes {
+		ss := RaScopeStatus{Name: scope}
+
+		// Check if PID is alive
+		pidFile := filepath.Join(raDir, "pids", scope+".pid")
+		pidData, err := os.ReadFile(pidFile)
+		if err != nil {
+			ss.State = "idle"
+			ss.Icon = "⚫"
+			snap.RaScopes = append(snap.RaScopes, ss)
+			continue
+		}
+
+		var pid int
+		_, _ = fmt.Sscanf(strings.TrimSpace(string(pidData)), "%d", &pid)
+
+		// Check if process is alive (signal 0)
+		if pid > 0 && isAlive(pid) {
+			ss.State = "running"
+			ss.Icon = "🔄"
+			anyRunning = true
+			allDone = false
+		} else {
+			// Check exit code
+			exitFile := filepath.Join(raDir, "exits", scope+".exit")
+			exitData, err := os.ReadFile(exitFile)
+			if err != nil {
+				ss.State = "crashed"
+				ss.Icon = "💀"
+				anyFailed = true
+			} else {
+				var code int
+				_, _ = fmt.Sscanf(strings.TrimSpace(string(exitData)), "%d", &code)
+				if code == 0 {
+					ss.State = "completed"
+					ss.Icon = "✅"
+				} else {
+					ss.State = "failed"
+					ss.Icon = "❌"
+					anyFailed = true
+				}
+			}
+		}
+		snap.RaScopes = append(snap.RaScopes, ss)
+	}
+
+	switch {
+	case anyRunning:
+		snap.RaIcon = "𓇶"
+	case anyFailed:
+		snap.RaIcon = "⚠️"
+	case allDone:
+		snap.RaIcon = "✅"
+	default:
+		snap.RaIcon = "⚫"
+	}
+}
+
+// isAlive checks if a process exists via signal 0.
+func isAlive(pid int) bool {
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		return false
+	}
+	err = proc.Signal(syscall.Signal(0))
+	return err == nil
+}
+
 // ── Formatters ──────────────────────────────────────────────────────────
 
 // FormatMenuItems returns the stats as menu item strings.
@@ -293,6 +411,16 @@ func (s *StatsSnapshot) FormatMenuItems() []string {
 	}
 
 	items = append(items, fmt.Sprintf("%s Accelerator: %s", s.AccelIcon, s.PrimaryAccelerator))
+
+	// Ra deployment status
+	if s.RaDeployed && len(s.RaScopes) > 0 {
+		items = append(items, "─── Ra Deployment ───")
+		for _, scope := range s.RaScopes {
+			items = append(items, fmt.Sprintf("  %s %s — %s", scope.Icon, scope.Name, scope.State))
+		}
+	} else {
+		items = append(items, "𓇶 Ra: idle")
+	}
 
 	return items
 }

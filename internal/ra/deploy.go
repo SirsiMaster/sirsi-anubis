@@ -65,6 +65,12 @@ func Deploy(opts DeployOptions) (*DeployResult, error) {
 	}
 
 	raDir := RADir()
+
+	// Kill any existing Ra windows before spawning new ones (prevents duplicates).
+	if !opts.DryRun {
+		_ = KillAll(raDir)
+	}
+
 	var spawned []string
 
 	for _, scope := range scopes {

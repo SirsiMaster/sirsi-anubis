@@ -11,68 +11,53 @@ repo_path: "~/Development/RepoName"
 deadline: "2026-04-15"    # ISO date or empty
 priority: "P0"            # P0 (critical) through P3 (backlog)
 max_turns: 50             # agent turn limit
-scope_of_work: |
-  ...
+scope_of_work: ""         # empty = dynamic (Neith derives from canon)
 ```
 
-## Scope Authoring Rules
+## Dynamic vs Static Scopes
 
-Ra agents run in `claude --print` mode (non-interactive, no human on the other end).
-If an agent asks a question, it hangs forever. Write scopes that eliminate questions.
+### Dynamic (default — `scope_of_work: ""`)
 
-### 1. Be directive, not descriptive
+When `scope_of_work` is empty, Neith reads the repo's full canon and the agent
+derives its own scope from the continuation prompt, planning docs, blueprints,
+ADRs, and Thoth memory. The agent checks `git log` to see what's done, identifies
+the next incomplete phase/sprint, and executes it.
 
-Bad: `CoreML classifier -- CGO bridge in internal/brain/inference.go`
-Good: `internal/brain/inference.go -- extend the existing CGO bridge to call CoreML's MLModel.prediction(from:) via C interop. Add build tags for darwin/arm64.`
+This is the correct mode for ongoing development. The canon IS the plan.
 
-### 2. Start with "Read X first"
+### Static (override — `scope_of_work: "1. Do X\n2. Do Y"`)
 
-Every scope should begin with: `Read CLAUDE.md and the <dir> structure first, then execute in order:`
-
-This grounds the agent in the repo's current state before it starts making changes.
-
-### 3. Reference existing files
-
-If the work extends existing code, name the files. If the work creates new code, name the target path.
-
-Bad: `Add tests for the API`
-Good: `Add tests for all Go API endpoints in cmd/api/ -- use httptest.NewServer pattern`
-
-### 4. Number the tasks
-
-Agents execute numbered tasks in order. Unnumbered bullets invite the agent to prioritize (and ask you about it).
-
-### 5. Include a skip-and-continue rule
-
-If a task might be blocked (missing dep, broken upstream), say what to do:
-`If CoreML headers are missing, create a minimal Objective-C bridge file.`
-
-### 6. End with commit+thoth
-
-Every scope should end with:
-```
-N. Commit, push, run pantheon thoth compact.
-```
-
-### 7. Defer what doesn't fit
-
-Don't pack 12 tasks into one scope. If something is lower priority, say:
-`Skip X for now (deferred to next sprint).`
+When `scope_of_work` has content, it's used as-is. The agent executes the
+numbered tasks in order. Use this for one-off tasks like "fix CI" or
+"deploy to production" that aren't part of the repo's canonical plan.
 
 ## How Neith Weaves Prompts
 
-Neith assembles the final prompt sent to each agent:
+Neith assembles the final prompt in priority order:
 
-1. **Ra Autonomy Directive** (injected by code, not editable) -- overrides CLAUDE.md Rule 14 (sprint plan approval). Tells the agent to execute without asking.
-2. **Your Scope of Work** -- the `scope_of_work` field from this YAML file.
-3. **Canon Context** (truncated to fit 32K token budget):
-   - CLAUDE.md (first 2000 chars)
-   - Thoth memory + journal
-   - Continuation prompt
-   - ADR summaries
-   - Version + changelog
+1. **Ra Autonomy Directive** (injected by code) — overrides CLAUDE.md Rule 14
+2. **Scope of Work** — static from YAML, or dynamic instructions
+3. **Continuation Prompt** — `docs/CONTINUATION-PROMPT.md` (current state, next phases)
+4. **Planning Docs** — full text of `*BLUEPRINT*`, `*PLAN*`, `*SCOPE*`, `*ROADMAP*`, `*SPECIFICATION*`, `*STATUS*`, `*BUILD_LOG*` files from `docs/`
+5. **Thoth Memory + Journal** — `.thoth/memory.yaml` and `.thoth/journal.md`
+6. **ADR Summaries** — first 10 lines of each `docs/ADR-*.md`
+7. **Project Identity** — CLAUDE.md (truncated to 2000 chars; agent reads full file)
+8. **Version + Changelog**
 
-The directive and scope are **never truncated**. Canon context is expendable.
+Content is truncated from the bottom (lowest priority) when hitting the 100K char token budget.
+The directive and scope are always at the top and never truncated.
+
+## Why stream-json (not default --print)
+
+`claude --print` in default text mode buffers ALL output until the entire session completes.
+For multi-step scopes with heavy tool use, this means 10+ minutes of zero output — agents
+appear lifeless even though they're working.
+
+Ra uses `--output-format stream-json --verbose` to get real-time JSON events, then pipes
+through a python filter that extracts human-readable text and `[tool: Name]` summaries.
+This gives live progress in the terminal window AND captures a log file for `pantheon ra collect`.
+
+Do NOT change this back to default `--print` text mode. See Rule A24 in CLAUDE.md.
 
 ## Testing a Scope
 
@@ -80,7 +65,7 @@ The directive and scope are **never truncated**. Canon context is expendable.
 pantheon ra deploy --dry-run --scope your-scope
 ```
 
-This shows the assembled prompt without spawning windows. Verify:
+Verify:
 - The autonomy directive appears at the top
-- Your scope of work is fully visible (not truncated)
-- The canon context provides enough project identity
+- The continuation prompt is present and not truncated
+- Planning docs are included (check with `grep "^## " prompt.md`)

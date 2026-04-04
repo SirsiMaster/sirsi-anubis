@@ -13,9 +13,16 @@ package seba
 */
 import "C"
 import (
+	"crypto/sha256"
 	"fmt"
 	"unsafe"
 )
+
+// cpuSHA256 computes SHA-256 on the CPU. Used for empty blocks that
+// Metal cannot handle (zero-length buffer allocation fails).
+func cpuSHA256(data []byte) [32]byte {
+	return sha256.Sum256(data)
+}
 
 // metalAvailable returns true if a Metal GPU device exists.
 func metalAvailable() bool {
@@ -40,10 +47,69 @@ func metalGPUCores() int {
 //
 // CGO pointer rules require that C functions cannot receive Go pointers containing
 // other Go pointers. We allocate the pointer array and copy each block into C memory.
+//
+// Empty blocks (len=0) are hashed on the CPU — Metal cannot allocate zero-length buffers.
 func MetalHashBatch(blocks [][]byte) ([][32]byte, error) {
 	n := len(blocks)
 	if n == 0 {
 		return nil, nil
+	}
+
+	// Check if all blocks are empty — avoid Metal dispatch entirely
+	allEmpty := true
+	for _, b := range blocks {
+		if len(b) > 0 {
+			allEmpty = false
+			break
+		}
+	}
+	if allEmpty {
+		hashes := make([][32]byte, n)
+		for i, b := range blocks {
+			hashes[i] = cpuSHA256(b)
+		}
+		return hashes, nil
+	}
+
+	// Separate empty blocks from non-empty for GPU dispatch.
+	// Metal buffer allocation requires length > 0.
+	emptyIndices := make(map[int]bool)
+	for i, b := range blocks {
+		if len(b) == 0 {
+			emptyIndices[i] = true
+		}
+	}
+
+	// If there are empty blocks mixed with non-empty, compute empty hashes
+	// on CPU and dispatch the rest to Metal.
+	if len(emptyIndices) > 0 {
+		// Build non-empty block list for Metal dispatch
+		var gpuBlocks [][]byte
+		gpuIdx := make([]int, 0, n-len(emptyIndices))
+		for i, b := range blocks {
+			if !emptyIndices[i] {
+				gpuBlocks = append(gpuBlocks, b)
+				gpuIdx = append(gpuIdx, i)
+			}
+		}
+
+		// Dispatch non-empty blocks to Metal
+		gpuHashes, err := MetalHashBatch(gpuBlocks)
+		if err != nil {
+			return nil, err
+		}
+
+		// Assemble results: CPU-hashed empty blocks + GPU-hashed non-empty blocks
+		hashes := make([][32]byte, n)
+		for i := range blocks {
+			if emptyIndices[i] {
+				hashes[i] = cpuSHA256(blocks[i])
+			}
+		}
+		for j, origIdx := range gpuIdx {
+			hashes[origIdx] = gpuHashes[j]
+		}
+		return hashes, nil
 	}
 
 	// Allocate C arrays for block pointers and lengths.
@@ -56,16 +122,11 @@ func MetalHashBatch(blocks [][]byte) ([][32]byte, error) {
 	defer C.free(unsafe.Pointer(&cLens[0]))
 
 	for i, b := range blocks {
-		if len(b) == 0 {
-			cBlockPtrs[i] = (*C.uint8_t)(C.malloc(1))
-			cLens[i] = 0
-		} else {
-			// Copy Go slice data into C memory
-			cBuf := C.malloc(C.size_t(len(b)))
-			C.memcpy(cBuf, unsafe.Pointer(&b[0]), C.size_t(len(b)))
-			cBlockPtrs[i] = (*C.uint8_t)(cBuf)
-			cLens[i] = C.size_t(len(b))
-		}
+		// All blocks here are non-empty (empty blocks were pre-filtered above).
+		cBuf := C.malloc(C.size_t(len(b)))
+		C.memcpy(cBuf, unsafe.Pointer(&b[0]), C.size_t(len(b)))
+		cBlockPtrs[i] = (*C.uint8_t)(cBuf)
+		cLens[i] = C.size_t(len(b))
 	}
 
 	// Free individual block copies after dispatch
