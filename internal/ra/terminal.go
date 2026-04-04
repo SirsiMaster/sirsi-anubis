@@ -370,6 +370,27 @@ func KillAll(raDir string) error {
 		}
 	}
 
+	// Close stale Terminal.app windows left by killed Ra agents.
+	// Killing PIDs stops the process but leaves the shell window open.
+	closeScript := `tell application "Terminal"
+		set windowCount to count of windows
+		repeat with i from windowCount to 1 by -1
+			try
+				set w to window i
+				set wName to name of w
+				if wName contains "Ra:" or wName contains "claude" or wName contains "python3" then
+					set tabList to every tab of w
+					set allIdle to true
+					repeat with t in tabList
+						if busy of t then set allIdle to false
+					end repeat
+					if allIdle then close w saving no
+				end if
+			end try
+		end repeat
+	end tell`
+	_ = exec.Command("osascript", "-e", closeScript).Run()
+
 	if len(errs) > 0 {
 		return fmt.Errorf("ra kill-all: %d errors: %s", len(errs), strings.Join(errs, "; "))
 	}
