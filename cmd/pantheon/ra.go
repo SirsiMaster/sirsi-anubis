@@ -442,6 +442,23 @@ var raCollectCmd = &cobra.Command{
 	},
 }
 
+// raWatchCmd launches the Ra Command Center TUI — live sprint monitoring.
+var raWatchCmd = &cobra.Command{
+	Use:   "watch",
+	Short: "𓇶 Ra Command Center — live sprint monitoring TUI",
+	Long: `Launch the Ra Command Center, a full-screen terminal UI that shows:
+  - Live sprint progress per scope (Sprint 2/5, running, etc.)
+  - Governance loop status (Ma'at QA, Thoth compact, Seshat scribe)
+  - Agent activity (last tool call, log tail)
+  - Post-sprint acceptance flow
+
+  pantheon ra watch         Launch the command center
+  pantheon ra deploy        Deploy agents (auto-opens watch in a new window)`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return output.LaunchDashboard()
+	},
+}
+
 func init() {
 	raCmd.PersistentFlags().BoolVar(&raDocs, "docs", false, "Open Ra web documentation")
 	raCmd.PersistentFlags().BoolVar(&raRecord, "record", false, "Record results through the Seshat/Thoth knowledge pipeline")
@@ -463,4 +480,5 @@ func init() {
 	raCmd.AddCommand(raDeployCmd)
 	raCmd.AddCommand(raKillCmd)
 	raCmd.AddCommand(raCollectCmd)
+	raCmd.AddCommand(raWatchCmd)
 }

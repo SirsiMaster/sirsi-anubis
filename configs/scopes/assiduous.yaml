@@ -4,4 +4,5 @@ repo_path: "~/Development/assiduous"
 deadline: "2026-04-15"
 priority: "P0"
 max_turns: 50
+sprints: 5
 scope_of_work: ""

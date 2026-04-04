@@ -321,7 +321,8 @@ Anubis scans filesystems and processes. Scan results may contain sensitive infor
 *   **Scope Authoring**: Scopes MUST be written as directive, numbered task lists — not vague descriptions. Each task must name specific files, paths, or concrete actions. Vague scopes cause agents to ask clarifying questions, which hang forever in `--print` mode. See `configs/scopes/README.md` for the full authoring guide.
 *   **Prompt Structure**: The autonomy directive and scope of work are placed at the **top** of the woven prompt and are **never truncated**. Canon context (CLAUDE.md, Thoth memory, ADRs) fills the remaining token budget and may be truncated.
 *   **Permission Model**: Ra agents run with `--dangerously-skip-permissions` because the scope is pre-approved. This flag MUST NOT be used outside of Ra-deployed agents.
-*   **Evidence**: Session where `pantheon ra deploy` spawned 4 windows; all 4 agents asked for approval and blocked. Root causes: (1) CLAUDE.md Rule 14 conflict, (2) vague scope descriptions, (3) directive placed after canon context and truncated.
+*   **Streaming Output**: Ra agents MUST use `--output-format stream-json --verbose` with `--print`. Default `--print` mode buffers ALL output until the session completes, making agents appear lifeless for 10+ minutes. The stream-json output is piped through a python filter (`terminal.go`) that extracts human-readable text and tool-use summaries, writing to both the terminal (live progress) and the log file (Ra monitoring).
+*   **Evidence**: Session where `pantheon ra deploy` spawned 4 windows; all 4 agents asked for approval and blocked. Root causes: (1) CLAUDE.md Rule 14 conflict, (2) vague scope descriptions, (3) directive placed after canon context and truncated, (4) `--print` default text mode buffered all output making agents appear dead.
 
 ---
 

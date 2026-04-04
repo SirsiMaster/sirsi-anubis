@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/neith"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/seshat"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/stele"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/thoth"
 )
 
@@ -69,7 +71,12 @@ func Deploy(opts DeployOptions) (*DeployResult, error) {
 	// Kill any existing Ra windows before spawning new ones (prevents duplicates).
 	if !opts.DryRun {
 		_ = KillAll(raDir)
+		// Clear the Stele for a fresh deployment
+		_ = stele.Clear()
 	}
+
+	// Open the Stele ledger and inscribe deploy_start
+	ledger, _ := stele.Open(stele.DefaultPath())
 
 	var spawned []string
 
@@ -117,6 +124,8 @@ func Deploy(opts DeployOptions) (*DeployResult, error) {
 			ExitFile:   filepath.Join(raDir, "exits", scope.Name+".exit"),
 			PIDFile:    filepath.Join(raDir, "pids", scope.Name+".pid"),
 			UseITerm2:  opts.UseITerm2,
+			Sprints:    scope.Sprints,
+			BudgetUSD:  scope.BudgetUSD,
 		}
 
 		_, err = SpawnWindow(cfg)
@@ -135,6 +144,20 @@ func Deploy(opts DeployOptions) (*DeployResult, error) {
 
 	// Write deployment metadata
 	writeDeployMeta(raDir, spawned)
+
+	// Inscribe deploy_start to the Stele
+	if ledger != nil {
+		_ = ledger.Append("ra", stele.TypeDeployStart, "", map[string]string{
+			"scopes": strings.Join(spawned, ","),
+			"count":  fmt.Sprintf("%d", len(spawned)),
+		})
+	}
+
+	// Spawn the Ra Command Center if one isn't already running.
+	// If it's already open, it auto-refreshes from ~/.config/ra/ — no respawn needed.
+	if !isWatchRunning() {
+		SpawnWatchWindow(opts.UseITerm2)
+	}
 
 	result := &DeployResult{Spawned: spawned}
 

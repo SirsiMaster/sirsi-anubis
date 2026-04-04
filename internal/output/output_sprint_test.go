@@ -140,11 +140,11 @@ func TestMainModel_View_Running(t *testing.T) {
 	if view == "" {
 		t.Error("View should not be empty")
 	}
-	if !strings.Contains(view, "Pantheon") {
-		t.Errorf("View should contain 'Pantheon', got %q", view[:50])
+	if !strings.Contains(view, "Ra Command Center") {
+		t.Errorf("View should contain 'Ra Command Center', got %q", view[:60])
 	}
-	if !strings.Contains(view, "Press") {
-		t.Error("View should contain quit instruction")
+	if !strings.Contains(view, "q quit") && !strings.Contains(view, "deploy") {
+		t.Error("View should contain navigation or deploy instruction")
 	}
 }
 
@@ -153,8 +153,8 @@ func TestMainModel_View_Quitting(t *testing.T) {
 	m := NewMainModel()
 	m.quitting = true
 	view := m.View()
-	if !strings.Contains(view, "ritual complete") {
-		t.Errorf("quitting View = %q, want 'ritual complete'", view)
+	if !strings.Contains(view, "closed") {
+		t.Errorf("quitting View = %q, want 'closed'", view)
 	}
 }
 

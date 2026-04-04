@@ -11,13 +11,15 @@ import (
 
 // ScopeConfig defines a single scope of work for a target repository.
 type ScopeConfig struct {
-	Name        string `yaml:"name"`
-	DisplayName string `yaml:"display_name"`
-	RepoPath    string `yaml:"repo_path"`
-	Deadline    string `yaml:"deadline"`
-	Priority    string `yaml:"priority"`
-	ScopeOfWork string `yaml:"scope_of_work"`
-	MaxTurns    int    `yaml:"max_turns"`
+	Name        string  `yaml:"name"`
+	DisplayName string  `yaml:"display_name"`
+	RepoPath    string  `yaml:"repo_path"`
+	Deadline    string  `yaml:"deadline"`
+	Priority    string  `yaml:"priority"`
+	ScopeOfWork string  `yaml:"scope_of_work"`
+	MaxTurns    int     `yaml:"max_turns"`
+	Sprints     int     `yaml:"sprints"`    // number of sprint turns (1 = one-shot, N = loop with --continue)
+	BudgetUSD   float64 `yaml:"budget_usd"` // max API spend per deploy — API billing users only
 }
 
 // CanonContext holds ALL canon documents loaded from a target repo.
@@ -237,11 +239,13 @@ func (l *Loom) WeaveScope(scope ScopeConfig) (string, error) {
 
 	b.WriteString("## Ra Autonomy Directive\n")
 	b.WriteString("You are a Ra-deployed autonomous agent. This scope was pre-approved by the user.\n")
-	b.WriteString("**Override Rule 14 (Sprint Planning is Mandatory)**: The scope below IS the approved sprint plan.\n")
+	b.WriteString("**Override Rule 14 (Sprint Planning is Mandatory)**: The canon below IS the approved plan.\n")
 	b.WriteString("Do NOT present a plan and ask for approval. Do NOT ask clarifying questions.\n")
-	b.WriteString("Execute tasks in order. If a task is ambiguous, use your best judgment.\n")
-	b.WriteString("If a task is blocked by a genuine technical issue, skip it, log the reason, and continue.\n")
-	b.WriteString("When all tasks are complete, commit, push, and run `pantheon thoth compact`.\n\n")
+	b.WriteString("Execute as much work as you can this sprint. If a task is blocked, skip it and continue.\n\n")
+	b.WriteString("**Sprint loop**: You are running in a multi-sprint session. Between sprints, the governance\n")
+	b.WriteString("loop runs automatically: Thoth compacts your memory, Ma'at checks build/tests, and you\n")
+	b.WriteString("receive a status report as your next prompt. Do NOT repeat work from previous sprints.\n")
+	b.WriteString("Each sprint should advance the canon's plan further. Commit and push at the end of EACH sprint.\n\n")
 
 	// ── 2. Scope of Work ────────────────────────────────────────────────
 	if strings.TrimSpace(scope.ScopeOfWork) != "" {
