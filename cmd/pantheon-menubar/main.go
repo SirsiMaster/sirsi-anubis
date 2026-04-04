@@ -14,7 +14,7 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
 )
 
-var version = "v0.9.0-rc1"
+var version = "v0.10.0"
 
 func main() {
 	unlock, err := platform.TryLock("menubar")
@@ -45,22 +45,19 @@ func onReady() {
 	systray.SetTooltip("Pantheon Ecosystem Monitor")
 
 	// ── Stats section ───────────────────────────────────────────────
-	mStats := systray.AddMenuItem("Loading...", "System status")
-	mStats.Disable()
+	mStats := systray.AddMenuItem("Loading...", "Click to refresh stats")
 	systray.AddSeparator()
 
 	// ── Ra section ──────────────────────────────────────────────────
-	mRaHeader := systray.AddMenuItem("𓇶 Ra — Orchestrator", "Ra deployment controls")
-	mRaHeader.Disable()
+	mRaHeader := systray.AddMenuItem("𓇶 Ra — Orchestrator", "Click to open Command Center")
 	mRaDeploy := systray.AddMenuItem("  Deploy All Scopes", "pantheon ra deploy")
 	mRaKill := systray.AddMenuItem("  Kill All Windows", "pantheon ra kill")
 	mRaCollect := systray.AddMenuItem("  Collect Results", "pantheon ra collect")
 
-	// Ra scope status items (updated dynamically)
+	// Ra scope status items (updated dynamically, clickable to view logs)
 	raScopes := make([]*systray.MenuItem, 4)
 	for i := range raScopes {
-		raScopes[i] = systray.AddMenuItem("  —", "")
-		raScopes[i].Disable()
+		raScopes[i] = systray.AddMenuItem("  —", "Click to view scope log")
 	}
 
 	systray.AddSeparator()
@@ -110,12 +107,46 @@ func onReady() {
 
 	for {
 		select {
+		case <-mStats.ClickedCh:
+			// Refresh stats immediately on click
+			snap := CollectStats(cfg)
+			lines := snap.FormatMenuItems()
+			mStats.SetTitle(lines[0])
+			mStats.SetTooltip(snap.StatusLine())
+			for i, item := range raScopes {
+				if i < len(snap.RaScopes) {
+					s := snap.RaScopes[i]
+					item.SetTitle(fmt.Sprintf("  %s %s — %s", s.Icon, s.Name, s.State))
+				}
+			}
+		case <-mRaHeader.ClickedCh:
+			_ = OpenCommandCenter() // opens Ra Command Center TUI
 		case <-mRaDeploy.ClickedCh:
 			_ = raHandlers[0].Execute() // ra deploy
 		case <-mRaKill.ClickedCh:
 			_ = raHandlers[1].Execute() // ra kill
 		case <-mRaCollect.ClickedCh:
 			_ = raHandlers[2].Execute() // ra collect
+		case <-raScopes[0].ClickedCh:
+			snap := CollectStats(cfg)
+			if len(snap.RaScopes) > 0 {
+				_ = OpenScopeLog(snap.RaScopes[0].Name)
+			}
+		case <-raScopes[1].ClickedCh:
+			snap := CollectStats(cfg)
+			if len(snap.RaScopes) > 1 {
+				_ = OpenScopeLog(snap.RaScopes[1].Name)
+			}
+		case <-raScopes[2].ClickedCh:
+			snap := CollectStats(cfg)
+			if len(snap.RaScopes) > 2 {
+				_ = OpenScopeLog(snap.RaScopes[2].Name)
+			}
+		case <-raScopes[3].ClickedCh:
+			snap := CollectStats(cfg)
+			if len(snap.RaScopes) > 3 {
+				_ = OpenScopeLog(snap.RaScopes[3].Name)
+			}
 		case <-mScan.ClickedCh:
 			_ = handlers[0].Execute() // weigh
 		case <-mJudge.ClickedCh:

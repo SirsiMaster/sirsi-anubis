@@ -81,6 +81,25 @@ func OpenCaseStudies() error {
 	return exec.Command("open", path).Start()
 }
 
+// OpenCommandCenter launches `pantheon ra watch` in a new terminal.
+func OpenCommandCenter() error {
+	pantheon := findPantheonBinary()
+	cmd := exec.Command(pantheon, "ra", "watch")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Start()
+}
+
+// OpenScopeLog opens the log file for a given Ra scope.
+func OpenScopeLog(scopeName string) error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	logPath := filepath.Join(home, ".config", "ra", "logs", scopeName+".log")
+	return exec.Command("open", "-a", "Console", logPath).Start()
+}
+
 // findPantheonBinary locates the pantheon binary.
 func findPantheonBinary() string {
 	// Check PATH first
