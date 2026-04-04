@@ -108,7 +108,7 @@ func (m MainModel) Init() tea.Cmd {
 	return tea.Batch(
 		m.spinner.Tick,
 		tickEvery(6*time.Second),      // event reads every 6s
-		pidCheckEvery(30*time.Second),  // PID liveness every 30s
+		pidCheckEvery(30*time.Second), // PID liveness every 30s
 	)
 }
 

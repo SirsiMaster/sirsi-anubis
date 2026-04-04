@@ -11,13 +11,13 @@ import (
 
 // SpawnConfig describes how to spawn a terminal window for a Ra scope.
 type SpawnConfig struct {
-	Name       string  // scope name
-	Title      string  // window title (e.g. "𓇶 Ra: Assiduous")
-	WorkDir    string  // repo path
-	PromptFile string  // path to Neith's generated prompt
-	LogFile    string  // stdout/stderr capture
-	ExitFile   string  // exit code file
-	PIDFile    string  // process ID file
+	Name       string // scope name
+	Title      string // window title (e.g. "𓇶 Ra: Assiduous")
+	WorkDir    string // repo path
+	PromptFile string // path to Neith's generated prompt
+	LogFile    string // stdout/stderr capture
+	ExitFile   string // exit code file
+	PIDFile    string // process ID file
 	UseITerm2  bool
 	BudgetUSD  float64 // max API spend per agent (--max-budget-usd) — API users only
 	Sprints    int     // number of sprint turns (1 = single shot, N = loop with --continue)
