@@ -637,3 +637,12 @@ func setSampleFn(fn func(...)) { sampleMu.Lock(); defer sampleMu.Unlock(); sampl
 - Session: Seshat v2.0 adapters built, 22 plugins installed, screenshots MCP, Sirsi Orchestrator, GitHub CI cleanup (225+ runs), NexusApp workflow fix, Go 1.24 compat, 78G iCloud migration for M5 transfer. All repos clean and pushed.
 
 ---
+
+## Entry 031 — 2026-04-04 18:17 — Session Compact (COMPACT)
+
+> Persisted via `thoth compact` before context compression.
+
+**Decisions**:
+- Session: ProtectGlyph, Stele Universal Event Bus, SIRSI_MASTER_PLAN, Deity Registry (Rule A25). Shipped v0.10.0. All deities inscribe to Stele. Ma'at owns all quality gates across all repos. Pre-push hooks corrected. Case studies written. Full lifecycle LoE assessed for all 4 repos. Next session: KV cache optimizations, token usage improvements, agentic harness enhancements, then full-throttle dev on FinalWishes Sprint 5-6 and Assiduous Sprint 11-13.
+
+---
