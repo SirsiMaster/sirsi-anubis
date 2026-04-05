@@ -176,9 +176,29 @@ Checks your network configuration for public WiFi safety:
 }
 
 var sekhmetNetworkFix bool
+var sekhmetNetworkRollback bool
 
 func runSekhmetNetwork(cmd *cobra.Command, args []string) error {
 	start := time.Now()
+
+	// Handle rollback before anything else
+	if sekhmetNetworkRollback {
+		if !JsonOutput {
+			output.Banner()
+			output.Header("SEKHMET — Network Rollback")
+		}
+		msg, err := guard.RollbackNetwork(platform.Current())
+		if err != nil {
+			return err
+		}
+		if !JsonOutput {
+			output.Success(msg)
+			output.Footer(time.Since(start))
+		} else {
+			fmt.Printf("{\"rollback\": %q}\n", msg)
+		}
+		return nil
+	}
 
 	if !JsonOutput {
 		output.Banner()
@@ -295,6 +315,7 @@ func init() {
 
 	// Sekhmet — System Watchdog
 	sekhmetNetworkCmd.Flags().BoolVar(&sekhmetNetworkFix, "fix", false, "Auto-apply safe fixes (DNS, firewall)")
+	sekhmetNetworkCmd.Flags().BoolVar(&sekhmetNetworkRollback, "rollback", false, "Restore DNS to pre-fix state")
 	sekhmetCmd.AddCommand(sekhmetNetworkCmd)
 	rootCmd.AddCommand(sekhmetCmd)
 }

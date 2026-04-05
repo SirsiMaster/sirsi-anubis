@@ -12,11 +12,60 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
 )
+
+// stateDir returns the Sekhmet state directory, creating it if needed.
+func stateDir() string {
+	home, _ := os.UserHomeDir()
+	dir := filepath.Join(home, ".config", "pantheon", "sekhmet")
+	_ = os.MkdirAll(dir, 0700)
+	return dir
+}
+
+// saveNetworkState persists the current DNS config so it can be rolled back.
+func saveNetworkState(p platform.Platform) {
+	out, err := p.Command("networksetup", "-getdnsservers", "Wi-Fi")
+	if err != nil {
+		return
+	}
+	dns := strings.TrimSpace(string(out))
+	path := filepath.Join(stateDir(), "dns_prior.txt")
+	_ = os.WriteFile(path, []byte(dns), 0600)
+}
+
+// RollbackNetwork restores DNS to the state saved before the last --fix.
+func RollbackNetwork(p platform.Platform) (string, error) {
+	path := filepath.Join(stateDir(), "dns_prior.txt")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("no rollback state found at %s", path)
+	}
+
+	prior := strings.TrimSpace(string(data))
+	if prior == "" || strings.Contains(prior, "aren't any") || strings.Contains(prior, "no DNS") {
+		_, err = p.Command("networksetup", "-setdnsservers", "Wi-Fi", "empty")
+		if err != nil {
+			return "", fmt.Errorf("rollback failed (needs admin): sudo networksetup -setdnsservers Wi-Fi empty")
+		}
+		_ = os.Remove(path)
+		return "Restored DNS to network default (DHCP)", nil
+	}
+
+	// Restore the specific DNS servers that were configured before
+	args := append([]string{"-setdnsservers", "Wi-Fi"}, strings.Fields(prior)...)
+	_, err = p.Command("networksetup", args...)
+	if err != nil {
+		return "", fmt.Errorf("rollback failed (needs admin): sudo networksetup -setdnsservers Wi-Fi %s", prior)
+	}
+	_ = os.Remove(path)
+	return fmt.Sprintf("Restored DNS to: %s", prior), nil
+}
 
 // NetworkReport is the complete network security audit.
 type NetworkReport struct {
@@ -88,6 +137,7 @@ func checkDNSConfig(p platform.Platform, report *NetworkReport, fix bool) {
 		finding.Message = "No custom DNS — using ISP default (unencrypted, spoofable on public WiFi)"
 
 		if fix {
+			saveNetworkState(p) // preserve current state for rollback
 			_, fixErr := p.Command("networksetup", "-setdnsservers", "Wi-Fi", "1.1.1.1", "1.0.0.1")
 			if fixErr == nil {
 				// Verify the new DNS actually works on this network
@@ -129,6 +179,7 @@ func checkDNSConfig(p platform.Platform, report *NetworkReport, fix bool) {
 				finding.Detail = "Fix: sudo networksetup -setdnsservers Wi-Fi empty (reverts to network DNS)"
 				if fix {
 					// Fall back to network default
+					saveNetworkState(p)
 					_, _ = p.Command("networksetup", "-setdnsservers", "Wi-Fi", "empty")
 					finding.Severity = SeverityWarn
 					finding.Message = fmt.Sprintf("%s was unreachable — reverted to network default DNS", provider)
