@@ -41,7 +41,7 @@ var deityRoster = []deityInfo{
 	{"thoth", "𓁟", "Thoth", "Session Memory"},
 	{"maat", "𓆄", "Ma'at", "Quality Gate"},
 	{"isis", "𓁐", "Isis", "Code Remedy"},
-	{"seshat", "𓁆", "Seshat", "Knowledge Grafter"},
+	{"seshat", "𓁆", "Seshat", "Knowledge Bridge"},
 	{"horus", "𓂀", "Horus", "Storage Index"},
 	{"anubis", "𓃣", "Anubis", "System Jackal"},
 	{"ka", "𓂓", "Ka", "Ghost Hunter"},
