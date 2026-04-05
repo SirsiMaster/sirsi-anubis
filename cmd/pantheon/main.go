@@ -13,7 +13,7 @@ import (
 	modversion "github.com/SirsiMaster/sirsi-pantheon/internal/version"
 )
 
-var version = "v0.9.0-rc1"
+var version = "v0.12.0"
 
 // versionCmd prints the version and optionally checks for updates.
 var versionCmd = &cobra.Command{
@@ -83,7 +83,7 @@ Advanced:
   pantheon seba --help        Architecture mapping and diagrams`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
-			if err := output.LaunchDashboard(); err != nil {
+			if err := output.LaunchTUI(); err != nil {
 				output.Banner()
 				_ = cmd.Help()
 			}

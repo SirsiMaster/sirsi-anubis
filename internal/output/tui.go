@@ -1,0 +1,613 @@
+// Package output — Pantheon TUI
+//
+// The primary interface for Pantheon. When the user types `pantheon` with no
+// subcommand, this TUI launches. It is a persistent session: commands execute
+// inside the TUI, output streams into a viewport, and the input bar re-enables
+// when the command completes. The user stays in Pantheon until they explicitly quit.
+package output
+
+import (
+	"bytes"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+
+	"github.com/SirsiMaster/sirsi-pantheon/internal/stele"
+)
+
+// ── Deity Definitions ─────────────────────────────────────────────────
+
+type deityInfo struct {
+	Key   string
+	Glyph string
+	Name  string
+	Role  string // Short role (shown in roster)
+}
+
+// Canonical deity roster — ordered by hierarchy (Rule D6).
+// Roles are kept short for the two-column layout.
+var deityRoster = []deityInfo{
+	{"ra", "𓇶", "Ra", "Orchestrator"},
+	{"neith", "𓁯", "Neith", "Weaver"},
+	{"thoth", "𓁟", "Thoth", "Memory"},
+	{"maat", "𓆄", "Ma'at", "Quality"},
+	{"isis", "𓁐", "Isis", "Healer"},
+	{"seshat", "𓁆", "Seshat", "Scribe"},
+	{"horus", "𓂀", "Horus", "Index"},
+	{"anubis", "𓃣", "Anubis", "Hygiene"},
+	{"ka", "𓂓", "Ka", "Ghosts"},
+	{"sekhmet", "𓁵", "Sekhmet", "Watchdog"},
+	{"hapi", "𓈗", "Hapi", "Hardware"},
+	{"khepri", "𓆣", "Khepri", "Fleet"},
+	{"seba", "𓇽", "Seba", "Topology"},
+	{"osiris", "𓁹", "Osiris", "Checkpoint"},
+	{"hathor", "𓉡", "Hathor", "Dedup"},
+}
+
+// intentKeywords maps natural-language keywords to deity keys for routing.
+var intentKeywords = map[string][]string{
+	"ra":      {"deploy", "orchestrate", "sprint", "agent", "watch", "command center"},
+	"neith":   {"scope", "weave", "context", "canon", "align", "tile", "drift"},
+	"thoth":   {"memory", "sync", "compact", "journal", "remember", "persist"},
+	"maat":    {"quality", "audit", "coverage", "test", "lint", "feather", "gate", "qa"},
+	"isis":    {"fix", "heal", "remediate", "repair", "auto-fix"},
+	"seshat":  {"knowledge", "graft", "ingest", "notes", "gemini", "notebooklm"},
+	"horus":   {"index", "storage", "manifest", "filesystem", "launch services"},
+	"anubis":  {"scan", "waste", "clean", "judge", "purge", "hygiene", "infrastructure"},
+	"ka":      {"ghost", "dead", "remnant", "uninstall", "residual", "haunt"},
+	"sekhmet": {"guard", "watchdog", "monitor", "ram", "cpu", "doctor", "process"},
+	"hapi":    {"gpu", "vram", "hardware", "accelerator", "ane", "cuda", "metal", "npu"},
+	"khepri":  {"network", "fleet", "subnet", "container", "docker", "kubernetes"},
+	"seba":    {"architecture", "topology", "diagram", "map", "dependency", "graph"},
+	"osiris":  {"checkpoint", "state", "preserve", "restore"},
+	"hathor":  {"dedup", "duplicate", "mirror", "ranking"},
+}
+
+// Top-level CLI aliases that bypass intent matching.
+var cliAliases = map[string]string{
+	"scan":    "anubis",
+	"ghosts":  "ka",
+	"dedup":   "hathor",
+	"guard":   "sekhmet",
+	"doctor":  "sekhmet",
+	"version": "version",
+}
+
+// ── TUI State ─────────────────────────────────────────────────────────
+
+type tuiMode int
+
+const (
+	modeIdle tuiMode = iota
+	modeRunning
+)
+
+type TUIModel struct {
+	width  int
+	height int
+
+	input    textinput.Model
+	viewport viewport.Model
+
+	outputLines  []string
+	mode         tuiMode
+	runningDeity string
+	runningCmd   string
+	spinner      spinner.Model
+	history      []historyEntry
+
+	activeDeity map[string]bool
+	steleReader *stele.Reader
+	quitting    bool
+}
+
+type historyEntry struct {
+	deity, command, output string
+}
+
+// ── Messages ──────────────────────────────────────────────────────────
+
+type refreshMsg time.Time
+type cmdBatchMsg struct {
+	lines []string
+	err   error
+}
+
+func refreshTick() tea.Cmd {
+	return tea.Tick(10*time.Second, func(t time.Time) tea.Msg { return refreshMsg(t) })
+}
+
+// ── Constructor ───────────────────────────────────────────────────────
+
+func NewTUIModel() TUIModel {
+	ti := textinput.New()
+	ti.Placeholder = "scan my dev environment for ghost processes and dead symlinks"
+	ti.Focus()
+	ti.CharLimit = 256
+	ti.Width = 76
+	ti.PromptStyle = lipgloss.NewStyle().Foreground(Gold).Bold(true)
+	ti.Prompt = "𓉴 "
+	ti.TextStyle = lipgloss.NewStyle().Foreground(White)
+	ti.PlaceholderStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
+	ti.Cursor.Style = lipgloss.NewStyle().Foreground(Gold)
+
+	sp := spinner.New()
+	sp.Spinner = spinner.MiniDot
+	sp.Style = lipgloss.NewStyle().Foreground(Gold)
+
+	vp := viewport.New(80, 10)
+
+	m := TUIModel{
+		input:       ti,
+		viewport:    vp,
+		spinner:     sp,
+		width:       100,
+		height:      40,
+		mode:        modeIdle,
+		activeDeity: make(map[string]bool),
+		steleReader: stele.NewReader("tui"),
+	}
+	m.refreshActive()
+	return m
+}
+
+func (m TUIModel) Init() tea.Cmd {
+	return tea.Batch(textinput.Blink, refreshTick())
+}
+
+// ── Update ────────────────────────────────────────────────────────────
+
+func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		m.input.Width = min(msg.Width-8, 80)
+		m.recalcViewportHeight()
+		return m, nil
+
+	case tea.KeyMsg:
+		return m.handleKey(msg)
+
+	case cmdBatchMsg:
+		return m.handleBatchOutput(msg)
+
+	case refreshMsg:
+		m.refreshActive()
+		return m, refreshTick()
+
+	case spinner.TickMsg:
+		if m.mode == modeRunning {
+			var cmd tea.Cmd
+			m.spinner, cmd = m.spinner.Update(msg)
+			return m, cmd
+		}
+		return m, nil
+	}
+
+	if m.mode == modeIdle {
+		var cmd tea.Cmd
+		m.input, cmd = m.input.Update(msg)
+		return m, cmd
+	}
+	var cmd tea.Cmd
+	m.viewport, cmd = m.viewport.Update(msg)
+	return m, cmd
+}
+
+func (m TUIModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.Type {
+	case tea.KeyCtrlC:
+		m.quitting = true
+		return m, tea.Quit
+
+	case tea.KeyEsc:
+		if m.mode == modeRunning {
+			return m, nil
+		}
+		if len(m.outputLines) > 0 {
+			m.outputLines = nil
+			m.viewport.SetContent("")
+			m.input.Placeholder = "scan my dev environment for ghost processes and dead symlinks"
+			return m, nil
+		}
+		m.quitting = true
+		return m, tea.Quit
+
+	case tea.KeyEnter:
+		if m.mode == modeRunning {
+			return m, nil
+		}
+		raw := strings.TrimSpace(m.input.Value())
+		if raw == "" {
+			return m, nil
+		}
+		if raw == "q" || raw == "quit" || raw == "exit" {
+			m.quitting = true
+			return m, tea.Quit
+		}
+		if raw == "clear" {
+			m.outputLines = nil
+			m.viewport.SetContent("")
+			m.input.Reset()
+			return m, nil
+		}
+		return m.executeCommand(raw)
+	}
+
+	if m.mode == modeIdle {
+		var cmd tea.Cmd
+		m.input, cmd = m.input.Update(msg)
+		return m, cmd
+	}
+	var cmd tea.Cmd
+	m.viewport, cmd = m.viewport.Update(msg)
+	return m, cmd
+}
+
+// ── Command Execution ─────────────────────────────────────────────────
+
+func (m TUIModel) executeCommand(raw string) (TUIModel, tea.Cmd) {
+	deity, args := m.dispatch(raw)
+
+	m.mode = modeRunning
+	m.runningDeity = deity
+	m.runningCmd = raw
+	m.outputLines = nil
+	m.input.Blur()
+	m.input.Reset()
+
+	glyph, name := deityDisplay(deity)
+	if deity != "" {
+		m.outputLines = append(m.outputLines,
+			lipgloss.NewStyle().Foreground(Gold).Bold(true).Render(
+				fmt.Sprintf("  %s %s", glyph, name)),
+			lipgloss.NewStyle().Foreground(lipgloss.Color("#888888")).Render(
+				fmt.Sprintf("  %s", raw)),
+			"")
+	}
+	m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
+	m.recalcViewportHeight()
+
+	exe, _ := os.Executable()
+	cmd := exec.Command(exe, args...)
+
+	return m, tea.Batch(m.spinner.Tick, m.runCommand(cmd))
+}
+
+func (m *TUIModel) dispatch(raw string) (string, []string) {
+	lower := strings.ToLower(raw)
+	tokens := strings.Fields(lower)
+	rawTokens := strings.Fields(raw)
+
+	if len(tokens) == 0 {
+		return "", nil
+	}
+
+	for _, d := range deityRoster {
+		if tokens[0] == d.Key {
+			return d.Key, rawTokens
+		}
+	}
+
+	if target, ok := cliAliases[tokens[0]]; ok {
+		return target, rawTokens
+	}
+
+	bestDeity := ""
+	bestScore := 0
+	for deity, keywords := range intentKeywords {
+		score := 0
+		for _, kw := range keywords {
+			if strings.Contains(lower, kw) {
+				score++
+			}
+		}
+		if score > bestScore {
+			bestScore = score
+			bestDeity = deity
+		}
+	}
+
+	if bestDeity != "" {
+		return bestDeity, []string{bestDeity}
+	}
+
+	return "", rawTokens
+}
+
+func (m TUIModel) runCommand(cmd *exec.Cmd) tea.Cmd {
+	return func() tea.Msg {
+		var buf bytes.Buffer
+		cmd.Stdout = &buf
+		cmd.Stderr = &buf
+		err := cmd.Run()
+		return cmdBatchMsg{lines: strings.Split(buf.String(), "\n"), err: err}
+	}
+}
+
+func (m TUIModel) handleBatchOutput(msg cmdBatchMsg) (TUIModel, tea.Cmd) {
+	for _, line := range msg.lines {
+		m.outputLines = append(m.outputLines, "  "+line)
+	}
+
+	m.mode = modeIdle
+	m.input.Focus()
+	m.input.Placeholder = "What next?"
+
+	if m.runningDeity != "" {
+		m.activeDeity[m.runningDeity] = true
+	}
+	m.history = append(m.history, historyEntry{
+		deity: m.runningDeity, command: m.runningCmd,
+		output: strings.Join(m.outputLines, "\n"),
+	})
+
+	if msg.err != nil {
+		m.outputLines = append(m.outputLines, "",
+			lipgloss.NewStyle().Foreground(Red).Render(fmt.Sprintf("  ✗ %v", msg.err)))
+	} else {
+		m.outputLines = append(m.outputLines, "",
+			lipgloss.NewStyle().Foreground(Green).Render("  ✓ Done"))
+	}
+	m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
+	m.viewport.GotoBottom()
+	m.runningDeity = ""
+	m.runningCmd = ""
+	return m, nil
+}
+
+// ── Active Deity Detection ────────────────────────────────────────────
+
+func (m *TUIModel) refreshActive() {
+	for k := range m.activeDeity {
+		delete(m.activeDeity, k)
+	}
+
+	entries, _ := m.steleReader.ReadNew()
+	now := time.Now()
+	for _, e := range entries {
+		ts, err := time.Parse(time.RFC3339, e.TS)
+		if err != nil {
+			continue
+		}
+		if now.Sub(ts) < 5*time.Minute {
+			deity := strings.ToLower(e.Deity)
+			if !strings.Contains(deity, ":") {
+				m.activeDeity[deity] = true
+			}
+		}
+	}
+
+	home, _ := os.UserHomeDir()
+	pidDir := filepath.Join(home, ".config", "ra", "pids")
+	pidEntries, _ := os.ReadDir(pidDir)
+	for _, f := range pidEntries {
+		if f.IsDir() {
+			continue
+		}
+		name := strings.TrimSuffix(f.Name(), ".pid")
+		for _, d := range deityRoster {
+			if strings.Contains(strings.ToLower(name), d.Key) {
+				m.activeDeity[d.Key] = true
+			}
+		}
+	}
+}
+
+// ── Layout ────────────────────────────────────────────────────────────
+
+const leftPaneWidth = 42
+
+func (m TUIModel) View() string {
+	if m.quitting {
+		return ""
+	}
+
+	hasOutput := len(m.outputLines) > 0
+	maxW := min(m.width-2, 90)
+	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#333333"))
+
+	// Header: name + description
+	header := lipgloss.NewStyle().Foreground(Gold).Bold(true).Render("𓉴  Sirsi Pantheon")
+	desc := lipgloss.NewStyle().Foreground(lipgloss.Color("#999999")).
+		Render("DevOps intelligence for developers and infrastructure teams")
+
+	if !hasOutput {
+		// ── Single-pane: full roster
+		var b strings.Builder
+		b.WriteString("\n " + header + "\n")
+		b.WriteString(" " + desc + "\n")
+		b.WriteString(" " + dim.Render(strings.Repeat("─", maxW)) + "\n")
+		b.WriteString(m.renderRosterColumns(false))
+		b.WriteString(m.renderStatusLine())
+		b.WriteString(" " + dim.Render(strings.Repeat("─", maxW)) + "\n")
+		b.WriteString(" " + m.input.View() + "\n")
+		b.WriteString(m.renderHints(false) + "\n")
+		return b.String()
+	}
+
+	// ── Split-pane: left roster | right output
+	left := m.renderLeftPane()
+	right := m.renderRightPane()
+
+	leftStyle := lipgloss.NewStyle().
+		Width(leftPaneWidth).
+		BorderRight(true).
+		BorderStyle(lipgloss.Border{Right: "│"}).
+		BorderForeground(lipgloss.Color("#333333")).
+		PaddingRight(1)
+
+	rightWidth := m.width - leftPaneWidth - 3
+	if rightWidth < 20 {
+		rightWidth = 20
+	}
+	rightStyle := lipgloss.NewStyle().Width(rightWidth).PaddingLeft(1)
+
+	panes := lipgloss.JoinHorizontal(lipgloss.Top,
+		leftStyle.Render(left),
+		rightStyle.Render(right),
+	)
+
+	var b strings.Builder
+	b.WriteString("\n " + header + "\n")
+	b.WriteString(" " + dim.Render(strings.Repeat("─", maxW)) + "\n")
+	b.WriteString(panes + "\n")
+	b.WriteString(" " + dim.Render(strings.Repeat("─", maxW)) + "\n")
+	b.WriteString(" " + m.input.View() + "\n")
+	b.WriteString(m.renderHints(true) + "\n")
+	return b.String()
+}
+
+// renderRosterColumns renders deities in a three-column grid (5 rows × 3 cols).
+func (m TUIModel) renderRosterColumns(compact bool) string {
+	var b strings.Builder
+
+	cols := 3
+	rows := (len(deityRoster) + cols - 1) / cols // 5 rows for 15 deities
+	colWidth := 30
+	if !compact {
+		colWidth = 30
+	}
+
+	for r := 0; r < rows; r++ {
+		var rowParts []string
+		for c := 0; c < cols; c++ {
+			idx := c*rows + r // column-major: fill down then across
+			if idx < len(deityRoster) {
+				rowParts = append(rowParts, m.renderDeityCell(deityRoster[idx], colWidth))
+			}
+		}
+		b.WriteString(" " + strings.Join(rowParts, "") + "\n")
+	}
+
+	return b.String()
+}
+
+// renderDeityCell renders one deity as a fixed-width cell for the grid.
+func (m TUIModel) renderDeityCell(d deityInfo, width int) string {
+	active := m.activeDeity[d.Key]
+
+	// Colors: inactive is readable, active is highlighted
+	var nameColor, roleColor lipgloss.Color
+	if active {
+		nameColor = Gold
+		roleColor = lipgloss.Color("#CCCCCC")
+	} else {
+		nameColor = lipgloss.Color("#BBBBBB")
+		roleColor = lipgloss.Color("#777777")
+	}
+
+	// Active indicator: gold dot
+	dot := lipgloss.NewStyle().Foreground(lipgloss.Color("#333333")).Render("·")
+	if active {
+		dot = lipgloss.NewStyle().Foreground(Gold).Render("●")
+	}
+
+	glyph := lipgloss.NewStyle().Foreground(nameColor).Render(d.Glyph)
+	name := lipgloss.NewStyle().Bold(true).Foreground(nameColor).Render(d.Name)
+	role := lipgloss.NewStyle().Foreground(roleColor).Render(d.Role)
+
+	cell := fmt.Sprintf("%s %s %-8s %s", dot, glyph, name, role)
+
+	// Pad to fixed width (approximate — lipgloss styling adds invisible chars)
+	return lipgloss.NewStyle().Width(width).Render(cell)
+}
+
+func (m TUIModel) renderStatusLine() string {
+	activeCount := 0
+	for _, d := range deityRoster {
+		if m.activeDeity[d.Key] {
+			activeCount++
+		}
+	}
+	if activeCount > 0 {
+		return lipgloss.NewStyle().Foreground(Green).
+			Render(fmt.Sprintf(" %d %s active", activeCount, pluralize("deity", activeCount))) + "\n"
+	}
+	return ""
+}
+
+func (m TUIModel) renderLeftPane() string {
+	var b strings.Builder
+	b.WriteString(m.renderRosterColumns(true))
+	b.WriteString(m.renderStatusLine())
+	return b.String()
+}
+
+func (m TUIModel) renderRightPane() string {
+	var b strings.Builder
+	if m.mode == modeRunning {
+		glyph, name := deityDisplay(m.runningDeity)
+		b.WriteString(m.spinner.View() + " " +
+			lipgloss.NewStyle().Foreground(Gold).Render(glyph+" "+name) +
+			lipgloss.NewStyle().Foreground(lipgloss.Color("#888888")).Render(" running...") + "\n\n")
+	}
+	b.WriteString(m.viewport.View())
+	return b.String()
+}
+
+func (m TUIModel) renderHints(splitMode bool) string {
+	var hints []string
+	if m.mode == modeRunning {
+		hints = append(hints, "↑/↓ scroll")
+	} else if splitMode {
+		hints = append(hints, "esc back", "↑/↓ scroll")
+	}
+	hints = append(hints, "clear reset", "ctrl+c quit")
+	return lipgloss.NewStyle().Foreground(lipgloss.Color("#555555")).
+		Render(" " + strings.Join(hints, " · "))
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────
+
+func deityDisplay(key string) (string, string) {
+	for _, d := range deityRoster {
+		if d.Key == key {
+			return d.Glyph, d.Name
+		}
+	}
+	return "⚙", key
+}
+
+func (m *TUIModel) recalcViewportHeight() {
+	// Reserve: header(2) + divider(1) + input divider(1) + input(1) + hints(1) + padding(2)
+	vpHeight := m.height - 8
+	if vpHeight < 5 {
+		vpHeight = 5
+	}
+	m.viewport.Height = vpHeight
+
+	rightWidth := m.width - leftPaneWidth - 5
+	if rightWidth < 20 {
+		rightWidth = 20
+	}
+	m.viewport.Width = rightWidth
+}
+
+func pluralize(word string, n int) string {
+	if n == 1 {
+		return word
+	}
+	if strings.HasSuffix(word, "y") {
+		return word[:len(word)-1] + "ies"
+	}
+	return word + "s"
+}
+
+// ── Launcher ──────────────────────────────────────────────────────────
+
+func LaunchTUI() error {
+	p := tea.NewProgram(NewTUIModel(), tea.WithAltScreen())
+	_, err := p.Run()
+	return err
+}

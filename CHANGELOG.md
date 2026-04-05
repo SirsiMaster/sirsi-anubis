@@ -6,6 +6,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 
 ---
 
+## [0.12.0] — 2026-04-05
+
+### Added
+- **Pantheon TUI** — `pantheon` (no args) launches a persistent interactive session. Deity roster in a 3×5 column grid with active highlighting. Universal input bar accepts both natural-language requests ("find ghost processes") and direct CLI commands ("ka hunt ~/Dev"). Commands execute inside the TUI with output in a split-pane viewport. Input bar re-enables on completion. User stays in Pantheon until they quit.
+- **Intent-based routing** — Natural-language input is scored against deity keyword maps and routed to the best-matching deity command.
+- **Split-pane layout** — On first command, the view splits: left pane (deity roster + status), right pane (scrollable command output). Esc returns to full roster.
+- **Active deity detection** — Reads Stele events and PID files to highlight deities with recent activity (gold dot indicator).
+
+### Changed
+- **`pantheon` entry point** — Bare `pantheon` now launches the TUI instead of printing help. All subcommands (`pantheon ka hunt`, `pantheon maat audit`, etc.) continue to work unchanged for scripting and CI.
+
+---
+
 ## [0.11.0] — 2026-04-05
 
 ### Added
