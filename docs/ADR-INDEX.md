@@ -2,7 +2,7 @@
 
 This index tracks **all** architectural decisions for the Sirsi Pantheon ecosystem.
 
-**Total ADRs: 12** | **Next available: ADR-013**
+**Total ADRs: 13** | **Next available: ADR-014**
 
 ---
 
@@ -22,6 +22,7 @@ This index tracks **all** architectural decisions for the Sirsi Pantheon ecosyst
 | [ADR-010](ADR-010-MENUBAR-APPLICATION.md) | Pantheon Menu Bar Application — native macOS status bar + Finder presence | Proposed | 2026-03-25 |
 | [ADR-011](ADR-011-DEITY-ALIGNMENT.md) | Deity Alignment & Context Architecture — canonical scopes for all deities | Accepted | 2026-03-25 |
 | [ADR-012](ADR-012-VSCODE-EXTENSION.md) | Pantheon VS Code Extension — always-on Guardian, status bar ankh, Thoth context | Accepted | 2026-03-25 |
+| [ADR-013](ADR-013-TILED-CONTEXT-RENDERING.md) | Tiled Context Rendering — GPU-inspired relevance scoring, token budgets, deferred manifest | Accepted | 2026-04-05 |
 
 ---
 
@@ -42,6 +43,9 @@ This index tracks **all** architectural decisions for the Sirsi Pantheon ecosyst
 ### Quality & Governance
 - ADR-004: Ma'at QA/QC Governance
 - ADR-009: Injectable System Providers (Testing Architecture)
+
+### Context Management
+- ADR-013: Tiled Context Rendering
 
 ### Process
 - ADR-003: Build-in-Public as Canonical Process
@@ -64,6 +68,7 @@ This index tracks **all** architectural decisions for the Sirsi Pantheon ecosyst
 | ADR-010 | Proposed — Menu Bar Application |
 | ADR-011 | Active — Deity Alignment |
 | ADR-012 | Active — VS Code Extension |
-| ADR-013+ | Next available |
+| ADR-013 | Active — Tiled Context Rendering |
+| ADR-014+ | Next available |
 
-> **Last updated:** March 25, 2026 — ADR-012 accepted (VS Code Extension with always-on Guardian).
+> **Last updated:** April 5, 2026 — ADR-013 accepted (Tiled Context Rendering).

@@ -6,6 +6,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 
 ---
 
+## [0.11.0] — 2026-04-05
+
+### Added
+- **Neith Tiled Context Rendering (ADR-013)** — GPU-inspired context pipeline: chunks canon into semantic units, scores by keyword match/recency/structural weight/coverage, fills token budget with highest-scored tiles, defers the rest to a manifest. Reduces session 1 context from ~254K to ~72K tokens (72% reduction).
+- **`ChunkCanon()`** — Splits CanonContext into addressable semantic chunks (journal entries, changelog versions, individual ADRs, planning docs).
+- **`ScoreChunks()`** — Multi-signal visibility test: structural weight (always-visible HUD), keyword match, temporal proximity (90-day decay), coverage detection (anti-overdraw).
+- **`TilePrompt()`** — Greedy budget-filling algorithm. Always-visible chunks bypass budget. Deferred chunks go to manifest.
+- **`FormatManifest()`** — Generates deferred context table so agents know what exists and where to find it. Groups journal entries, caps at 20 rows.
+- **`AutoTokenBudget()`** — Auto-detects budget from canon size: <50K = no tiling, 50K-200K = 80K budget, >200K = 60K budget.
+- **`token_budget` field on ScopeConfig** — Per-scope override for token budget. Defaults to auto-detect.
+- **Thoth auto-pruning** — Compact now defaults to MaxKeep=20 journal entries when no explicit pruning config set. Prevents unbounded journal growth.
+
+### Changed
+- **`WeaveScope()`** — Now runs the full tiling pipeline: chunk → score → tile → render + manifest. Section ordering preserved. Small canons (<50K tokens) skip tiling entirely.
+- **Stele inscription** — Neith weave events now include `approx_tokens`, `tiled`, `rendered`, `total_chunks` metadata.
+- **DEITY_REGISTRY** — Neith's domain updated to include "tiled context rendering."
+
+### Documentation
+- **ADR-013** — Tiled Context Rendering architecture decision record.
+- **Case Study 020** — Full token economics analysis with three-tier comparison (vanilla/Pantheon/Pantheon+Tiling). Available as Markdown and standalone HTML.
+
+---
+
 ## [0.10.0] — 2026-04-04
 
 ### Added

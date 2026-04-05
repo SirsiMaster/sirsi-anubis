@@ -19,8 +19,9 @@ type ScopeConfig struct {
 	Priority    string  `yaml:"priority"`
 	ScopeOfWork string  `yaml:"scope_of_work"`
 	MaxTurns    int     `yaml:"max_turns"`
-	Sprints     int     `yaml:"sprints"`    // number of sprint turns (1 = one-shot, N = loop with --continue)
-	BudgetUSD   float64 `yaml:"budget_usd"` // max API spend per deploy — API billing users only
+	Sprints     int     `yaml:"sprints"`      // number of sprint turns (1 = one-shot, N = loop with --continue)
+	BudgetUSD   float64 `yaml:"budget_usd"`   // max API spend per deploy — API billing users only
+	TokenBudget int     `yaml:"token_budget"` // max tokens for tiled context (0 = auto-detect)
 }
 
 // CanonContext holds ALL canon documents loaded from a target repo.
@@ -284,70 +285,130 @@ func (l *Loom) WeaveScope(scope ScopeConfig) (string, error) {
 
 	b.WriteString("---\n\n")
 
-	// ── 3. Continuation Prompt ──────────────────────────────────────────
-	if canon.ContinuationPrompt != "" {
+	// ── Tiled Context Rendering ─────────────────────────────────────────
+	// GPU-inspired pipeline: chunk canon → score visibility → tile to budget.
+	// Always-visible chunks (identity, memory, continuation) are never deferred.
+	// Everything else is scored by keyword match, recency, and coverage.
+	// Deferred chunks appear in a manifest so the agent can fetch on demand.
+
+	chunks := ChunkCanon(canon)
+	scored := ScoreChunks(chunks, scope)
+
+	// Determine token budget
+	totalTokens := 0
+	for _, c := range chunks {
+		totalTokens += c.Tokens
+	}
+	budget := scope.TokenBudget
+	if budget == 0 {
+		budget = AutoTokenBudget(totalTokens)
+	}
+
+	var rendered []ScoredChunk
+	var manifest string
+
+	if budget == 0 {
+		// Small canon — everything fits, no tiling needed
+		rendered = scored
+	} else {
+		result := TilePrompt(scored, budget)
+		rendered = result.Rendered
+		manifest = FormatManifest(result.Deferred)
+	}
+
+	// ── 3–8. Render scored chunks in section order ──────────────────────
+	// Maintain the canonical section ordering while only including rendered chunks.
+	sectionOrder := []string{"continuation", "planning", "adr", "memory", "journal", "identity", "changelog", "version"}
+	renderedBySource := make(map[string][]ScoredChunk)
+	for _, sc := range rendered {
+		renderedBySource[sc.Source] = append(renderedBySource[sc.Source], sc)
+	}
+
+	// Section 3: Continuation Prompt
+	for _, sc := range renderedBySource["continuation"] {
 		b.WriteString("## Continuation Prompt (Current State & Next Phases)\n")
-		b.WriteString(canon.ContinuationPrompt)
+		b.WriteString(sc.Content)
 		b.WriteString("\n\n")
 	}
 
-	// ── 4. Planning Docs ────────────────────────────────────────────────
-	if len(canon.PlanningDocs) > 0 {
+	// Section 4: Planning Docs
+	if docs := renderedBySource["planning"]; len(docs) > 0 {
 		b.WriteString("## Planning Documents\n\n")
-		for _, doc := range canon.PlanningDocs {
-			b.WriteString(fmt.Sprintf("### %s\n", doc.Name))
-			b.WriteString(doc.Content)
+		for _, sc := range docs {
+			b.WriteString(fmt.Sprintf("### %s\n", sc.Name))
+			b.WriteString(sc.Content)
 			b.WriteString("\n\n")
 		}
 	}
 
-	// ── 5. Architecture Decision Records ────────────────────────────────
-	if len(canon.ADRs) > 0 {
+	// Section 5: ADRs
+	if adrs := renderedBySource["adr"]; len(adrs) > 0 {
 		b.WriteString("## Architecture Decision Records\n\n")
-		for _, adr := range canon.ADRs {
-			b.WriteString(fmt.Sprintf("### %s\n", adr.Name))
-			b.WriteString(adr.Content)
+		for _, sc := range adrs {
+			b.WriteString(fmt.Sprintf("### %s\n", sc.Name))
+			b.WriteString(sc.Content)
 			b.WriteString("\n\n")
 		}
 	}
 
-	// ── 6. Thoth Memory + Journal ──────────────────────────────────────
-	if canon.ThothMemory != "" {
+	// Section 6: Thoth Memory + Journal
+	for _, sc := range renderedBySource["memory"] {
 		b.WriteString("## Project State (Thoth Memory)\n")
-		b.WriteString(canon.ThothMemory)
+		b.WriteString(sc.Content)
 		b.WriteString("\n\n")
 	}
-
-	if canon.ThothJournal != "" {
+	if entries := renderedBySource["journal"]; len(entries) > 0 {
 		b.WriteString("## Engineering Journal (Thoth)\n")
-		b.WriteString(canon.ThothJournal)
+		for _, sc := range entries {
+			b.WriteString(sc.Content)
+		}
 		b.WriteString("\n\n")
 	}
 
-	// ── 7. Project Identity ────────────────────────────────────────────
-	if canon.ClaudeMD != "" {
+	// Section 7: Project Identity
+	for _, sc := range renderedBySource["identity"] {
 		b.WriteString("## Project Identity (CLAUDE.md)\n")
-		b.WriteString(canon.ClaudeMD)
+		b.WriteString(sc.Content)
 		b.WriteString("\n\n")
 	}
 
-	// ── 8. Changelog + Version ─────────────────────────────────────────
-	if canon.Version != "" {
+	// Section 8: Version + Changelog
+	for _, sc := range renderedBySource["version"] {
 		b.WriteString("## Current Version: ")
-		b.WriteString(canon.Version)
+		b.WriteString(sc.Content)
 		b.WriteString("\n\n")
 	}
-
-	if canon.Changelog != "" {
+	if clEntries := renderedBySource["changelog"]; len(clEntries) > 0 {
 		b.WriteString("## Changelog\n")
-		b.WriteString(canon.Changelog)
+		for _, sc := range clEntries {
+			b.WriteString(sc.Content)
+		}
 		b.WriteString("\n\n")
 	}
 
+	// Manifest of deferred context
+	if manifest != "" {
+		b.WriteString(manifest)
+	}
+
+	// Suppress unused variable warning for sectionOrder
+	_ = sectionOrder
+
+	approxTokens := b.Len() / 4
 	stele.Inscribe("neith", stele.TypeNeithWeave, scope.Name, map[string]string{
-		"scope": scope.DisplayName,
-		"chars": fmt.Sprintf("%d", b.Len()),
+		"scope":         scope.DisplayName,
+		"chars":         fmt.Sprintf("%d", b.Len()),
+		"approx_tokens": fmt.Sprintf("%d", approxTokens),
+		"tiled":         fmt.Sprintf("%v", budget > 0),
+		"rendered":      fmt.Sprintf("%d", len(rendered)),
+		"total_chunks":  fmt.Sprintf("%d", len(chunks)),
 	})
+
+	if budget > 0 && approxTokens > 100000 {
+		fmt.Fprintf(os.Stderr, "  ⚠️  Neith: woven prompt for %s is ~%dK tokens (budget=%dK). Consider reducing token_budget.\n",
+			scope.DisplayName, approxTokens/1000, budget/1000)
+	}
+
 	return b.String(), nil
 }
 

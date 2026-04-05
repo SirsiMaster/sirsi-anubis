@@ -50,12 +50,17 @@ func Compact(opts CompactOptions) error {
 		return fmt.Errorf("thoth compact: update journal: %w", err)
 	}
 
-	// Step 3: Prune if requested
-	if opts.MaxAge > 0 || opts.MaxKeep > 0 {
+	// Step 3: Prune journal. Default to MaxKeep=20 when no explicit
+	// pruning config is set — prevents unbounded journal growth.
+	effectiveMaxKeep := opts.MaxKeep
+	if opts.MaxAge == 0 && opts.MaxKeep == 0 {
+		effectiveMaxKeep = defaultMaxKeep
+	}
+	if opts.MaxAge > 0 || effectiveMaxKeep > 0 {
 		_, err := PruneJournal(PruneOptions{
 			RepoRoot: opts.RepoRoot,
 			MaxAge:   opts.MaxAge,
-			MaxKeep:  opts.MaxKeep,
+			MaxKeep:  effectiveMaxKeep,
 		})
 		if err != nil {
 			return fmt.Errorf("thoth compact: prune journal: %w", err)
@@ -68,7 +73,10 @@ func Compact(opts CompactOptions) error {
 	return nil
 }
 
-const sessionDecisionsHeader = "## Session Decisions"
+const (
+	sessionDecisionsHeader = "## Session Decisions"
+	defaultMaxKeep         = 20
+)
 
 // appendSessionDecisions adds decision lines under the "## Session Decisions" section.
 func appendSessionDecisions(memoryPath, summary string) error {

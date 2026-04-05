@@ -10,7 +10,7 @@
 | Deity | Glyph | Domain | Functional Responsibility | Reserved Symbols |
 |-------|-------|--------|--------------------------|------------------|
 | **Ra** | 𓇶 | Supreme Overseer | Multi-repo orchestration, agent deployment, window management, sprint governance | `𓂀` (ProtectGlyph — Ra's exclusive authority to mark windows as immune to KillAll) |
-| **Neith** | 𓁯 | The Weaver | Scope assembly, canon alignment, drift detection, development plan ownership | |
+| **Neith** | 𓁯 | The Weaver | Scope assembly, tiled context rendering, canon alignment, drift detection, development plan ownership | |
 | **Thoth** | 𓁟 | The Memory | Context compression, session persistence, memory sync, journal | |
 | **Ma'at** | 𓆄 | The Standard | QA governance, quality gates, pre-push hooks, coverage audits, Feather Weight scoring | All pre-push gates across all repos are Ma'at's domain |
 | **Isis** | 𓁐 | The Healer | Remediation engine, auto-fix lint/vet/coverage/canon drift | |
