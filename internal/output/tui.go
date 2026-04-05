@@ -608,21 +608,27 @@ func (m TUIModel) View() string {
 	return b.String()
 }
 
-// renderRosterColumns renders deities in a column grid that fits the terminal.
+// renderRosterColumns renders deities in a column grid that fits the available width.
+// In compact mode (split-pane left pane), uses leftPaneWidth instead of terminal width.
 // 3 columns if width >= 90, 2 columns if >= 60, single column otherwise.
 func (m TUIModel) renderRosterColumns(compact bool) string {
 	var b strings.Builder
 
+	availWidth := m.width
+	if compact {
+		availWidth = leftPaneWidth
+	}
+
 	cols := 3
-	if m.width < 90 {
+	if availWidth < 90 {
 		cols = 2
 	}
-	if m.width < 60 {
+	if availWidth < 60 {
 		cols = 1
 	}
 
 	rows := (len(deityRoster) + cols - 1) / cols
-	colWidth := (m.width - 2) / cols
+	colWidth := (availWidth - 2) / cols
 	if colWidth > 34 {
 		colWidth = 34
 	}
