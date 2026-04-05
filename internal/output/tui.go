@@ -734,14 +734,13 @@ func (m TUIModel) renderHints(splitMode bool) string {
 func (m TUIModel) renderQuickActions() string {
 	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
 	gold := lipgloss.NewStyle().Foreground(Gold)
-	label := lipgloss.NewStyle().Foreground(lipgloss.Color("#999999"))
 
 	var b strings.Builder
 	b.WriteString("\n")
-	b.WriteString(dim.Render("  Quick start:") + "\n")
-	b.WriteString("   " + gold.Render("1") + label.Render("  sekhmet network") + dim.Render("   System Security") + "\n")
-	b.WriteString("   " + gold.Render("2") + label.Render("  doctor") + dim.Render("            System Health") + "\n")
-	b.WriteString("   " + gold.Render("3") + label.Render("  ra status") + dim.Render("         Current Status") + "\n")
+	b.WriteString(dim.Render("  Try one of these to get started:") + "\n")
+	b.WriteString("   " + gold.Render("1") + dim.Render("  Check how secure your network is") + "\n")
+	b.WriteString("   " + gold.Render("2") + dim.Render("  Run a full system health diagnostic") + "\n")
+	b.WriteString("   " + gold.Render("3") + dim.Render("  Show the current status of all deities") + "\n")
 	b.WriteString("\n")
 	return b.String()
 }
