@@ -511,8 +511,8 @@ func (m TUIModel) renderRosterColumns(compact bool) string {
 
 	rows := (len(deityRoster) + cols - 1) / cols
 	colWidth := (m.width - 2) / cols
-	if colWidth > 30 {
-		colWidth = 30
+	if colWidth > 34 {
+		colWidth = 34
 	}
 
 	for r := 0; r < rows; r++ {
@@ -548,13 +548,20 @@ func (m TUIModel) renderDeityCell(d deityInfo, width int) string {
 		dot = lipgloss.NewStyle().Foreground(Gold).Render("●")
 	}
 
-	// Fixed-width glyph column normalizes variable-width Egyptian characters
+	// Fixed-width glyph column normalizes variable-width Egyptian characters.
+	// Budget: dot(1) + sp(1) + glyph(2) + sp(1) + name(8) + sp(1) = 14 fixed.
+	const fixedPrefix = 14
 	glyph := lipgloss.NewStyle().Width(2).Foreground(nameColor).Render(d.Glyph)
 	name := lipgloss.NewStyle().Width(8).Bold(true).Foreground(nameColor).Render(d.Name)
-	role := lipgloss.NewStyle().Foreground(roleColor).Render(d.Role)
+
+	roleWidth := width - fixedPrefix
+	if roleWidth < 4 {
+		roleWidth = 4
+	}
+	role := lipgloss.NewStyle().Width(roleWidth).MaxWidth(roleWidth).Foreground(roleColor).Render(d.Role)
 
 	cell := dot + " " + glyph + " " + name + " " + role
-	return lipgloss.NewStyle().Width(width).Render(cell)
+	return lipgloss.NewStyle().Width(width).MaxWidth(width).Render(cell)
 }
 
 func (m TUIModel) renderStatusLine() string {
