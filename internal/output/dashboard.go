@@ -17,7 +17,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -323,7 +322,7 @@ func (m *MainModel) checkPIDs() {
 		pid, _ := strconv.Atoi(strings.TrimSpace(string(pidData)))
 		sv.PID = pid
 
-		if pid > 0 && syscall.Kill(pid, 0) == nil {
+		if processAlive(pid) {
 			if sv.State != "completed" && sv.State != "failed" {
 				sv.State = "running"
 				sv.Icon = "🔄"
