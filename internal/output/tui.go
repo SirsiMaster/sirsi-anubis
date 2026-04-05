@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -107,6 +108,11 @@ type TUIModel struct {
 	spinner      spinner.Model
 	history      []historyEntry
 
+	// Inline predictions + history recall
+	cmdHistory   []string // deduplicated command strings for up-arrow
+	historyIdx   int      // -1 = not browsing; 0..len-1 = position
+	historySaved string   // input text saved when user starts browsing
+
 	activeDeity map[string]bool
 	steleReader *stele.Reader
 	quitting    bool
@@ -142,6 +148,14 @@ func NewTUIModel() TUIModel {
 	ti.PlaceholderStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
 	ti.Cursor.Style = lipgloss.NewStyle().Foreground(Gold)
 
+	// Fish-shell-style inline predictions
+	ti.ShowSuggestions = true
+	ti.CompletionStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#555555"))
+	ti.KeyMap.AcceptSuggestion = key.NewBinding(key.WithKeys("right"))
+	ti.KeyMap.NextSuggestion = key.NewBinding()  // unbind — Up is for history
+	ti.KeyMap.PrevSuggestion = key.NewBinding()  // unbind — Down is for history
+	ti.SetSuggestions(topLevelCommands)
+
 	sp := spinner.New()
 	sp.Spinner = spinner.MiniDot
 	sp.Style = lipgloss.NewStyle().Foreground(Gold)
@@ -155,6 +169,7 @@ func NewTUIModel() TUIModel {
 		width:       100,
 		height:      40,
 		mode:        modeIdle,
+		historyIdx:  -1,
 		activeDeity: make(map[string]bool),
 		steleReader: stele.NewReader("tui"),
 	}
@@ -243,17 +258,88 @@ func (m TUIModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.input.Reset()
 			return m, nil
 		}
+		m.historyIdx = -1
 		return m.executeCommand(raw)
+
+	case tea.KeyUp:
+		if m.mode == modeRunning {
+			var cmd tea.Cmd
+			m.viewport, cmd = m.viewport.Update(msg)
+			return m, cmd
+		}
+		// History recall — walk backward
+		if len(m.cmdHistory) == 0 {
+			return m, nil
+		}
+		if m.historyIdx == -1 {
+			m.historySaved = m.input.Value()
+			m.historyIdx = len(m.cmdHistory)
+		}
+		if m.historyIdx > 0 {
+			m.historyIdx--
+			m.input.SetValue(m.cmdHistory[m.historyIdx])
+			m.input.CursorEnd()
+			m.updateSuggestionList()
+		}
+		return m, nil
+
+	case tea.KeyDown:
+		if m.mode == modeRunning {
+			var cmd tea.Cmd
+			m.viewport, cmd = m.viewport.Update(msg)
+			return m, cmd
+		}
+		if m.historyIdx >= 0 {
+			m.historyIdx++
+			if m.historyIdx >= len(m.cmdHistory) {
+				m.historyIdx = -1
+				m.input.SetValue(m.historySaved)
+			} else {
+				m.input.SetValue(m.cmdHistory[m.historyIdx])
+			}
+			m.input.CursorEnd()
+			m.updateSuggestionList()
+		}
+		return m, nil
+
+	case tea.KeyRight:
+		if m.mode != modeIdle {
+			return m, nil
+		}
+		// Only accept suggestion when cursor is at end of input
+		cursorAtEnd := m.input.Position() >= len([]rune(m.input.Value()))
+		if !cursorAtEnd {
+			// Cursor not at end — move cursor, don't accept suggestion
+			saved := m.input.KeyMap.AcceptSuggestion
+			m.input.KeyMap.AcceptSuggestion = key.NewBinding()
+			var cmd tea.Cmd
+			m.input, cmd = m.input.Update(msg)
+			m.input.KeyMap.AcceptSuggestion = saved
+			return m, cmd
+		}
+		// Cursor at end — let bubbles accept the suggestion
+		var cmd tea.Cmd
+		m.input, cmd = m.input.Update(msg)
+		m.updateSuggestionList()
+		return m, cmd
 	}
 
 	if m.mode == modeIdle {
 		var cmd tea.Cmd
 		m.input, cmd = m.input.Update(msg)
+		m.historyIdx = -1 // reset history on any typed input
+		m.updateSuggestionList()
 		return m, cmd
 	}
 	var cmd tea.Cmd
 	m.viewport, cmd = m.viewport.Update(msg)
 	return m, cmd
+}
+
+// updateSuggestionList refreshes inline predictions based on current input.
+func (m *TUIModel) updateSuggestionList() {
+	suggestions := buildSuggestions(m.input.Value(), m.cmdHistory)
+	m.input.SetSuggestions(suggestions)
 }
 
 // ── Command Execution ─────────────────────────────────────────────────
@@ -353,6 +439,7 @@ func (m TUIModel) handleBatchOutput(msg cmdBatchMsg) (TUIModel, tea.Cmd) {
 		deity: m.runningDeity, command: m.runningCmd,
 		output: strings.Join(m.outputLines, "\n"),
 	})
+	m.cmdHistory = deduplicateHistory(m.history)
 
 	if msg.err != nil {
 		m.outputLines = append(m.outputLines, "",
@@ -607,8 +694,11 @@ func (m TUIModel) renderHints(splitMode bool) string {
 	var hints []string
 	if m.mode == modeRunning {
 		hints = append(hints, "↑/↓ scroll")
-	} else if splitMode {
-		hints = append(hints, "esc back", "↑/↓ scroll")
+	} else {
+		hints = append(hints, "→ accept", "↑ history")
+		if splitMode {
+			hints = append(hints, "esc back")
+		}
 	}
 	hints = append(hints, "clear reset", "ctrl+c quit")
 	return lipgloss.NewStyle().Foreground(lipgloss.Color("#555555")).

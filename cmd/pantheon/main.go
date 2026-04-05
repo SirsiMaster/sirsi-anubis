@@ -1,11 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 
+	"github.com/SirsiMaster/sirsi-pantheon/internal/guard"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/logging"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/mcp"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
@@ -141,6 +144,98 @@ Runs a comprehensive one-shot health check covering:
 	RunE: runDoctor,
 }
 
+var sekhmetCmd = &cobra.Command{
+	Use:   "sekhmet",
+	Short: "𓁵 System Watchdog — health diagnostics and network security",
+	Long: `𓁵 Sekhmet — System Watchdog
+
+Monitors system health, network security, and resource pressure.
+
+  pantheon sekhmet network          Network security posture audit
+  pantheon sekhmet network --fix    Audit and auto-fix safe issues
+  pantheon doctor                   One-shot system health diagnostic`,
+}
+
+var sekhmetNetworkCmd = &cobra.Command{
+	Use:   "network",
+	Short: "Audit network security posture (DNS, WiFi, TLS, firewall, VPN)",
+	Long: `𓁵 Sekhmet Network — Security Posture Audit
+
+Checks your network configuration for public WiFi safety:
+  • DNS: Is encrypted DNS (DoH/DoT) configured?
+  • WiFi: WPA3/WPA2 or open network?
+  • TLS: Verifies TLS 1.3 to api.anthropic.com
+  • CA Certificates: Audits root certificate store for anomalies
+  • VPN: Detects active VPN tunnels
+  • Firewall: Is macOS application firewall enabled?
+
+  pantheon sekhmet network          Run audit (read-only)
+  pantheon sekhmet network --fix    Auto-apply safe fixes (DNS, firewall)
+  pantheon sekhmet network --json   Output as JSON`,
+	RunE: runSekhmetNetwork,
+}
+
+var sekhmetNetworkFix bool
+
+func runSekhmetNetwork(cmd *cobra.Command, args []string) error {
+	start := time.Now()
+
+	if !JsonOutput {
+		output.Banner()
+		output.Header("SEKHMET — Network Security Audit")
+	}
+
+	var report *guard.NetworkReport
+	var err error
+	if sekhmetNetworkFix {
+		report, err = guard.NetworkAuditFix()
+	} else {
+		report, err = guard.NetworkAudit()
+	}
+	if err != nil {
+		return fmt.Errorf("network audit failed: %w", err)
+	}
+
+	if JsonOutput {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(report)
+	}
+
+	var rows [][]string
+	for _, f := range report.Findings {
+		rows = append(rows, []string{
+			f.Severity.Icon(),
+			f.Check,
+			f.Message,
+		})
+	}
+	if len(rows) > 0 {
+		output.Table([]string{"", "Check", "Result"}, rows)
+	}
+
+	for _, f := range report.Findings {
+		if f.Detail != "" && f.Severity >= guard.SeverityWarn {
+			output.Dim("  %s: %s", f.Check, f.Detail)
+		}
+	}
+
+	scoreIcon := "🟢"
+	switch {
+	case report.Score < 50:
+		scoreIcon = "🔴"
+	case report.Score < 75:
+		scoreIcon = "🟡"
+	}
+
+	output.Dashboard(map[string]string{
+		"Security Score": fmt.Sprintf("%s %d/100", scoreIcon, report.Score),
+		"Checks Run":     fmt.Sprintf("%d", len(report.Findings)),
+	})
+	output.Footer(time.Since(start))
+	return nil
+}
+
 var mcpCmd = &cobra.Command{
 	Use:   "mcp",
 	Short: "Start MCP server for IDE integration",
@@ -197,6 +292,11 @@ func init() {
 	rootCmd.AddCommand(sebaCmd)
 	rootCmd.AddCommand(benchmarkCmd)
 	rootCmd.AddCommand(versionCmd)
+
+	// Sekhmet — System Watchdog
+	sekhmetNetworkCmd.Flags().BoolVar(&sekhmetNetworkFix, "fix", false, "Auto-apply safe fixes (DNS, firewall)")
+	sekhmetCmd.AddCommand(sekhmetNetworkCmd)
+	rootCmd.AddCommand(sekhmetCmd)
 }
 
 func main() {
