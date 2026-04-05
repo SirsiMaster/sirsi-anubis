@@ -34,23 +34,23 @@ type deityInfo struct {
 }
 
 // Canonical deity roster — ordered by hierarchy (Rule D6).
-// Roles are kept short for the two-column layout.
+// Two-word roles: verb/adjective + noun. Fits in a 30-col grid cell.
 var deityRoster = []deityInfo{
-	{"ra", "𓇶", "Ra", "Orchestrator"},
-	{"neith", "𓁯", "Neith", "Weaver"},
-	{"thoth", "𓁟", "Thoth", "Memory"},
-	{"maat", "𓆄", "Ma'at", "Quality"},
-	{"isis", "𓁐", "Isis", "Healer"},
-	{"seshat", "𓁆", "Seshat", "Scribe"},
-	{"horus", "𓂀", "Horus", "Index"},
-	{"anubis", "𓃣", "Anubis", "Hygiene"},
-	{"ka", "𓂓", "Ka", "Ghosts"},
-	{"sekhmet", "𓁵", "Sekhmet", "Watchdog"},
-	{"hapi", "𓈗", "Hapi", "Hardware"},
-	{"khepri", "𓆣", "Khepri", "Fleet"},
-	{"seba", "𓇽", "Seba", "Topology"},
-	{"osiris", "𓁹", "Osiris", "Checkpoint"},
-	{"hathor", "𓉡", "Hathor", "Dedup"},
+	{"ra", "𓇶", "Ra", "Agent Orchestrator"},
+	{"neith", "𓁯", "Neith", "Context Weaver"},
+	{"thoth", "𓁟", "Thoth", "Session Memory"},
+	{"maat", "𓆄", "Ma'at", "Quality Gate"},
+	{"isis", "𓁐", "Isis", "Auto Healer"},
+	{"seshat", "𓁆", "Seshat", "Knowledge Scribe"},
+	{"horus", "𓂀", "Horus", "Storage Index"},
+	{"anubis", "𓃣", "Anubis", "System Jackal"},
+	{"ka", "𓂓", "Ka", "Ghost Hunter"},
+	{"sekhmet", "𓁵", "Sekhmet", "System Watchdog"},
+	{"hapi", "𓈗", "Hapi", "Hardware Profiler"},
+	{"khepri", "𓆣", "Khepri", "Fleet Scanner"},
+	{"seba", "𓇽", "Seba", "Arch Mapper"},
+	{"osiris", "𓁹", "Osiris", "State Keeper"},
+	{"hathor", "𓉡", "Hathor", "File Dedup"},
 }
 
 // intentKeywords maps natural-language keywords to deity keys for routing.
@@ -73,10 +73,12 @@ var intentKeywords = map[string][]string{
 }
 
 // Top-level CLI aliases that bypass intent matching.
+// These map user shorthand to the deity that owns the verb.
 var cliAliases = map[string]string{
 	"scan":    "anubis",
+	"hunt":    "anubis",
 	"ghosts":  "ka",
-	"dedup":   "hathor",
+	"dedup":   "anubis",
 	"guard":   "sekhmet",
 	"doctor":  "sekhmet",
 	"version": "version",
@@ -416,71 +418,100 @@ func (m TUIModel) View() string {
 	hasOutput := len(m.outputLines) > 0
 	maxW := min(m.width-2, 90)
 	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#333333"))
+	divider := dim.Render(strings.Repeat("─", maxW))
 
-	// Header: name + description
 	header := lipgloss.NewStyle().Foreground(Gold).Bold(true).Render("𓉴  Sirsi Pantheon")
 	desc := lipgloss.NewStyle().Foreground(lipgloss.Color("#999999")).
 		Render("DevOps intelligence for developers and infrastructure teams")
-
 	signage := lipgloss.NewStyle().Foreground(lipgloss.Color("#444444")).
 		Render(" Sirsi Technologies, Inc. 2026 (MIT License)")
 
+	var b strings.Builder
+	usedLines := 0
+
 	if !hasOutput {
 		// ── Single-pane: full roster
-		var b strings.Builder
-		b.WriteString("\n " + header + "\n")
+		b.WriteString("\n")
+		b.WriteString(" " + header + "\n")
 		b.WriteString(" " + desc + "\n")
-		b.WriteString(" " + dim.Render(strings.Repeat("─", maxW)) + "\n")
-		b.WriteString(m.renderRosterColumns(false))
-		b.WriteString(m.renderStatusLine())
-		b.WriteString(" " + dim.Render(strings.Repeat("─", maxW)) + "\n")
+		b.WriteString(" " + divider + "\n")
+		usedLines += 4
+
+		roster := m.renderRosterColumns(false)
+		b.WriteString(roster)
+		usedLines += strings.Count(roster, "\n")
+
+		status := m.renderStatusLine()
+		b.WriteString(status)
+		usedLines += strings.Count(status, "\n")
+
+		b.WriteString(" " + divider + "\n")
 		b.WriteString(" " + m.input.View() + "\n")
 		b.WriteString(m.renderHints(false) + "\n")
-		b.WriteString(signage + "\n")
-		return b.String()
+		usedLines += 3
+	} else {
+		// ── Split-pane: left roster | right output
+		left := m.renderLeftPane()
+		right := m.renderRightPane()
+
+		leftStyle := lipgloss.NewStyle().
+			Width(leftPaneWidth).
+			BorderRight(true).
+			BorderStyle(lipgloss.Border{Right: "│"}).
+			BorderForeground(lipgloss.Color("#333333")).
+			PaddingRight(1)
+
+		rightWidth := m.width - leftPaneWidth - 3
+		if rightWidth < 20 {
+			rightWidth = 20
+		}
+		rightStyle := lipgloss.NewStyle().Width(rightWidth).PaddingLeft(1)
+
+		panes := lipgloss.JoinHorizontal(lipgloss.Top,
+			leftStyle.Render(left),
+			rightStyle.Render(right),
+		)
+
+		b.WriteString("\n")
+		b.WriteString(" " + header + "\n")
+		b.WriteString(" " + divider + "\n")
+		usedLines += 3
+
+		b.WriteString(panes + "\n")
+		usedLines += strings.Count(panes, "\n") + 1
+
+		b.WriteString(" " + divider + "\n")
+		b.WriteString(" " + m.input.View() + "\n")
+		b.WriteString(m.renderHints(true) + "\n")
+		usedLines += 3
 	}
 
-	// ── Split-pane: left roster | right output
-	left := m.renderLeftPane()
-	right := m.renderRightPane()
-
-	leftStyle := lipgloss.NewStyle().
-		Width(leftPaneWidth).
-		BorderRight(true).
-		BorderStyle(lipgloss.Border{Right: "│"}).
-		BorderForeground(lipgloss.Color("#333333")).
-		PaddingRight(1)
-
-	rightWidth := m.width - leftPaneWidth - 3
-	if rightWidth < 20 {
-		rightWidth = 20
+	// Pad to push signage to the bottom — exactly once
+	remaining := m.height - usedLines - 2
+	if remaining > 0 {
+		b.WriteString(strings.Repeat("\n", remaining))
 	}
-	rightStyle := lipgloss.NewStyle().Width(rightWidth).PaddingLeft(1)
+	b.WriteString(signage)
 
-	panes := lipgloss.JoinHorizontal(lipgloss.Top,
-		leftStyle.Render(left),
-		rightStyle.Render(right),
-	)
-
-	var b strings.Builder
-	b.WriteString("\n " + header + "\n")
-	b.WriteString(" " + dim.Render(strings.Repeat("─", maxW)) + "\n")
-	b.WriteString(panes + "\n")
-	b.WriteString(" " + dim.Render(strings.Repeat("─", maxW)) + "\n")
-	b.WriteString(" " + m.input.View() + "\n")
-	b.WriteString(m.renderHints(true) + "\n")
-	b.WriteString(signage + "\n")
 	return b.String()
 }
 
-// renderRosterColumns renders deities in a three-column grid (5 rows × 3 cols).
+// renderRosterColumns renders deities in a column grid that fits the terminal.
+// 3 columns if width >= 90, 2 columns if >= 60, single column otherwise.
 func (m TUIModel) renderRosterColumns(compact bool) string {
 	var b strings.Builder
 
 	cols := 3
-	rows := (len(deityRoster) + cols - 1) / cols // 5 rows for 15 deities
-	colWidth := 30
-	if !compact {
+	if m.width < 90 {
+		cols = 2
+	}
+	if m.width < 60 {
+		cols = 1
+	}
+
+	rows := (len(deityRoster) + cols - 1) / cols
+	colWidth := (m.width - 2) / cols
+	if colWidth > 30 {
 		colWidth = 30
 	}
 
