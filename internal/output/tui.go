@@ -530,7 +530,9 @@ func (m TUIModel) renderRosterColumns(compact bool) string {
 }
 
 // renderDeityCell renders one deity as a fixed-width cell for the grid.
-// Uses fixed-width lipgloss columns to normalize Egyptian glyph widths.
+// Avoids lipgloss Width/MaxWidth for layout — Egyptian glyphs have
+// unpredictable terminal widths. Instead we measure with lipgloss.Width()
+// and pad with real spaces so the error model is consistent.
 func (m TUIModel) renderDeityCell(d deityInfo, width int) string {
 	active := m.activeDeity[d.Key]
 
@@ -548,21 +550,24 @@ func (m TUIModel) renderDeityCell(d deityInfo, width int) string {
 		dot = lipgloss.NewStyle().Foreground(Gold).Render("●")
 	}
 
-	// Fixed-width glyph column normalizes variable-width Egyptian characters.
-	// Budget: dot(1) + sp(1) + glyph(2-3) + sp(1) + name(8) + sp(1) = 14-16 fixed.
-	// Egyptian glyphs often render wider than lipgloss measures, so use 16.
-	const fixedPrefix = 16
-	glyph := lipgloss.NewStyle().Width(2).Foreground(nameColor).Render(d.Glyph)
-	name := lipgloss.NewStyle().Width(8).Bold(true).Foreground(nameColor).Render(d.Name)
+	glyph := lipgloss.NewStyle().Foreground(nameColor).Render(d.Glyph)
+	name := lipgloss.NewStyle().Bold(true).Foreground(nameColor).Render(d.Name)
+	role := lipgloss.NewStyle().Foreground(roleColor).Render(d.Role)
 
-	roleWidth := width - fixedPrefix
-	if roleWidth < 4 {
-		roleWidth = 4
+	// Pad name to a fixed visual column so roles align across rows.
+	prefix := dot + " " + glyph + " " + name
+	prefixW := lipgloss.Width(prefix)
+	const nameEnd = 14 // target column where role text starts
+	if prefixW < nameEnd {
+		prefix += strings.Repeat(" ", nameEnd-prefixW)
 	}
-	role := lipgloss.NewStyle().Width(roleWidth).MaxWidth(roleWidth).Foreground(roleColor).Render(d.Role)
 
-	cell := dot + " " + glyph + " " + name + " " + role
-	return lipgloss.NewStyle().Width(width).MaxWidth(width).Render(cell)
+	cell := prefix + role
+	cellW := lipgloss.Width(cell)
+	if cellW < width {
+		cell += strings.Repeat(" ", width-cellW)
+	}
+	return cell
 }
 
 func (m TUIModel) renderStatusLine() string {
