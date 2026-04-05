@@ -6,6 +6,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 
 ---
 
+## [0.13.0] — 2026-04-05
+
+### Added
+- **TUI Inline Predictions** — Fish-shell-style ghost text suggestions in the input bar. Context-aware: typing a deity name surfaces its subcommands, typing a subcommand surfaces its flags. Right-arrow accepts the prediction. Up/Down-arrow recalls command history within the session. Static command tree covers all 15 deities, their subcommands, and flags.
+- **Suggestion Engine** (`internal/output/suggestions.go`) — `buildSuggestions()` generates context-aware completions from a static command tree. Priority: history matches → command tree completions → deity names/aliases → intent keywords.
+- **Sekhmet Network Audit** (`pantheon sekhmet network`) — Six-check network security posture audit: DNS configuration (DoH detection), WiFi security (WPA2/WPA3/Open), TLS 1.3 verification to api.anthropic.com, CA certificate store audit, VPN tunnel detection, macOS firewall state. Runs in ~130ms.
+- **`--fix` flag** for `sekhmet network` — Auto-applies safe remediations (encrypted DNS, firewall enable) where admin privileges allow.
+- **`sekhmet` parent command** — Groups system watchdog features under `pantheon sekhmet`. Doctor remains available as top-level `pantheon doctor` alias.
+
+### Fixed
+- **Deity roster grid overflow** — Egyptian hieroglyphs have unpredictable terminal widths that broke lipgloss Width/MaxWidth calculations. Replaced with manual measure-then-pad approach: render each part with colors, measure with `lipgloss.Width()`, pad with real spaces. Grid now holds at any terminal width.
+
+### Changed
+- **TUI hints** — Now show `→ accept · ↑ history · clear reset · ctrl+c quit` to reflect new keybindings.
+- **TUI key bindings** — Right-arrow accepts ghost text prediction (replaces Tab). Up/Down-arrow navigate command history (replaces suggestion cycling).
+
+---
+
 ## [0.12.0] — 2026-04-05
 
 ### Added
