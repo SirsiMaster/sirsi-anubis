@@ -153,7 +153,6 @@ System health diagnostics, network security auditing, and autonomous remediation
   pantheon doctor                One-shot system health diagnostic`,
 }
 
-
 var isisNetworkCmd = &cobra.Command{
 	Use:   "network",
 	Short: "Audit network security posture (DNS, WiFi, TLS, firewall, VPN)",

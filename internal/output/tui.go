@@ -51,16 +51,16 @@ var deityRoster = []deityInfo{
 
 // intentKeywords maps natural-language keywords to deity keys for routing.
 var intentKeywords = map[string][]string{
-	"ra":      {"deploy", "orchestrate", "sprint", "agent", "watch", "command center"},
-	"net":     {"scope", "weave", "context", "canon", "align", "tile", "drift"},
-	"thoth":   {"memory", "sync", "compact", "journal", "remember", "persist"},
-	"maat":    {"quality", "audit", "coverage", "test", "lint", "feather", "gate", "qa"},
-	"isis":    {"fix", "heal", "remediate", "repair", "auto-fix", "guard", "watchdog", "monitor", "ram", "cpu", "doctor", "process", "network", "dns", "wifi", "firewall", "tls", "vpn", "security"},
-	"seshat":  {"knowledge", "graft", "ingest", "notes", "gemini", "notebooklm"},
-	"anubis":  {"scan", "waste", "clean", "judge", "purge", "hygiene", "infrastructure", "dedup", "duplicate", "mirror", "ghost", "dead", "remnant", "uninstall", "residual", "haunt"},
-	"hapi":    {"gpu", "vram", "hardware", "accelerator", "ane", "cuda", "metal", "npu"},
-	"seba":    {"architecture", "topology", "diagram", "map", "dependency", "graph", "network map", "network topology", "fleet", "subnet", "container", "docker", "kubernetes", "k8s", "pod"},
-	"osiris":  {"checkpoint", "state", "preserve", "restore"},
+	"ra":     {"deploy", "orchestrate", "sprint", "agent", "watch", "command center"},
+	"net":    {"scope", "weave", "context", "canon", "align", "tile", "drift"},
+	"thoth":  {"memory", "sync", "compact", "journal", "remember", "persist"},
+	"maat":   {"quality", "audit", "coverage", "test", "lint", "feather", "gate", "qa"},
+	"isis":   {"fix", "heal", "remediate", "repair", "auto-fix", "guard", "watchdog", "monitor", "ram", "cpu", "doctor", "process", "network", "dns", "wifi", "firewall", "tls", "vpn", "security"},
+	"seshat": {"knowledge", "graft", "ingest", "notes", "gemini", "notebooklm"},
+	"anubis": {"scan", "waste", "clean", "judge", "purge", "hygiene", "infrastructure", "dedup", "duplicate", "mirror", "ghost", "dead", "remnant", "uninstall", "residual", "haunt"},
+	"hapi":   {"gpu", "vram", "hardware", "accelerator", "ane", "cuda", "metal", "npu"},
+	"seba":   {"architecture", "topology", "diagram", "map", "dependency", "graph", "network map", "network topology", "fleet", "subnet", "container", "docker", "kubernetes", "k8s", "pod"},
+	"osiris": {"checkpoint", "state", "preserve", "restore"},
 }
 
 // Top-level CLI aliases that bypass intent matching.
