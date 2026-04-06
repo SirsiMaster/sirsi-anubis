@@ -16,7 +16,7 @@ import (
 	modversion "github.com/SirsiMaster/sirsi-pantheon/internal/version"
 )
 
-var version = "v0.12.0"
+var version = "v0.15.0"
 
 // versionCmd prints the version and optionally checks for updates.
 var versionCmd = &cobra.Command{
@@ -303,6 +303,7 @@ func init() {
 	rootCmd.AddCommand(maatCmd)
 	rootCmd.AddCommand(seshatCmd)
 	rootCmd.AddCommand(raCmd)
+	rootCmd.AddCommand(netCmd)
 	rootCmd.AddCommand(anubisCmd)
 	rootCmd.AddCommand(sebaCmd)
 	rootCmd.AddCommand(benchmarkCmd)

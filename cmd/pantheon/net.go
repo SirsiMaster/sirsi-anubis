@@ -11,44 +11,44 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
 )
 
-var neithCmd = &cobra.Command{
-	Use:   "neith",
-	Short: "Neith — Plan alignment and governance weave",
-	Long: `Neith — Plan Alignment & Governance
+var netCmd = &cobra.Command{
+	Use:     "net",
+	Aliases: []string{"neith"},
+	Short:   "𓁯 Net — Scope Weaver & Plan Alignment",
+	Long: `𓁯 Net — Scope Weaver & Plan Alignment
 
-Neith tracks the development plan against actual build logs,
-detects drift, and validates that all modules are in a consistent state.
+Net defines task scopes for Ra, tracks plan alignment against build logs,
+detects drift, and validates cross-module consistency.
 
-  pantheon neith status    Check plan alignment score
-  pantheon neith align     Validate all-module consistency`,
+  pantheon net status    Check plan alignment score
+  pantheon net align     Validate all-module consistency`,
 	Run: func(cmd *cobra.Command, args []string) {
 		_ = cmd.Help()
 	},
 }
 
-var neithStatusCmd = &cobra.Command{
+var netStatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Check plan alignment against build logs",
-	RunE:  runNeithStatus,
+	RunE:  runNetStatus,
 }
 
-var neithAlignCmd = &cobra.Command{
+var netAlignCmd = &cobra.Command{
 	Use:   "align",
 	Short: "Validate cross-module consistency",
-	RunE:  runNeithAlign,
+	RunE:  runNetAlign,
 }
 
 func init() {
-	neithCmd.AddCommand(neithStatusCmd)
-	neithCmd.AddCommand(neithAlignCmd)
+	netCmd.AddCommand(netStatusCmd)
+	netCmd.AddCommand(netAlignCmd)
 }
 
-func runNeithStatus(cmd *cobra.Command, args []string) error {
+func runNetStatus(cmd *cobra.Command, args []string) error {
 	start := time.Now()
 	output.Banner()
-	output.Header("Neith — Plan Alignment")
+	output.Header("NET — Plan Alignment")
 
-	// Try to load BUILD_LOG.md from repo root
 	logContent := ""
 	for _, path := range []string{"BUILD_LOG.md", "docs/BUILD_LOG.md"} {
 		data, err := os.ReadFile(path)
@@ -88,10 +88,10 @@ func runNeithStatus(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func runNeithAlign(cmd *cobra.Command, args []string) error {
+func runNetAlign(cmd *cobra.Command, args []string) error {
 	start := time.Now()
 	output.Banner()
-	output.Header("Neith — Module Consistency Check")
+	output.Header("NET — Module Consistency Check")
 
 	tap := &neith.Tapestry{
 		MaatConsistent:  true,

@@ -6,6 +6,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 
 ---
 
+## [0.15.0] — 2026-04-06
+
+### Added
+- **Osiris CLI**: `pantheon osiris assess` (full checkpoint report with 5-level risk scoring) and `pantheon osiris status` (one-line summary for scripts/menubar). TUI intent routing, suggestions, and help guide all wired.
+- **Seba hardware commands**: `seba hardware` (GPU/CPU/ANE/RAM dashboard), `seba profile` (saves JSON to ~/.config/pantheon/), `seba compute` (ANE tokenization with real latency measurement).
+- **Net CLI registered**: `pantheon net status` and `pantheon net align` now functional. Previously the command existed but was never added to the root command.
+
+### Changed
+- **Hapi folded into Seba** (10 → 9 deities): All hardware profiling now under Seba v2.0.0. Removes a facade layer — Hapi was already just wrappers around Seba's detection code.
+- **Ma'at pre-push hook**: Now skips deleted package directories (was failing on `internal/horus/` after removal).
+- **Version synced to v0.15.0** across main.go, VERSION file, and CHANGELOG.
+
+### Removed
+- `cmd/pantheon/hapi.go` — CLI commands moved to `seba.go`.
+- `internal/horus/` — 4 files deleted. MCP diagnostic replaced with file stat fallback.
+- `docs/pantheon/hapi.html` — Stale deity page.
+- Hapi from: version registry, TUI roster, intent keywords, suggestions, help guides, index.html, README, DEITY_REGISTRY.
+
+### Fixed
+- **Isis card (index.html)**: Developer metadata incorrectly showed `internal/maat/` package — now shows `internal/guard/`.
+- **Net card (index.html)**: Commands updated from `neith audit, adr` to `net status, net align`.
+- **neith.go → net.go**: Renamed CLI file and all internal references to match the Net deity name.
+
+---
+
 ## [0.14.0] — 2026-04-05
 
 ### Added
