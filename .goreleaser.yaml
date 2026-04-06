@@ -383,16 +383,17 @@ release:
     Infrastructure hygiene and developer intelligence. One binary.
 
     ### Core Features
-    - **Scan** — 64 rules across 7 categories find infrastructure waste
+    - **Scan** — 58 rules across 7 categories find infrastructure waste
     - **Ghosts** — Detect remnants of uninstalled apps (macOS + Linux)
-    - **Dedup** — Find duplicate files with 3-phase hashing (27x faster than naive)
-    - **Guard** — System resource monitoring with accelerator detection
-    - **Thoth** — AI project memory (98.7% context compression)
-    - **MCP Server** — 6 tools for AI IDE integration (Claude, Cursor, Windsurf, VS Code)
+    - **Dedup** — Find duplicate files with 3-phase hashing
+    - **Network** — Security audit with DNS safety rollback
+    - **Hardware** — CPU, GPU, ANE, CUDA detection
+    - **Thoth** — AI project memory via MCP
+    - **MCP Server** — Tools for AI IDE integration (Claude, Cursor, Windsurf, VS Code)
 
     ### Stats
-    - 1,500+ tests, ~85% coverage, 0 lint errors
-    - 28 packages, Apple Silicon first-class
+    - 1,663 tests, ~85% coverage, 0 lint errors
+    - 27 packages, Apple Silicon first-class
     - Spotlight-accelerated file classification on macOS
     - Real BPE tokenizer for accurate token counting
 
