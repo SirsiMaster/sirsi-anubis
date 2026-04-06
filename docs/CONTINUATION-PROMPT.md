@@ -1,49 +1,80 @@
-# PANTHEON — Continuation Prompt (v0.14.0)
-**Last Commit**: `6450ea8` on `main`
-**Date**: April 5, 2026
-**Version**: v0.14.0
-**Total Commits**: 333
-**Test Packages**: 29/29 passing
+# PANTHEON — Continuation Prompt (v0.15.0)
+**Last Commit**: `a9333d2` on `main`
+**Date**: April 6, 2026
+**Version**: v0.15.0
+**Total Commits**: 345
+**Test Packages**: 27/27 passing (1,663 tests)
+**Release**: v0.15.0 live on GitHub Releases + Homebrew (`brew install sirsi-pantheon`)
+**License**: Apache 2.0
 
 ---
 
-## I. What Just Shipped (This Session)
+## I. What Shipped This Session
 
-### Deity Consolidation (15 → 10)
-The Pantheon roster was streamlined. Every deity now has a distinct, non-overlapping domain:
+### Deity Consolidation (10 → 9)
+Hapi folded into Seba. `internal/hapi/` deleted entirely (was a facade layer).
 
 | Deity | Glyph | Domain | Version |
 |-------|-------|--------|---------|
 | Ra | 𓇶 | Agent Orchestrator | 1.1.0 |
-| Net | 𓁯 | Scope Weaver (was Neith) | 1.1.0 |
+| Net | 𓁯 | Scope Weaver | 1.1.0 |
 | Thoth | 𓁟 | Session Memory | 1.1.0 |
 | Ma'at | 𓆄 | Quality Gate | 1.1.0 |
-| Isis | 𓁐 | Health & Remedy (absorbed Sekhmet) | 2.0.0 |
+| Isis | 𓁐 | Health & Remedy | 2.0.0 |
 | Seshat | 𓁆 | Knowledge Bridge | 2.1.0 |
-| Anubis | 𓃣 | Hygiene Engine (absorbed Ka + Hathor) | 1.1.0 |
-| Hapi | 𓈗 | Hardware Profiler | 1.1.0 |
-| Seba | 𓇽 | Infra Mapper (absorbed Khepri) | 1.2.0 |
+| Anubis | 𓃣 | Hygiene Engine | 1.1.0 |
+| Seba | 𓇽 | Infra & Hardware | 2.0.0 |
 | Osiris | 𓁹 | Snapshot Keeper | 0.5.0 |
 
-**Removed**: Sekhmet, Ka, Khepri, Hathor, Horus. No backwards-compat aliases — clean codebase.
+### Features-First Rewrite
+- README rewritten: 530 → 140 lines, leads with what Pantheon does, not mythology
+- Top-level feature aliases: `network`, `hardware`, `quality`, `diagram`
+- Users never need to type a deity name
+- Deity subcommands still exist for power users
 
-### Isis DNS Safety Fix (Critical)
-`pantheon isis network --fix` previously bricked internet on restricted networks (airline WiFi, captive portals). Fixed with three-layer safety:
-1. **Pre-check gate**: TCP probe to DNS server before changing config
-2. **Post-fix watchdog**: Polls resolution 3x over 6s, auto-reverts on failure
-3. **Manual rollback**: `pantheon isis network --rollback`
+### Osiris CLI Wired
+- `pantheon osiris assess` — full checkpoint report with 5-level risk scoring
+- `pantheon osiris status` — one-line summary for scripts/menubar
+- TUI intent routing, suggestions, help all connected
 
-Case study: `docs/case-studies/isis-dns-safety-rollback.md`
+### Shipping Grade Fixes
+- All stubs replaced with real implementations (seba scan, seba book, net align)
+- Dead deity naming cleaned (KaExtinguished→HygieneClean, SekhmetHardened→IsisHardened)
+- Net command registered (was missing from rootCmd)
+- Version synced to v0.15.0 across all files
+- `internal/horus/` deleted (replaced MCP diagnostic with file stat)
+- `internal/hapi/` deleted (brain + guard now import seba directly)
+- Ma'at pre-push hook: skips deleted package directories
 
-### TUI Polish
-- Intent→subcommand inference (natural language maps to real CLI args)
-- In-TUI `help` command
-- Narrow terminal graceful degradation (<70 cols)
-- Network keyword routing (Isis=security, Seba=topology)
+### Claims Audit (Rule A14)
+- "98.7%" → replaced with raw measurement "22,958 → 297 lines"
+- "$4.08 saved" → removed (pricing changes)
+- "64 rules" → corrected to "58 rules" (verified: 58 NewXxxRule constructors)
+- "27x faster" → removed from goreleaser (benchmark not published)
+- All public-facing numbers now verifiable
 
-### Test Fixes
-- `TestExtractAgeDays`: timezone boundary bug (UTC vs local date)
-- `TestSmoke_Version`: removed hardcoded version string
+### Release Pipeline Proven
+- v0.15.0 tagged, GitHub Actions built + published
+- goreleaser produced multi-platform binaries (darwin/linux/windows × amd64/arm64)
+- Homebrew formula auto-pushed to SirsiMaster/homebrew-tools
+- `brew install sirsi-pantheon` verified working on macOS
+- Release workflow fixed: skips CGO-dependent packages on Linux
+
+### License Switch
+- MIT → Apache 2.0 (patent protection)
+- NOTICE file created
+- All references updated (README, goreleaser, HTML pages, TUI, FAQ, CONTRIBUTING)
+
+### Product Story Pinned
+- "Why Pantheon Exists" section on README and landing page
+- Three differentiators: ghost detection, DNS safety model, AI memory
+- "Where This Is Going" comparison: traditional monitoring vs. autonomous agents
+- GitHub repo description updated
+
+### Documentation
+- 10 user guides created (getting-started + 9 deities) — Rule A8 satisfied
+- index.html: Isis card dev metadata fixed, Net card updated, Hapi card removed
+- Seba card updated with hardware profiling capabilities
 
 ---
 
@@ -51,85 +82,66 @@ Case study: `docs/case-studies/isis-dns-safety-rollback.md`
 
 ### What Works (CLI)
 ```
-pantheon                    # Interactive TUI (10-deity roster)
-pantheon scan               # Anubis waste scan
-pantheon ghosts             # Anubis ghost hunting (was Ka)
-pantheon dedup [dirs]       # Anubis file dedup (was Hathor)
-pantheon doctor             # Isis system health diagnostic
-pantheon guard              # Isis resource monitoring
-pantheon isis network       # Network security audit (6 checks)
-pantheon isis network --fix # Safe DNS/firewall remediation
-pantheon maat audit         # Governance scan
-pantheon maat heal          # Isis autonomous remediation
-pantheon thoth init/sync    # Project memory
-pantheon seshat ingest      # Knowledge grafting
-pantheon hapi scan/profile  # Hardware detection
-pantheon seba diagram       # Architecture diagrams
-pantheon seba fleet         # Fleet discovery (was Khepri)
-pantheon ra deploy/health   # Multi-repo orchestration
-pantheon net status/align   # Scope alignment (was neith)
-pantheon mcp                # MCP server for IDE integration
-pantheon help <deity>       # Rich terminal guides
-pantheon version            # 10-deity module versions
+pantheon scan               # 58 rules, 7 domains
+pantheon ghosts             # Ghost app detection
+pantheon dedup [dirs]       # Three-phase file dedup
+pantheon doctor             # System health diagnostic
+pantheon network            # Network security audit (6 checks)
+pantheon network --fix      # DNS/firewall fix with safety rollback
+pantheon network --rollback # Manual DNS restore
+pantheon hardware           # CPU, GPU, RAM, ANE detection
+pantheon quality            # Code governance audit
+pantheon guard              # Real-time resource monitoring
+pantheon thoth init/sync    # AI project memory
+pantheon mcp                # MCP server for AI IDEs
+pantheon seshat ingest      # Knowledge ingestion
+pantheon diagram            # Architecture diagrams (Mermaid/HTML)
+pantheon osiris assess      # Checkpoint risk assessment
+pantheon osiris status      # One-line risk summary
+pantheon version            # 9-deity module versions
 ```
 
-### What's Partial / Needs Work
-- **Osiris**: Roster entry only, no CLI commands. Needs snapshot/checkpoint implementation.
-- **Hapi profile**: Returns minimal output, needs deeper system profiling.
-- **Seba book**: Project registry output is thin.
-- **Ra watch**: Not in suggestions yet.
-- **docs/pantheon/index.html**: Still has old 15-deity references in the HTML cards/tables. Needs update to match 10-deity roster.
+### Product Architecture
+- **Pantheon (Free)**: All features above. Zero telemetry. Apache 2.0.
+- **Pantheon Ra (Enterprise)**: Fleet orchestration, multi-repo AI agents. Contact sales.
+- Deity names are internal module codenames, not user-facing brands.
+
+### Release Status
+- v0.15.0 live on GitHub Releases and Homebrew
+- `brew tap SirsiMaster/tools && brew install sirsi-pantheon`
+- 7 binaries: pantheon, pantheon-agent, pantheon-anubis, pantheon-maat, pantheon-thoth, pantheon-scarab, pantheon-guard
 
 ---
 
-## III. Files Changed This Session
+## III. Known Limitations (Honest)
 
-### Go Source (core changes)
-- `internal/guard/network.go` — DNS pre-check + watchdog + TCP probe
-- `internal/guard/isis.go` — Renamed from sekhmet.go
-- `internal/guard/*.go` — All Sekhmet→Isis branding
-- `internal/output/tui.go` — 10-deity roster, inferSubcommand(), help, narrow fallback
-- `internal/output/suggestions.go` — 10-deity command tree
-- `internal/help/help.go` — 10-deity guides, expanded Isis guide
-- `internal/version/modules.go` — 10-deity version registry
-- `internal/stele/stele.go` — Updated event type comments
-- `internal/mcp/resources.go` — Isis branding
-- `internal/neith/tiler.go` — Timezone bug fix
-- `cmd/pantheon/main.go` — Isis CLI commands, version layout
-- `tests/e2e/smoke_test.go` — Version test fix
-
-### Documentation
-- `README.md` — 10-deity roster table, architecture table
-- `CHANGELOG.md` — v0.14.0 entry
-- `docs/DEITY_REGISTRY.md` — Canonical 10-deity registry
-- `docs/PANTHEON_HIERARCHY.md` — Updated hierarchy
-- `docs/case-studies/isis-dns-safety-rollback.md` — NEW case study
-- `docs/pantheon/*.html` — Deleted 6 old pages, updated isis/anubis/seba/neith
-
-### Deleted
-- `docs/pantheon/sekhmet.html`, `khepri.html`, `hathor.html`, `horus.html`, `ka.html`
-- `internal/guard/sekhmet.go` (renamed to isis.go)
+- **CGO gap**: Brew binary ships with CGO_ENABLED=0 — no Metal compute kernels or CoreML. Users building from source on Mac get ANE/Metal acceleration.
+- **Net duplicates Quality**: `pantheon net align` and `pantheon quality` run overlapping checks (go vet, gofmt, build).
+- **Osiris is thin**: `assess` wraps git status with risk thresholds. Functional but not deep.
+- **Seba scan/book are minimal**: scan produces a basic graph, book lists git repos.
+- **Zero external users**: No adoption metrics. Needs HN/Reddit launch.
+- **Ka tests fail on Linux**: Platform-specific paths in scanner_test.go. Skipped in release workflow.
 
 ---
 
-## IV. Next Session Priorities
+## IV. Key Decisions Made This Session
 
-1. **Wire Osiris** — Implement state snapshot/checkpoint commands
-2. **Deepen Hapi** — Richer hardware profiling output
-3. **Update index.html** — 10-deity roster in the HTML landing page
-4. **April 15 deadline** — FinalWishes + Assiduous ship date (10 days out)
-5. **Clean dead packages** — `internal/horus/` and `internal/ka/` are unused (no imports)
-
----
-
-## V. Key Decisions Made This Session
-
-- **"network" keyword is shared**: Isis owns network security, Seba owns network topology. Multi-keyword scoring resolves ambiguity.
-- **No aliases**: Old deity names are gone from the codebase. Clean break.
-- **DNS fixes must probe before changing**: Transport-level checks only. Never depend on the service being tested.
-- **Neith → Net**: Shorter name, same function. Net defines scope, Ra dispatches.
-- **Isis = detect + fix**: Doctor, guard, network, heal all under one deity. She finds problems and fixes them.
+- **Hapi → Seba**: Hardware profiling is infrastructure mapping. One deity, not two.
+- **Features-first CLI**: Users type `pantheon network`, not `pantheon isis network`.
+- **Apache 2.0**: Patent protection MIT lacks. Prep for BSL when Ra ships.
+- **Raw measurements over percentages**: "22,958 → 297 lines" not "98.7%"
+- **Case studies stay as-is**: Deity names in case studies are internal architecture documentation, not user-facing marketing.
+- **Investor lens is permanent**: Every commit evaluated as if a technical auditor is watching.
 
 ---
 
-*𓁐 Isis heals. 𓃣 Anubis hunts. 𓇽 Seba maps. 𓆄 Ma'at judges. 𓁟 Thoth remembers.*
+## V. Next Priorities
+
+1. **Assiduous** — Ships April 15, 2026 (9 days). Paid contract. Primary focus.
+2. **FinalWishes** — Ships May 15, 2026 + 2 months post-delivery.
+3. **Pantheon adoption** — HN/Reddit launch when Assiduous pressure lifts.
+4. **Ra enterprise** — Dogfooding continues. First external customer needed.
+
+---
+
+*Pantheon v0.15.0 is shipped. The investor is watching. Move to Assiduous.*
