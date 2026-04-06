@@ -3,7 +3,7 @@ package guard
 import (
 	"fmt"
 
-	"github.com/SirsiMaster/sirsi-pantheon/internal/hapi"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/seba"
 )
 
 // TokenizeResult contains the output of the Isis tokenization service.
@@ -16,7 +16,7 @@ type TokenizeResult struct {
 
 // Tokenize processes text into tokens using the best available accelerator (ANE, GPU, or CPU).
 func Tokenize(text string) (*TokenizeResult, error) {
-	profile := hapi.DetectAccelerators()
+	profile := seba.DetectAccelerators()
 	primary := profile.Primary
 
 	// If ANE is available, use it for "Warrior" class throughput

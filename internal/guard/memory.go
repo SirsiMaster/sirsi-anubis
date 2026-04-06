@@ -3,7 +3,7 @@ package guard
 import (
 	"runtime"
 
-	"github.com/SirsiMaster/sirsi-pantheon/internal/hapi"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/seba"
 )
 
 // ResourceStats contains memory and system metrics for the Anubis dashboard.
@@ -18,11 +18,11 @@ func GetStats() (*ResourceStats, error) {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
-	profile, _ := hapi.DetectHardware()
+	profile, _ := seba.DetectHardware()
 
 	return &ResourceStats{
-		UsedMemory:    hapi.FormatBytes(int64(m.Alloc)),
-		TotalMemory:   hapi.FormatBytes(profile.TotalRAM),
+		UsedMemory:    seba.FormatBytes(int64(m.Alloc)),
+		TotalMemory:   seba.FormatBytes(profile.TotalRAM),
 		PressureLevel: "Normal", // Simplified for now
 	}, nil
 }

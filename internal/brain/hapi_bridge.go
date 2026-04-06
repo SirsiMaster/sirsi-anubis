@@ -1,20 +1,20 @@
 package brain
 
 import (
-	"github.com/SirsiMaster/sirsi-pantheon/internal/hapi"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/logging"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/seba"
 )
 
-// HapiBridge connects accelerator detection (Hapi) to the inference layer (Brain).
-type HapiBridge struct {
-	profile *hapi.HardwareProfile
+// HardwareBridge connects accelerator detection to the inference layer.
+type HardwareBridge struct {
+	profile *seba.HardwareProfile
 }
 
-// NewHapiBridge initializes hardware detection and returns a bridge instance.
-func NewHapiBridge() (*HapiBridge, error) {
-	profile, err := hapi.DetectHardware()
+// NewHardwareBridge initializes hardware detection and returns a bridge instance.
+func NewHardwareBridge() (*HardwareBridge, error) {
+	profile, err := seba.DetectHardware()
 	if err != nil {
-		logging.Error("🧠 Brain: Hapi detection failed", "error", err)
+		logging.Error("🧠 Brain: hardware detection failed", "error", err)
 		return nil, err
 	}
 
@@ -23,21 +23,21 @@ func NewHapiBridge() (*HapiBridge, error) {
 		"vram", profile.GPU.VRAM,
 		"cores", profile.CPUCores)
 
-	return &HapiBridge{profile: profile}, nil
+	return &HardwareBridge{profile: profile}, nil
 }
 
 // BackendPreference returns the optimal inference backend based on hardware.
-func (b *HapiBridge) BackendPreference() string {
+func (b *HardwareBridge) BackendPreference() string {
 	if b.profile == nil {
 		return "stub"
 	}
 
 	switch b.profile.GPU.Type {
-	case hapi.GPUAppleMetal:
+	case seba.GPUAppleMetal:
 		return "coreml"
-	case hapi.GPUNVIDIA:
+	case seba.GPUNVIDIA:
 		return "onnx-cuda"
-	case hapi.GPUAMD:
+	case seba.GPUAMD:
 		return "onnx-rocm"
 	default:
 		return "onnx-cpu"
@@ -45,6 +45,11 @@ func (b *HapiBridge) BackendPreference() string {
 }
 
 // Profile returns the underlying hardware profile.
-func (b *HapiBridge) Profile() *hapi.HardwareProfile {
+func (b *HardwareBridge) Profile() *seba.HardwareProfile {
 	return b.profile
 }
+
+// Deprecated aliases for backward compatibility.
+type HapiBridge = HardwareBridge
+
+func NewHapiBridge() (*HardwareBridge, error) { return NewHardwareBridge() }

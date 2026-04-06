@@ -61,24 +61,19 @@ var rootCmd = &cobra.Command{
 	Short: "Sirsi Pantheon — Infrastructure Hygiene & Developer Intelligence",
 	Long: `Sirsi Pantheon — Infrastructure Hygiene & Developer Intelligence
 
-Core commands:
-  pantheon scan               Scan for infrastructure waste (caches, build artifacts, orphaned files)
-  pantheon ghosts             Detect remnants of uninstalled applications
-  pantheon dedup [dirs...]    Find duplicate files across directories
-  pantheon guard              Monitor system resources and memory pressure
-  pantheon doctor             One-shot system health diagnostic
-  pantheon thoth init         Initialize AI project memory (.thoth/)
-  pantheon thoth sync         Sync project memory from source + git history
-  pantheon thoth compact      Persist session decisions before context compression
-  pantheon mcp                Start MCP server for IDE integration (Claude, Cursor, VS Code)
-
-Advanced:
-  pantheon ra --help          Supreme Overseer — cross-repo orchestration
-  pantheon anubis --help      Full hygiene engine (scan, judge, clean)
-  pantheon isis --help        Health & remediation (diagnostics, network, auto-fix)
-  pantheon maat --help        Governance and compliance auditing
-  pantheon seba --help        Infrastructure mapping, hardware profiling, and diagrams
-  pantheon osiris --help      Checkpoint guardian and risk assessment`,
+  pantheon scan               Find infrastructure waste (58 rules, 7 domains)
+  pantheon ghosts             Detect remnants of uninstalled apps
+  pantheon dedup [dirs...]    Find duplicate files with three-phase hashing
+  pantheon doctor             System health diagnostic
+  pantheon network            Network security audit (DNS, WiFi, TLS, firewall)
+  pantheon hardware           CPU, GPU, RAM, Neural Engine detection
+  pantheon guard              Real-time resource monitoring
+  pantheon quality            Code governance audit
+  pantheon thoth init/sync    AI project memory
+  pantheon mcp                MCP server for AI IDEs
+  pantheon seshat ingest      Knowledge ingestion
+  pantheon diagram            Architecture diagrams (Mermaid/HTML)
+  pantheon version            Show version`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
 			if err := output.LaunchTUI(); err != nil {
@@ -137,6 +132,31 @@ Runs a comprehensive one-shot health check covering:
   pantheon doctor              Run full diagnostic
   pantheon doctor --json       Output as JSON`,
 	RunE: runDoctor,
+}
+
+// Feature aliases — users type features, not deity names.
+var networkCmd = &cobra.Command{
+	Use:   "network",
+	Short: "Network security audit (DNS, WiFi, TLS, firewall, VPN)",
+	RunE:  runIsisNetwork,
+}
+
+var hardwareCmd = &cobra.Command{
+	Use:   "hardware",
+	Short: "CPU, GPU, RAM, Neural Engine detection",
+	RunE:  runSebaHardware,
+}
+
+var qualityCmd = &cobra.Command{
+	Use:   "quality",
+	Short: "Code governance audit",
+	RunE:  runMaatAudit,
+}
+
+var diagramCmd = &cobra.Command{
+	Use:   "diagram",
+	Short: "Generate architecture diagrams",
+	RunE:  runSebaDiagram,
 }
 
 var isisCmd = &cobra.Command{
@@ -290,25 +310,23 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&quietMode, "quiet", false, "Suppress output")
 	rootCmd.PersistentFlags().BoolVarP(&verboseMode, "verbose", "v", false, "Debug logging")
 
+	// Feature aliases — the primary user interface
+	networkCmd.Flags().BoolVar(&isisNetworkFix, "fix", false, "Auto-apply safe fixes (DNS, firewall)")
+	networkCmd.Flags().BoolVar(&isisNetworkRollback, "rollback", false, "Restore DNS to pre-fix state")
+	diagramCmd.Flags().StringVar(&diagramType, "type", "all", "Diagram type (hierarchy|dataflow|modules|memory|governance|pipeline|all)")
+	diagramCmd.Flags().BoolVar(&diagramHTML, "html", false, "Generate self-contained HTML")
+	rootCmd.AddCommand(networkCmd)
+	rootCmd.AddCommand(hardwareCmd)
+	rootCmd.AddCommand(qualityCmd)
+	rootCmd.AddCommand(diagramCmd)
+
 	// Core commands
 	scanCmd.Flags().BoolVar(&anubisAll, "all", false, "Scan all categories")
 	ghostsCmd.Flags().BoolVar(&anubisSudo, "sudo", false, "Include system directories (requires sudo)")
-	rootCmd.AddCommand(scanCmd)
-	rootCmd.AddCommand(ghostsCmd)
-	rootCmd.AddCommand(dedupCmd)
-	rootCmd.AddCommand(guardCmd)
-	rootCmd.AddCommand(doctorCmd)
-	rootCmd.AddCommand(mcpCmd)
-	rootCmd.AddCommand(thothCmd)
-	rootCmd.AddCommand(maatCmd)
-	rootCmd.AddCommand(seshatCmd)
-	rootCmd.AddCommand(raCmd)
-	rootCmd.AddCommand(netCmd)
-	rootCmd.AddCommand(anubisCmd)
-	rootCmd.AddCommand(sebaCmd)
-	rootCmd.AddCommand(benchmarkCmd)
-	rootCmd.AddCommand(versionCmd)
-	rootCmd.AddCommand(osirisCmd)
+	rootCmd.AddCommand(scanCmd, ghostsCmd, dedupCmd, guardCmd, doctorCmd, mcpCmd)
+	rootCmd.AddCommand(thothCmd, maatCmd, seshatCmd, raCmd, netCmd)
+	rootCmd.AddCommand(anubisCmd, sebaCmd, osirisCmd)
+	rootCmd.AddCommand(benchmarkCmd, versionCmd)
 
 	// Isis — Health & Remediation
 	isisNetworkCmd.Flags().BoolVar(&isisNetworkFix, "fix", false, "Auto-apply safe fixes (DNS, firewall)")
