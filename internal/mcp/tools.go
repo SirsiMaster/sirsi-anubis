@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/brain"
-	"github.com/SirsiMaster/sirsi-pantheon/internal/horus"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal/rules"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/ka"
@@ -263,17 +263,13 @@ func handleHealthCheck(_ map[string]interface{}) (*ToolResult, error) {
 	sb.WriteString(fmt.Sprintf("CPUs: %d\n", runtime.NumCPU()))
 	sb.WriteString(fmt.Sprintf("GOMAXPROCS: %d\n", runtime.GOMAXPROCS(0)))
 
-	// Horus index — read cache only, NEVER trigger a build.
-	// LoadManifest returns in <1ms (gob decode) or fails instantly (no file).
-	m, err := horus.LoadManifest(horus.DefaultCachePath())
-	if err == nil {
-		defer m.Release()
-		sb.WriteString(fmt.Sprintf("Indexed: %d dirs, %d files\n",
-			m.Stats.DirsWalked, m.Stats.FilesIndexed))
+	// Scan index status — check if cached index exists.
+	indexPath := filepath.Join(os.Getenv("HOME"), ".config", "pantheon", "index.gob")
+	if info, err := os.Stat(indexPath); err == nil {
 		sb.WriteString(fmt.Sprintf("Index age: %s\n",
-			time.Since(m.Timestamp).Truncate(time.Second)))
+			time.Since(info.ModTime()).Truncate(time.Second)))
 	} else {
-		sb.WriteString("Horus index: not cached (run 'pantheon weigh' to build)\n")
+		sb.WriteString("Scan index: not cached (run 'pantheon scan' to build)\n")
 	}
 
 	// Brain status — instant (file existence check)

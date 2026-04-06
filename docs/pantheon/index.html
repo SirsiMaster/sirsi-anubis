@@ -312,45 +312,6 @@
           </div>
         </div>
 
-        <!-- ═══ HAPI ═══ -->
-        <div class="flip-container" onclick="this.classList.toggle('flipped')">
-          <div class="flipper">
-            <div class="card-front">
-              <span class="badge">shipped</span>
-              <div class="card-header">
-                <span class="glyph">𓈗</span>
-                <div><div class="card-title">Hapi</div><div class="card-role">Hardware Profiler</div></div>
-              </div>
-              <p class="card-desc">Hardware accelerator detection — finds GPUs, Neural Engines, VRAM, and CPU cores. Routes to the fastest compute available.</p>
-              <div class="card-meta">
-                <div class="meta-item"><span class="meta-value">4</span><span class="meta-label">Vendors</span></div>
-                <div class="meta-item"><span class="meta-value">84.3%</span><span class="meta-label">Coverage</span></div>
-                <div class="meta-item"><span class="meta-value">Auto</span><span class="meta-label">Detection</span></div>
-              </div>
-              <div class="flip-hint"><span>↻ click to flip</span></div>
-            </div>
-            <div class="card-back">
-                <span class="label-dev">Developer</span>
-              </div>
-              <div class="dev-grid">
-                <div class="dev-item"><label>Package</label><div class="dev-val path">internal/hapi/</div></div>
-                <div class="dev-item"><label>Coverage</label><div class="dev-val">84.3%</div></div>
-                <div class="dev-item"><label>Test Count</label><div class="dev-val">18</div></div>
-                <div class="dev-item"><label>Binary Size</label><div class="dev-val">incl.</div></div>
-                <div class="dev-item"><label>Commands</label><div class="dev-val">hapi</div></div>
-                <div class="dev-item"><label>Vendors</label><div class="dev-val">NVIDIA, Apple, AMD, Intel</div></div>
-                <div class="dev-item"><label>Detects</label><div class="dev-val">GPU, ANE, VRAM, cores</div></div>
-                <div class="dev-item"><label>ADR</label><div class="dev-val">—</div></div>
-              </div>
-              <div class="back-actions">
-                <a href="/hapi" class="btn-page">Full Page</a>
-                <a href="https://github.com/SirsiMaster/sirsi-pantheon/releases" class="btn-dl">Download</a>
-                <a href="https://github.com/SirsiMaster/sirsi-pantheon/tree/main/internal/hapi" class="btn-src">Source</a>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <!-- ═══ OSIRIS ═══ -->
         <div class="flip-container" onclick="this.classList.toggle('flipped')">
           <div class="flipper">
@@ -376,7 +337,7 @@
                 <div class="dev-item"><label>Coverage</label><div class="dev-val">92.8%</div></div>
                 <div class="dev-item"><label>Test Count</label><div class="dev-val">15</div></div>
                 <div class="dev-item"><label>Binary Size</label><div class="dev-val">incl.</div></div>
-                <div class="dev-item"><label>Commands</label><div class="dev-val">osiris</div></div>
+                <div class="dev-item"><label>Commands</label><div class="dev-val">osiris assess, status</div></div>
                 <div class="dev-item"><label>Dependencies</label><div class="dev-val">platform</div></div>
                 <div class="dev-item"><label>Risk Levels</label><div class="dev-val">5 (minimal→critical)</div></div>
                 <div class="dev-item"><label>ADR</label><div class="dev-val">—</div></div>
@@ -394,16 +355,16 @@
         <div class="flip-container" onclick="this.classList.toggle('flipped')">
           <div class="flipper">
             <div class="card-front">
-              <span class="badge planned">in progress</span>
+              <span class="badge">shipped</span>
               <div class="card-header">
                 <span class="glyph">𓇽</span>
-                <div><div class="card-title">Seba</div><div class="card-role">Infra Mapper</div></div>
+                <div><div class="card-title">Seba</div><div class="card-role">Infra & Hardware</div></div>
               </div>
-              <p class="card-desc">Infrastructure topology mapping with fleet discovery and container audit (ex-Khepri). Interactive graph showing service connections.</p>
+              <p class="card-desc">Infrastructure mapping, hardware profiling, fleet discovery, and container audit. Detects GPUs, Neural Engines, VRAM, and accelerators across 4 vendors.</p>
               <div class="card-meta">
-                <div class="meta-item"><span class="meta-value">Graph</span><span class="meta-label">Engine</span></div>
+                <div class="meta-item"><span class="meta-value">4</span><span class="meta-label">Vendors</span></div>
                 <div class="meta-item"><span class="meta-value">90.0%</span><span class="meta-label">Coverage</span></div>
-                <div class="meta-item"><span class="meta-value">D3.js</span><span class="meta-label">Visualization</span></div>
+                <div class="meta-item"><span class="meta-value">Graph</span><span class="meta-label">Engine</span></div>
               </div>
               <div class="flip-hint"><span>↻ click to flip</span></div>
             </div>
@@ -415,9 +376,9 @@
                 <div class="dev-item"><label>Coverage</label><div class="dev-val">90.0%</div></div>
                 <div class="dev-item"><label>Test Count</label><div class="dev-val">12</div></div>
                 <div class="dev-item"><label>Binary Size</label><div class="dev-val">incl.</div></div>
-                <div class="dev-item"><label>Commands</label><div class="dev-val">seba</div></div>
-                <div class="dev-item"><label>Dependencies</label><div class="dev-val">scarab</div></div>
-                <div class="dev-item"><label>Renderer</label><div class="dev-val">Canvas + D3.js</div></div>
+                <div class="dev-item"><label>Commands</label><div class="dev-val">hardware, profile, compute, diagram, fleet</div></div>
+                <div class="dev-item"><label>Dependencies</label><div class="dev-val">scarab, platform</div></div>
+                <div class="dev-item"><label>Detects</label><div class="dev-val">GPU, ANE, CUDA, Metal, ROCm</div></div>
                 <div class="dev-item"><label>ADR</label><div class="dev-val">—</div></div>
               </div>
               <div class="back-actions">
@@ -440,7 +401,7 @@
               </div>
               <p class="card-desc">The agent orchestrator. Deploys and coordinates all deities autonomously. Fleet management and Sirsi Nexus bridge.</p>
               <div class="card-meta">
-                <div class="meta-item"><span class="meta-value">10</span><span class="meta-label">Deities</span></div>
+                <div class="meta-item"><span class="meta-value">9</span><span class="meta-label">Deities</span></div>
                 <div class="meta-item"><span class="meta-value">Fleet</span><span class="meta-label">Scale</span></div>
                 <div class="meta-item"><span class="meta-value">Enterprise</span><span class="meta-label">Tier</span></div>
               </div>
@@ -527,25 +488,25 @@
                 <span class="label-dev">Developer</span>
               </div>
               <div class="dev-grid">
-                <div class="dev-item"><label>Package</label><div class="dev-val path">internal/maat/</div></div>
+                <div class="dev-item"><label>Package</label><div class="dev-val path">internal/guard/</div></div>
                 <div class="dev-item"><label>Coverage</label><div class="dev-val">88.0%</div></div>
-                <div class="dev-item"><label>Test Count</label><div class="dev-val">incl. Ma'at</div></div>
+                <div class="dev-item"><label>Test Count</label><div class="dev-val">42</div></div>
                 <div class="dev-item"><label>Binary Size</label><div class="dev-val">incl.</div></div>
-                <div class="dev-item"><label>Commands</label><div class="dev-val">maat heal</div></div>
-                <div class="dev-item"><label>Dependencies</label><div class="dev-val">maat, platform</div></div>
-                <div class="dev-item"><label>Fixes</label><div class="dev-val">lint, vet, fmt, coverage</div></div>
+                <div class="dev-item"><label>Commands</label><div class="dev-val">doctor, guard, isis network, isis heal</div></div>
+                <div class="dev-item"><label>Dependencies</label><div class="dev-val">guard, platform</div></div>
+                <div class="dev-item"><label>Checks</label><div class="dev-val">DNS, WiFi, TLS, CA, VPN, Firewall</div></div>
                 <div class="dev-item"><label>ADR</label><div class="dev-val">ADR-004</div></div>
               </div>
               <div class="back-actions">
                 <a href="/isis" class="btn-page">Full Page</a>
                 <a href="https://github.com/SirsiMaster/sirsi-pantheon/releases/latest" class="btn-dl">Download</a>
-                <a href="https://github.com/SirsiMaster/sirsi-pantheon/tree/main/internal/maat" class="btn-src">Source</a>
+                <a href="https://github.com/SirsiMaster/sirsi-pantheon/tree/main/internal/guard" class="btn-src">Source</a>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- ═══ NEITH ═══ -->
+        <!-- ═══ NET ═══ -->
         <div class="flip-container" onclick="this.classList.toggle('flipped')">
           <div class="flipper">
             <div class="card-front">
@@ -554,7 +515,7 @@
                 <span class="glyph">𓁯</span>
                 <div><div class="card-title">Net</div><div class="card-role">Scope Weaver</div></div>
               </div>
-              <p class="card-desc">Architecture documentation, ADR templates, and development planning. Enforces the Architecture Triad across all repos.</p>
+              <p class="card-desc">Defines task scopes that Ra dispatches. Architecture documentation, ADR templates, and scope alignment across all repos.</p>
               <div class="card-meta">
                 <div class="meta-item"><span class="meta-value">3</span><span class="meta-label">Triad</span></div>
                 <div class="meta-item"><span class="meta-value">13+</span><span class="meta-label">ADRs</span></div>
@@ -570,13 +531,13 @@
                 <div class="dev-item"><label>Coverage</label><div class="dev-val">—</div></div>
                 <div class="dev-item"><label>Test Count</label><div class="dev-val">—</div></div>
                 <div class="dev-item"><label>Binary Size</label><div class="dev-val">TBD</div></div>
-                <div class="dev-item"><label>Commands</label><div class="dev-val">neith audit, adr</div></div>
+                <div class="dev-item"><label>Commands</label><div class="dev-val">net status, net align</div></div>
                 <div class="dev-item"><label>Dependencies</label><div class="dev-val">platform</div></div>
                 <div class="dev-item"><label>Triad</label><div class="dev-val">DataFlow, Order, Decisions</div></div>
                 <div class="dev-item"><label>ADR</label><div class="dev-val">ADR-022</div></div>
               </div>
               <div class="back-actions">
-                <a href="/neith" class="btn-page">Full Page</a>
+                <a href="/net" class="btn-page">Full Page</a>
                 <a href="https://github.com/SirsiMaster/sirsi-pantheon/releases/latest" class="btn-dl">Download</a>
                 <a href="https://github.com/SirsiMaster/sirsi-pantheon/tree/main/internal/neith" class="btn-src">Source</a>
               </div>
@@ -612,7 +573,7 @@
         <a href="https://github.com/SirsiMaster/sirsi-pantheon/releases/latest" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.2rem;text-align:center;text-decoration:none;color:var(--text);transition:all 0.3s;" onmouseover="this.style.borderColor='var(--gold)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='';this.style.transform=''">
           <div style="font-size:2rem;margin-bottom:0.3rem;">𓁐</div>
           <div style="font-family:var(--font-heading);color:var(--gold);font-size:0.95rem;">Isis</div>
-          <div style="font-family:var(--font-mono);font-size:0.75rem;color:var(--emerald-light);margin-top:0.3rem;">via Ma'at</div>
+          <div style="font-family:var(--font-mono);font-size:0.75rem;color:var(--emerald-light);margin-top:0.3rem;">incl.</div>
         </a>
         <a href="https://github.com/SirsiMaster/sirsi-pantheon/releases/latest" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.2rem;text-align:center;text-decoration:none;color:var(--text);transition:all 0.3s;" onmouseover="this.style.borderColor='var(--gold)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='';this.style.transform=''">
           <div style="font-size:2rem;margin-bottom:0.3rem;">𓁆</div>
@@ -644,7 +605,7 @@
             <span class="glyph">𓁢</span>
             <div><div class="card-title">Pantheon Anubis</div><div class="card-role">Free Edition</div></div>
           </div>
-          <p class="card-desc">All 10 deities, all commands, single machine. Scan, clean, guard, diagnose, heal, deduplicate, ghost hunt, hardware detect, AI memory, infra map. No feature gating. No telemetry. Free forever.</p>
+          <p class="card-desc">All 9 deities, all commands, single machine. Scan, clean, guard, diagnose, heal, deduplicate, ghost hunt, hardware detect, AI memory, infra map. No feature gating. No telemetry. Free forever.</p>
           <div class="card-meta">
             <div class="meta-item"><span class="meta-value">$0</span><span class="meta-label">Forever</span></div>
             <div class="meta-item"><span class="meta-value">12 MB</span><span class="meta-label">Binary</span></div>
@@ -706,13 +667,6 @@
               <td style="padding:12px 16px;color:var(--text-dim);font-size:0.85rem;">MCP server runs anywhere — YAML/JSON memory files are portable</td>
             </tr>
             <tr style="border-bottom:1px solid rgba(200,169,81,0.08);">
-              <td style="padding:12px 16px;color:var(--gold-bright);font-family:var(--font-heading);">Hapi</td>
-              <td style="padding:12px 16px;text-align:center;color:var(--emerald-light);font-size:1.1rem;">&#10003;</td>
-              <td style="padding:12px 16px;text-align:center;color:var(--emerald-light);font-size:1.1rem;">&#10003;</td>
-              <td style="padding:12px 16px;text-align:center;color:var(--gold-dark);">&#9679;</td>
-              <td style="padding:12px 16px;color:var(--text-dim);font-size:0.85rem;">ANE detection is macOS-only; NVIDIA/AMD detection works on Linux</td>
-            </tr>
-            <tr style="border-bottom:1px solid rgba(200,169,81,0.08);">
               <td style="padding:12px 16px;color:var(--gold-bright);font-family:var(--font-heading);">Seshat</td>
               <td style="padding:12px 16px;text-align:center;color:var(--emerald-light);font-size:1.1rem;">&#10003;</td>
               <td style="padding:12px 16px;text-align:center;color:var(--gold-dark);">&#9679;</td>
@@ -738,7 +692,7 @@
               <td style="padding:12px 16px;text-align:center;color:var(--emerald-light);font-size:1.1rem;">&#10003;</td>
               <td style="padding:12px 16px;text-align:center;color:var(--emerald-light);font-size:1.1rem;">&#10003;</td>
               <td style="padding:12px 16px;text-align:center;color:var(--gold-dark);">&#9679;</td>
-              <td style="padding:12px 16px;color:var(--text-dim);font-size:0.85rem;">Topology engine and fleet discovery. ARP/Docker scanning works on macOS and Linux</td>
+              <td style="padding:12px 16px;color:var(--text-dim);font-size:0.85rem;">Topology, fleet discovery, hardware profiling. ANE on macOS, NVIDIA/AMD on Linux</td>
             </tr>
             <tr style="border-bottom:1px solid rgba(200,169,81,0.08);">
               <td style="padding:12px 16px;color:var(--gold-bright);font-family:var(--font-heading);">Osiris</td>

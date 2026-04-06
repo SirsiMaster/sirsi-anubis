@@ -41,7 +41,6 @@ var versionCmd = &cobra.Command{
 			{"Isis", "isis"},
 			{"Seshat", "seshat"},
 			{"Anubis", "anubis"},
-			{"Hapi", "hapi"},
 			{"Seba", "seba"},
 			{"Osiris", "osiris"},
 		}
@@ -78,8 +77,8 @@ Advanced:
   pantheon anubis --help      Full hygiene engine (scan, judge, clean)
   pantheon isis --help        Health & remediation (diagnostics, network, auto-fix)
   pantheon maat --help        Governance and compliance auditing
-  pantheon hapi --help        Hardware profiling and accelerator detection
-  pantheon seba --help        Architecture mapping and diagrams`,
+  pantheon seba --help        Infrastructure mapping, hardware profiling, and diagrams
+  pantheon osiris --help      Checkpoint guardian and risk assessment`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
 			if err := output.LaunchTUI(); err != nil {
@@ -305,10 +304,10 @@ func init() {
 	rootCmd.AddCommand(seshatCmd)
 	rootCmd.AddCommand(raCmd)
 	rootCmd.AddCommand(anubisCmd)
-	rootCmd.AddCommand(hapiCmd)
 	rootCmd.AddCommand(sebaCmd)
 	rootCmd.AddCommand(benchmarkCmd)
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(osirisCmd)
 
 	// Isis — Health & Remediation
 	isisNetworkCmd.Flags().BoolVar(&isisNetworkFix, "fix", false, "Auto-apply safe fixes (DNS, firewall)")

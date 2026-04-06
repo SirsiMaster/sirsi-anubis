@@ -16,8 +16,7 @@
 | **Isis** | 𓁐 | Health & Remediation | Doctor, network security, process guard, remediation engine, auto-fix lint/vet/coverage/canon drift, watchdog daemon, CPU/RAM monitoring, ANE hardening | |
 | **Seshat** | 𓁆 | Knowledge Bridge | Knowledge grafting, ingestion/export, Gemini Bridge, NotebookLM sync, cross-platform knowledge | |
 | **Anubis** | 𓃣 | Hygiene Engine | Infrastructure hygiene, waste scanning, policy enforcement, ghost app detection, residual hunting, file deduplication, semantic ranking | Jackal head (profile), NOT full-body jackal |
-| **Hapi** | 𓈗 | Hardware Profiler | Hardware detection, GPU/ANE/CUDA profiling, resource optimization | |
-| **Seba** | 𓇽 | Infra Mapper | Architecture mapping, topology visualization, dependency graphs, fleet discovery, subnet scanning, container audit | |
+| **Seba** | 𓇽 | Infra & Hardware | Architecture mapping, topology visualization, dependency graphs, fleet discovery, subnet scanning, container audit, hardware detection, GPU/ANE/CUDA profiling | Absorbs Hapi (v2.0.0) |
 | **Osiris** | 𓁹 | Snapshot Keeper | State preservation, checkpoints, death/rebirth cycles, FinalWishes integration | NOT the quality gate — that's Ma'at |
 | **Stele** | 𓊖 | The Ledger | Append-only hash-chained event bus, universal deity communication | Infrastructure, not a deity |
 
@@ -45,7 +44,7 @@ All deities inscribe events to the Stele (`~/.config/ra/stele.jsonl`) via `stele
 Ra (Supreme Overseer)
   └── Net (Scope Weaver — owns the plan)
         ├── Code Gods: Thoth, Ma'at, Isis, Seshat
-        └── Machine Gods: Anubis, Hapi, Seba, Osiris
+        └── Machine Gods: Anubis, Seba, Osiris
 ```
 Ra supervises. Net aligns. Ma'at weighs. Isis heals. This cycle governs all work across all repos.
 

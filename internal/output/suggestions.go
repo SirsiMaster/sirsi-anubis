@@ -65,15 +65,10 @@ var commandTree = map[string]deityCommands{
 			"open":       {"--profile", "--url"},
 		},
 	},
-	"hapi": {
-		Subcommands: []string{"scan", "profile", "compute"},
+	"seba": {
+		Subcommands: []string{"scan", "hardware", "profile", "compute", "book", "fleet", "diagram"},
 		Flags: map[string][]string{
 			"compute": {"--tokenize"},
-		},
-	},
-	"seba": {
-		Subcommands: []string{"scan", "book", "fleet", "diagram"},
-		Flags: map[string][]string{
 			"book":    {"--output"},
 			"fleet":   {"--containers", "--confirm-network", "--subnet"},
 			"diagram": {"--type", "--html"},
@@ -89,14 +84,19 @@ var commandTree = map[string]deityCommands{
 			"heal":    {"--fix", "--full"},
 		},
 	},
-	"osiris": {Subcommands: []string{}},
+	"osiris": {
+		Subcommands: []string{"assess", "status"},
+		Flags: map[string][]string{
+			"assess": {"--json"},
+		},
+	},
 }
 
 // topLevelCommands are available at the root (no deity prefix needed).
 var topLevelCommands = []string{
 	"scan", "ghosts", "dedup", "guard", "doctor", "mcp", "version", "help",
 	"ra", "net", "thoth", "maat", "isis", "seshat",
-	"anubis", "hapi", "seba", "osiris",
+	"anubis", "seba", "osiris",
 }
 
 // buildSuggestions returns an ordered list of completion candidates for the

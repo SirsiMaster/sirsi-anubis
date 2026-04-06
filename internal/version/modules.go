@@ -7,8 +7,7 @@ var Modules = map[string]string{
 	"thoth":  "1.1.0", // v1.1.0: Stele integration — sync/compact events inscribed
 	"maat":   "1.1.0", // v1.1.0: Stele integration — weigh/pulse events inscribed
 	"seshat": "2.1.0", // v2.1.0: Stele integration — ingest events inscribed
-	"hapi":   "1.1.0", // v1.1.0: Stele integration — detect events inscribed
-	"seba":   "1.2.0", // v1.2.0: absorbs khepri — infra mapping + fleet discovery
+	"seba":   "2.0.0", // v2.0.0: absorbs khepri + hapi — infra mapping, fleet discovery, hardware profiling
 	"net":    "1.1.0", // v1.1.0: scope weaving, alignment (formerly neith)
 	"ra":     "1.1.0", // v1.1.0: ProtectGlyph, Stele deploy events
 	"stele":  "1.0.0", // append-only hash-chained event ledger (ADR-014)

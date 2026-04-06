@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/SirsiMaster/sirsi-pantheon/internal/guard"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/scarab"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/seba"
@@ -27,17 +29,24 @@ var (
 	diagramHTML bool
 )
 
+var (
+	computeText string
+)
+
 var sebaCmd = &cobra.Command{
 	Use:   "seba",
-	Short: "𓇽 Seba — Infrastructure Mapping & Project Registry",
-	Long: `𓇽 Seba — The Star and the Map of the Soul
+	Short: "𓇽 Seba — Infrastructure Mapping, Hardware Profiling & Fleet Discovery",
+	Long: `𓇽 Seba — Infrastructure Mapping, Hardware Profiling & Fleet Discovery
 
-Seba manages your strategic infrastructure map and project registry.
-Use it to visualize dependencies, audit architecture, and map the fleet.
+Seba maps your infrastructure — hardware, architecture, and fleet topology.
 
   pantheon seba scan              Map workstation architecture
-  pantheon seba book              Generate project registry (HTML/JSON/Markdown)
-  pantheon seba fleet             Map network hosts and containers`,
+  pantheon seba hardware          Hardware & GPU summary dashboard
+  pantheon seba profile           Deep system profile saved as JSON
+  pantheon seba compute           ANE-accelerated ML tokenization
+  pantheon seba book              Generate project registry
+  pantheon seba fleet             Map network hosts and containers
+  pantheon seba diagram           Generate architectural diagrams`,
 	Run: func(cmd *cobra.Command, args []string) {
 		_ = cmd.Help()
 	},
@@ -97,6 +106,24 @@ Examples:
 	RunE: runSebaDiagram,
 }
 
+var sebaHardwareCmd = &cobra.Command{
+	Use:   "hardware",
+	Short: "𓇽 Hardware, CPU, GPU, and accelerator summary",
+	RunE:  runSebaHardware,
+}
+
+var sebaProfileCmd = &cobra.Command{
+	Use:   "profile",
+	Short: "𓇽 Deep system profile saved to JSON",
+	RunE:  runSebaProfile,
+}
+
+var sebaComputeCmd = &cobra.Command{
+	Use:   "compute",
+	Short: "𓇽 ANE-accelerated ML tokenization",
+	RunE:  runSebaCompute,
+}
+
 func init() {
 	sebaScanCmd.Flags().StringVar(&sebaFormat, "format", "mermaid", "Output format")
 	sebaBookCmd.Flags().StringVar(&sebaOutput, "output", "dist/book", "Output directory")
@@ -107,10 +134,15 @@ func init() {
 	sebaDiagramCmd.Flags().StringVar(&diagramType, "type", "all", "Diagram type (hierarchy|dataflow|modules|memory|governance|pipeline|all)")
 	sebaDiagramCmd.Flags().BoolVar(&diagramHTML, "html", false, "Generate self-contained HTML with rendered diagrams")
 
+	sebaComputeCmd.Flags().StringVar(&computeText, "tokenize", "", "Text string to tokenize via ANE/CPU")
+
 	sebaCmd.AddCommand(sebaScanCmd)
 	sebaCmd.AddCommand(sebaBookCmd)
 	sebaCmd.AddCommand(sebaFleetCmd)
 	sebaCmd.AddCommand(sebaDiagramCmd)
+	sebaCmd.AddCommand(sebaHardwareCmd)
+	sebaCmd.AddCommand(sebaProfileCmd)
+	sebaCmd.AddCommand(sebaComputeCmd)
 }
 
 func runSebaDiagram(cmd *cobra.Command, args []string) error {
@@ -167,6 +199,163 @@ func runSebaDiagram(cmd *cobra.Command, args []string) error {
 		"Format":   map[bool]string{true: "HTML", false: "Mermaid"}[diagramHTML],
 	})
 	output.Footer(time.Since(start))
+	return nil
+}
+
+func runSebaHardware(cmd *cobra.Command, args []string) error {
+	start := time.Now()
+
+	profile, err := seba.DetectHardware()
+	if err != nil {
+		return fmt.Errorf("hardware detection failed: %w", err)
+	}
+
+	if JsonOutput {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(profile)
+	}
+
+	output.Banner()
+	output.Header("SEBA — Hardware Architecture")
+
+	aneStatus := "Not detected"
+	if profile.NeuralEngine {
+		aneStatus = "Active (16-core)"
+	}
+
+	gpuDisplay := profile.GPU.Name
+	if gpuDisplay == "" {
+		gpuDisplay = "Not detected"
+	}
+	if profile.GPU.MetalFamily != "" {
+		gpuDisplay += " (" + profile.GPU.MetalFamily + ")"
+	}
+
+	ramDisplay := "Unknown"
+	if profile.TotalRAM > 0 {
+		ramDisplay = seba.FormatBytes(profile.TotalRAM)
+	}
+
+	dashboard := map[string]string{
+		"CPU Model":     profile.CPUModel,
+		"CPU Cores":     fmt.Sprintf("%d (%s)", profile.CPUCores, profile.CPUArch),
+		"Total RAM":     ramDisplay,
+		"GPU":           gpuDisplay,
+		"Neural Engine": aneStatus,
+		"OS":            fmt.Sprintf("%s/%s", profile.OS, profile.CPUArch),
+	}
+
+	if profile.Kernel != "" {
+		dashboard["Kernel"] = profile.Kernel
+	}
+
+	accel := seba.DetectAccelerators()
+	if accel != nil && accel.Primary != nil {
+		dashboard["Primary Accelerator"] = string(accel.Primary.Type())
+		if accel.HasCUDA {
+			dashboard["CUDA"] = "Available"
+		}
+		if accel.HasMetal {
+			dashboard["Metal"] = "Available"
+		}
+	}
+
+	output.Dashboard(dashboard)
+	output.Footer(time.Since(start))
+	return nil
+}
+
+func runSebaProfile(cmd *cobra.Command, args []string) error {
+	start := time.Now()
+
+	profile, err := seba.DetectHardware()
+	if err != nil {
+		return fmt.Errorf("hardware detection failed: %w", err)
+	}
+
+	accel := seba.DetectAccelerators()
+
+	combined := map[string]interface{}{
+		"hardware":     profile,
+		"accelerators": accel,
+		"timestamp":    time.Now().UTC().Format(time.RFC3339),
+	}
+
+	configDir := filepath.Join(os.Getenv("HOME"), ".config", "pantheon")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return fmt.Errorf("cannot create config dir: %w", err)
+	}
+
+	profilePath := filepath.Join(configDir, "profile.json")
+	f, err := os.Create(profilePath)
+	if err != nil {
+		return fmt.Errorf("cannot create profile: %w", err)
+	}
+	defer f.Close()
+
+	enc := json.NewEncoder(f)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(combined); err != nil {
+		return fmt.Errorf("cannot write profile: %w", err)
+	}
+
+	if JsonOutput {
+		enc2 := json.NewEncoder(os.Stdout)
+		enc2.SetIndent("", "  ")
+		return enc2.Encode(combined)
+	}
+
+	output.Banner()
+	output.Header("SEBA — System Profile")
+	output.Success("Profile saved to %s", profilePath)
+
+	output.Dashboard(map[string]string{
+		"CPU":   profile.CPUModel,
+		"RAM":   seba.FormatBytes(profile.TotalRAM),
+		"GPU":   profile.GPU.Name,
+		"ANE":   fmt.Sprintf("%v", profile.NeuralEngine),
+		"Saved": profilePath,
+	})
+
+	output.Footer(time.Since(start))
+	return nil
+}
+
+func runSebaCompute(cmd *cobra.Command, args []string) error {
+	start := time.Now()
+
+	if !JsonOutput {
+		output.Banner()
+		output.Header("SEBA — Accelerated Compute")
+	}
+
+	if computeText == "" {
+		output.Info("Use --tokenize \"text\" to run ANE/Neural inference.")
+		return nil
+	}
+
+	result, _ := guard.Tokenize(computeText)
+	elapsed := time.Since(start)
+
+	if JsonOutput {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(map[string]interface{}{
+			"accelerator": result.Accel,
+			"tokens":      result.Count,
+			"text_length": len(computeText),
+			"latency_ms":  elapsed.Milliseconds(),
+		})
+	}
+
+	output.Dashboard(map[string]string{
+		"Accelerator": result.Accel,
+		"Tokens":      fmt.Sprintf("%d", result.Count),
+		"Text Length": fmt.Sprintf("%d", len(computeText)),
+		"Latency":     elapsed.String(),
+	})
+	output.Footer(elapsed)
 	return nil
 }
 

@@ -44,8 +44,7 @@ var deityRoster = []deityInfo{
 	{"isis", "𓁐", "Isis", "Health & Remedy"},
 	{"seshat", "𓁆", "Seshat", "Knowledge Bridge"},
 	{"anubis", "𓃣", "Anubis", "System Jackal"},
-	{"hapi", "𓈗", "Hapi", "Hardware Profiler"},
-	{"seba", "𓇽", "Seba", "Infra Mapper"},
+	{"seba", "𓇽", "Seba", "Infra & Hardware"},
 	{"osiris", "𓁹", "Osiris", "State Keeper"},
 }
 
@@ -58,9 +57,8 @@ var intentKeywords = map[string][]string{
 	"isis":   {"fix", "heal", "remediate", "repair", "auto-fix", "guard", "watchdog", "monitor", "ram", "cpu", "doctor", "process", "network", "dns", "wifi", "firewall", "tls", "vpn", "security"},
 	"seshat": {"knowledge", "graft", "ingest", "notes", "gemini", "notebooklm"},
 	"anubis": {"scan", "waste", "clean", "judge", "purge", "hygiene", "infrastructure", "dedup", "duplicate", "mirror", "ghost", "dead", "remnant", "uninstall", "residual", "haunt"},
-	"hapi":   {"gpu", "vram", "hardware", "accelerator", "ane", "cuda", "metal", "npu"},
-	"seba":   {"architecture", "topology", "diagram", "map", "dependency", "graph", "network map", "network topology", "fleet", "subnet", "container", "docker", "kubernetes", "k8s", "pod"},
-	"osiris": {"checkpoint", "state", "preserve", "restore"},
+	"seba":   {"architecture", "topology", "diagram", "map", "dependency", "graph", "network map", "network topology", "fleet", "subnet", "container", "docker", "kubernetes", "k8s", "pod", "gpu", "vram", "hardware", "accelerator", "ane", "cuda", "metal", "npu", "profile"},
+	"osiris": {"checkpoint", "state", "preserve", "restore", "uncommitted", "risk", "drift", "snapshot", "commit status"},
 }
 
 // Top-level CLI aliases that bypass intent matching.
@@ -460,13 +458,12 @@ func inferSubcommand(deity, lower string) []string {
 			{[]string{"ingest", "graft", "knowledge"}, []string{"seshat", "ingest"}},
 			{[]string{"notebooklm", "notebook"}, []string{"seshat", "notebooklm"}},
 		},
-		"hapi": {
-			{[]string{"gpu", "vram", "cuda", "metal", "ane", "npu"}, []string{"hapi", "profile"}},
-			{[]string{"hardware", "accelerator"}, []string{"hapi", "scan"}},
-		},
 		"seba": {
+			{[]string{"gpu", "vram", "cuda", "metal", "ane", "npu"}, []string{"seba", "hardware"}},
+			{[]string{"hardware", "accelerator", "profile"}, []string{"seba", "hardware"}},
 			{[]string{"diagram", "graph"}, []string{"seba", "diagram"}},
 			{[]string{"architecture", "topology", "map"}, []string{"seba", "scan"}},
+			{[]string{"fleet", "subnet", "container", "docker", "kubernetes"}, []string{"seba", "fleet"}},
 		},
 		"ra": {
 			{[]string{"status"}, []string{"ra", "status"}},
@@ -474,8 +471,12 @@ func inferSubcommand(deity, lower string) []string {
 			{[]string{"health"}, []string{"ra", "health"}},
 		},
 		"net": {
-			{[]string{"align", "drift"}, []string{"neith", "align"}},
-			{[]string{"scope", "status"}, []string{"neith", "status"}},
+			{[]string{"align", "drift"}, []string{"net", "align"}},
+			{[]string{"scope", "status"}, []string{"net", "status"}},
+		},
+		"osiris": {
+			{[]string{"assess", "checkpoint", "uncommitted", "risk", "drift"}, []string{"osiris", "assess"}},
+			{[]string{"status", "summary"}, []string{"osiris", "status"}},
 		},
 	}
 

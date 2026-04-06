@@ -14,7 +14,7 @@
 
 **Sirsi Pantheon** is a unified DevOps intelligence platform that brings together every deity in the Sirsi ecosystem into a single, lightweight binary. Install once, get infrastructure hygiene, QA/QC governance, persistent AI knowledge, and more.
 
-### The Pantheon (10 Deities)
+### The Pantheon (9 Deities)
 
 | Glyph | Deity | Domain | What It Does |
 |:------|:------|:-------|:-------------|
@@ -25,9 +25,8 @@
 | 𓁐 | **Isis** | Health & Remedy | System diagnostics, network security, DNS fix/rollback, auto-remediation |
 | 𓁆 | **Seshat** | Knowledge Bridge | Ingests from Chrome, Gemini, Claude, Notes; exports to NotebookLM, Thoth |
 | 𓃣 | **Anubis** | Hygiene Engine | Scans waste, cleans artifacts, ghost hunting, file dedup |
-| 𓈗 | **Hapi** | Hardware Profiler | GPU, Neural Engine, CUDA, Metal, accelerator detection |
-| 𓇽 | **Seba** | Infra Mapper | Architecture diagrams, fleet discovery, container audit |
-| 𓁹 | **Osiris** | Snapshot Keeper | State preservation, checkpoints, rollback points |
+| 𓇽 | **Seba** | Infra & Hardware | Architecture diagrams, fleet discovery, GPU/ANE/CUDA hardware profiling |
+| 𓁹 | **Osiris** | Snapshot Keeper | Checkpoint assessment, risk scoring, session drift detection |
 
 ---
 
@@ -205,9 +204,8 @@ Pantheon is built on modules named after Egyptian mythology. Every deity maintai
 | **Isis** | 𓁐 Isis | Health diagnostics, network security, guard, remediation | ✅ |
 | **Seshat** | 𓁆 Seshat | Universal knowledge grafting engine | ✅ |
 | **Anubis** | 𓃣 Anubis | Scan engine (64 rules), ghost hunting, file dedup | ✅ |
-| **Hapi** | 𓈗 Hapi | GPU/Neural Engine/VRAM detection | ✅ |
-| **Seba** | 𓇽 Seba | Architecture mapping, fleet discovery, container audit | ✅ |
-| **Osiris** | 𓁹 Osiris | State snapshots, checkpoints | 🚧 |
+| **Seba** | 𓇽 Seba | Architecture mapping, fleet discovery, hardware profiling | ✅ |
+| **Osiris** | 𓁹 Osiris | Checkpoint assessment, risk scoring | ✅ |
 
 ---
 
@@ -521,7 +519,7 @@ MIT License — free and open source forever. See [LICENSE](LICENSE).
 ## 𓃣 Documentation & Registry
 
 - **[FAQ: Which Tool Should I Use?](https://pantheon.sirsi.ai/faq)**: Decision matrix for choosing the right Pantheon tool.
-- **[Deity Registry](https://pantheon.sirsi.ai)**: Interactive hub for all 10 deities.
+- **[Deity Registry](https://pantheon.sirsi.ai)**: Interactive hub for all 9 deities.
 - **[Build Log](docs/build-log.html)**: Real-time chronicle of the Pantheon build.
 - **[Case Studies](docs/case-studies.html)**: Origin stories and post-mortems.
 - **[ADR Index](docs/ADR-INDEX.md)**: Every architectural decision record.

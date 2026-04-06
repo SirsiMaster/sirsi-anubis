@@ -90,46 +90,26 @@ func guides() map[string]deityGuide {
 			},
 			Platform: "macOS + Linux. Chrome history requires Chrome installed.",
 		},
-		"hapi": {
-			Name: "Hapi", Glyph: "\U00013197", Tagline: "Hardware, Portfolio & Accelerated Compute",
-			Steps: []step{
-				{"Hardware summary", "Run `pantheon hapi scan` for a quick dashboard of\nCPU, GPU, and Neural Engine status."},
-				{"Deep system profile", "Run `pantheon hapi profile` to generate a\nhigh-fidelity architecture profile for Seba consumption."},
-				{"ANE tokenization", "Run `pantheon hapi compute --tokenize \"text\"` to run\nML tokenization via the Apple Neural Engine or CPU fallback."},
-			},
-			Examples: []string{
-				"pantheon hapi scan",
-				"pantheon hapi profile",
-				"pantheon hapi compute --tokenize \"Hello world\"",
-			},
-			Platform: "macOS (Apple Silicon preferred). Neural Engine acceleration on M-series.",
-		},
 		"seba": {
-			Name: "Seba", Glyph: "\U000131BD", Tagline: "Infrastructure Mapping, Fleet Discovery & Project Registry",
+			Name: "Seba", Glyph: "\U000131BD", Tagline: "Infrastructure Mapping, Hardware Profiling & Fleet Discovery",
 			Steps: []step{
+				{"Hardware summary", "Run `pantheon seba hardware` for a dashboard of\nCPU, GPU, RAM, Neural Engine, and accelerator status."},
+				{"Deep system profile", "Run `pantheon seba profile` to generate a\nhigh-fidelity architecture profile saved as JSON."},
+				{"ANE tokenization", "Run `pantheon seba compute --tokenize \"text\"` to run\nML tokenization via the Apple Neural Engine or CPU fallback."},
 				{"Map architecture", "Run `pantheon seba scan` to build a graph of your\nworkstation's architecture and dependencies."},
 				{"Generate diagrams", "Run `pantheon seba diagram --type all --html` to\ncreate Mermaid diagrams rendered as self-contained HTML."},
 				{"Build project registry", "Run `pantheon seba book` to generate the\nPantheon Book with all projects in your registry."},
 				{"Fleet discovery", "Run `pantheon seba fleet` to discover network hosts.\nUse `--containers` for Docker-only audits."},
 			},
 			Examples: []string{
+				"pantheon seba hardware",
+				"pantheon seba profile",
+				"pantheon seba compute --tokenize \"Hello world\"",
 				"pantheon seba diagram --type hierarchy",
 				"pantheon seba diagram --type all --html",
 				"pantheon seba fleet --containers",
 			},
-			Platform: "All platforms. Fleet discovery requires network access.",
-		},
-		"ka": {
-			Name: "Ka", Glyph: "\U00013093", Tagline: "Ghost App Detection & Spirit Hunting",
-			Steps: []step{
-				{"Detect ghost apps", "Run `pantheon ghosts` to scan for remnants of\nuninstalled applications (Launch Services, plists, caches)."},
-				{"Deep scan with sudo", "Run `pantheon ghosts --sudo` to include\nsystem-level directories that require elevated access."},
-			},
-			Examples: []string{
-				"pantheon ghosts",
-				"pantheon ghosts --sudo",
-			},
-			Platform: "macOS primary. Linux support for common package managers.",
+			Platform: "All platforms. ANE on Apple Silicon. NVIDIA/AMD on Linux. Fleet requires network.",
 		},
 		"ra": {
 			Name: "Ra", Glyph: "\u2600\uFE0F", Tagline: "Supreme Overseer & Cross-Repo Orchestrator",
@@ -186,15 +166,20 @@ func guides() map[string]deityGuide {
 			Platform: "All platforms.",
 		},
 		"osiris": {
-			Name: "Osiris", Glyph: "\U00013079", Tagline: "State Snapshots & Checkpoints",
+			Name: "Osiris", Glyph: "\U00013079", Tagline: "Snapshot Keeper & Checkpoint Guardian",
 			Steps: []step{
-				{"State preservation", "Osiris preserves system state snapshots for\nrollback and recovery. Currently in development."},
-				{"Integration with Thoth", "Osiris complements Thoth's session memory by\ncapturing point-in-time infrastructure state."},
+				{"Assess checkpoint risk", "Run `pantheon osiris assess` to evaluate uncommitted\nwork in the current Git repo. Shows file counts, diff stats,\nand a 5-level risk score with time-based escalation."},
+				{"Quick status check", "Run `pantheon osiris status` for a one-line summary\nsuitable for menu bars, scripts, or CI pipelines."},
+				{"Monitor a specific repo", "Run `pantheon osiris assess /path/to/repo` to check\na repo outside the current directory."},
+				{"JSON output", "Run `pantheon osiris assess --json` to get structured\noutput for programmatic consumption."},
 			},
 			Examples: []string{
-				"pantheon osiris  (coming soon)",
+				"pantheon osiris assess",
+				"pantheon osiris assess --json",
+				"pantheon osiris status",
+				"pantheon osiris assess ~/Development/sirsi-pantheon",
 			},
-			Platform: "All platforms.",
+			Platform: "All platforms. Requires Git.",
 		},
 	}
 }
@@ -202,8 +187,8 @@ func guides() map[string]deityGuide {
 // AllDeities returns the sorted list of deity names with guides.
 func AllDeities() []string {
 	return []string{
-		"anubis", "hapi", "isis",
-		"maat", "net", "osiris", "ra", "seba",
+		"anubis", "isis", "maat",
+		"net", "osiris", "ra", "seba",
 		"seshat", "thoth",
 	}
 }
