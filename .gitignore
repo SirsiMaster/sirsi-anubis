@@ -41,6 +41,11 @@ bin/
 coverage_target_modules.out
 Pantheon.app/
 
+# iOS (regenerated via xcodegen + gomobile)
+ios/build/
+ios/Pantheon.xcodeproj/
+ios/Package.swift
+
 # Ma'at Pulse — dynamic measurement output (local only)
 .pantheon/
 *.out

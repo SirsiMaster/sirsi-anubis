@@ -4,7 +4,7 @@ VERSION ?= v0.4.0-alpha
 BUILD_DIR ?= bin
 GO_FLAGS ?= -ldflags="-X main.Version=$(VERSION)"
 
-.PHONY: all clean build-all build-anubis build-thoth build-maat build-scarab build-guard build-agent build-menubar bundle publish test-proof
+.PHONY: all clean build-all build-anubis build-thoth build-maat build-scarab build-guard build-agent build-menubar bundle publish test-proof ios ios-framework
 
 all: build-all
 
@@ -71,6 +71,31 @@ uninstall-launchagent:
 	@launchctl unload ~/Library/LaunchAgents/ai.sirsi.pantheon.plist 2>/dev/null || true
 	@rm -f ~/Library/LaunchAgents/ai.sirsi.pantheon.plist
 	@echo "✅ LaunchAgent removed"
+
+# --- iOS Framework (gomobile) ---
+# Builds PantheonCore.xcframework for the SwiftUI app
+ios-framework:
+	@echo "📱 Building PantheonCore.xcframework..."
+	@which gomobile > /dev/null 2>&1 || (echo "❌ gomobile not found. Install: go install golang.org/x/mobile/cmd/gomobile@latest && gomobile init" && exit 1)
+	@mkdir -p $(BUILD_DIR)/ios
+	gomobile bind -target=ios -o $(BUILD_DIR)/ios/PantheonCore.xcframework $(GO_FLAGS) ./mobile/
+	@echo "✅ Framework built: $(BUILD_DIR)/ios/PantheonCore.xcframework"
+	@echo "   Add to Xcode: ios/Pantheon.xcodeproj → Frameworks, Libraries"
+
+# Full iOS build: framework + Xcode archive
+ios: ios-framework
+	@echo "📱 Building Pantheon iOS app..."
+	@if [ ! -d "ios/Pantheon.xcodeproj" ]; then \
+		echo "⚠️  Xcode project not found. Open ios/ in Xcode to create it, then add PantheonCore.xcframework."; \
+		exit 1; \
+	fi
+	@cp -R $(BUILD_DIR)/ios/PantheonCore.xcframework ios/
+	xcodebuild -project ios/Pantheon.xcodeproj \
+		-scheme Pantheon \
+		-destination 'generic/platform=iOS' \
+		-configuration Release \
+		archive -archivePath $(BUILD_DIR)/ios/Pantheon.xcarchive
+	@echo "✅ iOS archive: $(BUILD_DIR)/ios/Pantheon.xcarchive"
 
 # --- Public Proof of Testing ---
 test-proof:
