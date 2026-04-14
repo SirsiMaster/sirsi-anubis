@@ -19,18 +19,16 @@ targets:
     platform: iOS
     sources:
       - path: Pantheon
-        excludes:
-          # Re-include when simulator runtimes are installed.
-          # actool requires simulator runtimes even for device-only builds.
-          # To enable: remove this exclude and run `xcodegen generate`.
-          - "Assets.xcassets"
+      - path: Shared
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ai.sirsi.pantheon
+        CODE_SIGN_ENTITLEMENTS: Pantheon/Pantheon.entitlements
         INFOPLIST_GENERATION_MODE: GeneratedFile
         MARKETING_VERSION: "0.9.0"
         CURRENT_PROJECT_VERSION: 1
         GENERATE_INFOPLIST_FILE: true
+        INFOPLIST_FILE: Pantheon/Info.plist
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: true
         INFOPLIST_KEY_UILaunchScreen_Generation: true
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
@@ -53,9 +51,11 @@ targets:
     platform: iOS
     sources:
       - path: PantheonWidgets
+      - path: Shared
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ai.sirsi.pantheon.widgets
+        CODE_SIGN_ENTITLEMENTS: PantheonWidgets/PantheonWidgets.entitlements
         INFOPLIST_GENERATION_MODE: GeneratedFile
         GENERATE_INFOPLIST_FILE: true
         MARKETING_VERSION: "0.9.0"

@@ -1,24 +1,89 @@
 import SwiftUI
 
-/// Root content view with tab bar switching between deity views.
-/// Toggle between GUI (native SwiftUI) and TUI (terminal emulator) modes.
+/// Root content view — adapts layout based on device:
+/// - iPhone: Tab bar with deity tabs (compact width)
+/// - iPad: NavigationSplitView with sidebar + detail (regular width)
 struct ContentView: View {
     @EnvironmentObject var appState: AppState
+    @Environment(\.horizontalSizeClass) var sizeClass
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                // Mode toggle
-                Picker("Mode", selection: $appState.viewMode) {
-                    ForEach(AppState.ViewMode.allCases, id: \.self) { mode in
-                        Text(mode.rawValue).tag(mode)
+        Group {
+            if sizeClass == .regular {
+                iPadLayout
+            } else {
+                iPhoneLayout
+            }
+        }
+        .tint(PantheonTheme.gold)
+    }
+
+    // MARK: - iPad: Sidebar + Detail
+
+    private var iPadLayout: some View {
+        NavigationSplitView {
+            sidebar
+                .navigationTitle("Pantheon")
+        } detail: {
+            deityDetailView
+                .navigationTitle(appState.activeDeity.rawValue)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .principal) {
+                        deityToolbarTitle
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        modePicker
                     }
                 }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
-                .padding(.top, 8)
+        }
+        .navigationSplitViewStyle(.balanced)
+    }
 
-                // Main content
+    private var sidebar: some View {
+        List(AppState.ActiveDeity.allCases) { deity in
+            Button {
+                appState.activeDeity = deity
+            } label: {
+                HStack(spacing: 12) {
+                    Text(deity.glyph)
+                        .font(.title2)
+                        .frame(width: 32)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(deity.rawValue)
+                            .font(.headline)
+                            .foregroundStyle(
+                                appState.activeDeity == deity
+                                    ? PantheonTheme.gold
+                                    : PantheonTheme.textPrimary
+                            )
+                        Text(deity.subtitle)
+                            .font(.caption)
+                            .foregroundStyle(PantheonTheme.textSecondary)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            .listRowBackground(
+                appState.activeDeity == deity
+                    ? PantheonTheme.gold.opacity(0.1)
+                    : Color.clear
+            )
+        }
+        .listStyle(.sidebar)
+        .scrollContentBackground(.hidden)
+        .background(PantheonTheme.background)
+    }
+
+    // MARK: - iPhone: Tab Bar
+
+    private var iPhoneLayout: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                modePicker
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+
                 Group {
                     switch appState.viewMode {
                     case .gui:
@@ -30,29 +95,59 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .background(PantheonTheme.background)
-            .navigationTitle(deityTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    HStack(spacing: 6) {
-                        Text(appState.activeDeity.glyph)
-                            .font(.title2)
-                        Text(appState.activeDeity.rawValue)
-                            .font(.headline)
-                            .foregroundStyle(PantheonTheme.gold)
-                    }
+                    deityToolbarTitle
                 }
             }
         }
-        .tint(PantheonTheme.gold)
     }
 
-    private var deityTitle: String {
-        "\(appState.activeDeity.glyph) \(appState.activeDeity.rawValue)"
+    // MARK: - Shared Components
+
+    private var deityToolbarTitle: some View {
+        HStack(spacing: 6) {
+            Text(appState.activeDeity.glyph)
+                .font(.title2)
+            Text(appState.activeDeity.rawValue)
+                .font(.headline)
+                .foregroundStyle(PantheonTheme.gold)
+        }
+    }
+
+    private var modePicker: some View {
+        Picker("Mode", selection: $appState.viewMode) {
+            ForEach(AppState.ViewMode.allCases, id: \.self) { mode in
+                Text(mode.rawValue).tag(mode)
+            }
+        }
+        .pickerStyle(.segmented)
+    }
+
+    @ViewBuilder
+    private var deityDetailView: some View {
+        switch appState.viewMode {
+        case .gui:
+            deityView(for: appState.activeDeity)
+        case .tui:
+            TUIContainerView()
+        }
+    }
+
+    @ViewBuilder
+    private func deityView(for deity: AppState.ActiveDeity) -> some View {
+        switch deity {
+        case .anubis: AnubisView()
+        case .ka:     KaView()
+        case .thoth:  ThothView()
+        case .seba:   SebaView()
+        case .seshat: SeshatView()
+        }
     }
 }
 
-/// GUI mode: native SwiftUI views with tab bar for deity selection.
+/// GUI mode: native SwiftUI views with tab bar for deity selection (iPhone).
 struct GUIContainerView: View {
     @EnvironmentObject var appState: AppState
 

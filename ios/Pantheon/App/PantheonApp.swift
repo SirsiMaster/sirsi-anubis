@@ -9,6 +9,9 @@ struct PantheonApp: App {
             ContentView()
                 .environmentObject(appState)
                 .preferredColorScheme(.dark)
+                .onOpenURL { url in
+                    appState.handleDeepLink(url)
+                }
         }
     }
 }

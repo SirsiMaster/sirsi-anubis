@@ -55,4 +55,19 @@ final class AppState: ObservableObject {
     @Published var isRunning = false
 
     let bridge = PantheonBridge()
+
+    // MARK: - Deep Links (pantheon://deity/{name})
+
+    func handleDeepLink(_ url: URL) {
+        guard url.scheme == "pantheon" else { return }
+        switch url.host {
+        case "anubis": activeDeity = .anubis
+        case "ka":     activeDeity = .ka
+        case "thoth":  activeDeity = .thoth
+        case "seba":   activeDeity = .seba
+        case "seshat": activeDeity = .seshat
+        default: break
+        }
+        viewMode = .gui
+    }
 }

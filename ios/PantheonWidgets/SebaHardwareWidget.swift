@@ -34,17 +34,39 @@ struct SebaTimelineProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (SebaEntry) -> Void) {
-        completion(fetchHardwareEntry())
+        completion(fetchFromSharedStorage() ?? fetchLiveHardwareEntry())
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<SebaEntry>) -> Void) {
-        let entry = fetchHardwareEntry()
+        let entry = fetchFromSharedStorage() ?? fetchLiveHardwareEntry()
         // Hardware doesn't change — refresh once per day.
         let nextUpdate = Calendar.current.date(byAdding: .hour, value: 24, to: entry.date)!
         completion(Timeline(entries: [entry], policy: .after(nextUpdate)))
     }
 
-    private func fetchHardwareEntry() -> SebaEntry {
+    /// Read cached hardware data from the App Group shared container.
+    private func fetchFromSharedStorage() -> SebaEntry? {
+        guard let json = SharedDataManager.loadHardwareJSON(),
+              let data = json.data(using: .utf8),
+              let response = try? JSONDecoder().decode(BridgeEnvelope<HWData>.self, from: data),
+              response.ok, let hw = response.data else {
+            return nil
+        }
+        let ram = ByteCountFormatter.string(fromByteCount: hw.totalRam, countStyle: .memory)
+        return SebaEntry(
+            date: .now,
+            cpuModel: hw.cpuModel,
+            cpuCores: hw.cpuCores,
+            cpuArch: hw.cpuArch,
+            ram: ram,
+            hasNeuralEngine: hw.neuralEngine,
+            hasMetal: true,
+            gpuName: hw.gpu?.name
+        )
+    }
+
+    /// Fallback: call PantheonCore directly if no cached data exists.
+    private func fetchLiveHardwareEntry() -> SebaEntry {
         let json = MobileSebaDetectHardware()
         guard let data = json.data(using: .utf8),
               let response = try? JSONDecoder().decode(BridgeEnvelope<HWData>.self, from: data),
@@ -74,13 +96,58 @@ struct SebaWidgetView: View {
     @Environment(\.widgetFamily) var family
 
     var body: some View {
-        switch family {
-        case .systemSmall:
-            smallView
-        default:
-            mediumView
+        Group {
+            switch family {
+            case .systemSmall:
+                smallView
+            case .accessoryCircular:
+                circularView
+            case .accessoryRectangular:
+                rectangularView
+            default:
+                mediumView
+            }
         }
+        .widgetURL(URL(string: "pantheon://seba"))
     }
+
+    // MARK: - Lock Screen Widgets
+
+    private var circularView: some View {
+        ZStack {
+            AccessoryWidgetBackground()
+            VStack(spacing: 2) {
+                Image(systemName: "cpu.fill")
+                    .font(.title3)
+                Text("\(entry.cpuCores)")
+                    .font(.caption.bold())
+            }
+        }
+        .containerBackground(.clear, for: .widget)
+    }
+
+    private var rectangularView: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 4) {
+                Image(systemName: "cpu.fill")
+                    .font(.caption)
+                Text("Seba")
+                    .font(.caption.bold())
+            }
+            Text(entry.cpuModel)
+                .font(.caption)
+                .lineLimit(1)
+            HStack(spacing: 8) {
+                Text("\(entry.cpuCores) cores")
+                Text(entry.ram)
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+        }
+        .containerBackground(.clear, for: .widget)
+    }
+
+    // MARK: - Home Screen Widgets
 
     private var smallView: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -198,7 +265,10 @@ struct SebaHardwareWidget: Widget {
         }
         .configurationDisplayName("𓇽 Seba Hardware")
         .description("Device hardware profile — CPU, GPU, Neural Engine.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([
+            .systemSmall, .systemMedium,
+            .accessoryCircular, .accessoryRectangular
+        ])
     }
 }
 

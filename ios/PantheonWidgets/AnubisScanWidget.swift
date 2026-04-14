@@ -38,13 +38,30 @@ struct AnubisTimelineProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<AnubisEntry>) -> Void) {
-        let entry = fetchScanEntry()
-        // Refresh every 30 minutes.
+        let entry = fetchFromSharedStorage() ?? fetchLiveScanEntry()
         let nextUpdate = Calendar.current.date(byAdding: .minute, value: 30, to: entry.date)!
         completion(Timeline(entries: [entry], policy: .after(nextUpdate)))
     }
 
-    private func fetchScanEntry() -> AnubisEntry {
+    /// Read cached scan results from the App Group shared container (fast, no Go bridge call).
+    private func fetchFromSharedStorage() -> AnubisEntry? {
+        guard let snapshot = SharedDataManager.loadScanSnapshot() else { return nil }
+        let totalSize = ByteCountFormatter.string(fromByteCount: snapshot.totalSize, countStyle: .file)
+        let top = snapshot.topFindings.map { f in
+            (f.name, ByteCountFormatter.string(fromByteCount: f.size, countStyle: .file))
+        }
+        return AnubisEntry(
+            date: snapshot.date ?? .now,
+            findingCount: snapshot.findingCount,
+            totalSize: totalSize,
+            topFindings: top,
+            rulesRan: snapshot.rulesRan,
+            isStale: snapshot.isStale
+        )
+    }
+
+    /// Fallback: run a live scan via PantheonCore if no cached data exists.
+    private func fetchLiveScanEntry() -> AnubisEntry {
         let json = MobileAnubisScan("", "")
         guard let data = json.data(using: .utf8),
               let response = try? JSONDecoder().decode(BridgeEnvelope<ScanData>.self, from: data),
@@ -56,7 +73,6 @@ struct AnubisTimelineProvider: TimelineProvider {
         }
 
         let totalSize = ByteCountFormatter.string(fromByteCount: scan.totalSize, countStyle: .file)
-
         let sorted = scan.findings.sorted { $0.sizeBytes > $1.sizeBytes }
         let top = sorted.prefix(3).map { f in
             (f.description, ByteCountFormatter.string(fromByteCount: f.sizeBytes, countStyle: .file))
@@ -80,13 +96,54 @@ struct AnubisWidgetView: View {
     @Environment(\.widgetFamily) var family
 
     var body: some View {
-        switch family {
-        case .systemSmall:
-            smallView
-        default:
-            mediumView
+        Group {
+            switch family {
+            case .systemSmall:
+                smallView
+            case .accessoryCircular:
+                circularView
+            case .accessoryRectangular:
+                rectangularView
+            default:
+                mediumView
+            }
         }
+        .widgetURL(URL(string: "pantheon://anubis"))
     }
+
+    // MARK: - Lock Screen Widgets
+
+    private var circularView: some View {
+        ZStack {
+            AccessoryWidgetBackground()
+            VStack(spacing: 2) {
+                Image(systemName: "magnifyingglass.circle.fill")
+                    .font(.title3)
+                Text("\(entry.findingCount)")
+                    .font(.caption.bold())
+            }
+        }
+        .containerBackground(.clear, for: .widget)
+    }
+
+    private var rectangularView: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 4) {
+                Image(systemName: "magnifyingglass.circle.fill")
+                    .font(.caption)
+                Text("Anubis")
+                    .font(.caption.bold())
+            }
+            Text(entry.totalSize)
+                .font(.headline)
+            Text("\(entry.findingCount) findings")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .containerBackground(.clear, for: .widget)
+    }
+
+    // MARK: - Home Screen Widgets
 
     private var smallView: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -183,7 +240,10 @@ struct AnubisScanWidget: Widget {
         }
         .configurationDisplayName("𓁢 Anubis Scan")
         .description("Infrastructure waste summary — reclaimable storage.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([
+            .systemSmall, .systemMedium,
+            .accessoryCircular, .accessoryRectangular
+        ])
     }
 }
 
