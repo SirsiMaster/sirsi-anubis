@@ -212,6 +212,20 @@ struct SebaWidgetView: View {
                 StatRow(icon: "cpu", label: "Cores", value: "\(entry.cpuCores)")
                 StatRow(icon: "memorychip", label: "RAM", value: entry.ram)
                 StatRow(icon: "brain", label: "ANE", value: entry.hasNeuralEngine ? "Yes" : "No")
+
+                Button(intent: SebaWidgetRefreshIntent()) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.caption2)
+                        Text("Refresh")
+                            .font(.caption2.bold())
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(gold.opacity(0.2))
+                    .foregroundStyle(gold)
+                    .clipShape(Capsule())
+                }
             }
         }
         .padding()

@@ -70,7 +70,7 @@ struct ThothView: View {
                 }
 
                 if let errorMessage {
-                    ErrorBanner(message: errorMessage)
+                    ErrorRetryView(message: errorMessage) { await thothSync() }
                 }
             }
             .padding()

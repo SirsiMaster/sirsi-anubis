@@ -40,13 +40,18 @@ struct AnubisView: View {
                 }
                 .disabled(isScanning)
 
-                // Error
+                // Error with retry
                 if let errorMessage {
-                    ErrorBanner(message: errorMessage)
+                    ErrorRetryView(message: errorMessage) { await runScan() }
+                }
+
+                // Loading skeleton
+                if isScanning {
+                    ScanResultSkeleton()
                 }
 
                 // Results
-                if let result = scanResult {
+                if let result = scanResult, !isScanning {
                     ScanSummaryCard(result: result)
 
                     ForEach(result.findings) { finding in

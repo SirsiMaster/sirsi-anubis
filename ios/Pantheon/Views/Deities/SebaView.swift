@@ -36,14 +36,18 @@ struct SebaView: View {
                 .disabled(isDetecting)
 
                 if let errorMessage {
-                    ErrorBanner(message: errorMessage)
+                    ErrorRetryView(message: errorMessage) { await detectHardware() }
                 }
 
-                if let hw = hardware {
+                if isDetecting {
+                    HardwareSkeleton()
+                }
+
+                if let hw = hardware, !isDetecting {
                     HardwareCard(profile: hw)
                 }
 
-                if let accel = accelerators {
+                if let accel = accelerators, !isDetecting {
                     AcceleratorCard(profile: accel)
                 }
             }

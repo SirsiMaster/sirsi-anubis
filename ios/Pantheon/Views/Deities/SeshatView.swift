@@ -80,7 +80,7 @@ struct SeshatView: View {
                 .disabled(isIngesting || selectedSources.isEmpty)
 
                 if let errorMessage {
-                    ErrorBanner(message: errorMessage)
+                    ErrorRetryView(message: errorMessage) { await runIngest() }
                 }
 
                 // Results

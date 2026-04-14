@@ -191,10 +191,18 @@ struct AnubisWidgetView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
-                if entry.isStale {
-                    Text("Tap to refresh")
-                        .font(.caption2)
-                        .foregroundStyle(.orange)
+                Button(intent: AnubisWidgetScanIntent()) {
+                    HStack(spacing: 4) {
+                        Image(systemName: entry.isStale ? "arrow.clockwise" : "magnifyingglass")
+                            .font(.caption2)
+                        Text(entry.isStale ? "Rescan" : "Scan")
+                            .font(.caption2.bold())
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(gold.opacity(0.2))
+                    .foregroundStyle(gold)
+                    .clipShape(Capsule())
                 }
             }
 

@@ -35,7 +35,7 @@ struct KaView: View {
                 .disabled(isScanning)
 
                 if let errorMessage {
-                    ErrorBanner(message: errorMessage)
+                    ErrorRetryView(message: errorMessage) { await huntGhosts() }
                 }
 
                 if !ghosts.isEmpty {
