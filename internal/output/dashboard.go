@@ -542,8 +542,8 @@ func (m MainModel) renderAcceptancePrompt() string {
 	inner.WriteString(fmt.Sprintf("  ✅ %d completed  ❌ %d failed  🔄 %d running\n\n", passed, failed, running))
 
 	inner.WriteString(DimStyle.Render("  Review the logs above. To accept and continue:\n"))
-	inner.WriteString(DimStyle.Render("    pantheon ra collect    — gather results into Seshat\n"))
-	inner.WriteString(DimStyle.Render("    pantheon ra deploy     — start next sprint set\n"))
+	inner.WriteString(DimStyle.Render("    sirsi ra collect    — gather results into Seshat\n"))
+	inner.WriteString(DimStyle.Render("    sirsi ra deploy     — start next sprint set\n"))
 	inner.WriteString(DimStyle.Render("    q                      — exit command center\n"))
 
 	b.WriteString(boxStyle.Render(inner.String()))

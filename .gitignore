@@ -52,5 +52,5 @@ ios/Package.swift
 .firebase/
 ios/.build/
 
-sirsi
-sirsi-agent
+/sirsi
+/sirsi-agent

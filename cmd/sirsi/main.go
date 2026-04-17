@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -76,10 +79,7 @@ var rootCmd = &cobra.Command{
   sirsi version            Show version`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
-			if err := output.LaunchTUI(); err != nil {
-				output.Banner()
-				_ = cmd.Help()
-			}
+			showGateway(cmd)
 			return
 		}
 		output.Banner()
@@ -303,6 +303,48 @@ Configure in your IDE:
 			os.Exit(1)
 		}
 	},
+}
+
+// showGateway presents the Sirsi brand gateway when no subcommand is given.
+// Users choose between Pantheon (TUI/CLI) or Workstreams (Claude Code sessions).
+func showGateway(cmd *cobra.Command) {
+	gold := output.TitleStyle
+	dim := output.DimStyle
+
+	fmt.Println()
+	fmt.Println(gold.Render("  𓁟  Sirsi"))
+	fmt.Println(dim.Render("  ─────────────────────────────"))
+	fmt.Println()
+	fmt.Printf("  %s  Pantheon    %s\n", gold.Render("1"), dim.Render("Infrastructure & Developer Intelligence"))
+	fmt.Printf("  %s  Workstreams %s\n", gold.Render("2"), dim.Render("Claude Code session manager"))
+	fmt.Println()
+	fmt.Print(dim.Render("  Choice [1]: "))
+
+	reader := bufio.NewReader(os.Stdin)
+	input, _ := reader.ReadString('\n')
+	input = strings.TrimSpace(input)
+
+	switch input {
+	case "2":
+		// Launch workstream picker (sw)
+		swPath, err := exec.LookPath("sw")
+		if err != nil {
+			output.Error("Workstream launcher 'sw' not found in PATH.")
+			output.Dim("  Install: copy sw to ~/.local/bin/")
+			return
+		}
+		proc := exec.Command(swPath)
+		proc.Stdin = os.Stdin
+		proc.Stdout = os.Stdout
+		proc.Stderr = os.Stderr
+		_ = proc.Run()
+	default:
+		// Default: launch Pantheon TUI
+		if err := output.LaunchTUI(); err != nil {
+			output.Banner()
+			_ = cmd.Help()
+		}
+	}
 }
 
 func init() {
