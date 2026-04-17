@@ -23,7 +23,7 @@ type deityCommands struct {
 }
 
 // commandTree is the static Pantheon command registry.
-// Mirrors the cobra tree in cmd/pantheon/ without importing it.
+// Mirrors the cobra tree in cmd/sirsi/ without importing it.
 var commandTree = map[string]deityCommands{
 	"ra": {
 		Subcommands: []string{"health", "test", "lint", "task", "broadcast", "nightly", "status", "pipeline", "deploy", "kill", "collect", "watch"},

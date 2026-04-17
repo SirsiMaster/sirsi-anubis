@@ -53,7 +53,7 @@ Configure in your IDE:
 ```json
 {
   "mcpServers": {
-    "pantheon": {
+    "sirsi": {
       "command": "sirsi",
       "args": ["mcp"]
     }

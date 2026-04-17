@@ -126,14 +126,14 @@ fi
 
 # ── 5. Ma'at — only on standard/deep ────────────────────────────────
 if [ "$DEPTH" = "standard" ] || [ "$DEPTH" = "deep" ]; then
-    go build -o ./pantheon ./cmd/pantheon/ 2>/dev/null
-    if [ -x "./pantheon" ]; then
+    go build -o ./sirsi ./cmd/sirsi/ 2>/dev/null
+    if [ -x "./sirsi" ]; then
         echo "  𓆄 Ma'at quality assessment..."
-        ./pantheon maat --coverage --canon || {
+        ./sirsi maat --coverage --canon || {
             echo "  ❌ Ma'at assessment failed"
             exit 1
         }
-        rm -f ./pantheon
+        rm -f ./sirsi
     fi
 elif [ "$DEPTH" = "fast" ]; then
     echo "  ⏭️  Ma'at skipped (use MAAT_DEPTH=standard for assessment)"

@@ -215,11 +215,11 @@ with open(stele_path, 'a') as f:
 }
 
 # Thoth compact
-if command -v pantheon >/dev/null 2>&1; then
-  pantheon thoth compact . 2>/dev/null
+if command -v sirsi >/dev/null 2>&1; then
+  sirsi thoth compact . 2>/dev/null
   THOTH="compacted"
-elif [ -f "$HOME/go/bin/pantheon" ]; then
-  "$HOME/go/bin/pantheon" thoth compact . 2>/dev/null
+elif [ -f "$HOME/go/bin/sirsi" ]; then
+  "$HOME/go/bin/sirsi" thoth compact . 2>/dev/null
   THOTH="compacted"
 else
   THOTH="skipped"

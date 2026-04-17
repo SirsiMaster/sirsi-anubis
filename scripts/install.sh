@@ -32,7 +32,7 @@ INSTALL_DIR="$HOME/go/bin"
 mkdir -p "$INSTALL_DIR"
 
 echo "🚚 Installing to $INSTALL_DIR/sirsi..."
-cp ./dist/pantheon "$INSTALL_DIR/sirsi"
+cp ./dist/sirsi "$INSTALL_DIR/sirsi"
 
 # 4. Check PATH
 if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then

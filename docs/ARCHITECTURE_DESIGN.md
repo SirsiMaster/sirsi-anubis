@@ -106,7 +106,7 @@ graph TD
     end
 
     subgraph "Unified Entry Point"
-        PANTHEON["cmd/pantheon — Unified Platform"]
+        PANTHEON["cmd/sirsi — Unified Platform"]
     end
 
     subgraph "The Six Master Pillars"

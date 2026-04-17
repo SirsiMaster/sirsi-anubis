@@ -30,7 +30,7 @@ It provides rapid subnet scanning, hardware discovery, and ARP table analysis.`,
 	rootCmd.PersistentFlags().BoolVarP(&verboseMode, "verbose", "v", false, "Enable debug logging")
 
 	// Import the subcommand but wrap it for standalone use
-	// Note: We'll need to export the subcommand vars from cmd/pantheon or move them to internal.
+	// Note: We'll need to export the subcommand vars from cmd/sirsi or move them to internal.
 	// For now, I'm setting the foundation.
 
 	if err := rootCmd.Execute(); err != nil {

@@ -25,7 +25,7 @@
 //	  ├─ measureCoverage()  → parses coverprofile
 //	  ├─ countSourceLines() → find + wc -l (excludes vendor/test)
 //	  ├─ measureBinary()    → stat the built binary
-//	  └─ countDeities()     → counts cmd/pantheon/*.go subcommands
+//	  └─ countDeities()     → counts cmd/sirsi/*.go subcommands
 //
 // All system calls are injectable (Rule A16) for testing (Rule A21).
 package maat
@@ -316,7 +316,7 @@ func parseTotalCoverage(output string) float64 {
 
 // ── Counters ────────────────────────────────────────────────────────
 
-// countDeities counts the deity subcommands registered in cmd/pantheon/.
+// countDeities counts the deity subcommands registered in cmd/sirsi/.
 func countDeities(root string) int {
 	deityFiles := []string{
 		"anubis.go", "maat.go", "thoth.go", "hapi.go", "seba.go", "seshat.go",

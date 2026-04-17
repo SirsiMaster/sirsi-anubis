@@ -95,7 +95,7 @@ func TestGenerateDiagram_DataFlow(t *testing.T) {
 	t.Parallel()
 	tmp := t.TempDir()
 
-	// Create a fake cmd/pantheon/ with deity files
+	// Create a fake cmd/sirsi/ with deity files
 	cmdDir := filepath.Join(tmp, "cmd", "sirsi")
 	os.MkdirAll(cmdDir, 0o755)
 	os.WriteFile(filepath.Join(cmdDir, "anubis.go"), []byte("package main"), 0o644)

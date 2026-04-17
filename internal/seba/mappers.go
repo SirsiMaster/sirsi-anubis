@@ -343,7 +343,7 @@ func generateCommandWiring(projectRoot string) (*DiagramResult, error) {
 
 	var sb strings.Builder
 	sb.WriteString("graph LR\n")
-	sb.WriteString("    subgraph CLI[\"🏛️ cmd/pantheon/\"]\n")
+	sb.WriteString("    subgraph CLI[\"🏛️ cmd/sirsi/\"]\n")
 
 	cmdSet := map[string]bool{}
 	for _, e := range edges {

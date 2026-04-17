@@ -81,7 +81,7 @@ Pantheon runs across **four layers** — use whichever matches your workflow. Mo
 ```json
 {
   "mcpServers": {
-    "pantheon": {
+    "sirsi": {
       "command": "sirsi",
       "args": ["mcp"]
     }
