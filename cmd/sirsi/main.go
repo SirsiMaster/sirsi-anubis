@@ -307,16 +307,19 @@ Configure in your IDE:
 
 // showGateway presents the Sirsi brand gateway when no subcommand is given.
 // Users choose between Pantheon (TUI/CLI) or Workstreams (Claude Code sessions).
+// Uppercase options launch with --dangerously-skip-permissions (auto-approve).
 func showGateway(cmd *cobra.Command) {
 	gold := output.TitleStyle
 	dim := output.DimStyle
+	accent := output.WarningStyle
 
 	fmt.Println()
 	fmt.Println(gold.Render("  𓁟  Sirsi"))
 	fmt.Println(dim.Render("  ─────────────────────────────"))
 	fmt.Println()
-	fmt.Printf("  %s  Pantheon    %s\n", gold.Render("1"), dim.Render("Infrastructure & Developer Intelligence"))
-	fmt.Printf("  %s  Workstreams %s\n", gold.Render("2"), dim.Render("Claude Code session manager"))
+	fmt.Printf("  %s  Pantheon      %s\n", gold.Render("1"), dim.Render("Infrastructure & Developer Intelligence"))
+	fmt.Printf("  %s  Workstreams   %s\n", gold.Render("2"), dim.Render("Claude Code session manager"))
+	fmt.Printf("  %s  Workstreams   %s\n", accent.Render("!"), dim.Render("auto-approve (skip all prompts)"))
 	fmt.Println()
 	fmt.Print(dim.Render("  Choice [1]: "))
 
@@ -326,18 +329,9 @@ func showGateway(cmd *cobra.Command) {
 
 	switch input {
 	case "2":
-		// Launch workstream picker (sw)
-		swPath, err := exec.LookPath("sw")
-		if err != nil {
-			output.Error("Workstream launcher 'sw' not found in PATH.")
-			output.Dim("  Install: copy sw to ~/.local/bin/")
-			return
-		}
-		proc := exec.Command(swPath)
-		proc.Stdin = os.Stdin
-		proc.Stdout = os.Stdout
-		proc.Stderr = os.Stderr
-		_ = proc.Run()
+		launchWorkstreams(false)
+	case "!":
+		launchWorkstreams(true)
 	default:
 		// Default: launch Pantheon TUI
 		if err := output.LaunchTUI(); err != nil {
@@ -345,6 +339,26 @@ func showGateway(cmd *cobra.Command) {
 			_ = cmd.Help()
 		}
 	}
+}
+
+// launchWorkstreams launches the sw workstream picker.
+// If autoApprove is true, sets SIRSI_AUTO_APPROVE=1 so sw passes
+// --dangerously-skip-permissions to claude.
+func launchWorkstreams(autoApprove bool) {
+	swPath, err := exec.LookPath("sw")
+	if err != nil {
+		output.Error("Workstream launcher 'sw' not found in PATH.")
+		output.Dim("  Install: copy sw to ~/.local/bin/")
+		return
+	}
+	proc := exec.Command(swPath)
+	proc.Stdin = os.Stdin
+	proc.Stdout = os.Stdout
+	proc.Stderr = os.Stderr
+	if autoApprove {
+		proc.Env = append(os.Environ(), "SIRSI_AUTO_APPROVE=1")
+	}
+	_ = proc.Run()
 }
 
 func init() {
