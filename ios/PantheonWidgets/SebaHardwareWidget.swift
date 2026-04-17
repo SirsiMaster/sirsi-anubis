@@ -108,7 +108,7 @@ struct SebaWidgetView: View {
                 mediumView
             }
         }
-        .widgetURL(URL(string: "pantheon://seba"))
+        .widgetURL(URL(string: "sirsi://seba"))
     }
 
     // MARK: - Lock Screen Widgets

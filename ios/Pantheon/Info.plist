@@ -9,7 +9,7 @@
 			<string>ai.sirsi.pantheon</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>pantheon</string>
+				<string>sirsi</string>
 			</array>
 		</dict>
 	</array>

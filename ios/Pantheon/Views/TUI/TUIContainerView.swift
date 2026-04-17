@@ -35,7 +35,7 @@ struct TUIContainerView: View {
                     .font(.system(size: 16))
                     .foregroundStyle(PantheonTheme.tuiPrompt)
 
-                TextField("pantheon command...", text: $terminal.inputText)
+                TextField("sirsi command...", text: $terminal.inputText)
                     .font(PantheonTheme.tuiFont)
                     .foregroundStyle(PantheonTheme.tuiText)
                     .textInputAutocapitalization(.never)

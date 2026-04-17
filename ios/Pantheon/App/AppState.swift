@@ -56,10 +56,10 @@ final class AppState: ObservableObject {
 
     let bridge = PantheonBridge()
 
-    // MARK: - Deep Links (pantheon://deity/{name})
+    // MARK: - Deep Links (sirsi://deity/{name})
 
     func handleDeepLink(_ url: URL) {
-        guard url.scheme == "pantheon" else { return }
+        guard url.scheme == "sirsi" else { return }
         switch url.host {
         case "anubis": activeDeity = .anubis
         case "ka":     activeDeity = .ka

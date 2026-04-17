@@ -108,7 +108,7 @@ struct AnubisWidgetView: View {
                 mediumView
             }
         }
-        .widgetURL(URL(string: "pantheon://anubis"))
+        .widgetURL(URL(string: "sirsi://anubis"))
     }
 
     // MARK: - Lock Screen Widgets
