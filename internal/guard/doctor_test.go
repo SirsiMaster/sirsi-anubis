@@ -10,7 +10,7 @@ import (
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 // healthyMock returns a Mock platform simulating a healthy macOS system:
-// 16 GB RAM, low usage, no swap, 50% disk, small processes, no pantheon procs.
+// 16 GB RAM, low usage, no swap, 50% disk, small processes, no sirsi procs.
 func healthyMock() *platform.Mock {
 	return &platform.Mock{
 		NameStr: "mock",
@@ -57,7 +57,7 @@ Pages occupied by compressor:             25000.`,
   400  10240   20480  0.1 user     /usr/bin/vim
   500   5120   10240  0.0 user     /bin/zsh`,
 
-			// ps for checkPantheonProcesses
+			// ps for checkSirsiProcesses
 			"ps -axo pid,rss,comm": `  PID   RSS COMM
   100  51200 /usr/bin/node
   200  30720 /usr/local/bin/gopls`,
@@ -108,13 +108,13 @@ func TestDoctorWith_HealthySystem(t *testing.T) {
 		t.Errorf("Disk Space severity = %v, want OK", diskFinding.Severity)
 	}
 
-	// Pantheon processes should be Info (none running)
-	pantheonFinding := findByCheck(report.Findings, "Pantheon Processes")
-	if pantheonFinding == nil {
-		t.Fatal("missing Pantheon Processes finding")
+	// Sirsi processes should be Info (none running)
+	sirsiFinding := findByCheck(report.Findings, "Sirsi Processes")
+	if sirsiFinding == nil {
+		t.Fatal("missing Sirsi Processes finding")
 	}
-	if pantheonFinding.Severity != SeverityInfo {
-		t.Errorf("Pantheon Processes severity = %v, want Info", pantheonFinding.Severity)
+	if sirsiFinding.Severity != SeverityInfo {
+		t.Errorf("Sirsi Processes severity = %v, want Info", sirsiFinding.Severity)
 	}
 
 	// Duration should be populated
@@ -434,31 +434,31 @@ func TestDoctorWith_MemoryHog(t *testing.T) {
 	}
 }
 
-// ── TestDoctorWith_PantheonProcesses ─────────────────────────────────────
+// ── TestDoctorWith_SirsiProcesses ────────────────────────────────────────
 
-func TestDoctorWith_PantheonProcesses(t *testing.T) {
+func TestDoctorWith_SirsiProcesses(t *testing.T) {
 	m := healthyMock()
 
-	// Inject pantheon processes in ps output
+	// Inject sirsi processes in ps output
 	m.CommandResults["ps -axo pid,rss,comm"] = `  PID   RSS COMM
   100  51200 /usr/bin/node
-  900  20480 /usr/local/bin/pantheon-agent
-  901  10240 /usr/local/bin/pantheon-guard`
+  900  20480 /usr/local/bin/sirsi-agent
+  901  10240 /usr/local/bin/sirsi-guard`
 
 	report, err := DoctorWith(m)
 	if err != nil {
 		t.Fatalf("DoctorWith() error = %v", err)
 	}
 
-	pantheonFinding := findByCheck(report.Findings, "Pantheon Processes")
-	if pantheonFinding == nil {
-		t.Fatal("missing Pantheon Processes finding")
+	sirsiFinding := findByCheck(report.Findings, "Sirsi Processes")
+	if sirsiFinding == nil {
+		t.Fatal("missing Sirsi Processes finding")
 	}
-	if pantheonFinding.Severity != SeverityOK {
-		t.Errorf("Pantheon severity = %v, want OK for small processes", pantheonFinding.Severity)
+	if sirsiFinding.Severity != SeverityOK {
+		t.Errorf("Sirsi severity = %v, want OK for small processes", sirsiFinding.Severity)
 	}
-	if !strings.Contains(pantheonFinding.Message, "2 Pantheon process") {
-		t.Errorf("message = %q, want '2 Pantheon process' substring", pantheonFinding.Message)
+	if !strings.Contains(sirsiFinding.Message, "2 Sirsi process") {
+		t.Errorf("message = %q, want '2 Sirsi process' substring", sirsiFinding.Message)
 	}
 }
 

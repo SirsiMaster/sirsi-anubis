@@ -93,7 +93,7 @@ func DoctorWith(p platform.Platform) (*DoctorReport, error) {
 	checkDiskSpace(p, report)
 	checkTopMemoryProcesses(p, report)
 	checkRecentCrashLogs(report)
-	checkPantheonProcesses(p, report)
+	checkSirsiProcesses(p, report)
 
 	// Calculate health score
 	report.Score = calculateScore(report.Findings)
@@ -390,8 +390,8 @@ func checkRecentCrashLogs(report *DoctorReport) {
 	report.Findings = append(report.Findings, jetsamFinding)
 }
 
-// checkPantheonProcesses checks for running Pantheon daemons and their health.
-func checkPantheonProcesses(p platform.Platform, report *DoctorReport) {
+// checkSirsiProcesses checks for running Sirsi daemons and their health.
+func checkSirsiProcesses(p platform.Platform, report *DoctorReport) {
 	out, err := p.Command("ps", "-axo", "pid,rss,comm")
 	if err != nil {
 		return
@@ -423,12 +423,12 @@ func checkPantheonProcesses(p platform.Platform, report *DoctorReport) {
 	}
 
 	finding := DiagnosticFinding{
-		Check: "Pantheon Processes",
+		Check: "Sirsi Processes",
 	}
 
 	if len(pantheonProcs) == 0 {
 		finding.Severity = SeverityInfo
-		finding.Message = "No Pantheon background processes running"
+		finding.Message = "No Sirsi background processes running"
 	} else {
 		var details []string
 		var totalRSS int64
@@ -440,10 +440,10 @@ func checkPantheonProcesses(p platform.Platform, report *DoctorReport) {
 
 		if totalRSS > 500*1024*1024 {
 			finding.Severity = SeverityWarn
-			finding.Message = fmt.Sprintf("%d Pantheon process(es) using %s total", len(pantheonProcs), FormatBytes(totalRSS))
+			finding.Message = fmt.Sprintf("%d Sirsi process(es) using %s total", len(pantheonProcs), FormatBytes(totalRSS))
 		} else {
 			finding.Severity = SeverityOK
-			finding.Message = fmt.Sprintf("%d Pantheon process(es) healthy (%s total)", len(pantheonProcs), FormatBytes(totalRSS))
+			finding.Message = fmt.Sprintf("%d Sirsi process(es) healthy (%s total)", len(pantheonProcs), FormatBytes(totalRSS))
 		}
 	}
 
