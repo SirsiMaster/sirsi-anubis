@@ -41,10 +41,23 @@ Cursor, Windsurf, and Zed.
   sirsi work add <name>        Add a new workstream
   sirsi work launch <n>        Launch workstream with AI/IDE
   sirsi work registry          Show installed AI tools & IDEs`,
+	Args: cobra.ArbitraryArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if wsDocs {
 			output.Info("Opening workstream docs...")
 			return help.OpenDocs("workstream")
+		}
+		// If a number is passed directly (e.g., `sirsi work 5` or `sw 5`), launch it
+		if len(args) > 0 {
+			num, err := strconv.Atoi(args[0])
+			if err == nil {
+				store, err := workstream.NewStore(workstream.DefaultConfigPath())
+				if err != nil {
+					return err
+				}
+				reader := bufio.NewReader(os.Stdin)
+				return launchWorkstreamByNum(store, num, wsAutoApprove, reader)
+			}
 		}
 		return runWorkstreamInteractive(false)
 	},
