@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 	"time"
 
@@ -17,6 +16,7 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
 	modversion "github.com/SirsiMaster/sirsi-pantheon/internal/version"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/workstream"
 )
 
 var version = "v0.15.0"
@@ -306,59 +306,120 @@ Configure in your IDE:
 }
 
 // showGateway presents the Sirsi brand gateway when no subcommand is given.
-// Users choose between Pantheon (TUI/CLI) or Workstreams (Claude Code sessions).
-// Uppercase options launch with --dangerously-skip-permissions (auto-approve).
+// Shows environment status (AI, IDE, workstreams) and routes the user.
+// On a clean install with nothing configured, guides through setup.
 func showGateway(cmd *cobra.Command) {
 	gold := output.TitleStyle
 	dim := output.DimStyle
-	accent := output.WarningStyle
+	green := output.SuccessStyle
+	red := output.ErrorStyle
+	p := platform.Current()
+
+	// ── Load or create inventory ──
+	inv, err := workstream.LoadInventory()
+	firstRun := err != nil
+	if firstRun {
+		fmt.Println()
+		fmt.Println(gold.Render("  \U000130DF  Sirsi \u2014 First Run"))
+		fmt.Println(dim.Render("  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"))
+		fmt.Println()
+		fmt.Println(dim.Render("  Scanning your system..."))
+		fmt.Println()
+		inv = workstream.ScanInventory(p)
+		_ = workstream.SaveInventory(inv)
+	}
+
+	ai := inv.InstalledAI()
+	ides := inv.InstalledIDEs()
+
+	// Count workstreams
+	store, _ := workstream.NewStore(workstream.DefaultConfigPath())
+	activeCount := 0
+	if store != nil {
+		activeCount = len(store.Active())
+	}
+
+	// ── Status banner (skip on first run — already printed) ──
+	if !firstRun {
+		fmt.Println()
+		fmt.Println(gold.Render("  𓁟  Sirsi"))
+		fmt.Println(dim.Render("  ─────────────────────────────"))
+		fmt.Println()
+	}
+
+	// System
+	fmt.Printf("  %s  %s %s\n", dim.Render("Sys"), inv.OS+"/"+inv.Arch, dim.Render(inv.Shell))
+
+	// AI
+	if len(ai) > 0 {
+		names := make([]string, len(ai))
+		for i, t := range ai {
+			names[i] = t.Name
+		}
+		fmt.Printf("  %s   %s\n", green.Render("AI"), strings.Join(names, ", "))
+	} else {
+		fmt.Printf("  %s   %s\n", red.Render("AI"), dim.Render("none installed"))
+	}
+
+	// IDE
+	if len(ides) > 0 {
+		names := make([]string, len(ides))
+		for i, t := range ides {
+			names[i] = t.Name
+		}
+		fmt.Printf("  %s  %s\n", green.Render("IDE"), strings.Join(names, ", "))
+	} else {
+		fmt.Printf("  %s  %s\n", red.Render("IDE"), dim.Render("none installed"))
+	}
+
+	// Repos
+	if len(inv.GitRepos) > 0 {
+		fmt.Printf("  %s  %s\n", dim.Render("Dev"), dim.Render(fmt.Sprintf("%d git repos found", len(inv.GitRepos))))
+	}
+
+	// Workstreams
+	if activeCount > 0 {
+		fmt.Printf("  %s %s\n", green.Render("Work"), dim.Render(fmt.Sprintf("%d active workstreams", activeCount)))
+	} else {
+		fmt.Printf("  %s %s\n", red.Render("Work"), dim.Render("no workstreams"))
+	}
+
+	// Stale warning
+	if !firstRun && inv.IsStale() {
+		days := int(inv.Age().Hours() / 24)
+		fmt.Printf("\n  %s\n", dim.Render(fmt.Sprintf("Inventory is %d days old. Run: sirsi work inventory", days)))
+	}
 
 	fmt.Println()
-	fmt.Println(gold.Render("  𓁟  Sirsi"))
-	fmt.Println(dim.Render("  ─────────────────────────────"))
-	fmt.Println()
+
+	// First run or clean install → setup
+	if firstRun || (len(ai) == 0 && len(ides) == 0) {
+		_ = runSetupFlow()
+		return
+	}
+
+	// ── Menu ──
 	fmt.Printf("  %s  Pantheon      %s\n", gold.Render("1"), dim.Render("Infrastructure & Developer Intelligence"))
-	fmt.Printf("  %s  Workstreams   %s\n", gold.Render("2"), dim.Render("Claude Code session manager"))
-	fmt.Printf("  %s  Workstreams   %s\n", accent.Render("!"), dim.Render("auto-approve (skip all prompts)"))
+	fmt.Printf("  %s  Workstreams   %s\n", gold.Render("2"), dim.Render("Open / manage AI sessions"))
+	fmt.Printf("  %s  Setup         %s\n", gold.Render("3"), dim.Render("Install AI assistants & IDEs"))
 	fmt.Println()
-	fmt.Print(dim.Render("  Choice [1]: "))
+	fmt.Print(dim.Render("  Choice [2]: "))
 
 	reader := bufio.NewReader(os.Stdin)
 	input, _ := reader.ReadString('\n')
 	input = strings.TrimSpace(input)
 
 	switch input {
-	case "2":
-		launchWorkstreams(false)
-	case "!":
-		launchWorkstreams(true)
-	default:
-		// Default: launch Pantheon TUI
+	case "1":
 		if err := output.LaunchTUI(); err != nil {
 			output.Banner()
 			_ = cmd.Help()
 		}
+	case "3":
+		_ = runSetupFlow()
+	default:
+		_ = runWorkstreamInteractive(false)
 	}
-}
-
-// launchWorkstreams launches the sw workstream picker.
-// If autoApprove is true, sets SIRSI_AUTO_APPROVE=1 so sw passes
-// --dangerously-skip-permissions to claude.
-func launchWorkstreams(autoApprove bool) {
-	swPath, err := exec.LookPath("sw")
-	if err != nil {
-		output.Error("Workstream launcher 'sw' not found in PATH.")
-		output.Dim("  Install: copy sw to ~/.local/bin/")
-		return
-	}
-	proc := exec.Command(swPath)
-	proc.Stdin = os.Stdin
-	proc.Stdout = os.Stdout
-	proc.Stderr = os.Stderr
-	if autoApprove {
-		proc.Env = append(os.Environ(), "SIRSI_AUTO_APPROVE=1")
-	}
-	_ = proc.Run()
 }
 
 func init() {
@@ -383,6 +444,9 @@ func init() {
 	rootCmd.AddCommand(thothCmd, maatCmd, seshatCmd, raCmd, netCmd)
 	rootCmd.AddCommand(anubisCmd, sebaCmd, osirisCmd)
 	rootCmd.AddCommand(benchmarkCmd, versionCmd)
+
+	// Workstream manager (sirsi work / sirsi ws)
+	rootCmd.AddCommand(workCmd)
 
 	// Isis — Health & Remediation
 	isisNetworkCmd.Flags().BoolVar(&isisNetworkFix, "fix", false, "Auto-apply safe fixes (DNS, firewall)")
