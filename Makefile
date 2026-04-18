@@ -1,38 +1,35 @@
-# Pantheon Modular Build System
+# Sirsi Pantheon Build System
 
-VERSION ?= v0.4.0-alpha
+VERSION := $(shell cat VERSION)
 BUILD_DIR ?= bin
-GO_FLAGS ?= -ldflags="-X main.Version=$(VERSION)"
+INSTALL_DIR ?= $(HOME)/.local/bin
+GO_FLAGS ?= -ldflags="-X main.version=v$(VERSION)"
 
-.PHONY: all clean build-all build-anubis build-thoth build-maat build-scarab build-guard build-agent build-menubar bundle publish test-proof ios ios-framework
+.PHONY: all clean build install uninstall build-agent build-menubar bundle publish test test-proof ios ios-framework
 
-all: build-all
+all: build
 
-# --- Standard Build ---
-build-all: build-anubis build-thoth build-maat build-scarab build-guard build-agent build-menubar
+# --- Primary Build ---
+build:
+	go build $(GO_FLAGS) -o $(BUILD_DIR)/sirsi ./cmd/sirsi/
+
+# --- Install to PATH ---
+install: build
+	@mkdir -p $(INSTALL_DIR)
+	cp $(BUILD_DIR)/sirsi $(INSTALL_DIR)/sirsi
+	@echo "✅ sirsi installed to $(INSTALL_DIR)/sirsi"
+
+uninstall:
+	rm -f $(INSTALL_DIR)/sirsi
+	@echo "✅ sirsi removed from $(INSTALL_DIR)"
 
 clean:
 	rm -rf $(BUILD_DIR)
 	rm -rf Pantheon.app
 
-# --- Individual Deity Binaries ---
-build-anubis:
-	go build $(GO_FLAGS) -o $(BUILD_DIR)/anubis ./cmd/anubis/
-
-build-thoth:
-	go build $(GO_FLAGS) -o $(BUILD_DIR)/thoth ./cmd/thoth/
-
-build-maat:
-	go build $(GO_FLAGS) -o $(BUILD_DIR)/maat ./cmd/maat/
-
-build-scarab:
-	go build $(GO_FLAGS) -o $(BUILD_DIR)/scarab ./cmd/scarab/
-
-build-guard:
-	go build $(GO_FLAGS) -o $(BUILD_DIR)/guard ./cmd/guard/
-
+# --- Agent Binary ---
 build-agent:
-	go build $(GO_FLAGS) -o $(BUILD_DIR)/sirsi-agent ./cmd/sirsi-agent/
+	CGO_ENABLED=0 go build $(GO_FLAGS) -o $(BUILD_DIR)/sirsi-agent ./cmd/sirsi-agent/
 
 # --- Menu Bar App (ADR-010) ---
 build-menubar:
@@ -97,7 +94,14 @@ ios: ios-framework
 		archive -archivePath $(BUILD_DIR)/ios/Pantheon.xcarchive
 	@echo "✅ iOS archive: $(BUILD_DIR)/ios/Pantheon.xcarchive"
 
-# --- Public Proof of Testing ---
+# --- Test ---
+test:
+	go test -short ./...
+
+test-cover:
+	go test -short -coverprofile=$(BUILD_DIR)/coverage.out ./...
+	@go tool cover -func=$(BUILD_DIR)/coverage.out | tail -1
+
 test-proof:
 	go test -v -coverprofile=$(BUILD_DIR)/coverage.out ./...
 	go tool cover -html=$(BUILD_DIR)/coverage.out -o $(BUILD_DIR)/coverage.html
