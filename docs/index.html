@@ -3,582 +3,919 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sirsi Pantheon — The Divine Hierarchy of DevSecOps</title>
-  <meta name="description" content="One install. All deities. The unified platform for infrastructure hygiene, codebase governance, and persistent AI knowledge.">
-  
-  <!-- Fonts -->
+  <title>Sirsi Pantheon — Infrastructure Intelligence</title>
+  <meta name="description" content="Sirsi's infrastructure intelligence suite. Finds ghost apps, hardens networks, gives AI persistent memory. Zero telemetry.">
+  <meta name="theme-color" content="#022c22">
+  <link rel="icon" href="assets/glyphs/anubis.svg" type="image/svg+xml">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Outfit:wght@300;400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
   <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
     :root {
-      --gold: hsl(45, 52%, 55%);
-      --gold-light: hsl(45, 60%, 70%);
-      --gold-glow: hsla(45, 52%, 55%, 0.3);
-      --emerald: hsl(160, 84%, 39%);
-      --bg: hsl(165, 80%, 3%);
-      --bg-alt: hsl(165, 80%, 5%);
-      --text: hsl(0, 0%, 95%);
-      --text-dim: hsl(0, 0%, 70%);
-      --border: hsla(0, 0%, 100%, 0.08);
-      --glass: hsla(165, 80%, 5%, 0.6);
-      --font-heading: 'Cinzel', serif;
-      --font-body: 'Outfit', sans-serif;
-      --font-mono: 'JetBrains Mono', monospace;
+      --bg-primary: #022c22;
+      --bg-secondary: #011a14;
+      --bg-gradient: radial-gradient(ellipse at top right, #022c22 0%, #000000 100%);
+      --color-primary: #059669;
+      --color-primary-light: #10B981;
+      --color-gold: #C8A951;
+      --color-gold-bright: #E2C76B;
+      --glass-bg: rgba(2, 44, 34, 0.4);
+      --glass-border: rgba(255,255,255,0.08);
+      --card-bg: rgba(2, 44, 34, 0.6);
+      --text-primary: #ffffff;
+      --text-secondary: rgba(255,255,255,0.85);
+      --text-muted: rgba(255,255,255,0.5);
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    
+    html { scroll-behavior: smooth; }
+
     body {
-      background-color: var(--bg);
-      background-image: 
-        radial-gradient(circle at 0% 0%, hsla(160, 84%, 15%, 0.1) 0%, transparent 50%),
-        radial-gradient(circle at 100% 100%, hsla(45, 52%, 10%, 0.1) 0%, transparent 50%);
-      color: var(--text);
-      font-family: var(--font-body);
+      font-family: 'Inter', sans-serif;
+      color: var(--text-primary);
+      background: var(--bg-gradient);
+      background-attachment: fixed;
       line-height: 1.6;
       overflow-x: hidden;
       -webkit-font-smoothing: antialiased;
     }
 
-    .container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
-    .gold-text { color: var(--gold); }
-    .mono { font-family: var(--font-mono); font-size: 0.9em; }
-    
-    header {
-      min-height: 80vh;
+    /* ── NAV ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      padding: 1.25rem 3rem;
       display: flex;
-      flex-direction: column;
-      justify-content: center;
+      justify-content: space-between;
       align-items: center;
-      text-align: center;
-      padding: 4rem 1rem;
-      position: relative;
+      backdrop-filter: blur(24px);
+      background: rgba(0,0,0,0.3);
+      border-bottom: 1px solid var(--glass-border);
     }
-
-    .ankh-hero {
-      font-size: 6rem;
-      margin-bottom: 1.5rem;
-      background: linear-gradient(135deg, var(--gold), var(--gold-light));
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
-      filter: drop-shadow(0 0 20px var(--gold-glow));
-      animation: pulse 4s ease-in-out infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 0.8; transform: scale(1); }
-      50% { opacity: 1; transform: scale(1.05); }
-    }
-
-    h1 {
-      font-family: var(--font-heading);
-      font-size: clamp(3rem, 8vw, 5rem);
-      letter-spacing: 0.1em;
-      font-weight: 900;
-      margin-bottom: 1rem;
+    .nav-left { display: flex; align-items: center; gap: 1rem; }
+    .nav-left img { height: 40px; }
+    .nav-left span {
+      font-family: 'Cinzel', serif;
+      font-size: 0.85rem;
+      letter-spacing: 0.15em;
       text-transform: uppercase;
+      color: var(--text-muted);
     }
-
-    .subtitle {
-      font-size: 1.4rem;
-      max-width: 800px;
-      color: var(--text-dim);
-      font-weight: 300;
-      margin-bottom: 3rem;
-    }
-
-    .cluster-nav {
-      display: flex;
-      gap: 2rem;
-      margin-bottom: 4rem;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-
-    .nav-item {
+    .nav-links { display: flex; gap: 2rem; align-items: center; }
+    .nav-links a {
+      font-size: 0.85rem;
+      color: var(--text-muted);
       text-decoration: none;
-      color: var(--text-dim);
-      font-family: var(--font-heading);
-      font-size: 0.9rem;
-      letter-spacing: 0.2em;
-      transition: all 0.3s ease;
-      padding-bottom: 0.5rem;
-      border-bottom: 1px solid transparent;
+      letter-spacing: 0.04em;
+      transition: color 0.3s;
     }
-
-    .nav-item:hover {
-      color: var(--gold);
-      border-bottom-color: var(--gold);
+    .nav-links a:hover { color: var(--text-primary); }
+    .nav-sirsi-link {
+      color: var(--color-gold) !important;
+      font-weight: 500;
     }
-
-    .section-label {
-      font-family: var(--font-heading);
+    .nav-sirsi-link:hover { color: var(--color-gold-bright) !important; }
+    .nav-install {
+      font-family: 'JetBrains Mono', monospace;
       font-size: 0.8rem;
-      letter-spacing: 0.4em;
-      color: var(--gold);
-      text-transform: uppercase;
-      margin-bottom: 1rem;
-      display: block;
-      text-align: center;
+      padding: 0.5rem 1.2rem;
+      border: 1px solid var(--color-primary);
+      color: var(--color-primary-light) !important;
+      border-radius: 4px;
+      transition: background 0.3s, color 0.3s;
+    }
+    .nav-install:hover {
+      background: var(--color-primary);
+      color: var(--text-primary) !important;
     }
 
-    .deity-section {
-      margin-bottom: 8rem;
-    }
-
-    .deity-section h2 {
-      font-family: var(--font-heading);
-      text-align: center;
-      font-size: 2rem;
-      margin-bottom: 4rem;
-      letter-spacing: 0.1em;
-    }
-
-    .deity-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-      gap: 2rem;
-    }
-
-    .card {
-      height: 400px;
-      perspective: 1000px;
-      cursor: pointer;
-    }
-
-    .card-inner {
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
       position: relative;
-      width: 100%;
-      height: 100%;
-      transition: transform 0.8s cubic-bezier(0.23, 1, 0.32, 1);
-      transform-style: preserve-3d;
+      padding: 8rem 3rem 6rem;
     }
-
-    .card.flipped .card-inner {
-      transform: rotateY(180deg);
-    }
-
-    .card-front, .card-back {
+    .hero-jackal {
       position: absolute;
-      width: 100%;
-      height: 100%;
-      backface-visibility: hidden;
+      right: 6vw;
+      top: 50%;
+      transform: translateY(-45%);
+      font-size: clamp(14rem, 28vw, 22rem);
+      line-height: 1;
+      color: var(--color-gold-bright);
+      opacity: 0.35;
+      text-shadow: 0 0 80px rgba(200, 169, 81, 0.15);
+      pointer-events: none;
+      user-select: none;
+    }
+    .hero-content {
+      max-width: 700px;
+      position: relative;
+      z-index: 2;
+    }
+    .hero-eyebrow {
+      font-family: 'Cinzel', serif;
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--color-gold);
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .hero-eyebrow::before {
+      content: '';
+      display: block;
+      width: 40px;
+      height: 1px;
+      background: var(--color-gold);
+    }
+    .hero h1 {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(2.5rem, 5vw, 4.2rem);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      line-height: 1.15;
+      text-transform: uppercase;
+      margin-bottom: 2rem;
+    }
+    .hero h1 em {
+      font-style: normal;
+      color: var(--color-primary-light);
+    }
+    .hero-sub {
+      font-size: 1.15rem;
+      color: var(--text-secondary);
+      line-height: 1.75;
+      max-width: 560px;
+      font-weight: 300;
+    }
+    .hero-sub strong {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    /* ── HERO PILLARS ── */
+    .hero-pillars {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2.5rem;
+      margin-top: 2.5rem;
+      max-width: 580px;
+    }
+    .hero-pillar-label {
+      font-family: 'Cinzel', serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-gold);
+      margin-bottom: 0.75rem;
+    }
+    .hero-pillars ul {
+      list-style: none;
+      padding: 0;
+    }
+    .hero-pillars li {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      padding: 0.3rem 0;
+      line-height: 1.5;
+      font-weight: 300;
+      border-left: 1px solid rgba(200,169,81,0.2);
+      padding-left: 0.875rem;
+      margin-bottom: 0.25rem;
+    }
+    @media (max-width: 600px) {
+      .hero-pillars { grid-template-columns: 1fr; gap: 2rem; }
+    }
+
+    /* ── DIVIDER LINES ── */
+    .rule-gold {
+      border: none;
+      height: 1px;
+      background: linear-gradient(90deg, var(--color-gold) 0%, transparent 70%);
+      margin: 0;
+    }
+    .rule-center {
+      border: none;
+      height: 1px;
+      background: linear-gradient(90deg, transparent 10%, var(--color-gold) 50%, transparent 90%);
+      max-width: 200px;
+      margin: 0 auto;
+    }
+
+    /* ── TERMINAL ── full bleed, breaks rhythm */
+    .terminal-section {
+      padding: 0;
+      position: relative;
+    }
+    .terminal-gutter {
+      display: grid;
+      grid-template-columns: 1fr minmax(0, 640px) 1fr;
+      align-items: start;
+    }
+    .terminal-prose {
+      padding: 5rem 3rem 5rem 0;
+      text-align: right;
+      align-self: center;
+    }
+    .terminal-prose h2 {
+      font-family: 'Cinzel', serif;
+      font-size: 1.1rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--color-gold);
+      margin-bottom: 1rem;
+    }
+    .terminal-prose p {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+      font-weight: 300;
+    }
+    .terminal-prose p strong {
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+    .terminal-window {
+      background: #0a0a0a;
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 4rem 0;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.5);
+    }
+    .terminal-chrome {
+      padding: 0.75rem 1rem;
+      background: #1a1a1a;
+      display: flex;
+      gap: 7px;
+      align-items: center;
+    }
+    .terminal-dot { width: 11px; height: 11px; border-radius: 50%; }
+    .terminal-dot:nth-child(1) { background: #ff5f57; }
+    .terminal-dot:nth-child(2) { background: #febc2e; }
+    .terminal-dot:nth-child(3) { background: #28c840; }
+    .terminal-body {
+      padding: 1.5rem 2rem 2rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      line-height: 1.7;
+      color: #e0e0e0;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .t-prompt { color: var(--color-primary-light); }
+    .t-gold { color: var(--color-gold); }
+    .t-muted { color: #666; }
+    .t-white { color: #fff; font-weight: 500; }
+    .t-size { color: var(--color-gold-bright); }
+    .terminal-empty { padding: 3rem; }
+
+    /* ── FEATURE CARDS: contained glass panels with inline terminals ── */
+    .features {
+      padding: 5rem 3rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .features-header {
+      text-align: center;
+      margin-bottom: 3.5rem;
+    }
+    .features-header h2 {
+      font-family: 'Cinzel', serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--color-gold);
+      margin-bottom: 1rem;
+    }
+    .features-header p {
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      max-width: 500px;
+      margin: 0 auto;
+      font-weight: 300;
+    }
+    .feat-card {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      border: 1px solid var(--glass-border);
       border-radius: 12px;
-      background: var(--glass);
-      border: 1px solid var(--border);
-      padding: 2.5rem;
+      overflow: hidden;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      margin-bottom: 1.5rem;
+      transition: border-color 0.3s;
+    }
+    .feat-card:last-child { margin-bottom: 0; }
+    .feat-card:hover { border-color: rgba(200,169,81,0.2); }
+    .feat-info {
+      padding: 2.5rem 3rem;
       display: flex;
       flex-direction: column;
-    }
-
-    .card-front {
       justify-content: center;
-      align-items: center;
-      text-align: center;
     }
-
-    .card-back {
-      transform: rotateY(180deg);
-      background: linear-gradient(135deg, var(--bg-alt), var(--bg));
-      justify-content: space-between;
-    }
-
-    .deity-icon {
-      font-size: 4rem;
-      margin-bottom: 1rem;
-      color: var(--gold);
-    }
-
-    h3 {
-      font-family: var(--font-heading);
-      font-size: 1.8rem;
-      margin-bottom: 0.5rem;
-      letter-spacing: 0.05em;
-    }
-
-    .tag {
-      font-size: 0.8rem;
+    .feat-label {
+      font-family: 'Cinzel', serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
       text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text-dim);
-      margin-bottom: 1rem;
+      color: var(--color-gold);
+      margin-bottom: 0.75rem;
     }
-
-    .description {
-      color: var(--text-dim);
-      font-size: 1rem;
+    .feat-info h3 {
+      font-family: 'Cinzel', serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.75rem;
+      line-height: 1.3;
     }
-
-    .back-header {
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 1rem;
-      margin-bottom: 1rem;
+    .feat-info p {
+      font-size: 0.9375rem;
+      color: var(--text-secondary);
+      line-height: 1.7;
+      font-weight: 300;
     }
-
-    .stat-row {
+    .feat-term {
+      background: #0a0a0a;
+      border-left: 1px solid var(--glass-border);
+      padding: 2rem 2rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      line-height: 1.7;
+      color: #ccc;
+      white-space: pre;
+      overflow-x: auto;
       display: flex;
-      justify-content: space-between;
-      margin-bottom: 0.5rem;
+      align-items: center;
     }
+    .feat-card:nth-child(even) { direction: rtl; }
+    .feat-card:nth-child(even) > * { direction: ltr; }
+    .feat-card:nth-child(even) .feat-term { border-left: none; border-right: 1px solid var(--glass-border); }
 
-    .stat-label { color: var(--text-dim); font-size: 0.9rem; }
-    .stat-value { color: var(--gold); font-weight: 600; }
-
-    .flip-hint {
-      font-size: 0.75rem;
-      color: var(--text-dim);
-      opacity: 0.5;
-      margin-top: auto;
+    /* ── PANTHEON MODULES ── */
+    .modules {
+      padding: 5rem 3rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .modules-header {
       text-align: center;
+      margin-bottom: 2.5rem;
     }
-
-    .ledger {
-      background: black;
-      padding: 4rem 0;
-      border-top: 1px solid var(--gold-glow);
+    .modules-header h2 {
+      font-family: 'Cinzel', serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--color-gold);
+      margin-bottom: 0.75rem;
     }
-
-    .ledger-grid {
+    .modules-header p {
+      font-size: 0.9375rem;
+      color: var(--text-muted);
+      font-weight: 300;
+    }
+    .mod-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 2rem;
+      gap: 1px;
+      background: var(--glass-border);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .mod-cell {
+      background: var(--card-bg);
+      padding: 2rem 1.5rem;
+      text-align: center;
+      transition: background 0.3s;
+    }
+    .mod-cell:hover { background: rgba(2, 44, 34, 0.8); }
+    .mod-glyph {
+      font-size: 1.8rem;
+      display: block;
+      margin-bottom: 0.6rem;
+      line-height: 1;
+    }
+    .mod-name {
+      font-family: 'Cinzel', serif;
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 0.25rem;
+    }
+    .mod-role {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 300;
+    }
+
+    /* ── TIERS ── */
+    .tiers {
+      padding: 5rem 3rem;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    .tiers-header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+    .tiers-header h2 {
+      font-family: 'Cinzel', serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--color-gold);
+      margin-bottom: 0.75rem;
+    }
+    .tiers-header p {
+      font-size: 0.9375rem;
+      color: var(--text-muted);
+      font-weight: 300;
+    }
+    .tier-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+    .tier {
+      padding: 2.5rem;
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      backdrop-filter: blur(20px);
+      background: var(--glass-bg);
+    }
+    .tier-ra { border-color: rgba(200,169,81,0.15); }
+    .tier-badge {
+      font-family: 'Cinzel', serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      display: inline-block;
+      padding: 0.3rem 0.8rem;
+      border-radius: 3px;
+      margin-bottom: 1.25rem;
+    }
+    .tier-anubis .tier-badge { color: var(--color-primary-light); border: 1px solid var(--color-primary); }
+    .tier-ra .tier-badge { color: var(--color-gold); border: 1px solid var(--color-gold); }
+    .tier h3 {
+      font-family: 'Cinzel', serif;
+      font-size: 1.4rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.4rem;
+    }
+    .tier-price {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      font-weight: 300;
+    }
+    .tier ul { list-style: none; padding: 0; }
+    .tier li {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      padding: 0.45rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-weight: 300;
+    }
+    .tier li:last-child { border-bottom: none; }
+    .tier-anubis li::before { content: '𓃣 '; margin-right: 0.4rem; }
+    .tier-ra li::before { content: '𓇶 '; margin-right: 0.4rem; }
+
+    /* ── INSTALL + ECOSYSTEM + FOOTER: tight bottom stack ── */
+    .bottom-stack {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 4rem 3rem 2rem;
       text-align: center;
     }
-
-    .ledger-item .value {
-      font-size: 2.5rem;
-      font-weight: 700;
-      color: var(--gold);
+    .install-block { display: inline-block; position: relative; margin-bottom: 3rem; }
+    .install-cmd {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: clamp(0.75rem, 1.5vw, 0.9rem);
+      padding: 1rem 3.5rem 1rem 1.5rem;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid var(--glass-border);
+      border-radius: 8px;
+      color: var(--color-primary-light);
+      cursor: pointer;
+      transition: border-color 0.3s;
       display: block;
+      text-align: left;
+      white-space: nowrap;
     }
-
-    .ledger-item .label {
+    .install-cmd:hover { border-color: var(--color-primary); }
+    .install-copy {
+      position: absolute;
+      right: 0.75rem; top: 50%; transform: translateY(-50%);
+      background: none; border: none;
+      color: var(--text-muted); cursor: pointer;
+      font-size: 0.75rem; transition: color 0.3s;
+    }
+    .install-copy:hover { color: var(--text-primary); }
+    .install-note {
+      font-size: 0.78rem; color: var(--text-muted); font-weight: 300;
+      margin-top: 0.75rem;
+    }
+    .ecosystem {
+      padding: 2.5rem 0;
+      border-top: 1px solid var(--glass-border);
+      margin-top: 1rem;
+    }
+    .ecosystem-label {
+      font-family: 'Cinzel', serif;
+      font-size: 0.6rem;
+      letter-spacing: 0.25em;
       text-transform: uppercase;
-      letter-spacing: 0.2em;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+    .ecosystem-items {
+      display: flex;
+      justify-content: center;
+      gap: 2.5rem;
+      flex-wrap: wrap;
+    }
+    .ecosystem-item {
+      font-family: 'Cinzel', serif;
       font-size: 0.8rem;
-      color: var(--text-dim);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .ecosystem-item.active { color: var(--color-primary-light); }
+
+    footer {
+      padding: 2.5rem 3rem 2rem;
+      border-top: 1px solid var(--glass-border);
+      margin-top: 1rem;
+    }
+    .footer-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+    .footer-brand img { height: 22px; opacity: 0.6; }
+    .footer-brand p {
+      font-size: 0.78rem; color: var(--text-muted); font-weight: 300; margin-top: 0.4rem;
+    }
+    .footer-links { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+    .footer-links a {
+      font-size: 0.78rem; color: var(--text-muted);
+      text-decoration: none; transition: color 0.3s;
+    }
+    .footer-links a:hover { color: var(--text-secondary); }
+    .footer-copy {
+      width: 100%;
+      text-align: center;
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.2);
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(255,255,255,0.04);
     }
 
-    @media (max-width: 768px) {
-      .ledger-grid { grid-template-columns: 1fr 1fr; }
+    /* ── ANIMATIONS ── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.8s cubic-bezier(0.25, 0.1, 0.25, 1),
+                  transform 0.8s cubic-bezier(0.25, 0.1, 0.25, 1);
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.2s; }
+    .reveal-delay-3 { transition-delay: 0.3s; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+      nav { padding: 1rem 1.5rem; }
+      .nav-links { display: none; }
+      .hero { padding: 7rem 1.5rem 4rem; }
+      .hero-jackal { width: 60vw; right: -10vw; opacity: 0.04; }
+      .terminal-gutter {
+        grid-template-columns: 1fr;
+        padding: 0 1.5rem;
+      }
+      .terminal-prose {
+        text-align: left;
+        padding: 3rem 0 1.5rem;
+      }
+      .terminal-window { margin: 0 0 3rem; }
+      .type-break { padding: 4rem 1.5rem; }
+      .type-break h2 { font-size: clamp(2rem, 10vw, 4rem); }
+      .feat-card { grid-template-columns: 1fr; }
+      .feat-card:nth-child(even) { direction: ltr; }
+      .feat-term { border-left: none !important; border-right: none !important; border-top: 1px solid var(--glass-border); }
+      .feat-info { padding: 2rem 1.5rem; }
+      .feat-term { padding: 1.5rem; }
+      .features { padding: 3rem 1.5rem; }
+      .modules { padding: 3rem 1.5rem; }
+      .mod-grid { grid-template-columns: repeat(2, 1fr); }
+      .tier-row { grid-template-columns: 1fr; }
+      .tiers { padding: 3rem 1.5rem; }
+      .bottom-stack { padding: 3rem 1.5rem 1.5rem; }
+      .install-cmd { font-size: 0.7rem; padding-right: 3rem; }
+      footer { padding: 2rem 1.5rem; }
+      .footer-inner { flex-direction: column; text-align: center; }
+      .footer-links { justify-content: center; }
+    }
+
+    @media (max-width: 500px) {
+      .hero h1 { font-size: 2rem; }
+      .terminal-body { font-size: 0.7rem; padding: 1rem; }
     }
   </style>
 </head>
 <body>
 
-  <!-- Hero -->
-  <header>
-    <div class="ankh-hero">𓁢</div>
-    <h1>Sirsi Pantheon</h1>
-    <p style="font-family: var(--font-heading); font-size: 0.9rem; color: var(--gold); letter-spacing: 0.2em; margin-bottom: 1rem; opacity: 0.8;">by Sirsi Technologies</p>
-    <p class="subtitle">
-      One Install. All Deities. The unified DevOps intelligence platform.
-      Infrastructure hygiene, governance, and autonomous remediation simplified into eight divine Pillars.
-    </p>
-    
-    <div class="cluster-nav">
-      <a href="#master-pillars" class="nav-item">THE MASTER PILLARS</a>
-      <a href="getting-started.html" class="nav-item">GETTING STARTED</a>
-      <a href="faq.html" class="nav-item">FAQ</a>
-      <a href="build-log.html" class="nav-item">BUILD LOG</a>
-      <a href="https://github.com/SirsiMaster/sirsi-pantheon" class="nav-item">SOURCE CANON</a>
+  <!-- NAV -->
+  <nav>
+    <div class="nav-left">
+      <img src="assets/sirsi-logo-white.png" alt="Sirsi">
+      <span>Pantheon</span>
     </div>
-
-    <div style="margin-top: 2rem;">
-      <code class="mono" style="padding: 1rem 2rem; background: var(--bg-alt); border: 1px solid var(--gold-glow); border-radius: 6px;">
-        <span style="color: var(--gold);">$</span> brew install sirsi-pantheon
-      </code>
+    <div class="nav-links">
+      <a href="https://sirsi.ai" class="nav-sirsi-link">sirsi.ai</a>
+      <a href="getting-started.html">Docs</a>
+      <a href="faq.html">FAQ</a>
+      <a href="build-log.html">Build Log</a>
+      <a href="https://github.com/SirsiMaster/sirsi-pantheon">GitHub</a>
+      <a href="getting-started.html" class="nav-install">brew install sirsi-pantheon</a>
     </div>
-  </header>
+  </nav>
 
-  <!-- Section: Master Pillars -->
-  <section class="deity-section" id="master-pillars">
-    <div class="container">
-      <span class="section-label">THE SUPREME PILLARS</span>
-      <h2>One Install. Eight Deities.</h2>
-      
-      <div class="deity-grid">
-        <!-- Anubis -->
-        <div class="card" onclick="this.classList.toggle('flipped')">
-          <div class="card-inner">
-            <div class="card-front">
-              <div class="deity-icon">𓁢</div>
-              <div class="tag">The Hygiene Pillar</div>
-              <h3>Anubis</h3>
-              <p class="description">Purges workstation waste and hunts ghost remnants across Launch Services.</p>
-              <span class="flip-hint">tap to reveal</span>
-            </div>
-            <div class="card-back">
-              <div class="back-header">
-                <span class="mono gold-text">sirsi anubis</span>
-                <h3>Infrastructure</h3>
-              </div>
-              <div>
-                <div class="stat-row"><span class="stat-label">Functions</span><span class="stat-value">weigh / judge / ka</span></div>
-                <div class="stat-row"><span class="stat-label">Scanning</span><span class="stat-value">Deep Jackal Engine</span></div>
-                <div class="stat-row"><span class="stat-label">Protection</span><span class="stat-value">Mirror / Guard</span></div>
-              </div>
-              <p class="description">Consolidates Jackal (Hygiene), Ka (Ghosts), Mirror (Dedup), and Guard (Watchdog) into a single master module.</p>
-              <span class="flip-hint">tap to close</span>
-            </div>
-          </div>
+  <!-- HERO -->
+  <section class="hero">
+    <span class="hero-jackal" aria-hidden="true">𓁢</span>
+    <div class="hero-content">
+      <div class="hero-eyebrow reveal">Sirsi's First Product &mdash; Now Available</div>
+      <h1 class="reveal reveal-delay-1">Sirsi sees your <em>entire infrastructure.</em></h1>
+      <p class="hero-sub reveal reveal-delay-2">
+        <strong>Pantheon</strong> is the first product from
+        <strong><a href="https://sirsi.ai" style="color:var(--color-gold);text-decoration:none;">Sirsi Technologies</a></strong>.
+        It makes AI coding assistants dramatically more efficient &mdash; and keeps
+        your infrastructure clean while it works.
+      </p>
+      <div class="hero-pillars reveal reveal-delay-3">
+        <div class="hero-pillar">
+          <div class="hero-pillar-label">For AI Assistants</div>
+          <ul>
+            <li>Persistent memory between sessions via MCP</li>
+            <li>Context pressure detection &amp; compression</li>
+            <li>Automatic lint fixing &amp; CI/CD pipeline QC</li>
+            <li>Works in IDEs (MCP) and CLI tools alike</li>
+          </ul>
         </div>
-
-        <!-- Ma'at -->
-        <div class="card" onclick="this.classList.toggle('flipped')">
-          <div class="card-inner">
-            <div class="card-front">
-              <div class="deity-icon">𓆄</div>
-              <div class="tag">The Governance Pillar</div>
-              <h3>Ma'at</h3>
-              <p class="description">Grades code quality and provides autonomous Isis-led remediation.</p>
-              <span class="flip-hint">tap to reveal</span>
-            </div>
-            <div class="card-back">
-              <div class="back-header">
-                <span class="mono gold-text">sirsi maat</span>
-                <h3>Governance</h3>
-              </div>
-              <div>
-                <div class="stat-row"><span class="stat-label">Functions</span><span class="stat-value">audit / scales / heal</span></div>
-                <div class="stat-row"><span class="stat-label">Coverage</span><span class="stat-value">Scale-First Audit</span></div>
-                <div class="stat-row"><span class="stat-label">A.R.</span><span class="stat-value">Isis Autonomous Fix</span></div>
-              </div>
-              <p class="description">Consolidates Scales (Coverage) and Isis (Healing) into a unified governance and remediation platform.</p>
-              <span class="flip-hint">tap to close</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Thoth -->
-        <div class="card" onclick="this.classList.toggle('flipped')">
-          <div class="card-inner">
-            <div class="card-front">
-              <div class="deity-icon">𓁟</div>
-              <div class="tag">The Intelligence Pillar</div>
-              <h3>Thoth</h3>
-              <p class="description">Persistent project memory. Eliminates AI re-reading with zero-token context.</p>
-              <span class="flip-hint">tap to reveal</span>
-            </div>
-            <div class="card-back">
-              <div class="back-header">
-                <span class="mono gold-text">sirsi thoth</span>
-                <h3>Wisdom</h3>
-              </div>
-              <div>
-                <div class="stat-row"><span class="stat-label">Functions</span><span class="stat-value">sync / brain</span></div>
-                <div class="stat-row"><span class="stat-label">Precision</span><span class="stat-value">Rule-Grounded</span></div>
-                <div class="stat-row"><span class="stat-label">Savings</span><span class="stat-value">22K → 297 lines</span></div>
-              </div>
-              <p class="description">Provides a multi-layered permanent ledger of developer intent and project canon across all workspace layers.</p>
-              <span class="flip-hint">tap to close</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Hapi -->
-        <div class="card" onclick="this.classList.toggle('flipped')">
-          <div class="card-inner">
-            <div class="card-front">
-              <div class="deity-icon">𓈗</div>
-              <div class="tag">The Machine Pillar</div>
-              <h3>Hapi</h3>
-              <p class="description">Optimizes GPU flow, VRAM, and manages ANE-accelerated tokenization.</p>
-              <span class="flip-hint">tap to reveal</span>
-            </div>
-            <div class="card-back">
-              <div class="back-header">
-                <span class="mono gold-text">sirsi hapi</span>
-                <h3>Hardware</h3>
-              </div>
-              <div>
-                <div class="stat-row"><span class="stat-label">Functions</span><span class="stat-value">scan / profile / compute</span></div>
-                <div class="stat-row"><span class="stat-label">Compute</span><span class="stat-value">Sekhmet ANE Driver</span></div>
-                <div class="stat-row"><span class="stat-label">Flow</span><span class="stat-value">VRAM Optimization</span></div>
-              </div>
-              <p class="description">Consolidates Sekhmet (Acceleration/Yield) and Hapi (Detector) into a single hardware management module.</p>
-              <span class="flip-hint">tap to close</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Seba -->
-        <div class="card" onclick="this.classList.toggle('flipped')">
-          <div class="card-inner">
-            <div class="card-front">
-              <div class="deity-icon">𓇽</div>
-              <div class="tag">The Mapping Pillar</div>
-              <h3>Seba</h3>
-              <p class="description">Visual topology mapping, project registry, and fleet container discovery.</p>
-              <span class="flip-hint">tap to reveal</span>
-            </div>
-            <div class="card-back">
-              <div class="back-header">
-                <span class="mono gold-text">sirsi seba</span>
-                <h3>Topology</h3>
-              </div>
-              <div>
-                <div class="stat-row"><span class="stat-label">Diagrams</span><span class="stat-value">23 types</span></div>
-                <div class="stat-row"><span class="stat-label">Categories</span><span class="stat-value">Code · System · Git · Ops</span></div>
-                <div class="stat-row"><span class="stat-label">Probes</span><span class="stat-value">CPU · GPU · RAM · Ports</span></div>
-              </div>
-              <p class="description">Universal mapping authority — static analysis, runtime probes, and infrastructure diagrams for any repository.</p>
-              <a href="seba.html" style="color:var(--gold);text-decoration:none;font-family:var(--font-heading);font-size:0.85rem;letter-spacing:0.1em;margin-top:auto;">VIEW STAR MAP →</a>
-              <span class="flip-hint">tap to close</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Seshat -->
-        <div class="card" onclick="this.classList.toggle('flipped')">
-          <div class="card-inner">
-            <div class="card-front">
-              <div class="deity-icon">𓁆</div>
-              <div class="tag">The Scribe Pillar</div>
-              <h3>Seshat</h3>
-              <p class="description">Gemini Bridge — bidirectional knowledge sync across AI platforms.</p>
-              <span class="flip-hint">tap to reveal</span>
-            </div>
-            <div class="card-back">
-              <div class="back-header">
-                <span class="mono gold-text">sirsi seshat</span>
-                <h3>The Bridge</h3>
-              </div>
-              <div>
-                <div class="stat-row"><span class="stat-label">Functions</span><span class="stat-value">sync / list / mcp</span></div>
-                <div class="stat-row"><span class="stat-label">Sync</span><span class="stat-value">NotebookLM / Takeout</span></div>
-                <div class="stat-row"><span class="stat-label">Server</span><span class="stat-value">MCP Context Handler</span></div>
-              </div>
-              <p class="description">The scribe that handles writing knowledge between Gemini AI Mode, NotebookLM, and the Antigravity IDE.</p>
-              <span class="flip-hint">tap to close</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Isis -->
-        <div class="card" onclick="this.classList.toggle('flipped')">
-          <div class="card-inner">
-            <div class="card-front">
-              <div class="deity-icon">𓁐</div>
-              <div class="tag">The Healing Pillar</div>
-              <h3>Isis</h3>
-              <p class="description">Autonomous remediation — automatically fixes lint errors, vet warnings, and formatting issues found by Ma'at.</p>
-              <span class="flip-hint">tap to reveal</span>
-            </div>
-            <div class="card-back">
-              <div class="back-header">
-                <span class="mono gold-text">sirsi maat heal</span>
-                <h3>Remediation</h3>
-              </div>
-              <div>
-                <div class="stat-row"><span class="stat-label">Functions</span><span class="stat-value">heal / lint / vet / fmt</span></div>
-                <div class="stat-row"><span class="stat-label">Automation</span><span class="stat-value">Fully Autonomous</span></div>
-                <div class="stat-row"><span class="stat-label">Parent</span><span class="stat-value">Ma'at Module</span></div>
-              </div>
-              <p class="description">Heals the codebase by automatically fixing all remediable findings from Ma'at audits.</p>
-              <span class="flip-hint">tap to close</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Neith -->
-        <div class="card" onclick="this.classList.toggle('flipped')">
-          <div class="card-inner">
-            <div class="card-front">
-              <div class="deity-icon">𓁯</div>
-              <div class="tag">The Architecture Pillar</div>
-              <h3>Net (Neith)</h3>
-              <p class="description">Architecture documentation, ADR templates, and the Architecture Triad enforcement across all repos.</p>
-              <span class="flip-hint">tap to reveal</span>
-            </div>
-            <div class="card-back">
-              <div class="back-header">
-                <span class="mono gold-text">sirsi neith</span>
-                <h3>Architecture</h3>
-              </div>
-              <div>
-                <div class="stat-row"><span class="stat-label">Functions</span><span class="stat-value">audit / adr / canon</span></div>
-                <div class="stat-row"><span class="stat-label">Triad</span><span class="stat-value">DataFlow · Order · Decisions</span></div>
-                <div class="stat-row"><span class="stat-label">ADRs</span><span class="stat-value">13+ managed</span></div>
-              </div>
-              <p class="description">Weaves the structural fabric — data flow diagrams, implementation order, and key decision matrices.</p>
-              <span class="flip-hint">tap to close</span>
-            </div>
-          </div>
+        <div class="hero-pillar">
+          <div class="hero-pillar-label">For Your Machine</div>
+          <ul>
+            <li>Ghost app detection &amp; removal</li>
+            <li>RAM pressure &amp; process panic monitoring</li>
+            <li>Network hardening with auto-revert</li>
+            <li>Local (Anubis, free) &amp; fleet (Ra, coming soon)</li>
+          </ul>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Technical Ledger -->
-  <section class="ledger">
-    <div class="container">
-      <div class="ledger-grid">
-        <div class="ledger-item">
-          <span class="value">v0.9.0-rc1</span>
-          <span class="label">Consolidated Architecture</span>
+  <hr class="rule-gold">
+
+  <!-- TERMINAL: full-bleed asymmetric -->
+  <section class="terminal-section">
+    <div class="terminal-gutter">
+      <div class="terminal-prose reveal">
+        <h2>One Scan</h2>
+        <p>
+          <strong>58 rules</strong> across 7 domains.
+          Built with <strong>1,702 tests</strong> across <strong>30 modules</strong>.
+          63,000+ lines of Go. Zero telemetry. Scans in under a second.
+        </p>
+      </div>
+      <div class="terminal-window reveal reveal-delay-1">
+        <div class="terminal-chrome">
+          <div class="terminal-dot"></div>
+          <div class="terminal-dot"></div>
+          <div class="terminal-dot"></div>
         </div>
-        <div class="ledger-item">
-          <span class="value">8</span>
-          <span class="label">Integrated Pillars</span>
-        </div>
-        <div class="ledger-item">
-          <span class="value">297</span>
-          <span class="label">Lines (vs 22,958)</span>
-        </div>
-        <div class="ledger-item">
-          <span class="value">100%</span>
-          <span class="label">Hardened Baseline</span>
-        </div>
+        <div class="terminal-body"><span class="t-prompt">$</span> sirsi scan
+<span class="t-gold">𓃣 Sirsi Pantheon v0.15.0</span>
+<span class="t-muted">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+Scanning 58 rules across 7 domains...
+
+<span class="t-muted">■</span> Docker Desktop VM images     <span class="t-size">64.2 GB</span>
+<span class="t-muted">■</span> Xcode derived data           <span class="t-size">12.8 GB</span>
+<span class="t-muted">■</span> Homebrew cache (stale)        <span class="t-size">3.1 GB</span>
+<span class="t-muted">■</span> npm/yarn global cache         <span class="t-size">1.9 GB</span>
+<span class="t-muted">■</span> CocoaPods cache               <span class="t-size">847 MB</span>
+
+<span class="t-muted">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+<span class="t-white">Findings 341   Reclaimable 82.9 GB</span>
+Scanned in 833ms</div>
+      </div>
+      <div class="terminal-empty"></div>
+    </div>
+  </section>
+
+  <!-- FEATURES: glass cards with inline terminals -->
+  <section class="features">
+    <div class="features-header reveal">
+      <h2>What Pantheon Does</h2>
+      <p>Three capabilities, each with a CLI you can run today.</p>
+    </div>
+
+    <div class="feat-card reveal">
+      <div class="feat-info">
+        <div class="feat-label">Ghost Detection</div>
+        <h3>The Dead Leave Traces</h3>
+        <p>Finds remnants of apps you uninstalled &mdash; Launch Services phantoms, orphaned plists, Spotlight ghosts. 17 macOS locations no other tool checks.</p>
+      </div>
+      <div class="feat-term"><div><span class="t-prompt">$</span> sirsi ghosts
+
+<span class="t-gold">𓃣 Ghost Hunter</span> <span class="t-muted">v0.15.0</span>
+<span class="t-muted">Scanning 17 locations...</span>
+
+<span class="t-white">Docker.app</span>          <span class="t-muted">12 orphaned files</span>
+<span class="t-white">Parallels.app</span>       <span class="t-muted">8 plists, 3 agents</span>
+<span class="t-white">Sketch.app</span>           <span class="t-muted">Launch Services phantom</span>
+
+<span class="t-gold">Ghosts found:</span> <span class="t-white">23</span></div></div>
+    </div>
+
+    <div class="feat-card reveal">
+      <div class="feat-info">
+        <div class="feat-label">Network Safety</div>
+        <h3>Probe Before You Cut</h3>
+        <p>Encrypted DNS and firewall hardening. Probes before changing, verifies after, auto-reverts within 6 seconds if anything breaks.</p>
+      </div>
+      <div class="feat-term"><div><span class="t-prompt">$</span> sirsi network --fix
+
+<span class="t-gold">🛡 Network Safety</span>
+<span class="t-muted">Probing current DNS...</span>
+<span class="t-white">DNS:</span> 192.168.1.1 <span class="t-muted">(unencrypted)</span>
+<span class="t-white">Firewall:</span> <span style="color:#ff5f57;">disabled</span>
+
+<span class="t-muted">Applying encrypted DNS...</span>
+<span style="color:#28c840;">✓</span> DNS → 1.1.1.1 (Cloudflare DoH)
+<span style="color:#28c840;">✓</span> Firewall enabled (stealth mode)</div></div>
+    </div>
+
+    <div class="feat-card reveal">
+      <div class="feat-info">
+        <div class="feat-label">AI Memory</div>
+        <h3>Your Tools Should Remember</h3>
+        <p>22,958 lines of source compressed to 297 lines of persistent context via MCP. Works with Claude, Cursor, and Windsurf out of the box.</p>
+      </div>
+      <div class="feat-term"><div><span class="t-prompt">$</span> sirsi thoth sync
+
+<span class="t-gold">𓁟 Thoth</span> <span class="t-muted">syncing memory...</span>
+<span class="t-muted">Phase 1:</span> <span class="t-white">identity fields</span>  <span style="color:#28c840;">✓</span>
+<span class="t-muted">Phase 2:</span> <span class="t-white">journal from git</span> <span style="color:#28c840;">✓</span>
+
+<span class="t-gold">Context:</span> <span class="t-white">22,958 → 297 lines</span>
+<span class="t-gold">Savings:</span> <span style="color:#28c840;">98.7% reduction</span></div></div>
+    </div>
+  </section>
+
+  <hr class="rule-gold">
+
+  <!-- MODULES -->
+  <section class="modules">
+    <div class="modules-header reveal">
+      <h2>The Pantheon</h2>
+      <p>Eight modules. One install. Each owns one domain.</p>
+    </div>
+    <div class="mod-grid reveal">
+      <div class="mod-cell"><span class="mod-glyph">𓃣</span><div class="mod-name">Anubis</div><div class="mod-role">Hygiene</div></div>
+      <div class="mod-cell"><span class="mod-glyph">𓆄</span><div class="mod-name">Ma'at</div><div class="mod-role">Governance</div></div>
+      <div class="mod-cell"><span class="mod-glyph">𓁟</span><div class="mod-name">Thoth</div><div class="mod-role">Memory</div></div>
+      <div class="mod-cell"><span class="mod-glyph">𓁐</span><div class="mod-name">Isis</div><div class="mod-role">Remediation</div></div>
+      <div class="mod-cell"><span class="mod-glyph">𓇶</span><div class="mod-name">Ra</div><div class="mod-role">Orchestration</div></div>
+      <div class="mod-cell"><span class="mod-glyph">𓁯</span><div class="mod-name">Neith</div><div class="mod-role">Architecture</div></div>
+      <div class="mod-cell"><span class="mod-glyph">𓇽</span><div class="mod-name">Seba</div><div class="mod-role">Topology</div></div>
+      <div class="mod-cell"><span class="mod-glyph">𓁆</span><div class="mod-name">Seshat</div><div class="mod-role">Bridge</div></div>
+    </div>
+  </section>
+
+  <!-- TIERS -->
+  <section class="tiers">
+    <div class="tiers-header reveal">
+      <h2>Two Tiers</h2>
+      <p>Anubis ships free today. Ra is coming for enterprise.</p>
+    </div>
+    <div class="tier-row">
+      <div class="tier tier-anubis reveal">
+        <span class="tier-badge">𓃣 Anubis</span>
+        <h3>Free</h3>
+        <div class="tier-price">Solo developer. One machine. Full power.</div>
+        <ul>
+          <li>58 scan rules across 7 domains</li>
+          <li>Ghost detection (17 macOS locations)</li>
+          <li>Network hardening with auto-revert</li>
+          <li>AI memory via MCP</li>
+          <li>Three-phase deduplication</li>
+          <li>Process watchdog</li>
+        </ul>
+      </div>
+      <div class="tier tier-ra reveal reveal-delay-1">
+        <span class="tier-badge">𓇶 Ra</span>
+        <h3>Enterprise</h3>
+        <div class="tier-price">Fleet orchestration. Policy at scale.</div>
+        <ul>
+          <li>Multi-machine orchestration</li>
+          <li>Subnet and VLAN scanning</li>
+          <li>Container and K8s auditing</li>
+          <li>Cross-repo AI dispatch</li>
+          <li>YAML policy engine</li>
+          <li>SAN, NAS, and S3 backends</li>
+        </ul>
       </div>
     </div>
   </section>
 
-  <!-- Individual Deity Downloads -->
-  <section style="padding: 4rem 0; border-top: 1px solid var(--border);">
-    <div class="container" style="text-align: center;">
-      <span class="section-label">INDIVIDUAL DOWNLOADS</span>
-      <h2 style="font-family: var(--font-heading); font-size: 2rem; margin-bottom: 2rem;">Download Any Deity Standalone</h2>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;max-width:900px;margin:0 auto;">
-        <a href="https://github.com/SirsiMaster/sirsi-pantheon/releases/latest" style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:1rem;text-decoration:none;color:var(--text);transition:all 0.3s;" onmouseover="this.style.borderColor='hsl(45,52%,55%)'" onmouseout="this.style.borderColor=''">
-          <div style="font-size:1.8rem;">𓁢</div><div style="font-family:var(--font-heading);color:var(--gold);font-size:0.85rem;margin-top:0.3rem;">Anubis</div>
-        </a>
-        <a href="https://github.com/SirsiMaster/sirsi-pantheon/releases/latest" style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:1rem;text-decoration:none;color:var(--text);transition:all 0.3s;" onmouseover="this.style.borderColor='hsl(45,52%,55%)'" onmouseout="this.style.borderColor=''">
-          <div style="font-size:1.8rem;">𓆄</div><div style="font-family:var(--font-heading);color:var(--gold);font-size:0.85rem;margin-top:0.3rem;">Ma'at</div>
-        </a>
-        <a href="https://github.com/SirsiMaster/sirsi-pantheon/releases/latest" style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:1rem;text-decoration:none;color:var(--text);transition:all 0.3s;" onmouseover="this.style.borderColor='hsl(45,52%,55%)'" onmouseout="this.style.borderColor=''">
-          <div style="font-size:1.8rem;">𓁟</div><div style="font-family:var(--font-heading);color:var(--gold);font-size:0.85rem;margin-top:0.3rem;">Thoth</div>
-        </a>
-        <a href="https://github.com/SirsiMaster/sirsi-pantheon/releases/latest" style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:1rem;text-decoration:none;color:var(--text);transition:all 0.3s;" onmouseover="this.style.borderColor='hsl(45,52%,55%)'" onmouseout="this.style.borderColor=''">
-          <div style="font-size:1.8rem;">𓁆</div><div style="font-family:var(--font-heading);color:var(--gold);font-size:0.85rem;margin-top:0.3rem;">Seshat</div>
-        </a>
-        <a href="https://github.com/SirsiMaster/sirsi-pantheon/releases/latest" style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:1rem;text-decoration:none;color:var(--text);transition:all 0.3s;" onmouseover="this.style.borderColor='hsl(45,52%,55%)'" onmouseout="this.style.borderColor=''">
-          <div style="font-size:1.8rem;">𓁐</div><div style="font-family:var(--font-heading);color:var(--gold);font-size:0.85rem;margin-top:0.3rem;">Isis</div>
-        </a>
-        <a href="https://github.com/SirsiMaster/sirsi-pantheon/releases/latest" style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:1rem;text-decoration:none;color:var(--text);transition:all 0.3s;" onmouseover="this.style.borderColor='hsl(45,52%,55%)'" onmouseout="this.style.borderColor=''">
-          <div style="font-size:1.8rem;">𓁯</div><div style="font-family:var(--font-heading);color:var(--gold);font-size:0.85rem;margin-top:0.3rem;">Neith</div>
-        </a>
+  <!-- BOTTOM STACK: install, ecosystem, footer -->
+  <div class="bottom-stack">
+    <div class="install-block reveal">
+      <code class="install-cmd" id="install-cmd">brew tap SirsiMaster/tools && brew install sirsi-pantheon</code>
+      <button class="install-copy" onclick="copyInstall()" aria-label="Copy" id="copy-btn">Copy</button>
+    </div>
+    <div class="install-note">macOS &middot; Apple Silicon &middot; Zero dependencies</div>
+
+    <div class="ecosystem">
+      <div class="ecosystem-label">The Sirsi Ecosystem &mdash; <a href="https://sirsi.ai" style="color:var(--color-gold);text-decoration:none;">sirsi.ai</a></div>
+      <div class="ecosystem-items">
+        <span class="ecosystem-item active">Pantheon</span>
+        <span class="ecosystem-item">NexusApp</span>
+        <span class="ecosystem-item">FinalWishes</span>
+        <span class="ecosystem-item">Assiduous</span>
       </div>
     </div>
-  </section>
+  </div>
 
-  <footer style="padding: 4rem 1rem; text-align: center; color: var(--text-dim); font-size: 0.9rem; border-top: 1px solid var(--border);">
-    <p style="font-family:var(--font-heading);color:var(--gold);font-size:1rem;letter-spacing:0.15em;margin-bottom:0.5rem;">SIRSI</p>
-    <p>𓇶 Sirsi Pantheon v0.9.0-rc1 · Built by Sirsi Technologies</p>
-    <p style="margin-top:0.5rem;font-size:0.8rem;">&copy; 2026 Sirsi Technologies — sirsi.ai</p>
-    <a href="https://sirsi.ai" style="color: var(--gold); text-decoration: none; margin-top: 1rem; display: block;">Back to Sirsi</a>
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <img src="assets/sirsi-logo-white.png" alt="Sirsi">
+        <p>Infrastructure intelligence, not infrastructure anxiety.</p>
+      </div>
+      <div class="footer-links">
+        <a href="getting-started.html">Getting Started</a>
+        <a href="faq.html">FAQ</a>
+        <a href="build-log.html">Build Log</a>
+        <a href="case-studies.html">Case Studies</a>
+        <a href="https://github.com/SirsiMaster/sirsi-pantheon">GitHub</a>
+        <a href="https://sirsi.ai">sirsi.ai</a>
+      </div>
+      <div class="footer-copy">&copy; 2026 Sirsi Technologies</div>
+    </div>
   </footer>
 
-  <!-- Click-to-flip handler -->
   <script>
-    document.querySelectorAll('.card').forEach(card => {
-      card.addEventListener('touchstart', (e) => {
-        e.stopPropagation();
+    // Scroll reveal
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+          observer.unobserve(e.target);
+        }
       });
-    });
+    }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+    // Copy to clipboard
+    function copyInstall() {
+      const text = document.getElementById('install-cmd').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('copy-btn');
+        btn.textContent = 'Copied';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+      });
+    }
   </script>
 
 </body>
