@@ -1,119 +1,112 @@
-# PANTHEON — Continuation Prompt (v0.16.0-ios)
-**Last Commit**: `39397b6` on `main`
-**Date**: April 14, 2026
-**Version**: v0.15.0 → v0.16.0-ios
-**Resume Key**: `PANTHEON-IOS-CLOUD-SESSION`
+# Sirsi Pantheon — Continuation Prompt
+**Session Date:** 2026-04-18
+**Version:** v0.16.0-alpha (tagged and released)
+**Binary:** `sirsi` installed at `~/.local/bin/sirsi`
 
 ---
 
-## How to Resume
+## What Was Accomplished (Session 2026-04-17/18)
 
-Paste this to the next Claude Code session:
+### Product Page (sirsi.ai/pantheon)
+- Built React route at `/pantheon` in SirsiNexusApp (`src/routes/pantheon.tsx`, ~545 lines)
+- Fullbleed layout — owns nav/footer, no parent chrome (`FULLBLEED_PATHS` in `__root.tsx`)
+- Linear/Stripe-inspired design: typography-driven hierarchy, no glass cards, terminals as visual anchors
+- Single radial gradient background, fixed attachment, diamond filigree at 2.5%
+- Animated typewriter terminals (TerminalDemo + MiniTerminal with IntersectionObserver)
+- Content: AI Memory leads, ~98% context reduction, real case study data universalized
+- Compatibility grid: Claude, Gemini, Codex | VS Code, Cursor, Windsurf, Zed | macOS, Linux, Windows | Apple Silicon, ARM, Intel
+- Deployed: 6 commits to SirsiNexusApp, all pushed to main
 
-> Resume Pantheon iOS development from `docs/CONTINUATION-PROMPT.md`. Resume key: `PANTHEON-IOS-CLOUD-SESSION`. Read the file, verify current state with `git log --oneline -10`, then continue with remaining work.
+### Docs Site (pantheon.sirsi.ai / sirsi-pantheon.web.app)
+- Firebase Hosting deployed: 31 files, 24 case studies live
+- Auto-deploy workflow: `.github/workflows/deploy-docs.yml` (triggers on docs/** changes)
+- `FIREBASE_SERVICE_ACCOUNT` secret added to GitHub repo
+- Project: `sirsi-nexus-live`, site: `sirsi-pantheon`
+- Custom domain `pantheon.sirsi.ai` needs DNS CNAME fix (web.app URL works)
 
----
+### Workstream Manager (sirsi work / sw)
+- `internal/workstream/`: Store, 8 Launchers, Inventory scanner (19 tests)
+- `cmd/sirsi/workstream.go`: list, add, rename, retire, launch, registry, setup, inventory
+- Fixed: `sw 5` now routes numeric args directly to launch (was broken — fell through to picker)
+- Binary installed to `~/.local/bin/sirsi` via `make install`
 
-## Session Summary (2026-04-13 → 2026-04-14)
+### Infrastructure
+- Version bumped: 0.15.0 → 0.16.0
+- Makefile modernized: `make build`, `make install`, `make test`, `make test-cover`
+- v0.16.0-alpha tagged and released via goreleaser (37 assets, 6 platforms)
+- Stale binaries (53 MB) cleaned from repo root
 
-Extended the iOS app with platform integrations, UX polish, CI pipeline, and architecture documentation. iOS simulator runtime (26.4) installed. All builds passing.
+### Coverage Sprint
+- Tests: 1,702 → 1,895 (+193)
+- Coverage: 53.0% → 59.4%
+- output: 24% → 70%, sight: 33% → 91%, ka: 35% → 57%, seshat: 27% → 57%
 
-### Commits (3)
-
-| Hash | Description |
-|------|-------------|
-| `a3a7140` | App Group, deep links, lock screen widgets, iPad layout, AccentColor |
-| `39fcbd3` | Interactive widgets, SwiftUI previews, loading skeletons, error states |
-| `39397b6` | TestFlight pipeline (Fastlane + CI), Neith's Triad architecture doc |
-
-### Prior Session Commits (5)
-
-| Hash | Description |
-|------|-------------|
-| `82870df` | iOS scaffold — 30 files: Go mobile bridge, SwiftUI app, iOS platform layer |
-| `6264f41` | Fix go.mod back to 1.24.2 |
-| `b980f3d` | 17 mobile bridge tests, all passing |
-| `1fbcd7e` | App icon — Eye of Horus 1024x1024 |
-| `766114a` | WidgetKit (Seba + Anubis) + Siri Shortcuts (3 intents) |
-
-### Architecture
-
-```
-SwiftUI (GUI + TUI)  →  PantheonBridge.swift (JSON)  →  PantheonCore.xcframework (gomobile)  →  internal/
-
-App Features:
-  5 Deity Views: Anubis, Ka, Thoth, Seba, Seshat
-  iPad: NavigationSplitView sidebar + detail
-  iPhone: TabView with deity tabs
-  Deep links: pantheon://anubis, pantheon://ka, etc.
-  Loading: shimmer skeletons, error-retry views
-
-WidgetKit:
-  Home screen: Seba hardware + Anubis scan (small/medium)
-  Lock screen: accessoryCircular + accessoryRectangular
-  Interactive: "Scan Now" (Anubis) + "Refresh" (Seba) buttons via AppIntent
-
-Data Sharing:
-  App Group: group.ai.sirsi.pantheon
-  SharedDataManager: writes scan/hardware results to shared UserDefaults
-  Widgets read from cache, fallback to live Go bridge calls
-
-CI/CD:
-  .github/workflows/ios.yml: auto-build on ios/** changes
-  Fastlane: build, beta (TestFlight), test, screenshots lanes
-  TestFlight deploy: manual trigger via workflow_dispatch
-
-Siri Shortcuts: scan, hardware, thoth sync
-SwiftUI Previews: all 5 deity views + ContentView (iPhone/iPad) + shared components
-```
-
-### Build Pipeline
-
-```bash
-make ios-framework                    # Go → xcframework via gomobile
-cd ios && xcodegen generate           # project.yml → .xcodeproj
-xcodebuild -target Pantheon -target PantheonWidgets -sdk iphoneos -arch arm64 CODE_SIGNING_ALLOWED=NO
-# → BUILD SUCCEEDED
-```
-
-### File Count
-- Go: 7 source + 6 test files
-- Swift: 25 files (app + widgets + shared + previews)
-- Config: project.yml, Gemfile, Fastfile, Appfile, entitlements (×2), Info.plist
-- CI: ios.yml workflow
-- Docs: ARCHITECTURE_IOS.md, README.md
+### README
+- Rewritten: AI memory leads, test count updated (1,895), compatibility table, Anubis/Ra editions
+- Product page badge added
 
 ---
 
-## Known Environment
+## Current State
 
-1. **iOS 26.4 simulator runtime installed** — `xcrun simctl list runtimes` shows iOS 26.4
-2. **Fastlane not installed locally** — `gem install fastlane` needed for local use
-3. **go.mod pinned to 1.24.2** — x/mobile wants 1.25, transitive deps downgraded
-4. **gomobile installed** at `~/go/bin/gomobile`
-5. **No Apple Developer provisioning** — building with `CODE_SIGNING_ALLOWED=NO`
+### What Works
+- `sirsi scan` — 58 rules, 7 domains, sub-second
+- `sirsi ghosts` — 17 macOS locations
+- `sirsi network --fix` — encrypted DNS + firewall with auto-revert
+- `sirsi thoth sync` — persistent AI memory via MCP
+- `sirsi mcp` — MCP server (5 tools) for Claude/Cursor/Windsurf
+- `sirsi work` / `sw` — workstream manager, launches Claude sessions
+- `sirsi quality` — Ma'at governance gate
+- `sirsi dedup` — three-phase file deduplication with web GUI
+- `sirsi doctor` — system health diagnostic
+- `sirsi hardware` — CPU/GPU/RAM/ANE detection
+- TUI: bubbletea-based (`sirsi` with no args)
+
+### What Doesn't Work Yet
+- iOS app: scaffold at `ios/`, needs gomobile framework build + TestFlight submission
+- Android app: doesn't exist, needs Kotlin/Jetpack Compose wrapper
+- Ra (enterprise): no fleet orchestration shipped
+- `pantheon.sirsi.ai` custom domain: DNS not resolving (use sirsi-pantheon.web.app)
+- Homebrew: may need formula update for v0.16.0
+
+### Test Coverage Below 50%
+- workstream: 49.9% (needs launcher/inventory mocks)
+
+### Modules With No Tests
+- ra, stele, help, version
 
 ---
 
-## Remaining Work
+## Priority Queue
 
-### High Priority (requires Apple Developer portal)
-- [ ] Apple Developer account setup (Team ID, certificates)
-- [ ] iCloud sync for Thoth memory (CloudKit container)
-- [ ] Push notifications for Ra fleet alerts (APNs certificate)
-- [ ] Code signing via Fastlane match (private Git repo for certs)
-- [ ] First TestFlight beta deployment
+1. **iOS app** — build PantheonCore.xcframework via gomobile, wire to SwiftUI scaffold, TestFlight
+2. **Android app** — new Kotlin project, gomobile bridge, same core
+3. **FinalWishes** — May 15 deadline (27 days from 2026-04-18)
+4. **Coverage sprint** — workstream to 70%+, add test files for ra/stele/version
+5. **Homebrew tap update** — brew formula needs v0.16.0
+6. **pantheon.sirsi.ai DNS** — add CNAME record for custom domain
 
-### Medium Priority
-- [ ] Unit tests for Swift layer (XCTest)
-- [ ] Widget snapshot tests
-- [ ] Background App Refresh for periodic Anubis scans
-- [ ] Spotlight/Core Spotlight indexing for scan results
-- [ ] Share sheet integration (export scan reports)
+---
 
-### Lower Priority
-- [ ] StoreKit 2 integration (if monetized)
-- [ ] Accessibility audit (VoiceOver, Dynamic Type)
-- [ ] Localization (at minimum: English, Spanish)
-- [ ] App Clips for quick scan
-- [ ] watchOS companion (Anubis summary complication)
+## Key Design Decisions (for future sessions)
+
+### Product Page Design
+- Emerald background, gold accent, white text (no green text)
+- Cinzel 600 headings (uppercase, tracking 0.08em), Inter 300 body
+- No glass cards, no gradient borders, no glow effects
+- Terminals are the only elements with container treatment
+- Three text levels: white, white/60, white/30
+- Thin gold vertical bars (`w-px h-4`) as list bullets
+- Study Linear/Vercel/Stripe before making changes
+
+### Brand Hierarchy
+- Sirsi = parent (infinity loop logo, `/sirsi-logo-white.png`)
+- Pantheon = product suite (𓁢 glyph as web mark)
+- Anubis = free tier, Ra = enterprise tier
+- Egyptian names are codenames, not the brand personality
+
+### Content Positioning
+- AI Memory / Context Reduction leads everything
+- ~98% context reduction is the headline metric (universal, not case-specific)
+- Cold-start re-reads is the pain point
+- All claims verified against shipped code
