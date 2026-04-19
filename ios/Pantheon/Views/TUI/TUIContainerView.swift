@@ -64,7 +64,7 @@ struct TUIContainerView: View {
 @MainActor
 final class TerminalState: ObservableObject {
     @Published var lines: [TUILine] = [
-        TUILine(text: "𓁢 Pantheon v0.15.0-ios", style: .gold),
+        TUILine(text: "𓁢 Pantheon v0.16.0-ios", style: .gold),
         TUILine(text: "Type a command: scan, ghosts, thoth, hardware, seshat", style: .dim),
         TUILine(text: "─────────────────────────────────────────", style: .dim),
     ]

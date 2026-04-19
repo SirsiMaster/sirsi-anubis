@@ -5,7 +5,7 @@ BUILD_DIR ?= bin
 INSTALL_DIR ?= $(HOME)/.local/bin
 GO_FLAGS ?= -ldflags="-X main.version=v$(VERSION)"
 
-.PHONY: all clean build install uninstall build-agent build-menubar bundle publish test test-proof ios ios-framework
+.PHONY: all clean build install uninstall build-agent build-menubar bundle publish test test-proof ios ios-framework android-aar
 
 all: build
 
@@ -93,6 +93,15 @@ ios: ios-framework
 		-configuration Release \
 		archive -archivePath $(BUILD_DIR)/ios/Pantheon.xcarchive
 	@echo "✅ iOS archive: $(BUILD_DIR)/ios/Pantheon.xcarchive"
+
+# --- Android AAR (gomobile) ---
+# Builds pantheon.aar for the Android app
+android-aar:
+	@echo "🤖 Building pantheon.aar..."
+	@which gomobile > /dev/null 2>&1 || (echo "❌ gomobile not found. Install: go install golang.org/x/mobile/cmd/gomobile@latest && gomobile init" && exit 1)
+	@mkdir -p $(BUILD_DIR)/android
+	gomobile bind -target=android -o $(BUILD_DIR)/android/pantheon.aar $(GO_FLAGS) ./mobile/
+	@echo "✅ AAR built: $(BUILD_DIR)/android/pantheon.aar"
 
 # --- Test ---
 test:
