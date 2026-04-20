@@ -189,9 +189,9 @@
   <section>
     <div class="container">
       <h2>Why Pantheon Exists</h2>
-      <p class="sub">Three capabilities that don't exist anywhere else in one tool</p>
+      <p class="sub">Four capabilities that don't exist anywhere else in one tool</p>
 
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-bottom:3rem;">
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1.5rem;margin-bottom:3rem;">
 
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:2rem;">
           <div style="font-size:2rem;margin-bottom:0.8rem;">👻</div>
@@ -209,6 +209,12 @@
           <div style="font-size:2rem;margin-bottom:0.8rem;">🧠</div>
           <div style="font-family:var(--font-heading);color:var(--gold);font-size:1.1rem;margin-bottom:0.5rem;">AI Memory as Infrastructure</div>
           <p style="color:var(--text-dim);font-size:0.9rem;line-height:1.6;">Persistent project memory via MCP. Your AI coding sessions start with full context instead of re-reading thousands of source lines. Works with Claude, Cursor, and Windsurf. <code style="font-family:var(--font-mono);color:var(--emerald-light);font-size:0.85rem;">sirsi thoth init</code></p>
+        </div>
+
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:2rem;">
+          <div style="font-size:2rem;margin-bottom:0.8rem;">⚡</div>
+          <div style="font-family:var(--font-heading);color:var(--gold);font-size:1.1rem;margin-bottom:0.5rem;">Token Optimization</div>
+          <p style="color:var(--text-dim);font-size:0.9rem;line-height:1.6;">RTK strips output noise. Vault sandboxes large results in SQLite. Horus serves code outlines instead of full files. Together they cut AI context costs by 60-98%. <code style="font-family:var(--font-mono);color:var(--emerald-light);font-size:0.85rem;">sirsi horus outline src/file.go</code></p>
         </div>
 
       </div>
@@ -587,6 +593,123 @@
                 <a href="/net" class="btn-page">Full Page</a>
                 <a href="https://github.com/SirsiMaster/sirsi-pantheon/releases/latest" class="btn-dl">Download</a>
                 <a href="https://github.com/SirsiMaster/sirsi-pantheon/tree/main/internal/neith" class="btn-src">Source</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ RTK ═══ -->
+        <div class="flip-container" onclick="this.classList.toggle('flipped')">
+          <div class="flipper">
+            <div class="card-front">
+              <span class="badge">shipped</span>
+              <div class="card-header">
+                <span class="glyph">⚡</span>
+                <div><div class="card-title">RTK</div><div class="card-role">Output Filter</div></div>
+              </div>
+              <p class="card-desc">Strips noise from AI tool output — ANSI codes, repeated lines, blank runs. 60-90% reduction before anything hits the context window. Subsumes the RTK (Rust Token Killer) proxy.</p>
+              <div class="card-meta">
+                <div class="meta-item"><span class="meta-value">12</span><span class="meta-label">Tests</span></div>
+                <div class="meta-item"><span class="meta-value">60-90%</span><span class="meta-label">Reduction</span></div>
+                <div class="meta-item"><span class="meta-value">0</span><span class="meta-label">Deps</span></div>
+              </div>
+              <div class="flip-hint"><span>↻ click to flip</span></div>
+            </div>
+            <div class="card-back">
+                <span class="label-dev">Developer</span>
+              </div>
+              <div class="dev-grid">
+                <div class="dev-item"><label>Package</label><div class="dev-val path">internal/rtk/</div></div>
+                <div class="dev-item"><label>Coverage</label><div class="dev-val">(new)</div></div>
+                <div class="dev-item"><label>Test Count</label><div class="dev-val">12</div></div>
+                <div class="dev-item"><label>Binary Size</label><div class="dev-val">included</div></div>
+                <div class="dev-item"><label>Commands</label><div class="dev-val">rtk filter, rtk stats</div></div>
+                <div class="dev-item"><label>Dependencies</label><div class="dev-val">none</div></div>
+                <div class="dev-item"><label>MCP Tool</label><div class="dev-val">filter_output</div></div>
+                <div class="dev-item"><label>ADR</label><div class="dev-val">—</div></div>
+              </div>
+              <div class="back-actions">
+                <a href="/rtk" class="btn-page">Full Page</a>
+                <a href="https://github.com/SirsiMaster/sirsi-pantheon/releases" class="btn-dl">Download</a>
+                <a href="https://github.com/SirsiMaster/sirsi-pantheon/tree/main/internal/rtk" class="btn-src">Source</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ VAULT ═══ -->
+        <div class="flip-container" onclick="this.classList.toggle('flipped')">
+          <div class="flipper">
+            <div class="card-front">
+              <span class="badge">shipped</span>
+              <div class="card-header">
+                <span class="glyph">🏛️</span>
+                <div><div class="card-title">Vault</div><div class="card-role">Context Sandbox</div></div>
+              </div>
+              <p class="card-desc">Sandboxes large tool output in SQLite FTS5 instead of consuming context tokens. Also indexes source code for BM25-ranked search — returns relevant chunks, not full files.</p>
+              <div class="card-meta">
+                <div class="meta-item"><span class="meta-value">9</span><span class="meta-label">Tests</span></div>
+                <div class="meta-item"><span class="meta-value">98%</span><span class="meta-label">Savings</span></div>
+                <div class="meta-item"><span class="meta-value">FTS5</span><span class="meta-label">Engine</span></div>
+              </div>
+              <div class="flip-hint"><span>↻ click to flip</span></div>
+            </div>
+            <div class="card-back">
+                <span class="label-dev">Developer</span>
+              </div>
+              <div class="dev-grid">
+                <div class="dev-item"><label>Package</label><div class="dev-val path">internal/vault/</div></div>
+                <div class="dev-item"><label>Coverage</label><div class="dev-val">(new)</div></div>
+                <div class="dev-item"><label>Test Count</label><div class="dev-val">9</div></div>
+                <div class="dev-item"><label>Binary Size</label><div class="dev-val">included</div></div>
+                <div class="dev-item"><label>Commands</label><div class="dev-val">vault store, search, index</div></div>
+                <div class="dev-item"><label>Dependencies</label><div class="dev-val">modernc.org/sqlite</div></div>
+                <div class="dev-item"><label>MCP Tools</label><div class="dev-val">vault_store, code_search</div></div>
+                <div class="dev-item"><label>ADR</label><div class="dev-val">—</div></div>
+              </div>
+              <div class="back-actions">
+                <a href="/vault" class="btn-page">Full Page</a>
+                <a href="https://github.com/SirsiMaster/sirsi-pantheon/releases" class="btn-dl">Download</a>
+                <a href="https://github.com/SirsiMaster/sirsi-pantheon/tree/main/internal/vault" class="btn-src">Source</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ HORUS ═══ -->
+        <div class="flip-container" onclick="this.classList.toggle('flipped')">
+          <div class="flipper">
+            <div class="card-front">
+              <span class="badge">shipped</span>
+              <div class="card-header">
+                <span class="glyph">𓂀</span>
+                <div><div class="card-title">Horus</div><div class="card-role">Code Graph</div></div>
+              </div>
+              <p class="card-desc">Parses Go source into structural symbol graphs. Serves compact file outlines (declarations only, no bodies) that are 8-49x smaller than the full source. Uses go/ast from the standard library.</p>
+              <div class="card-meta">
+                <div class="meta-item"><span class="meta-value">10</span><span class="meta-label">Tests</span></div>
+                <div class="meta-item"><span class="meta-value">8-49×</span><span class="meta-label">Reduction</span></div>
+                <div class="meta-item"><span class="meta-value">Go AST</span><span class="meta-label">Engine</span></div>
+              </div>
+              <div class="flip-hint"><span>↻ click to flip</span></div>
+            </div>
+            <div class="card-back">
+                <span class="label-dev">Developer</span>
+              </div>
+              <div class="dev-grid">
+                <div class="dev-item"><label>Package</label><div class="dev-val path">internal/horus/</div></div>
+                <div class="dev-item"><label>Coverage</label><div class="dev-val">(new)</div></div>
+                <div class="dev-item"><label>Test Count</label><div class="dev-val">10</div></div>
+                <div class="dev-item"><label>Binary Size</label><div class="dev-val">included</div></div>
+                <div class="dev-item"><label>Commands</label><div class="dev-val">horus scan, outline, symbols</div></div>
+                <div class="dev-item"><label>Dependencies</label><div class="dev-val">go/ast (stdlib)</div></div>
+                <div class="dev-item"><label>MCP Tools</label><div class="dev-val">code_symbols, code_outline</div></div>
+                <div class="dev-item"><label>ADR</label><div class="dev-val">—</div></div>
+              </div>
+              <div class="back-actions">
+                <a href="/horus" class="btn-page">Full Page</a>
+                <a href="https://github.com/SirsiMaster/sirsi-pantheon/releases" class="btn-dl">Download</a>
+                <a href="https://github.com/SirsiMaster/sirsi-pantheon/tree/main/internal/horus" class="btn-src">Source</a>
               </div>
             </div>
           </div>

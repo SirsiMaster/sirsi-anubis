@@ -6,13 +6,13 @@
 project: sirsi-pantheon
 repo: github.com/SirsiMaster/sirsi-pantheon
 language: Go 1.22+ / TypeScript / Kotlin / Swift
-version: 0.16.1-alpha
+version: 0.17.0
 binary_count: 8 (anubis, guard, maat, scarab, sirsi, sirsi-agent, sirsi-menubar, thoth)
 test_count: 1895+
 line_count: ~53,000
-module_count: 30
+module_count: 33
 command_count: 92
-mcp_tools: 5 (scan_workspace, ghost_report, health_check, classify_files, watchdog_alerts)
+mcp_tools: 15 (scan_workspace, ghost_report, health_check, classify_files, watchdog_alerts + 10 new RTK/Vault/Horus tools)
 mobile_targets: 2 (iOS xcframework, Android AAR)
 ios_app: ios/ (SwiftUI, 15 Go bindings, WidgetKit, Fastlane)
 android_app: android/ (Jetpack Compose, 15 Go bindings, Material 3)
@@ -39,6 +39,9 @@ vscode_extension: extensions/vscode/ (TypeScript, 7 modules, 10 commands, Thoth 
 # Hapi: internal/hapi/ (GPU, dedup, snapshots)
 # Ma'at: internal/maat/ (QA/QC governance — coverage, canon, pipeline)
 # Horus: internal/horus/ (publisher + scoped FS index — Phase 3: 8 targeted roots, demand-driven)
+# RTK: internal/rtk/ (output filter — ANSI strip, dedup, truncation. 4 files, 12 tests)
+# Vault: internal/vault/ (SQLite FTS5 context sandbox + BM25 code search. 4 files, 9 tests)
+# Horus v2: internal/horus/ (Go AST symbol graph, file outlines, context queries. 5 files, 10 tests)
 # 𓇶 Ra: internal/ra/ (The Hypervisor — Supreme Overseer)
 # 𓁯 Net: internal/neith/ (The Weaver — Owns Plan, Canon & Timelines)
 # 
@@ -48,13 +51,17 @@ vscode_extension: extensions/vscode/ (TypeScript, 7 modules, 10 commands, Thoth 
 #   Isis: Healer/Remediation engine (internal/isis/)
 #
 # 𓀰 THE MACHINE GODS (Infrastructure & OS)
-#   Horus: The Eye/Shared FS Index
+#   Horus: The Eye/Shared FS Index + AST Symbol Graph
 #   Anubis: The Judge/Hygiene
 #   Ka: The Spirit/Ghost Hunter
 #   Sekhmet: The Warrior/Watchdog/NPU
 #   Hapi: The Flow/Accelerator
 #   Scarab: The Roller/Discovery
 #   Seba: The Star/Topology + **Architectural Mapping Sovereignty**
+#   RTK: The Sieve/Output Filter (ANSI strip, dedup, truncation)
+#   Vault: The Keeper/Context Sandbox (SQLite FTS5, BM25 search)
+#
+# 12 deity/module archetypes total (9 original + RTK, Vault, Horus v2)
 #
 #   Cold-start benchmark, dollar savings, freshness meter, coverage check,
 #   context budget, lifetime counter, premium webview report.
@@ -93,7 +100,7 @@ vscode_extension: extensions/vscode/ (TypeScript, 7 modules, 10 commands, Thoth 
 # 15. Cross-Agent Referral Logic: deities allude to other deities that
 #     can act upon their findings (cohesive ecosystem, modular design).
 
-## Known Limitations (as of v0.16.1-alpha)
+## Known Limitations (as of v0.17.0)
 # - GUI folder picker only works on macOS (Linux: zenity/kdialog in platform/linux.go)
 # - Trash integration only works on macOS (Linux: gio trash in platform/linux.go)
 # - 15/22 modules at 90%+ test coverage (weighted avg 90.1%)

@@ -14,7 +14,7 @@ The Pantheon is organized into six divine pillars, each assigned a canonical Anc
 
 - **𓁢 ANUBIS (Hygiene)**: Infrastructure hygiene, ghost app hunting (Ka), file deduplication (Mirror), and resource protection (Guard).
 - **𓆄 MA'AT (Governance)**: Codebase auditing (Scales), QA standards, and autonomous remediation (Isis).
-- **𓁟 THOTH (Knowledge)**: Persistent project memory, rule-grounded intelligence, and the zero-token brain ledger.
+- **𓁟 THOTH (Knowledge)**: Persistent project memory, rule-grounded intelligence, and the zero-token brain ledger. RTK output filtering, Vault context sandboxing, Horus structural code graphs.
 - **𓈗 HAPI (Compute)**: Hardware optimization, GPU/VRAM flow, and ANE/NPU acceleration (Sekhmet).
 - **𓇽 SEBA (Mapping)**: Infrastructure topology, project registry (Book), and fleet discovery (Scarab).
 - **𓁆 SESHAT (Scribe)**: Knowledge bridge (Gemini/NotebookLM), MCP context server, and AI sync.
@@ -40,6 +40,11 @@ The Pantheon is organized into six divine pillars, each assigned a canonical Anc
                     │  │  Seba  │  │  Seshat   │  │
                     │  │ (Map)  │  │ (Bridge)  │  │
                     │  └────────┘  └───────────┘  │
+                    │                             │
+                    │  ┌─────────────────────────┐ │
+                    │  │  Token Intelligence     │ │
+                    │  │  RTK→Vault→Horus        │ │
+                    │  └─────────────────────────┘ │
                     │                             │
                     │       Transport Layer       │
                     │  (SSH / gRPC / kubectl)     │
@@ -84,6 +89,18 @@ The Pantheon is organized into six divine pillars, each assigned a canonical Anc
 - **Engine:** Gemini Bridge, MCP Server.
 - **Scope:** Bidirectional sync between Gemini, NotebookLM, and Antigravity IDE.
 - **Functions:** `sync`, `list`, `server`.
+
+### 2.7 Token Intelligence Layer
+
+The Token Intelligence Layer composes three modules that minimize token consumption before content reaches AI context windows. They operate as a pipeline: **RTK -> Vault -> Horus**.
+
+- **RTK (The Sieve)** — Output filter applied at the source. Strips ANSI escape sequences, deduplicates consecutive identical lines, and truncates with tail preservation. Reduces raw tool output by 60-90% before it enters the context window. CLI: `sirsi rtk`. MCP tool: `filter_output`.
+
+- **Vault (The Keeper)** — Context sandbox for output that is still too large after RTK filtering. Stores content in a SQLite FTS5 database and builds a BM25 code search index. Content is queryable later without occupying context window space. CLI: `sirsi vault`. MCP tools: `vault_store`, `vault_search`, `vault_get`, `vault_stats`, `code_index`, `code_search`.
+
+- **Horus (The All-Seeing)** — Structural code graph engine. Uses Go AST symbol extraction to produce file outlines (declarations only, no function bodies) that are 8-49x smaller than full source. Serves symbol context queries for targeted code understanding without reading entire files. CLI: `sirsi horus`. MCP tools: `code_symbols`, `code_outline`, `code_context`.
+
+**Composition**: All three modules compose naturally. RTK filters raw output, Vault sandboxes what remains too large, and Horus replaces full-file reads with structural outlines. Together they add **10 new MCP tools** and **8 new Stele events** to the platform.
 
 ---
 

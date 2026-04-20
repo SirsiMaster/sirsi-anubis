@@ -32,11 +32,15 @@
 | **𓆄 Ma'at** | Quality Gate | Weigher | QA/QC Governance. Weighs the heart (code) against the feather. |
 | **𓁐 Isis** | Health & Remediation | Restorer | Remediation engine, doctor, network security, process guard, auto-fix. Absorbs former Sekhmet watchdog duties. |
 | **𓁆 Seshat** | Knowledge Bridge | Bridge | Ingestion/export, Gemini Bridge, bidirectional sync: Gemini <> NotebookLM. |
+| **⚡ RTK** | Output Filter | Sieve | Strips ANSI, deduplicates lines, truncates with tail preservation. Filters output at the source before AI context. |
+| **🏛️ Vault** | Context Sandbox | Keeper | SQLite FTS5 output vault + BM25 code search index. Sandboxes large output for later query. |
+| **𓂀 Horus** | Code Graph | All-Seeing | Go AST symbol extraction, file outlines (8-49x smaller), symbol context queries. Structural code analysis engine. |
 
 **Dependencies**:
 - **Isis** depends on **Ma'at** (for finding the wounds that need healing) and **Hapi** (for hardware-accelerated operations).
 - **Net** depends on **Thoth** (for the logs of time) and **Ma'at** (for the current state of truth).
 - **Seshat** depends on **Thoth** (for Knowledge Items to bridge) and **Net** (for architecture templates).
+- **RTK** operates independently (stateless filter). **Vault** depends on **RTK** (filtered output flows into vault). **Horus** operates independently (reads source AST directly).
 
 ---
 

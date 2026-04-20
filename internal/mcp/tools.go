@@ -11,10 +11,14 @@ import (
 	"time"
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/brain"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/horus"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal/rules"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/ka"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/rtk"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/stele"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/thoth"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/vault"
 )
 
 // registerTools adds Pantheon tools to the MCP server.
@@ -97,6 +101,188 @@ func registerTools(s *Server) {
 			Properties: map[string]SchemaField{},
 		},
 	}, handleDetectHardware)
+
+	// ── RTK: Output Filter ──────────────────────────────────────────
+
+	s.RegisterTool(Tool{
+		Name:        "filter_output",
+		Description: "Apply RTK output filtering (ANSI strip, dedup, truncation) to raw text. Use this to compress large tool outputs before analysis. Returns filtered text with reduction statistics.",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]SchemaField{
+				"text": {
+					Type:        "string",
+					Description: "Raw output text to filter.",
+				},
+				"max_lines": {
+					Type:        "number",
+					Description: "Truncate after N lines (0 = unlimited).",
+				},
+			},
+			Required: []string{"text"},
+		},
+	}, handleFilterOutput)
+
+	// ── Vault: Context Sandbox ──────────────────────────────────────
+
+	s.RegisterTool(Tool{
+		Name:        "vault_store",
+		Description: "Sandbox large output (logs, data, command results) into the context vault instead of consuming context window tokens. Returns an entry ID and token count. Use vault_search to query later.",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]SchemaField{
+				"content": {
+					Type:        "string",
+					Description: "The output to sandbox.",
+				},
+				"source": {
+					Type:        "string",
+					Description: "What produced this output (e.g. 'npm test', 'git log').",
+				},
+				"tag": {
+					Type:        "string",
+					Description: "Category tag for filtering (e.g. 'logs', 'test-output', 'build').",
+				},
+			},
+			Required: []string{"content"},
+		},
+	}, handleVaultStore)
+
+	s.RegisterTool(Tool{
+		Name:        "vault_search",
+		Description: "Search the context vault using full-text search (FTS5 BM25). Returns matching snippets without loading full entries into context. Supports AND, OR, NOT, phrase \"like this\", prefix*.",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]SchemaField{
+				"query": {
+					Type:        "string",
+					Description: "FTS5 search query.",
+				},
+				"limit": {
+					Type:        "number",
+					Description: "Max results (default 10).",
+				},
+			},
+			Required: []string{"query"},
+		},
+	}, handleVaultSearch)
+
+	s.RegisterTool(Tool{
+		Name:        "vault_get",
+		Description: "Retrieve a specific vault entry by ID with full content. Use sparingly — loads full content into context.",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]SchemaField{
+				"id": {
+					Type:        "number",
+					Description: "Entry ID from vault_store or vault_search.",
+				},
+			},
+			Required: []string{"id"},
+		},
+	}, handleVaultGet)
+
+	s.RegisterTool(Tool{
+		Name:        "vault_stats",
+		Description: "Get vault statistics: total entries, bytes, tokens saved, tag breakdown.",
+		InputSchema: InputSchema{
+			Type:       "object",
+			Properties: map[string]SchemaField{},
+		},
+	}, handleVaultStats)
+
+	// ── Vault: Code Index ───────────────────────────────────────────
+
+	s.RegisterTool(Tool{
+		Name:        "code_index",
+		Description: "Build or refresh the code search index for a project. Run this once per project, then use code_search for queries. Indexes Go, Python, TypeScript, Rust, and 15+ other languages.",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]SchemaField{
+				"path": {
+					Type:        "string",
+					Description: "Project root to index. Defaults to current directory.",
+				},
+			},
+		},
+	}, handleCodeIndex)
+
+	s.RegisterTool(Tool{
+		Name:        "code_search",
+		Description: "Search indexed source code using BM25 full-text ranking. Returns the most relevant code chunks — not full files. 8-40x smaller than reading entire files.",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]SchemaField{
+				"query": {
+					Type:        "string",
+					Description: "Natural language or keyword search.",
+				},
+				"limit": {
+					Type:        "number",
+					Description: "Max results (default 5).",
+				},
+			},
+			Required: []string{"query"},
+		},
+	}, handleCodeSearch)
+
+	// ── Horus: Structural Code Graph ────────────────────────────────
+
+	s.RegisterTool(Tool{
+		Name:        "code_symbols",
+		Description: "Extract structural code symbols (types, functions, methods, interfaces) from a Go project. Returns declarations and signatures — not full source — for token-efficient code review.",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]SchemaField{
+				"path": {
+					Type:        "string",
+					Description: "Project root to analyze. Defaults to current directory.",
+				},
+				"kind": {
+					Type:        "string",
+					Description: "Filter by kind: type, func, method, interface, struct, const, var.",
+				},
+				"filter": {
+					Type:        "string",
+					Description: "Filter by symbol name pattern (glob with *).",
+				},
+			},
+		},
+	}, handleCodeSymbols)
+
+	s.RegisterTool(Tool{
+		Name:        "code_outline",
+		Description: "Get a compact outline of a source file: package, type declarations, function signatures. No function bodies. 8-49x smaller than the full file.",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]SchemaField{
+				"path": {
+					Type:        "string",
+					Description: "File path to outline.",
+				},
+			},
+			Required: []string{"path"},
+		},
+	}, handleCodeOutline)
+
+	s.RegisterTool(Tool{
+		Name:        "code_context",
+		Description: "Get minimal context for understanding a specific symbol: its declaration, documentation, parent type, and sibling methods.",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]SchemaField{
+				"path": {
+					Type:        "string",
+					Description: "Project root to analyze.",
+				},
+				"symbol": {
+					Type:        "string",
+					Description: "Symbol name (e.g. 'Server', 'NewPerson', 'handleToolsCall').",
+				},
+			},
+			Required: []string{"symbol"},
+		},
+	}, handleCodeContext)
 }
 
 // handleScanWorkspace runs the Jackal scan engine on a workspace.
@@ -396,6 +582,368 @@ func shortenHomePath(path string) string {
 		return "~" + path[len(home):]
 	}
 	return path
+}
+
+// ── RTK Handlers ────────────────────────────────────────────────
+
+func handleFilterOutput(args map[string]interface{}) (*ToolResult, error) {
+	text, _ := args["text"].(string)
+	if text == "" {
+		return textResult("Error: text parameter is required", true), nil
+	}
+
+	cfg := rtk.DefaultConfig()
+	if maxLines, ok := args["max_lines"].(float64); ok && maxLines > 0 {
+		cfg.MaxLines = int(maxLines)
+	}
+
+	f := rtk.New(cfg)
+	result := f.Apply(text)
+
+	stele.Inscribe("rtk", stele.TypeRTKFilter, "", map[string]string{
+		"original_bytes": fmt.Sprintf("%d", result.OriginalBytes),
+		"filtered_bytes": fmt.Sprintf("%d", result.FilteredBytes),
+		"ratio":          fmt.Sprintf("%.2f", result.Ratio),
+		"dupes":          fmt.Sprintf("%d", result.DupsCollapsed),
+	})
+
+	var sb strings.Builder
+	sb.WriteString(result.Output)
+	sb.WriteString(fmt.Sprintf("\n\n─── RTK Stats ───\n"))
+	sb.WriteString(fmt.Sprintf("Original: %d bytes → Filtered: %d bytes (%.0f%% reduction)\n",
+		result.OriginalBytes, result.FilteredBytes, (1-result.Ratio)*100))
+	sb.WriteString(fmt.Sprintf("Lines removed: %d (duplicates: %d)\n", result.LinesRemoved, result.DupsCollapsed))
+	if result.Truncated {
+		sb.WriteString("⚠ Output was truncated\n")
+	}
+
+	return textResult(sb.String(), false), nil
+}
+
+// ── Vault Handlers ──────────────────────────────────────────────
+
+func openVaultStore() (*vault.Store, error) {
+	return vault.Open(vault.DefaultPath())
+}
+
+func handleVaultStore(args map[string]interface{}) (*ToolResult, error) {
+	content, _ := args["content"].(string)
+	if content == "" {
+		return textResult("Error: content parameter is required", true), nil
+	}
+	source, _ := args["source"].(string)
+	tag, _ := args["tag"].(string)
+
+	s, err := openVaultStore()
+	if err != nil {
+		return textResult(fmt.Sprintf("Error opening vault: %v", err), true), nil
+	}
+	defer s.Close()
+
+	// Estimate tokens (rough: ~4 chars per token).
+	tokens := len(content) / 4
+
+	entry, err := s.Store(source, tag, content, tokens)
+	if err != nil {
+		return textResult(fmt.Sprintf("Error storing: %v", err), true), nil
+	}
+
+	stele.Inscribe("vault", stele.TypeVaultStore, "", map[string]string{
+		"source": source,
+		"tag":    tag,
+		"tokens": fmt.Sprintf("%d", tokens),
+		"bytes":  fmt.Sprintf("%d", len(content)),
+	})
+
+	return textResult(fmt.Sprintf("Stored in vault (ID: %d, ~%d tokens, %d bytes).\nUse vault_search to query or vault_get %d to retrieve.",
+		entry.ID, tokens, len(content), entry.ID), false), nil
+}
+
+func handleVaultSearch(args map[string]interface{}) (*ToolResult, error) {
+	query, _ := args["query"].(string)
+	if query == "" {
+		return textResult("Error: query parameter is required", true), nil
+	}
+	limit := 10
+	if l, ok := args["limit"].(float64); ok && l > 0 {
+		limit = int(l)
+	}
+
+	s, err := openVaultStore()
+	if err != nil {
+		return textResult(fmt.Sprintf("Error opening vault: %v", err), true), nil
+	}
+	defer s.Close()
+
+	result, err := s.Search(query, limit)
+	if err != nil {
+		return textResult(fmt.Sprintf("Search error: %v", err), true), nil
+	}
+
+	stele.Inscribe("vault", stele.TypeVaultSearch, "", map[string]string{
+		"query": query,
+		"hits":  fmt.Sprintf("%d", result.TotalHits),
+	})
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Vault search: %q — %d results\n\n", query, result.TotalHits))
+	for _, e := range result.Entries {
+		sb.WriteString(fmt.Sprintf("[%d] source=%s tag=%s (%s)\n  %s\n\n",
+			e.ID, e.Source, e.Tag, e.CreatedAt, e.Snippet))
+	}
+
+	return textResult(sb.String(), false), nil
+}
+
+func handleVaultGet(args map[string]interface{}) (*ToolResult, error) {
+	idFloat, ok := args["id"].(float64)
+	if !ok {
+		return textResult("Error: id parameter is required", true), nil
+	}
+
+	s, err := openVaultStore()
+	if err != nil {
+		return textResult(fmt.Sprintf("Error opening vault: %v", err), true), nil
+	}
+	defer s.Close()
+
+	entry, err := s.Get(int64(idFloat))
+	if err != nil {
+		return textResult(fmt.Sprintf("Error: %v", err), true), nil
+	}
+
+	return textResult(fmt.Sprintf("Vault Entry %d (source=%s, tag=%s, %d tokens)\n\n%s",
+		entry.ID, entry.Source, entry.Tag, entry.Tokens, entry.Content), false), nil
+}
+
+func handleVaultStats(_ map[string]interface{}) (*ToolResult, error) {
+	s, err := openVaultStore()
+	if err != nil {
+		return textResult(fmt.Sprintf("Error opening vault: %v", err), true), nil
+	}
+	defer s.Close()
+
+	stats, err := s.Stats()
+	if err != nil {
+		return textResult(fmt.Sprintf("Error: %v", err), true), nil
+	}
+
+	var sb strings.Builder
+	sb.WriteString("Vault Statistics\n\n")
+	sb.WriteString(fmt.Sprintf("Entries: %d\n", stats.TotalEntries))
+	sb.WriteString(fmt.Sprintf("Total bytes: %d\n", stats.TotalBytes))
+	sb.WriteString(fmt.Sprintf("Total tokens saved: %d\n", stats.TotalTokens))
+	if stats.OldestEntry != "" {
+		sb.WriteString(fmt.Sprintf("Oldest: %s\n", stats.OldestEntry))
+		sb.WriteString(fmt.Sprintf("Newest: %s\n", stats.NewestEntry))
+	}
+	if len(stats.TagCounts) > 0 {
+		sb.WriteString("\nTags:\n")
+		for tag, count := range stats.TagCounts {
+			label := tag
+			if label == "" {
+				label = "(untagged)"
+			}
+			sb.WriteString(fmt.Sprintf("  %s: %d\n", label, count))
+		}
+	}
+
+	return textResult(sb.String(), false), nil
+}
+
+// ── Code Index Handlers ─────────────────────────────────────────
+
+func handleCodeIndex(args map[string]interface{}) (*ToolResult, error) {
+	path, _ := args["path"].(string)
+	if path == "" {
+		var err error
+		path, err = os.Getwd()
+		if err != nil {
+			return textResult("Could not determine working directory", true), nil
+		}
+	}
+
+	ci, err := vault.OpenCodeIndex(vault.DefaultCodeIndexPath())
+	if err != nil {
+		return textResult(fmt.Sprintf("Error opening code index: %v", err), true), nil
+	}
+	defer ci.Close()
+
+	stats, err := ci.IndexDir(path)
+	if err != nil {
+		return textResult(fmt.Sprintf("Indexing failed: %v", err), true), nil
+	}
+
+	stele.Inscribe("vault", stele.TypeVaultIndex, path, map[string]string{
+		"files":  fmt.Sprintf("%d", stats.FilesIndexed),
+		"chunks": fmt.Sprintf("%d", stats.ChunksCreated),
+	})
+
+	return textResult(fmt.Sprintf("Code index built: %d files, %d chunks in %s.\nUse code_search to query.",
+		stats.FilesIndexed, stats.ChunksCreated, stats.Duration), false), nil
+}
+
+func handleCodeSearch(args map[string]interface{}) (*ToolResult, error) {
+	query, _ := args["query"].(string)
+	if query == "" {
+		return textResult("Error: query parameter is required", true), nil
+	}
+	limit := 5
+	if l, ok := args["limit"].(float64); ok && l > 0 {
+		limit = int(l)
+	}
+
+	ci, err := vault.OpenCodeIndex(vault.DefaultCodeIndexPath())
+	if err != nil {
+		return textResult(fmt.Sprintf("Error opening code index: %v", err), true), nil
+	}
+	defer ci.Close()
+
+	chunks, err := ci.Search(query, limit)
+	if err != nil {
+		return textResult(fmt.Sprintf("Search error: %v", err), true), nil
+	}
+
+	stele.Inscribe("vault", stele.TypeVaultCodeSearch, "", map[string]string{
+		"query": query,
+		"hits":  fmt.Sprintf("%d", len(chunks)),
+	})
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Code search: %q — %d results\n\n", query, len(chunks)))
+	for _, c := range chunks {
+		label := c.File
+		if c.Name != "" {
+			label = fmt.Sprintf("%s:%s (%s)", c.File, c.Name, c.Kind)
+		}
+		sb.WriteString(fmt.Sprintf("── %s [lines %d-%d] ──\n", label, c.StartLine, c.EndLine))
+		sb.WriteString(c.Content)
+		sb.WriteString("\n\n")
+	}
+
+	return textResult(sb.String(), false), nil
+}
+
+// ── Horus Handlers ──────────────────────────────────────────────
+
+func handleCodeSymbols(args map[string]interface{}) (*ToolResult, error) {
+	path, _ := args["path"].(string)
+	if path == "" {
+		var err error
+		path, err = os.Getwd()
+		if err != nil {
+			return textResult("Could not determine working directory", true), nil
+		}
+	}
+
+	p := horus.NewGoParser()
+	graph, err := p.ParseDir(path)
+	if err != nil {
+		return textResult(fmt.Sprintf("Parse error: %v", err), true), nil
+	}
+
+	stele.Inscribe("horus", stele.TypeHorusScan, path, map[string]string{
+		"files":   fmt.Sprintf("%d", graph.Stats.Files),
+		"symbols": fmt.Sprintf("%d", len(graph.Symbols)),
+	})
+
+	q := horus.NewQuery(graph)
+	symbols := graph.Symbols
+
+	// Apply kind filter.
+	if kind, ok := args["kind"].(string); ok && kind != "" {
+		symbols = q.ByKind(horus.SymbolKind(kind))
+	}
+
+	// Apply name filter.
+	if filter, ok := args["filter"].(string); ok && filter != "" {
+		symbols = q.MatchSymbols(filter)
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Horus: %d symbols (%d files, %d types, %d funcs, %d methods)\n\n",
+		len(graph.Symbols), graph.Stats.Files, graph.Stats.Types,
+		graph.Stats.Functions, graph.Stats.Methods))
+
+	for _, s := range symbols {
+		if s.Kind == horus.KindPackage {
+			continue
+		}
+		prefix := " "
+		if s.Exported {
+			prefix = "▸"
+		}
+		sig := s.Signature
+		if sig == "" {
+			sig = fmt.Sprintf("%s %s", s.Kind, s.Name)
+		}
+		sb.WriteString(fmt.Sprintf("%s %s:%d  %s\n", prefix, s.File, s.Line, sig))
+	}
+
+	return textResult(sb.String(), false), nil
+}
+
+func handleCodeOutline(args map[string]interface{}) (*ToolResult, error) {
+	path, _ := args["path"].(string)
+	if path == "" {
+		return textResult("Error: path parameter is required", true), nil
+	}
+
+	src, err := os.ReadFile(path)
+	if err != nil {
+		return textResult(fmt.Sprintf("Error reading file: %v", err), true), nil
+	}
+
+	p := horus.NewGoParser()
+	symbols, err := p.ParseFile(path, src)
+	if err != nil {
+		return textResult(fmt.Sprintf("Parse error: %v", err), true), nil
+	}
+
+	graph := &horus.SymbolGraph{Root: filepath.Dir(path), Symbols: symbols}
+	q := horus.NewQuery(graph)
+	outline := q.FileOutline(path)
+
+	stele.Inscribe("horus", stele.TypeHorusQuery, path, map[string]string{
+		"type":    "outline",
+		"symbols": fmt.Sprintf("%d", len(symbols)),
+	})
+
+	ratio := float64(len(outline)) / float64(len(src)) * 100
+	return textResult(fmt.Sprintf("%s\n\n── %.0f%% of original file size (%d → %d bytes) ──",
+		outline, ratio, len(src), len(outline)), false), nil
+}
+
+func handleCodeContext(args map[string]interface{}) (*ToolResult, error) {
+	symbol, _ := args["symbol"].(string)
+	if symbol == "" {
+		return textResult("Error: symbol parameter is required", true), nil
+	}
+
+	path, _ := args["path"].(string)
+	if path == "" {
+		var err error
+		path, err = os.Getwd()
+		if err != nil {
+			return textResult("Could not determine working directory", true), nil
+		}
+	}
+
+	p := horus.NewGoParser()
+	graph, err := p.ParseDir(path)
+	if err != nil {
+		return textResult(fmt.Sprintf("Parse error: %v", err), true), nil
+	}
+
+	q := horus.NewQuery(graph)
+	ctx := q.ContextFor(symbol)
+
+	stele.Inscribe("horus", stele.TypeHorusQuery, path, map[string]string{
+		"type":   "context",
+		"symbol": symbol,
+	})
+
+	return textResult(ctx, false), nil
 }
 
 // handleThothSync triggers Thoth memory and journal sync.

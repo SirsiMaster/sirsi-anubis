@@ -19,7 +19,7 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/workstream"
 )
 
-var version = "v0.16.0"
+var version = "v0.17.0"
 
 // versionCmd prints the version and optionally checks for updates.
 var versionCmd = &cobra.Command{
@@ -76,6 +76,9 @@ var rootCmd = &cobra.Command{
   sirsi mcp                MCP server for AI IDEs
   sirsi seshat ingest      Knowledge ingestion
   sirsi diagram            Architecture diagrams (Mermaid/HTML)
+  sirsi rtk filter         Output noise reduction for AI context
+  sirsi vault store/search Context sandbox with FTS5 search
+  sirsi horus outline/scan Structural code graph
   sirsi version            Show version`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
@@ -444,6 +447,9 @@ func init() {
 	rootCmd.AddCommand(thothCmd, maatCmd, seshatCmd, raCmd, netCmd)
 	rootCmd.AddCommand(anubisCmd, sebaCmd, osirisCmd)
 	rootCmd.AddCommand(benchmarkCmd, versionCmd)
+
+	// Token optimization — RTK, Vault, Horus
+	rootCmd.AddCommand(rtkCmd, vaultCmd, horusCmd)
 
 	// Workstream manager (sirsi work / sirsi ws)
 	rootCmd.AddCommand(workCmd)

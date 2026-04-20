@@ -44,6 +44,9 @@ and perceptible click latency in the IDE.
 | **𓈗 Hapi** | The River | GPU/VRAM and storage flow management |
 | **🪲 Scarab** | The Roller | Fleet discovery — subnets, VLANs, containers |
 | **🔮 Seba** | The Star | Dependency graph mapper |
+| **⚡ RTK** | The Sieve | Output filter — strips ANSI, dedup, truncation before AI context |
+| **🏛️ Vault** | The Keeper | Context sandbox — SQLite FTS5 output vault + BM25 code search |
+| **𓂀 Horus** | The All-Seeing | Structural code graph — AST symbol extraction, outlines, context queries |
 | **𓇶 Ra** | The Thinker | Hypervisor — orchestrates all deities (FUTURE) |
 
 ### Key Changes

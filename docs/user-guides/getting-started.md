@@ -1,6 +1,6 @@
 # Getting Started with Pantheon
 
-Pantheon is a unified DevOps intelligence platform. One binary, 9 deities, zero telemetry.
+Pantheon is a unified DevOps intelligence platform. One binary, 12 modules, zero telemetry.
 
 ## Install
 
@@ -35,7 +35,7 @@ sirsi osiris assess
 sirsi
 ```
 
-## The 9 Deities
+## The 12 Modules
 
 | Command | Deity | What It Does |
 |---------|-------|--------------|
@@ -48,6 +48,9 @@ sirsi
 | `sirsi ra` | Ra | Cross-repo orchestration (requires claude-code-sdk) |
 | `sirsi net` | Net | Scope definition and plan alignment |
 | `sirsi osiris` | Osiris | Checkpoint assessment and risk scoring |
+| `sirsi rtk` | RTK | Output filtering — strip ANSI, dedup, truncate for AI context |
+| `sirsi vault` | Vault | Context sandbox — store large output in SQLite FTS5, search later |
+| `sirsi horus` | Horus | Structural code graph — AST outlines, symbol extraction, context queries |
 
 ## Common Shortcuts
 

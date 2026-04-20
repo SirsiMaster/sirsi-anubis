@@ -35,6 +35,9 @@ Rules, design tokens, and business logic from other repositories do NOT apply he
 | Fleet Sweep | **Scarab** 🪲 | The Transformer | Rolls across VLANs, subnets, domains |
 | Policy Engine | **Scales** ⚖️ | The Judgment | Weighs findings against defined policies |
 | Resource Optimizer | **Hapi** 🌊 | The Flow | Controls VRAM, GPU memory, and storage flow |
+| Output Filter | **RTK** ⚡ | The Sieve | Strips noise from tool output before it hits AI context |
+| Context Vault | **Vault** 🏛️ | The Keeper | Sandboxes large output in SQLite FTS5, indexes code for BM25 search |
+| Code Graph | **Horus** 𓂀 | The All-Seeing | Extracts structural code symbols, serves outlines instead of full files |
 
 ---
 

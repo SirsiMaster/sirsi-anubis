@@ -12,6 +12,9 @@ var Modules = map[string]string{
 	"ra":     "1.1.0", // v1.1.0: ProtectGlyph, Stele deploy events
 	"stele":  "1.0.0", // append-only hash-chained event ledger (ADR-014)
 	"osiris": "0.5.0", // state snapshots, checkpoints (in development)
+	"rtk":    "1.0.0", // output filtering — ANSI strip, dedup, truncation (subsumes RTK)
+	"vault":  "1.0.0", // context sandbox — SQLite FTS5 output vault + BM25 code search (subsumes Context Mode + Claude Context)
+	"horus":  "1.0.0", // structural code graph — Go AST symbol extraction, outlines, context queries (subsumes Code Review Graph)
 }
 
 // Get returns the version of a module, or "unknown" if not registered.

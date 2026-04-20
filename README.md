@@ -4,8 +4,8 @@
 
 [![Go 1.22+](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go&logoColor=white)](https://go.dev)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-C8A951?style=flat)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-0.15.0-1A1A5E?style=flat)](VERSION)
-[![Tests](https://img.shields.io/badge/tests-1%2C702%20passing-brightgreen?style=flat)](.github/workflows/ci.yml)
+[![Version](https://img.shields.io/badge/Version-0.17.0-1A1A5E?style=flat)](VERSION)
+[![Tests](https://img.shields.io/badge/tests-1%2C926%2B%20passing-brightgreen?style=flat)](.github/workflows/ci.yml)
 [![Product Page](https://img.shields.io/badge/sirsi.ai-pantheon-059669?style=flat)](https://sirsi.ai/pantheon)
 
 ```bash
@@ -20,7 +20,7 @@ AI coding tools re-read your entire codebase at the start of every session. On a
 
 Pantheon is different in three ways:
 
-**1. AI memory that eliminates cold-start re-reads.** `sirsi thoth` gives AI coding sessions persistent memory via the [Model Context Protocol](https://modelcontextprotocol.io). Thoth compresses your project knowledge into ~2% of the original size — architecture, design decisions, safety rules, recent changes. Your AI starts every session informed, not blank. Works with Claude, Cursor, Windsurf, and any MCP-compatible tool.
+**1. AI memory and token optimization that eliminates cold-start re-reads.** `sirsi thoth` gives AI coding sessions persistent memory via the [Model Context Protocol](https://modelcontextprotocol.io). Thoth compresses your project knowledge into ~2% of the original size — architecture, design decisions, safety rules, recent changes. The Token Intelligence Layer (RTK, Vault, Horus) further reduces context consumption: RTK strips noise from tool output (60-90% smaller), Vault sandboxes large results in SQLite FTS5 for on-demand search, and Horus serves structural code outlines instead of full files (8-49x smaller). Your AI starts every session informed, not blank. Works with Claude, Cursor, Windsurf, and any MCP-compatible tool.
 
 **2. Ghost detection that nobody else does.** `sirsi ghosts` finds remnants of apps you uninstalled — Launch Services phantoms, orphaned plists, leftover caches, Spotlight metadata for apps that no longer exist. Typically recovers 10–100 GB of invisible waste per machine. [Case study: we found 64 GB of Docker VM images the founder didn't know existed →](docs/case-studies/docker-ghost-64gb.md)
 
@@ -80,6 +80,13 @@ sirsi network --rollback   # Restore DNS to pre-fix state
 ```
 
 The `--fix` command uses a three-layer safety model: TCP probe before changing config, watchdog polling after, auto-revert within 6 seconds if resolution fails. [Case study →](docs/case-studies/isis-dns-safety-rollback.md)
+
+### Token optimization for AI coding
+```bash
+sirsi rtk filter < build.log    # Strip ANSI, dedup, truncate — 60-90% smaller
+sirsi horus outline src/main.go # Declarations only, no bodies — 8-49x smaller
+sirsi vault store < output.log  # Sandbox output, search later with vault_search
+```
 
 ### Hardware profiling
 ```bash

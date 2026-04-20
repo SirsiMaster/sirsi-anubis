@@ -107,6 +107,18 @@ Read .thoth/memory.yaml first. This gives you full project context.
 Read .thoth/journal.md for decision history.
 ```
 
+## Context Optimization Extensions (v0.17.0)
+
+Thoth's context management role now extends beyond persistent memory into active context optimization through three companion packages:
+
+| Package | Role | How It Helps |
+|:--------|:-----|:-------------|
+| **RTK** (`internal/rtk/`) | Output Filter | Strips ANSI codes, deduplicates repeated lines, and truncates noise *before* output enters the context window. |
+| **Vault** (`internal/vault/`) | Context Sandbox | Stores large output in SQLite FTS5. AI queries the sandbox via BM25 search instead of holding everything in-window. |
+| **Horus** (`internal/horus/`) | Code Graph | Extracts structural code symbols (declarations, signatures, type hierarchies) via Go AST. Serves file outlines instead of full source — 8-49x reduction. |
+
+Together with Thoth's three-layer memory (Memory, Journal, Artifacts), these packages form a complete context management pipeline: Thoth compresses *project knowledge*, RTK compresses *tool output*, Vault sandboxes *overflow*, and Horus compresses *source code*.
+
 ## Integration with Anubis MCP
 
 When running as an MCP server, Anubis exposes Thoth as a tool:

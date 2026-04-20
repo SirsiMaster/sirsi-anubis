@@ -77,6 +77,14 @@ Pantheon is the single, modular brand for all Sirsi automation deities. The stan
 ### Phase 2: Unification (Pantheon Launch) — ✅ March 23
 - Ma'at, Horus, Thoth integrated into unified CLI.
 
+### Phase 2.5: Token Intelligence (v0.17.0) — ✅ Shipped April 2026
+- **RTK** (`internal/rtk/`) — Output filter: ANSI strip, dedup, truncation with tail preservation. 4 files, 12 tests. CLI: `sirsi rtk`. MCP tool: `filter_output`.
+- **Vault** (`internal/vault/`) — SQLite FTS5 context sandbox + BM25 code search index. 4 files, 9 tests. CLI: `sirsi vault`. 6 MCP tools.
+- **Horus** (`internal/horus/`) — Go AST symbol graph, file outlines (8-49x reduction), symbol context queries. 5 files, 10 tests. CLI: `sirsi horus`. 3 MCP tools.
+- **Totals**: 16 new files, 31 new tests, 10 new MCP tools, 8 new Stele event types. Module count: 30 to 33. Deity/module count: 9 to 12.
+- Composition pipeline: RTK -> Vault -> Horus. Zero new external dependencies.
+- Horus dogfood: parsed 169 Go files from Pantheon itself, extracted 328 types, 15 interfaces. `tools.go` outline: 700+ lines to ~30 lines (23x).
+
 ### Phase 3: Hardening & Honest Measurement (CURRENT) — 🚧 v0.8.0-beta
 - Fixed Ma'at dynamic module discovery (was reporting false 0% for 10 modules)
 - Thoth folded from standalone repo into Pantheon (Go port + subtree merge)

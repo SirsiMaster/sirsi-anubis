@@ -17,6 +17,9 @@ Built as an Egyptian-themed CLI toolkit, Anubis speaks the language of judgment:
 - `anubis mcp` — connect to Claude, Cursor, or Windsurf as a context sanitizer
 - `anubis install-brain` — download neural models for semantic file classification
 - `anubis scales enforce` — enforce hygiene policies across your fleet
+- `sirsi rtk filter` — strip output noise before it consumes AI tokens
+- `sirsi vault search` — FTS5 context sandbox with BM25 code search
+- `sirsi horus outline` — structural code outlines (8-49x context reduction)
 
 Free forever. Open source under MIT. Written in Go. Ships as two binaries under 10 MB total. No telemetry. No tracking. Zero footprint with `--stealth` mode.
 
@@ -48,6 +51,13 @@ I built Anubis because existing Mac cleaners don't understand developer workstat
 - Docker containers from projects you abandoned 6 months ago
 
 Anubis has 58 scan rules across 7 domains, a ghost app hunter (Ka), a neural file classifier (Brain), and an MCP server so your AI coding assistant can use it as a context sanitizer.
+
+New in v0.17.0 — **Token Optimization Suite**: Three native packages that cut AI context waste by 8-49x:
+- **RTK** — Strips ANSI codes, deduplicates repeated output, truncates noise before it hits the context window
+- **Vault** — Sandboxes large output in SQLite FTS5 for BM25 search instead of flooding context
+- **Horus** — Serves structural code outlines (declarations, signatures) instead of full source files
+
+16 new files, 31 tests, 10 MCP tools. Zero new external dependencies — built entirely on Go's standard library.
 
 Written in Go. Two binaries under 10 MB. No telemetry, no tracking, no analytics. MIT licensed.
 

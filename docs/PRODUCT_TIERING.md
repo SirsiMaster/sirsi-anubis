@@ -58,6 +58,9 @@ This is the **acquisition funnel**. It must be genuinely useful on first run wit
 | `anubis judge --confirm` (clean, limited) | Clean **3 categories max** per run (e.g., caches, logs, crash reports). Enough to be useful but limited. |
 | `anubis guard` (RAM check) | One-shot RAM report. No monitoring. |
 | `sirsi version` | Shows version. |
+| `sirsi rtk filter` | Output noise reduction — strips ANSI codes, deduplicates repeated lines, truncates oversized output before it hits AI context. |
+| `sirsi vault store/search` | Context sandbox — stores large output in SQLite FTS5 for BM25 search instead of flooding the context window. |
+| `sirsi horus outline/scan` | Structural code graph — serves file outlines (declarations, signatures) instead of full source files. 8-49x reduction. |
 
 **What's NOT free:**
 - Unlimited category cleaning

@@ -6,6 +6,66 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 
 ---
 
+## [0.17.0] — 2026-04-20
+
+### Added — Token Optimization Subsumption (3 new packages, 10 new MCP tools)
+
+Four external token-optimization tools (RTK, Code Review Graph, Context Mode, Claude Context) have been evaluated, selected, and fully subsumed into native Go packages inside sirsi-pantheon. Zero new external dependencies — everything built on Go stdlib + existing `modernc.org/sqlite`.
+
+#### RTK — Output Filter (`internal/rtk/`, v1.0.0)
+Subsumes the external [RTK (Rust Token Killer)](https://github.com/rtk-ai/rtk) tool.
+
+- **Why it exists:** AI coding assistants stuff raw terminal output (build logs, test results, git diffs) directly into the context window. 60-90% of this output is ANSI escape codes, repeated lines, and blank runs — invisible waste that consumes tokens without adding value. RTK filters this at the source.
+- **What it does:** Strips ANSI escape sequences via regex, deduplicates consecutive identical lines using an FNV-1a hashed circular ring buffer, collapses runs of blank lines, and truncates oversized output with configurable tail preservation (keeps the last N lines for context).
+- **MCP tool:** `filter_output` — explicit filtering of raw text with reduction statistics.
+- **CLI:** `sirsi rtk filter` (stdin→stdout), `sirsi rtk stats` (reduction report).
+- **Stele event:** `rtk_filter` — records original/filtered bytes, ratio, duplicate count.
+- **Files:** `rtk.go`, `ansi.go`, `dedup.go`, `rtk_test.go` (12 tests).
+
+#### Vault — Context Sandbox + Code Search (`internal/vault/`, v1.0.0)
+Subsumes the external [Context Mode](https://github.com/mksglu/context-mode) and [Claude Context](https://github.com/zilliztech/claude-context) tools.
+
+- **Why it exists:** Large tool outputs (build logs, test suites, API responses) consume the entire context window when returned inline. Meanwhile, AI assistants read full source files when they only need a few relevant functions. Vault solves both problems: it sandboxes output into SQLite FTS5 (queryable later without context cost), and it indexes source code for BM25-ranked retrieval (returns relevant chunks, not full files).
+- **Output sandbox:** Stores any text blob in a SQLite FTS5 virtual table with porter-stemmed unicode tokenization. Full-text search returns BM25-ranked snippets. Metadata table tracks token count and creation timestamp. WAL mode for concurrent reads.
+- **Code index:** Splits source files into semantically meaningful chunks — Go files at function/type boundaries using `go/ast`, other languages (Python, TypeScript, Rust, etc.) using 50-line sliding windows with 25-line overlap. BM25-ranked search over 20+ file extensions. Skips `node_modules`, `.git`, `vendor`, `dist`, and files >500KB.
+- **MCP tools:** `vault_store` (sandbox output), `vault_search` (FTS5 query), `vault_get` (retrieve by ID), `vault_stats` (statistics), `code_index` (build index), `code_search` (BM25 code search).
+- **CLI:** `sirsi vault store/search/get/stats/prune/index/code-search`.
+- **Stele events:** `vault_store`, `vault_search`, `vault_prune`, `vault_index`, `vault_code_search`.
+- **Dependencies:** Uses existing `modernc.org/sqlite` (pure Go, CGO-free). FTS5 compiled in by default.
+- **Files:** `vault.go`, `codeindex.go`, `chunker.go`, `vault_test.go` (9 tests).
+
+#### Horus — Structural Code Graph (`internal/horus/`, v1.0.0)
+Subsumes the external [Code Review Graph](https://github.com/tirth8205/code-review-graph) tool.
+
+- **Why it exists:** AI coding assistants read entire source files to understand code structure. A 700-line Go file contains maybe 30 lines of declarations and signatures — the rest is function bodies the AI doesn't need for understanding. Horus extracts just the structure, achieving 8-49x token reduction while preserving every type, function signature, and doc comment.
+- **What it does:** Parses Go source using `go/ast`, `go/parser`, and `go/token` from the standard library. Extracts packages, imports, types, structs, interfaces, functions, methods, constants, and variables with their signatures, doc comments, line ranges, and export status. Builds a `SymbolGraph` that can be queried for file outlines, symbol context, and filtered listings.
+- **Key innovation — FileOutline:** Returns declarations-only view of any Go file. No function bodies. Tested on Pantheon's own `tools.go` (700+ lines → ~30 lines = 23x reduction).
+- **Key innovation — ContextFor:** Returns minimal context for understanding any symbol: its declaration, doc comment, parent type (for methods), and sibling methods. Everything an AI needs to understand a function's role without reading the file.
+- **MCP tools:** `code_symbols` (extract all symbols with filters), `code_outline` (compact file outline), `code_context` (minimal symbol context).
+- **CLI:** `sirsi horus scan/outline/symbols/context/stats`.
+- **Stele events:** `horus_scan`, `horus_query`.
+- **Cache:** GOB-encoded graph cache at `~/.config/sirsi/horus/` with manual invalidation.
+- **Phase 1 (shipped):** GoParser using Go stdlib. Phase 2 (planned): TreeSitterParser for multi-language support behind `//go:build treesitter` tag.
+- **Files:** `horus.go`, `go_parser.go`, `query.go`, `cache.go`, `horus_test.go` (10 tests).
+
+#### Integration Summary
+- **10 new MCP tools** registered (total: 16). Tools list: `filter_output`, `vault_store`, `vault_search`, `vault_get`, `vault_stats`, `code_index`, `code_search`, `code_symbols`, `code_outline`, `code_context`.
+- **8 new Stele event types** for full observability: `rtk_filter`, `vault_store`, `vault_search`, `vault_prune`, `vault_index`, `vault_code_search`, `horus_scan`, `horus_query`.
+- **3 new CLI command groups:** `sirsi rtk`, `sirsi vault`, `sirsi horus`.
+- **31 new tests** across all 3 packages (all passing).
+- **Module count:** 30 → 33 internal packages.
+- **Version registry:** RTK v1.0.0, Vault v1.0.0, Horus v1.0.0 added.
+- **Deity count:** 9 → 12 operational modules.
+- **Zero new external dependencies.** Built entirely on Go stdlib (`go/ast`, `go/parser`, `go/token`, `regexp`, `hash/fnv`, `encoding/gob`, `database/sql`) + existing `modernc.org/sqlite` v1.44.0.
+
+### Verified
+- **Go build** — `go build ./cmd/sirsi/` passes.
+- **Tests** — All 31 new tests pass. Existing MCP tests pass. Total: 1,926+.
+- **MCP** — `tools/list` returns all 16 tools.
+- **Horus self-test** — Parsed sirsi-pantheon itself: 169 files, 328 types, 15 interfaces, 36 packages.
+
+---
+
 ## [0.16.1] — 2026-04-18
 
 ### Added

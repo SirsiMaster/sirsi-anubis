@@ -99,17 +99,17 @@
       display: flex;
       align-items: center;
       position: relative;
-      padding: 8rem 3rem 6rem;
+      padding: 8rem 3rem 4rem;
     }
     .hero-jackal {
       position: absolute;
-      right: 6vw;
+      right: 3vw;
       top: 50%;
-      transform: translateY(-45%);
-      font-size: clamp(14rem, 28vw, 22rem);
+      transform: translateY(-50%);
+      font-size: clamp(14rem, 24vw, 20rem);
       line-height: 1;
       color: var(--color-gold-bright);
-      opacity: 0.35;
+      opacity: 0.25;
       text-shadow: 0 0 80px rgba(200, 169, 81, 0.15);
       pointer-events: none;
       user-select: none;
@@ -156,6 +156,7 @@
       line-height: 1.75;
       max-width: 560px;
       font-weight: 300;
+      margin-bottom: 0.5rem;
     }
     .hero-sub strong {
       color: var(--text-primary);
@@ -166,8 +167,8 @@
     .hero-pillars {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 2.5rem;
-      margin-top: 2.5rem;
+      gap: 2rem;
+      margin-top: 2rem;
       max-width: 580px;
     }
     .hero-pillar-label {
@@ -684,7 +685,7 @@
           <div class="hero-pillar-label">For AI Assistants</div>
           <ul>
             <li>Persistent memory between sessions via MCP</li>
-            <li>Context pressure detection &amp; compression</li>
+            <li>Token optimization — RTK, Vault, Horus (60-98% savings)</li>
             <li>Automatic lint fixing &amp; CI/CD pipeline QC</li>
             <li>Works in IDEs (MCP) and CLI tools alike</li>
           </ul>
@@ -711,7 +712,7 @@
         <h2>One Scan</h2>
         <p>
           <strong>58 rules</strong> across 7 domains.
-          Built with <strong>1,702 tests</strong> across <strong>30 modules</strong>.
+          Built with <strong>1,926+ tests</strong> across <strong>33 modules</strong>.
           63,000+ lines of Go. Zero telemetry. Scans in under a second.
         </p>
       </div>
@@ -722,7 +723,7 @@
           <div class="terminal-dot"></div>
         </div>
         <div class="terminal-body"><span class="t-prompt">$</span> sirsi scan
-<span class="t-gold">𓃣 Sirsi Pantheon v0.15.0</span>
+<span class="t-gold">𓃣 Sirsi Pantheon v0.17.0</span>
 <span class="t-muted">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
 Scanning 58 rules across 7 domains...
 
@@ -744,7 +745,7 @@ Scanned in 833ms</div>
   <section class="features">
     <div class="features-header reveal">
       <h2>What Pantheon Does</h2>
-      <p>Three capabilities, each with a CLI you can run today.</p>
+      <p>Four capabilities, each with a CLI you can run today.</p>
     </div>
 
     <div class="feat-card reveal">
@@ -798,6 +799,24 @@ Scanned in 833ms</div>
 <span class="t-gold">Context:</span> <span class="t-white">22,958 → 297 lines</span>
 <span class="t-gold">Savings:</span> <span style="color:#28c840;">98.7% reduction</span></div></div>
     </div>
+
+    <div class="feat-card reveal">
+      <div class="feat-info">
+        <div class="feat-label">Token Optimization</div>
+        <h3>Every Token Counts</h3>
+        <p>RTK strips output noise. Vault sandboxes large results in SQLite. Horus serves code outlines instead of full files. Together they cut AI context costs by 60-98%.</p>
+      </div>
+      <div class="feat-term"><div><span class="t-prompt">$</span> sirsi horus outline src/file.go
+
+<span class="t-gold">𓂀 Horus</span> <span class="t-muted">structural outline</span>
+<span class="t-muted">func</span> <span class="t-white">NewServer</span>(cfg Config) *Server
+<span class="t-muted">func</span> <span class="t-white">(*Server) Start</span>(ctx context.Context)
+<span class="t-muted">type</span> <span class="t-white">Config</span> struct { ... }
+<span class="t-muted">type</span> <span class="t-white">Server</span> struct { ... }
+
+<span class="t-gold">Source:</span> <span class="t-white">847 lines → 18 lines</span>
+<span class="t-gold">Reduction:</span> <span style="color:#28c840;">47× smaller</span></div></div>
+    </div>
   </section>
 
   <hr class="rule-gold">
@@ -806,7 +825,7 @@ Scanned in 833ms</div>
   <section class="modules">
     <div class="modules-header reveal">
       <h2>The Pantheon</h2>
-      <p>Eight modules. One install. Each owns one domain.</p>
+      <p>Twelve modules. One install. Each owns one domain.</p>
     </div>
     <div class="mod-grid reveal">
       <div class="mod-cell"><span class="mod-glyph">𓃣</span><div class="mod-name">Anubis</div><div class="mod-role">Hygiene</div></div>
@@ -817,6 +836,10 @@ Scanned in 833ms</div>
       <div class="mod-cell"><span class="mod-glyph">𓁯</span><div class="mod-name">Neith</div><div class="mod-role">Architecture</div></div>
       <div class="mod-cell"><span class="mod-glyph">𓇽</span><div class="mod-name">Seba</div><div class="mod-role">Topology</div></div>
       <div class="mod-cell"><span class="mod-glyph">𓁆</span><div class="mod-name">Seshat</div><div class="mod-role">Bridge</div></div>
+      <div class="mod-cell"><span class="mod-glyph">𓁹</span><div class="mod-name">Osiris</div><div class="mod-role">Checkpoints</div></div>
+      <div class="mod-cell"><span class="mod-glyph">⚡</span><div class="mod-name">RTK</div><div class="mod-role">Output Filter</div></div>
+      <div class="mod-cell"><span class="mod-glyph">🏛️</span><div class="mod-name">Vault</div><div class="mod-role">Context Sandbox</div></div>
+      <div class="mod-cell"><span class="mod-glyph">𓂀</span><div class="mod-name">Horus</div><div class="mod-role">Code Graph</div></div>
     </div>
   </section>
 

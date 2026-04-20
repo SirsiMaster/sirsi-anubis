@@ -94,6 +94,20 @@ const (
 
 	// Hapi — hardware detection
 	TypeHapiDetect = "hapi_detect"
+
+	// RTK — output filtering
+	TypeRTKFilter = "rtk_filter"
+
+	// Vault — context sandbox
+	TypeVaultStore      = "vault_store"
+	TypeVaultSearch     = "vault_search"
+	TypeVaultPrune      = "vault_prune"
+	TypeVaultIndex      = "vault_index"
+	TypeVaultCodeSearch = "vault_code_search"
+
+	// Horus — structural code graph
+	TypeHorusScan  = "horus_scan"
+	TypeHorusQuery = "horus_query"
 )
 
 // Ledger manages writes to the Stele file.
