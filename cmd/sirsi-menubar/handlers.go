@@ -3,15 +3,21 @@
 // handlers.go — Menu click handlers that dispatch to Sirsi CLI subcommands.
 //
 // Each handler spawns the corresponding `sirsi` CLI command in the background.
-// Output is logged but not displayed (menu bar app is non-blocking).
+// When the command completes, a macOS toast notification is fired and the result
+// is stored in the persistent notification history (internal/notify).
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"time"
+
+	"github.com/SirsiMaster/sirsi-pantheon/internal/notify"
 )
 
 // Handler wraps a menu action with name and execution logic.
@@ -53,12 +59,109 @@ func QuickActions() []Handler {
 	}
 }
 
-// Execute runs the handler command in the background.
+// Execute runs the handler command in the background (legacy, no feedback).
 func (h *Handler) Execute() error {
 	cmd := exec.Command(h.Command, h.Args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Start()
+}
+
+// ExecuteWithNotify starts the command in the background and records
+// the result in the notification store when it completes.
+// The caller (event loop) returns immediately — never blocks.
+func (h *Handler) ExecuteWithNotify(store *notify.Store) {
+	cmd := exec.Command(h.Command, h.Args...)
+
+	var buf bytes.Buffer
+	cmd.Stdout = &buf
+	cmd.Stderr = &buf
+
+	start := time.Now()
+	if err := cmd.Start(); err != nil {
+		if store != nil {
+			_ = store.Record(notify.Notification{
+				Source:   h.source(),
+				Action:   h.action(),
+				Severity: notify.SeverityError,
+				Summary:  fmt.Sprintf("%s failed to start: %v", h.Name, err),
+			})
+		}
+		return
+	}
+
+	go func() {
+		err := cmd.Wait()
+		elapsed := time.Since(start)
+		output := buf.String()
+
+		n := notify.Notification{
+			Source:     h.source(),
+			Action:     h.action(),
+			DurationMs: elapsed.Milliseconds(),
+			Details:    output,
+		}
+
+		if err != nil {
+			n.Severity = notify.SeverityError
+			n.Summary = fmt.Sprintf("%s failed (%s)", h.Name, elapsed.Truncate(time.Second))
+		} else {
+			n.Severity = notify.SeveritySuccess
+			n.Summary = parseSummary(h.Name, output, elapsed)
+		}
+
+		if store != nil {
+			_ = store.Record(n)
+		}
+	}()
+}
+
+// source maps handler args to the deity name for notification display.
+func (h *Handler) source() string {
+	if len(h.Args) > 0 && h.Args[0] == "ra" {
+		return "ra"
+	}
+	sourceMap := map[string]string{
+		"weigh": "anubis", "judge": "anubis",
+		"guard": "isis", "ka": "anubis",
+		"mirror": "anubis", "maat": "maat",
+	}
+	if len(h.Args) > 0 {
+		if s, ok := sourceMap[h.Args[0]]; ok {
+			return s
+		}
+	}
+	return "sirsi"
+}
+
+// action extracts the action verb from the handler args.
+func (h *Handler) action() string {
+	if len(h.Args) > 0 {
+		return h.Args[len(h.Args)-1]
+	}
+	return "unknown"
+}
+
+// ansiRe strips ANSI escape sequences from CLI output.
+var ansiRe = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
+
+// parseSummary extracts a meaningful one-liner from CLI output.
+func parseSummary(name, output string, elapsed time.Duration) string {
+	clean := ansiRe.ReplaceAllString(output, "")
+	lines := strings.Split(strings.TrimSpace(clean), "\n")
+
+	// Walk backwards to find the last non-empty, meaningful line.
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		if line == "" || line == "---" || strings.HasPrefix(line, "━") {
+			continue
+		}
+		if len(line) > 120 {
+			line = line[:117] + "..."
+		}
+		return line
+	}
+	return fmt.Sprintf("%s completed (%s)", name, elapsed.Truncate(time.Second))
 }
 
 // OpenBuildLog opens the build log in the default browser.

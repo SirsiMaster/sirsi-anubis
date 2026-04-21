@@ -15,6 +15,7 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal/rules"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/ka"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/notify"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/rtk"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/stele"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/thoth"
@@ -283,6 +284,26 @@ func registerTools(s *Server) {
 			Required: []string{"symbol"},
 		},
 	}, handleCodeContext)
+
+	// ── Notify: Notification History ────────────────────────────────
+
+	s.RegisterTool(Tool{
+		Name:        "notification_history",
+		Description: "Read recent Sirsi operation results — scan findings, guard alerts, deployment outcomes. Returns the last N notifications from the persistent history.",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]SchemaField{
+				"limit": {
+					Type:        "number",
+					Description: "Maximum number of results (default 10).",
+				},
+				"source": {
+					Type:        "string",
+					Description: "Filter by source deity (anubis, ka, maat, isis, ra).",
+				},
+			},
+		},
+	}, handleNotificationHistory)
 }
 
 // handleScanWorkspace runs the Jackal scan engine on a workspace.
@@ -999,4 +1020,47 @@ func handleDetectHardware(_ map[string]interface{}) (*ToolResult, error) {
 			{Type: "text", Text: fmt.Sprintf("𓁢 Hardware Profile Detected:\n\n```json\n%s\n```\nRecommended Backend: %s", string(data), bridge.BackendPreference())},
 		},
 	}, nil
+}
+
+// ── Notification History Handler ────────────────────────────────
+
+func handleNotificationHistory(args map[string]interface{}) (*ToolResult, error) {
+	store, err := notify.Open(notify.DefaultPath())
+	if err != nil {
+		return textResult(fmt.Sprintf("Error opening notification store: %v", err), true), nil
+	}
+	defer store.Close()
+
+	limit := 10
+	if l, ok := args["limit"].(float64); ok && l > 0 {
+		limit = int(l)
+	}
+
+	var results []notify.Notification
+	if source, ok := args["source"].(string); ok && source != "" {
+		results, err = store.BySource(source, limit)
+	} else {
+		results, err = store.Recent(limit)
+	}
+	if err != nil {
+		return textResult(fmt.Sprintf("Query error: %v", err), true), nil
+	}
+
+	if len(results) == 0 {
+		return textResult("No notifications yet. Run a scan from the menubar or CLI.", false), nil
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Notification History (%d results)\n\n", len(results)))
+	for _, n := range results {
+		icon := notify.SeverityIcon(n.Severity)
+		sb.WriteString(fmt.Sprintf("%s [%s] %s/%s — %s",
+			icon, n.Timestamp.Format("Jan 02 15:04"), n.Source, n.Action, n.Summary))
+		if n.DurationMs > 0 {
+			sb.WriteString(fmt.Sprintf(" (%dms)", n.DurationMs))
+		}
+		sb.WriteString("\n")
+	}
+
+	return textResult(sb.String(), false), nil
 }

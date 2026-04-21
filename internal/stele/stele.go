@@ -108,6 +108,10 @@ const (
 	// Horus — structural code graph
 	TypeHorusScan  = "horus_scan"
 	TypeHorusQuery = "horus_query"
+
+	// Notify — notification system
+	TypeNotify      = "notify"
+	TypeNotifyPrune = "notify_prune"
 )
 
 // Ledger manages writes to the Stele file.

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"fyne.io/systray"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/notify"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
 )
 
@@ -62,6 +63,17 @@ func onReady() {
 
 	systray.AddSeparator()
 
+	// ── Recent Activity ─────────────────────────────────────────────
+	mRecentHeader := systray.AddMenuItem("Recent Activity", "Last 5 operations")
+	mRecentHeader.Disable()
+	recentItems := make([]*systray.MenuItem, 5)
+	for i := range recentItems {
+		recentItems[i] = systray.AddMenuItem("  —", "")
+		recentItems[i].Disable()
+	}
+
+	systray.AddSeparator()
+
 	// ── Sirsi commands ─────────────────────────────────────────────
 	mScan := systray.AddMenuItem("𓁢 Scan (Weigh)", "Scan for waste")
 	mJudge := systray.AddMenuItem("⚖️ Judge", "Apply policies")
@@ -78,22 +90,39 @@ func onReady() {
 	systray.AddSeparator()
 	mQuit := systray.AddMenuItem("Quit Sirsi", "Exit menubar app")
 
-	// ── Background stats loop ───────────────────────────────────────
+	// ── Open notification store ─────────────────────────────────────
+	nStore, _ := notify.Open(notify.DefaultPath())
+
+	// ── Background stats + recent activity loop ─────────────────────
 	cfg := DefaultStatsConfig()
 	go func() {
 		for {
 			snap := CollectStats(cfg)
 			lines := snap.FormatMenuItems()
-			mStats.SetTitle(lines[0]) // RAM line as primary
+			mStats.SetTitle(lines[0])
 			mStats.SetTooltip(snap.StatusLine())
 
-			// Update Ra scope items
+			// Update Ra scope items.
 			for i, item := range raScopes {
 				if i < len(snap.RaScopes) {
 					s := snap.RaScopes[i]
 					item.SetTitle(fmt.Sprintf("  %s %s — %s", s.Icon, s.Name, s.State))
 				} else {
 					item.SetTitle("  —")
+				}
+			}
+
+			// Update recent activity items.
+			if nStore != nil {
+				recent, _ := nStore.Recent(5)
+				for i, item := range recentItems {
+					if i < len(recent) {
+						r := recent[i]
+						icon := notify.SeverityIcon(r.Severity)
+						item.SetTitle(fmt.Sprintf("  %s %s — %s", icon, r.Source, r.Summary))
+					} else {
+						item.SetTitle("  —")
+					}
 				}
 			}
 
@@ -108,7 +137,6 @@ func onReady() {
 	for {
 		select {
 		case <-mStats.ClickedCh:
-			// Refresh stats immediately on click
 			snap := CollectStats(cfg)
 			lines := snap.FormatMenuItems()
 			mStats.SetTitle(lines[0])
@@ -120,13 +148,13 @@ func onReady() {
 				}
 			}
 		case <-mRaHeader.ClickedCh:
-			_ = OpenCommandCenter() // opens Ra Command Center TUI
+			_ = OpenCommandCenter()
 		case <-mRaDeploy.ClickedCh:
-			_ = raHandlers[0].Execute() // ra deploy
+			raHandlers[0].ExecuteWithNotify(nStore)
 		case <-mRaKill.ClickedCh:
-			_ = raHandlers[1].Execute() // ra kill
+			raHandlers[1].ExecuteWithNotify(nStore)
 		case <-mRaCollect.ClickedCh:
-			_ = raHandlers[2].Execute() // ra collect
+			raHandlers[2].ExecuteWithNotify(nStore)
 		case <-raScopes[0].ClickedCh:
 			snap := CollectStats(cfg)
 			if len(snap.RaScopes) > 0 {
@@ -148,20 +176,23 @@ func onReady() {
 				_ = OpenScopeLog(snap.RaScopes[3].Name)
 			}
 		case <-mScan.ClickedCh:
-			_ = handlers[0].Execute() // weigh
+			handlers[0].ExecuteWithNotify(nStore)
 		case <-mJudge.ClickedCh:
-			_ = handlers[1].Execute() // judge
+			handlers[1].ExecuteWithNotify(nStore)
 		case <-mKa.ClickedCh:
-			_ = handlers[3].Execute() // ka
+			handlers[3].ExecuteWithNotify(nStore)
 		case <-mMaat.ClickedCh:
-			_ = handlers[5].Execute() // maat
+			handlers[5].ExecuteWithNotify(nStore)
 		case <-mGuard.ClickedCh:
-			_ = QuickActions()[0].Execute() // guard --watch
+			QuickActions()[0].ExecuteWithNotify(nStore)
 		case <-mBuildLog.ClickedCh:
 			_ = OpenBuildLog()
 		case <-mCaseStudies.ClickedCh:
 			_ = OpenCaseStudies()
 		case <-mQuit.ClickedCh:
+			if nStore != nil {
+				nStore.Close()
+			}
 			systray.Quit()
 			return
 		}
