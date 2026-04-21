@@ -53,8 +53,8 @@
 ## Links
 
 - [GitHub](https://github.com/SirsiMaster/sirsi-pantheon)
-- [Deity Registry](https://pantheon.sirsi.ai)
-- [Build Log](https://pantheon.sirsi.ai/build-log)
+- [Deity Registry](https://sirsi.ai/pantheon)
+- [Build Log](https://sirsi.ai/pantheon/build-log)
 - [Sirsi Technologies](https://sirsi.ai)
 
 ## License

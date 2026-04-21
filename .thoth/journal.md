@@ -276,7 +276,7 @@ func setSampleFn(fn func(...)) { sampleMu.Lock(); defer sampleMu.Unlock(); sampl
 ### Also Completed
 
 - **Thoth Journal Sync (P1)**: Built `internal/thoth/journal.go` (230 lines). `thoth sync` now harvests git commits and auto-generates journal entries. The ghost transcript gap from Entry 024 is permanently closed.
-- **Firebase Deploy (P2)**: 17 files to `sirsi-pantheon.web.app`.
+- **Firebase Deploy (P2)**: 17 files to `sirsi.ai/pantheon`.
 - **gh CLI (P3)**: Upgraded 2.87.3 → 2.89.0.
 
 **Session total**: 5 commits, 20 files modified, Rule A21 canonized, Thoth auto-journal shipped.

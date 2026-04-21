@@ -17,12 +17,12 @@
 - Compatibility grid: Claude, Gemini, Codex | VS Code, Cursor, Windsurf, Zed | macOS, Linux, Windows | Apple Silicon, ARM, Intel
 - Deployed: 6 commits to SirsiNexusApp, all pushed to main
 
-### Docs Site (pantheon.sirsi.ai / sirsi-pantheon.web.app)
+### Docs Site (sirsi.ai/pantheon)
 - Firebase Hosting deployed: 31 files, 24 case studies live
 - Auto-deploy workflow: `.github/workflows/deploy-docs.yml` (triggers on docs/** changes)
 - `FIREBASE_SERVICE_ACCOUNT` secret added to GitHub repo
 - Project: `sirsi-nexus-live`, site: `sirsi-pantheon`
-- Custom domain `pantheon.sirsi.ai` needs DNS CNAME fix (web.app URL works)
+- Custom domain `sirsi.ai/pantheon` needs DNS CNAME fix (web.app URL works)
 
 ### Workstream Manager (sirsi work / sw)
 - `internal/workstream/`: Store, 8 Launchers, Inventory scanner (19 tests)
@@ -66,7 +66,7 @@
 - iOS app: framework rebuilt for v0.16.0, Xcode project regenerated. **Needs:** Apple Developer secrets for TestFlight (`APPLE_ID`, `TEAM_ID`, `ASC_KEY_*`, `MATCH_*`)
 - Android app: full Kotlin/Compose scaffold created (27 files). **Needs:** Java runtime + Android NDK for AAR build (`sdkmanager "ndk;27.2.12479018"`)
 - Ra (enterprise): no fleet orchestration shipped
-- `pantheon.sirsi.ai` custom domain: DNS not resolving (use sirsi-pantheon.web.app)
+- `sirsi.ai/pantheon` custom domain: DNS not resolving
 
 ### Test Coverage Below 50%
 - workstream: 49.9% (needs launcher/inventory mocks)
@@ -83,7 +83,7 @@
 3. **FinalWishes** — May 15 deadline (27 days from 2026-04-18)
 4. **Coverage sprint** — workstream to 70%+, add test files for ra/stele/version
 5. ~~**Homebrew tap update**~~ — DONE. All 6 formulas at v0.16.0-alpha
-6. **pantheon.sirsi.ai DNS** — add CNAME record for custom domain
+6. **sirsi.ai/pantheon DNS** — add CNAME record for custom domain
 
 ---
 

@@ -135,4 +135,4 @@ v1.0.0-rc1 will be **earned through dogfooding**, not declared:
 *Building in public. The feather weighs true. No excuses.*
 
 **GitHub:** https://github.com/SirsiMaster/sirsi-pantheon
-**Web:** https://pantheon.sirsi.ai
+**Web:** https://sirsi.ai/pantheon

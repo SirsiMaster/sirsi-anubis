@@ -250,7 +250,7 @@ Subsumes the external [Code Review Graph](https://github.com/tirth8205/code-revi
 - **Sirsi Orchestrator** — Python orchestrator using claude-code-sdk to dispatch parallel Claude sessions across all Sirsi repositories. Commands: health, test, lint, task, broadcast, nightly.
 - **Rich CLI Help System** — `sirsi help <deity>` with lipgloss-styled terminal guides for 12 deities. `--docs` flag opens web docs in browser. `--list` shows all available guides.
 - **Per-Deity Binary Builds** — goreleaser now produces standalone binaries: `pantheon-anubis`, `pantheon-maat`, `pantheon-thoth`, `pantheon-scarab`, `pantheon-guard`. Each installable via `brew install SirsiMaster/tools/pantheon-<deity>`.
-- **Getting Started Guide** — Full 7-step HTML walkthrough at pantheon.sirsi.ai/getting-started.
+- **Getting Started Guide** — Full 7-step HTML walkthrough at sirsi.ai/pantheon/getting-started.
 - **Deity Pages** — New HTML pages for Seshat, Isis, and Neith. All 15 deity pages now have how-to guides, FAQ sections, and platform support badges.
 - **Sirsi Branding** — SVG logo assets (dark, light, icon), "by Sirsi Technologies" throughout all pages and README.
 
@@ -376,7 +376,7 @@ v0.8.0-beta is the first credible public release of Pantheon. All metrics are ve
   - §8: **Recommended Implementation Order** — Gantt chart of 7 build phases from Jackal through Distribution.
   - §9: **Key Decision Points** — 10-row decision matrix covering binary architecture, concurrency, policy language, safety model, UI framework, fleet transport, context format, deity coupling, distribution, and bridge direction.
   - Document now fully compliant with Rule A22.
-- **Firebase Deploy** — 17 files deployed to `sirsi-pantheon.web.app` with all 11 deity click-to-flip cards live.
+- **Firebase Deploy** — 17 files deployed to `sirsi.ai/pantheon` with all 11 deity click-to-flip cards live.
 
 ### Session 29 (2026-03-27) — CI Green Sprint + Thoth Journal Sync + Rule A21
 - **CI Remediation (P0)** — Resolved 22 lint errors across 16 files:
@@ -393,7 +393,7 @@ v0.8.0-beta is the first credible public release of Pantheon. All metrics are ve
 - **Thoth Journal Sync (P1)** — `internal/thoth/journal.go` (230 lines): auto-generates journal entries from git history.
   - `thoth sync` now runs Phase 1 (memory.yaml) + Phase 2 (journal.md from `git log`).
   - Supports `--since` and `--dry-run` flags. Closes the ghost transcript gap permanently.
-- **Firebase Deploy (P2)** — 17 files deployed to `sirsi-pantheon.web.app`.
+- **Firebase Deploy (P2)** — 17 files deployed to `sirsi.ai/pantheon`.
 - **gh CLI Upgrade (P3)** — `gh` 2.87.3 → 2.89.0.
 
 
@@ -429,7 +429,7 @@ v0.8.0-beta is the first credible public release of Pantheon. All metrics are ve
 - **VSIX Packaging** — Built and sideloaded `sirsi-pantheon-0.7.0.vsix` for verify-before-publish testing.
 - **OpenVSX Publish** — Published `SirsiMaster.sirsi-pantheon@0.7.0` to Open VSX using the SirsiMaster account (Rule A20).
 - **Crashpad Verification** — Manually verified the Crashpad Monitor's threshold detection by clearing 34 stale dumps.
-- **Site Deployment** — Deployed updated Deity Registry and Build Log (Sessions 23/24) to `pantheon.sirsi.ai`.
+- **Site Deployment** — Deployed updated Deity Registry and Build Log (Sessions 23/24) to `sirsi.ai/pantheon`.
 - **Status Sync** — Updated all public-facing stats: 21K+ lines of Go, 90.1% coverage, 11 deities, 12 ADRs.
 - **Version**: 0.7.0-alpha.
 
@@ -495,17 +495,17 @@ v0.8.0-beta is the first credible public release of Pantheon. All metrics are ve
 - **Sideloaded** — Installed in both Antigravity and VS Code via VSIX.
 
 ### Session 20 (2026-03-25) — The Deployment Sprint
-- **Firebase Hosting** — Deployed Deity Registry to `sirsi-pantheon.web.app` via Firebase Hosting (15 HTML pages).
+- **Firebase Hosting** — Deployed Deity Registry to `sirsi.ai/pantheon` via Firebase Hosting (15 HTML pages).
   - Created Firebase site `sirsi-pantheon` in project `sirsi-nexus-live`.
   - Configured hosting target with clean URLs and 1-hour cache.
-- **Custom Domain** — Wired `pantheon.sirsi.ai` via Firebase Hosting API + GoDaddy CNAME.
+- **Custom Domain** — Wired `sirsi.ai/pantheon` via Firebase Hosting API + GoDaddy CNAME.
   - Firebase: `HOST_ACTIVE`, `OWNERSHIP_ACTIVE`. SSL auto-provisioning.
 - **Flip Cards** — Rebuilt Deity Registry index with click-to-flip 3D cards.
   - Front: user-facing (name, description, key metrics).
   - Back: developer info (package path, coverage, test count, commands, deps, ADR).
   - 3 action buttons per card: Full Page, Download (releases), Source (GitHub internal/ link).
 - **Deity Page Fixes** — Updated all 12 deity pages:
-  - URL display: subdomain → path format (`pantheon.sirsi.ai/anubis`).
+  - URL display: subdomain → path format (`sirsi.ai/pantheon/anubis`).
   - Nav links: relative → absolute for Firebase deployment.
 - **Canon Cleanup** — VERSION bump to `0.5.0-alpha`, extension icon created, CHANGELOG + Thoth updated.
 

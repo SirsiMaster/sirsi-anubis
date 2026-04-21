@@ -127,7 +127,7 @@ vscode_extension: extensions/vscode/ (TypeScript, 7 modules, 10 commands, Thoth 
 # - Rule A19: ABSOLUTE PROHIBITION — NEVER modify /Applications/*.app/ bundles.
 #   Proven by crash forensics: manifest patches caused V8 OOM → Jetsam → reinstall.
 #   Valid JSON can crash Extension Host via semantic corruption. No exceptions.
-# - Website: sirsi-pantheon.web.app / pantheon.sirsi.ai (Firebase Hosting)
+# - Website: sirsi.ai/pantheon (Firebase Hosting)
 # - Deity Registry: 13 HTML pages (index + 12 deities) with flip cards
 # - iOS app: Full SwiftUI app (ios/), 9 deity views, PantheonCore.xcframework at v0.17.0
 #   WidgetKit + Siri Shortcuts + deep links. CI workflow + Fastlane.
@@ -180,7 +180,7 @@ vscode_extension: extensions/vscode/ (TypeScript, 7 modules, 10 commands, Thoth 
 #   Rule A21 canonized: Concurrency-Safe Injectable Mocks. Ma'at governs (QA Sovereign).
 #   P1: internal/thoth/journal.go (230 lines) — auto-generates journal entries from git log.
 #     thoth sync runs Phase 1 (memory.yaml) + Phase 2 (journal.md). --since, --dry-run flags.
-#   P2: Firebase deployed (17 files → sirsi-pantheon.web.app).
+#   P2: Firebase deployed (17 files → sirsi.ai/pantheon).
 #   P3: gh CLI 2.87.3 → 2.89.0.
 # 2026-03-27: Session 28 — Ghost Transcripts Recovery + CI Remediation
 #   CRITICAL FINDING: Antigravity IDE never writes overview.txt — 90+ conversations, zero transcripts.
@@ -251,8 +251,8 @@ vscode_extension: extensions/vscode/ (TypeScript, 7 modules, 10 commands, Thoth 
 #   Live tested: all 3 LSPs reniced to nice 10 after 30s. Extension Host ~199 MB.
 #   Sideloaded in both Antigravity and VS Code.
 # 2026-03-25: Session 20 — The Deployment Sprint
-#   Deployed Deity Registry to Firebase Hosting (sirsi-pantheon.web.app).
-#   Wired custom domain pantheon.sirsi.ai via Firebase API + GoDaddy CNAME.
+#   Deployed Deity Registry to Firebase Hosting (sirsi.ai/pantheon).
+#   Wired custom domain sirsi.ai/pantheon via Firebase API + GoDaddy CNAME.
 #   Rebuilt index with flip cards (front=user, back=developer info).
 #   Fixed all deity page nav links and URL displays for Firebase.
 #   VERSION bumped to 0.5.0-alpha. Extension icon created.

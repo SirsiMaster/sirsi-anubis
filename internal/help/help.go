@@ -268,7 +268,7 @@ func ListGuides() {
 
 // docsURL returns the web documentation URL for a deity.
 func docsURL(deity string) string {
-	return fmt.Sprintf("https://pantheon.sirsi.ai/pantheon/%s.html", strings.ToLower(deity))
+	return fmt.Sprintf("https://sirsi.ai/pantheon/%s.html", strings.ToLower(deity))
 }
 
 // OpenDocs opens the web documentation for a deity in the default browser.

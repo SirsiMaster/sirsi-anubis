@@ -215,6 +215,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## Built by Sirsi Technologies
 
-[sirsi.ai](https://sirsi.ai) · [GitHub](https://github.com/SirsiMaster) · [Pantheon Hub](https://pantheon.sirsi.ai)
+[sirsi.ai](https://sirsi.ai) · [GitHub](https://github.com/SirsiMaster) · [Pantheon Hub](https://sirsi.ai/pantheon)
 
 Apache License 2.0 — free and open source forever.

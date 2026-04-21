@@ -279,7 +279,7 @@ Commits: 12  |  Modules: 22  |  Tests: 768  |  Coverage: 90.1%
 
 ### Sprint 11 — The Extension Sprint (March 25, Session 19-20)
 
-**What happened**: Full TypeScript VS Code Extension built to replace the JS scaffold. Wired the Deity Registry to `pantheon.sirsi.ai` via Firebase.
+**What happened**: Full TypeScript VS Code Extension built to replace the JS scaffold. Wired the Deity Registry to `sirsi.ai/pantheon` via Firebase.
 
 **Built**: extension.ts, guardian.ts (renice), statusBar.ts (metrics), thothProvider.ts (compression). 3D flip-cards for the registry.
 
