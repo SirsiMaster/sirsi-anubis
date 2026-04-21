@@ -7,7 +7,7 @@ package brain
 /*
 #cgo CFLAGS: -x objective-c
 #cgo LDFLAGS: -framework Foundation -framework CoreML
-#include "coreml_bridge.h"
+#include "coreml_bridge_darwin.h"
 #include <stdlib.h>
 */
 import "C"

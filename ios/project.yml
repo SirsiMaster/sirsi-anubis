@@ -69,6 +69,10 @@ targets:
           - "$(inherited)"
           - "@executable_path/Frameworks"
           - "@executable_path/../../Frameworks"
+        OTHER_LDFLAGS:
+          - "$(inherited)"
+          - "-framework CoreML"
+          - "-framework Foundation"
     dependencies:
       - framework: "../bin/ios/PantheonCore.xcframework"
         embed: false

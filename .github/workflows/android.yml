@@ -22,7 +22,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.25'
 
       - name: Install gomobile
         run: |
@@ -36,7 +36,7 @@ jobs:
       - name: Build AAR
         run: |
           mkdir -p bin/android
-          gomobile bind -target=android -o bin/android/pantheon.aar ./mobile/
+          gomobile bind -target=android -androidapi 21 -o bin/android/pantheon.aar ./mobile/
 
       - name: Upload AAR artifact
         uses: actions/upload-artifact@v4

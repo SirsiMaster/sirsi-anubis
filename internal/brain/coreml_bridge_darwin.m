@@ -7,7 +7,7 @@
 
 #import <Foundation/Foundation.h>
 #import <CoreML/CoreML.h>
-#include "coreml_bridge.h"
+#include "coreml_bridge_darwin.h"
 #include <stdlib.h>
 #include <string.h>
 
