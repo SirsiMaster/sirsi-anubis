@@ -707,7 +707,7 @@ func TestMatchGlob(t *testing.T) {
 		{"*son", "Greeter", false},
 		// A* prefix.
 		{"New*", "NewPerson", true},
-		{"New*", "new", true},       // case-insensitive: "new" matches "New*"
+		{"New*", "new", true}, // case-insensitive: "new" matches "New*"
 		{"New*", "NewPerson", true},
 		// No match.
 		{"xyz", "abc", false},
