@@ -451,8 +451,8 @@ func init() {
 	// Token optimization — RTK, Vault, Horus
 	rootCmd.AddCommand(rtkCmd, vaultCmd, horusCmd)
 
-	// Notification history
-	rootCmd.AddCommand(notificationsCmd)
+	// Notification history + setup
+	rootCmd.AddCommand(notificationsCmd, setupCmd)
 
 	// Workstream manager (sirsi work / sirsi ws)
 	rootCmd.AddCommand(workCmd)
