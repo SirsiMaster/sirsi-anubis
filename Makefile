@@ -5,7 +5,7 @@ BUILD_DIR ?= bin
 INSTALL_DIR ?= $(HOME)/.local/bin
 GO_FLAGS ?= -ldflags="-X main.version=v$(VERSION)"
 
-.PHONY: all clean build install uninstall build-agent build-menubar bundle publish test test-proof ios ios-framework android-aar
+.PHONY: all clean build install uninstall build-agent build-menubar bundle publish test test-proof ios ios-framework android-aar brain-train brain-install
 
 all: build
 
@@ -102,6 +102,17 @@ android-aar:
 	@mkdir -p $(BUILD_DIR)/android
 	gomobile bind -target=android -o $(BUILD_DIR)/android/pantheon.aar $(GO_FLAGS) ./mobile/
 	@echo "✅ AAR built: $(BUILD_DIR)/android/pantheon.aar"
+
+# --- Brain Model Training Pipeline ---
+brain-train:
+	@echo "Training Brain classifier..."
+	cd scripts/brain-training && pip install -r requirements.txt && python generate_training_data.py && python train_model.py
+	@echo "Model at scripts/brain-training/classifier.mlmodelc"
+
+brain-install: brain-train
+	@mkdir -p $(HOME)/.config/sirsi/brain
+	cp -R scripts/brain-training/classifier.mlmodelc $(HOME)/.config/sirsi/brain/classifier.mlmodelc
+	@echo "Brain model installed to ~/.config/sirsi/brain/classifier.mlmodelc"
 
 # --- Test ---
 test:

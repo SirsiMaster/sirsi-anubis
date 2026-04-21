@@ -2,6 +2,9 @@ package mobile
 
 import (
 	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/brain"
 )
@@ -86,6 +89,94 @@ func BrainModelInfo() string {
 	}
 
 	return successJSON(info)
+}
+
+// BrainInstallModel copies a CoreML model (.mlmodelc directory) to the weights directory.
+// modelPath is the absolute path to the source .mlmodelc directory.
+// Returns Response JSON indicating success or failure.
+func BrainInstallModel(modelPath string) string {
+	if modelPath == "" {
+		return errorJSON("model path is required")
+	}
+
+	// Validate source exists and is a directory (mlmodelc is a directory)
+	info, err := os.Stat(modelPath)
+	if err != nil {
+		return errorJSON(fmt.Sprintf("model not found at %s: %s", modelPath, err.Error()))
+	}
+	if !info.IsDir() {
+		return errorJSON("model path must be a .mlmodelc directory, not a file")
+	}
+
+	// Get the weights directory
+	weightsDir, err := brain.WeightsDir()
+	if err != nil {
+		return errorJSON("failed to resolve weights dir: " + err.Error())
+	}
+
+	// Ensure weights directory exists
+	if mkErr := os.MkdirAll(weightsDir, 0o755); mkErr != nil {
+		return errorJSON("failed to create weights dir: " + mkErr.Error())
+	}
+
+	destPath := filepath.Join(weightsDir, "classifier.mlmodelc")
+
+	// Remove existing model if present
+	_ = os.RemoveAll(destPath)
+
+	// Copy the mlmodelc directory recursively
+	if cpErr := copyDir(modelPath, destPath); cpErr != nil {
+		return errorJSON("failed to copy model: " + cpErr.Error())
+	}
+
+	result := map[string]string{
+		"installed_at": destPath,
+		"source":       modelPath,
+	}
+	return successJSON(result)
+}
+
+// copyDir recursively copies a directory tree from src to dst.
+func copyDir(src, dst string) error {
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+
+	if mkErr := os.MkdirAll(dst, srcInfo.Mode()); mkErr != nil {
+		return mkErr
+	}
+
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		srcPath := filepath.Join(src, entry.Name())
+		dstPath := filepath.Join(dst, entry.Name())
+
+		if entry.IsDir() {
+			if err := copyDir(srcPath, dstPath); err != nil {
+				return err
+			}
+		} else {
+			data, readErr := os.ReadFile(srcPath)
+			if readErr != nil {
+				return readErr
+			}
+			info, _ := entry.Info()
+			mode := os.FileMode(0o644)
+			if info != nil {
+				mode = info.Mode()
+			}
+			if writeErr := os.WriteFile(dstPath, data, mode); writeErr != nil {
+				return writeErr
+			}
+		}
+	}
+
+	return nil
 }
 
 // classifierType maps a classifier name to a human-readable backend type.
