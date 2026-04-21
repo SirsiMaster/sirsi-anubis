@@ -191,7 +191,7 @@ func (ci *CodeIndex) IndexDir(root string) (*IndexStats, error) {
 		stats.FilesIndexed++
 
 		// Record file mod time for refresh.
-		ci.db.Exec(
+		_, _ = ci.db.Exec(
 			"INSERT OR REPLACE INTO code_files(path, mod_time) VALUES (?, ?)",
 			relPath, info.ModTime().Unix(),
 		)
@@ -279,17 +279,17 @@ func (ci *CodeIndex) Search(query string, limit int) ([]CodeChunk, error) {
 // Refresh re-indexes files that have changed since last index.
 func (ci *CodeIndex) Refresh(root string) (*IndexStats, error) {
 	// Clear existing index and rebuild.
-	ci.db.Exec("DELETE FROM code_fts")
-	ci.db.Exec("DELETE FROM code_meta")
-	ci.db.Exec("DELETE FROM code_files")
+	_, _ = ci.db.Exec("DELETE FROM code_fts")
+	_, _ = ci.db.Exec("DELETE FROM code_meta")
+	_, _ = ci.db.Exec("DELETE FROM code_files")
 	return ci.IndexDir(root)
 }
 
 // Stats returns code index statistics.
 func (ci *CodeIndex) Stats() (*IndexStats, error) {
 	var stats IndexStats
-	ci.db.QueryRow("SELECT COUNT(DISTINCT file) FROM code_fts").Scan(&stats.FilesIndexed)
-	ci.db.QueryRow("SELECT COUNT(*) FROM code_fts").Scan(&stats.ChunksCreated)
+	_ = ci.db.QueryRow("SELECT COUNT(DISTINCT file) FROM code_fts").Scan(&stats.FilesIndexed)
+	_ = ci.db.QueryRow("SELECT COUNT(*) FROM code_fts").Scan(&stats.ChunksCreated)
 	return &stats, nil
 }
 

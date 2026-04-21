@@ -238,8 +238,8 @@ func (s *Store) Prune(olderThan time.Duration) (int, error) {
 	}
 
 	for _, id := range ids {
-		tx.Exec("DELETE FROM vault_fts WHERE rowid = ?", id)
-		tx.Exec("DELETE FROM vault_meta WHERE rowid = ?", id)
+		_, _ = tx.Exec("DELETE FROM vault_fts WHERE rowid = ?", id)
+		_, _ = tx.Exec("DELETE FROM vault_meta WHERE rowid = ?", id)
 	}
 
 	if err := tx.Commit(); err != nil {

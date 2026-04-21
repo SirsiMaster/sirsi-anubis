@@ -289,7 +289,7 @@ func (r *Reader) ReadNew() ([]Entry, error) {
 	if r.offset > 0 {
 		if _, err := f.Seek(r.offset, 0); err != nil {
 			r.offset = 0
-			f.Seek(0, 0)
+			_, _ = f.Seek(0, 0)
 		}
 	}
 
