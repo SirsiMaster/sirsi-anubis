@@ -47,6 +47,7 @@ fun SebaScreen() {
     var acceleratorProfile by remember { mutableStateOf<AcceleratorProfile?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val fallbackError = stringResource(R.string.error_generic)
 
     Column(
         modifier = Modifier
@@ -71,7 +72,7 @@ fun SebaScreen() {
                         hardwareProfile = PantheonBridge.sebaDetectHardware()
                         acceleratorProfile = PantheonBridge.sebaDetectAccelerators()
                     } catch (e: Exception) {
-                        errorMessage = e.message ?: stringResource(R.string.error_generic)
+                        errorMessage = e.message ?: fallbackError
                     } finally {
                         isDetecting = false
                     }

@@ -50,6 +50,7 @@ fun AnubisScreen() {
     var scanResult by remember { mutableStateOf<ScanResult?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val fallbackError = stringResource(R.string.error_scan_failed)
 
     LazyColumn(
         modifier = Modifier
@@ -78,7 +79,7 @@ fun AnubisScreen() {
                                 rootPath = android.os.Environment.getExternalStorageDirectory().absolutePath,
                             )
                         } catch (e: Exception) {
-                            errorMessage = e.message ?: stringResource(R.string.error_scan_failed)
+                            errorMessage = e.message ?: fallbackError
                         } finally {
                             isScanning = false
                         }

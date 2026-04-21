@@ -221,11 +221,9 @@ object PantheonBridge {
 
     suspend fun brainClassifyBatch(paths: List<String>, workers: Int = 4): BatchResult =
         withContext(Dispatchers.IO) {
-            val optionsJson = json.encodeToString(
-                BrainBatchRequest.serializer(),
-                BrainBatchRequest(paths, workers),
-            )
-            val raw = Mobile.brainClassifyBatch(optionsJson)
+            @Suppress("JSON_FORMAT_REDUNDANT")
+            val pathsJson = json.encodeToString(kotlinx.serialization.serializer<List<String>>(), paths)
+            val raw = Mobile.brainClassifyBatch(pathsJson, workers.toLong())
             decode(raw)
         }
 
@@ -259,9 +257,4 @@ object PantheonBridge {
         @SerialName("since_days") val sinceDays: Int,
     )
 
-    @Serializable
-    private data class BrainBatchRequest(
-        val paths: List<String>,
-        val workers: Int,
-    )
 }

@@ -48,6 +48,7 @@ fun ThothScreen() {
     var syncStatus by remember { mutableStateOf<String?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val fallbackError = stringResource(R.string.error_generic)
 
     Column(
         modifier = Modifier
@@ -75,7 +76,7 @@ fun ThothScreen() {
                         PantheonBridge.thothSync(root)
                         syncStatus = "Synced"
                     } catch (e: Exception) {
-                        errorMessage = e.message ?: stringResource(R.string.error_generic)
+                        errorMessage = e.message ?: fallbackError
                     } finally {
                         isSyncing = false
                     }

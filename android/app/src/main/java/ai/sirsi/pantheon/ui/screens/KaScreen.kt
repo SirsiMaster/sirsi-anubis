@@ -49,6 +49,7 @@ fun KaScreen() {
     var ghosts by remember { mutableStateOf<List<GhostApp>?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val fallbackError = stringResource(R.string.error_generic)
 
     LazyColumn(
         modifier = Modifier
@@ -74,7 +75,7 @@ fun KaScreen() {
                         try {
                             ghosts = PantheonBridge.kaHunt(includeSudo = false)
                         } catch (e: Exception) {
-                            errorMessage = e.message ?: stringResource(R.string.error_generic)
+                            errorMessage = e.message ?: fallbackError
                         } finally {
                             isHunting = false
                         }
