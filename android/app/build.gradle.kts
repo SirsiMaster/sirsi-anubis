@@ -1,3 +1,5 @@
+import java.util.Properties
+
 // Sirsi Pantheon — App Module Build File
 plugins {
     id("com.android.application")
@@ -20,10 +22,30 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            val props = Properties()
+            val signingFile = rootProject.file("signing.properties")
+            if (signingFile.exists()) {
+                props.load(signingFile.inputStream())
+                storeFile = file(props.getProperty("storeFile", "../release.keystore"))
+                storePassword = props.getProperty("storePassword", "")
+                keyAlias = props.getProperty("keyAlias", "sirsi-pantheon")
+                keyPassword = props.getProperty("keyPassword", "")
+            } else if (System.getenv("ANDROID_KEYSTORE_PATH") != null) {
+                storeFile = file(System.getenv("ANDROID_KEYSTORE_PATH"))
+                storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("ANDROID_KEY_ALIAS") ?: "sirsi-pantheon"
+                keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
