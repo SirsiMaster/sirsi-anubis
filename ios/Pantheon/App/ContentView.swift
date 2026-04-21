@@ -144,8 +144,6 @@ struct ContentView: View {
         case .seba:   SebaView()
         case .seshat: SeshatView()
         case .brain:  BrainView()
-        case .rtk:    RTKView()
-        case .vault:  VaultView()
         case .horus:  HorusView()
         case .stele:  SteleView()
         }
@@ -193,18 +191,6 @@ struct GUIContainerView: View {
                     Label("Brain", systemImage: "brain.fill")
                 }
                 .tag(AppState.ActiveDeity.brain)
-
-            RTKView()
-                .tabItem {
-                    Label("RTK", systemImage: "bolt.fill")
-                }
-                .tag(AppState.ActiveDeity.rtk)
-
-            VaultView()
-                .tabItem {
-                    Label("Vault", systemImage: "building.columns.fill")
-                }
-                .tag(AppState.ActiveDeity.vault)
 
             HorusView()
                 .tabItem {

@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountTree
-import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Memory
@@ -19,7 +18,6 @@ import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.Warehouse
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -52,11 +50,9 @@ import ai.sirsi.pantheon.ui.screens.BrainScreen
 import ai.sirsi.pantheon.ui.screens.HomeScreen
 import ai.sirsi.pantheon.ui.screens.HorusScreen
 import ai.sirsi.pantheon.ui.screens.KaScreen
-import ai.sirsi.pantheon.ui.screens.RTKScreen
 import ai.sirsi.pantheon.ui.screens.SebaScreen
 import ai.sirsi.pantheon.ui.screens.ThothScreen
 import ai.sirsi.pantheon.ui.screens.SteleScreen
-import ai.sirsi.pantheon.ui.screens.VaultScreen
 import ai.sirsi.pantheon.ui.theme.PantheonBlack
 import ai.sirsi.pantheon.ui.theme.PantheonGold
 import ai.sirsi.pantheon.ui.theme.PantheonSurface
@@ -86,8 +82,6 @@ object Routes {
     const val KA = "ka"
     const val THOTH = "thoth"
     const val SEBA = "seba"
-    const val RTK = "rtk"
-    const val VAULT = "vault"
     const val HORUS = "horus"
     const val BRAIN = "brain"
     const val STELE = "stele"
@@ -117,8 +111,6 @@ fun PantheonNavHost() {
     )
 
     val advancedItems = listOf(
-        NavItem(Routes.RTK, R.string.nav_rtk, Icons.Default.FilterAlt, "advanced"),
-        NavItem(Routes.VAULT, R.string.nav_vault, Icons.Default.Warehouse, "advanced"),
         NavItem(Routes.HORUS, R.string.nav_horus, Icons.Default.AccountTree, "advanced"),
         NavItem(Routes.BRAIN, R.string.nav_brain, Icons.Default.Psychology, "advanced"),
         NavItem(Routes.STELE, R.string.nav_stele, Icons.Default.FormatListBulleted, "advanced"),
@@ -232,8 +224,6 @@ fun PantheonNavHost() {
                             Routes.KA -> R.string.ka_name
                             Routes.THOTH -> R.string.thoth_name
                             Routes.SEBA -> R.string.seba_name
-                            Routes.RTK -> R.string.rtk_name
-                            Routes.VAULT -> R.string.vault_name
                             Routes.HORUS -> R.string.horus_name
                             Routes.BRAIN -> R.string.brain_name
                             Routes.STELE -> R.string.stele_name
@@ -281,8 +271,6 @@ fun PantheonNavHost() {
                 composable(Routes.KA) { KaScreen() }
                 composable(Routes.THOTH) { ThothScreen() }
                 composable(Routes.SEBA) { SebaScreen() }
-                composable(Routes.RTK) { RTKScreen() }
-                composable(Routes.VAULT) { VaultScreen() }
                 composable(Routes.HORUS) { HorusScreen() }
                 composable(Routes.BRAIN) { BrainScreen() }
                 composable(Routes.STELE) { SteleScreen() }

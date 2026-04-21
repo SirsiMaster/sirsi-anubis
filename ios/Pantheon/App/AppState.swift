@@ -17,8 +17,6 @@ final class AppState: ObservableObject {
         case seba = "Seba"
         case seshat = "Seshat"
         case brain = "Brain"
-        case rtk = "RTK"
-        case vault = "Vault"
         case horus = "Horus"
         case stele = "Stele"
 
@@ -26,14 +24,12 @@ final class AppState: ObservableObject {
 
         var glyph: String {
             switch self {
-            case .anubis: return "𓁢"
-            case .ka:     return "𓂓"
-            case .thoth:  return "𓁟"
-            case .seba:   return "𓇽"
-            case .seshat: return "𓁆"
-            case .brain:  return "𓂧"
-            case .rtk:    return "⚡"
-            case .vault:  return "🏛️"
+            case .anubis: return "\u{13062}"
+            case .ka:     return "\u{13093}"
+            case .thoth:  return "\u{1305F}"
+            case .seba:   return "\u{133BD}"
+            case .seshat: return "\u{13046}"
+            case .brain:  return "\u{130A7}"
             case .horus:  return "\u{13080}"
             case .stele:  return "\u{130BD}"
             }
@@ -43,12 +39,10 @@ final class AppState: ObservableObject {
             switch self {
             case .anubis: return "Infrastructure Scanner"
             case .ka:     return "Ghost Detection"
-            case .thoth:  return "Project Memory"
+            case .thoth:  return "Memory & Context"
             case .seba:   return "Hardware Profiling"
             case .seshat: return "Knowledge Bridge"
             case .brain:  return "Neural Classification"
-            case .rtk:    return "Output Filter"
-            case .vault:  return "Context Keeper"
             case .horus:  return "Code Graph"
             case .stele:  return "Event Ledger"
             }
@@ -62,8 +56,6 @@ final class AppState: ObservableObject {
             case .seba:   return "cpu.fill"
             case .seshat: return "books.vertical.fill"
             case .brain:  return "brain.fill"
-            case .rtk:    return "bolt.fill"
-            case .vault:  return "building.columns.fill"
             case .horus:  return "eye.circle.fill"
             case .stele:  return "list.bullet.rectangle.fill"
             }
@@ -87,8 +79,8 @@ final class AppState: ObservableObject {
         case "seba":   activeDeity = .seba
         case "seshat": activeDeity = .seshat
         case "brain":  activeDeity = .brain
-        case "rtk":    activeDeity = .rtk
-        case "vault":  activeDeity = .vault
+        case "rtk":    activeDeity = .thoth  // RTK folded into Thoth
+        case "vault":  activeDeity = .thoth  // Vault folded into Thoth
         case "horus":  activeDeity = .horus
         case "stele":  activeDeity = .stele
         default: break

@@ -90,7 +90,7 @@ fun HomeScreen(
                 glyph = "\uD80C\uDC5F", // Thoth ibis
                 name = stringResource(R.string.thoth_name),
                 subtitle = stringResource(R.string.thoth_subtitle),
-                description = stringResource(R.string.thoth_description),
+                description = "Memory, filtering, and context search.",
                 onClick = { onNavigate?.invoke("thoth") },
             )
             DeityCard(
@@ -106,20 +106,6 @@ fun HomeScreen(
                 subtitle = stringResource(R.string.seshat_subtitle),
                 description = stringResource(R.string.seshat_description),
                 onClick = { /* Seshat screen — future deep link */ },
-            )
-            DeityCard(
-                glyph = "\u26A1", // RTK
-                name = stringResource(R.string.rtk_name),
-                subtitle = stringResource(R.string.rtk_subtitle),
-                description = stringResource(R.string.rtk_description),
-                onClick = { onNavigate?.invoke("rtk") },
-            )
-            DeityCard(
-                glyph = "\uD83C\uDFDB", // Vault
-                name = stringResource(R.string.vault_name),
-                subtitle = stringResource(R.string.vault_subtitle),
-                description = stringResource(R.string.vault_description),
-                onClick = { onNavigate?.invoke("vault") },
             )
             DeityCard(
                 glyph = "\uD80C\uDC80", // Horus

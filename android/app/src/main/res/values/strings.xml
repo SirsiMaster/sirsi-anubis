@@ -27,8 +27,8 @@
 
     <string name="thoth_name">Thoth</string>
     <string name="thoth_glyph">\U0001305F</string>
-    <string name="thoth_subtitle">The Scribe</string>
-    <string name="thoth_description">Manages project memory and knowledge synchronization.</string>
+    <string name="thoth_subtitle">Memory &amp; Context</string>
+    <string name="thoth_description">Persistent AI project memory, output filtering, and context search.</string>
 
     <string name="seba_name">Seba</string>
     <string name="seba_glyph">\U000133BC</string>
