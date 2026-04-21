@@ -143,6 +143,10 @@ struct ContentView: View {
         case .thoth:  ThothView()
         case .seba:   SebaView()
         case .seshat: SeshatView()
+        case .brain:  BrainView()
+        case .rtk:    RTKView()
+        case .vault:  VaultView()
+        case .horus:  HorusView()
         }
     }
 }
@@ -182,6 +186,30 @@ struct GUIContainerView: View {
                     Label("Seshat", systemImage: "books.vertical.fill")
                 }
                 .tag(AppState.ActiveDeity.seshat)
+
+            BrainView()
+                .tabItem {
+                    Label("Brain", systemImage: "brain.fill")
+                }
+                .tag(AppState.ActiveDeity.brain)
+
+            RTKView()
+                .tabItem {
+                    Label("RTK", systemImage: "bolt.fill")
+                }
+                .tag(AppState.ActiveDeity.rtk)
+
+            VaultView()
+                .tabItem {
+                    Label("Vault", systemImage: "building.columns.fill")
+                }
+                .tag(AppState.ActiveDeity.vault)
+
+            HorusView()
+                .tabItem {
+                    Label("Horus", systemImage: "eye.circle.fill")
+                }
+                .tag(AppState.ActiveDeity.horus)
         }
     }
 }

@@ -10,8 +10,8 @@ func TestVersion(t *testing.T) {
 	if v == "" {
 		t.Fatal("Version() returned empty string")
 	}
-	if v != "0.16.0-ios" {
-		t.Errorf("Version() = %q, want %q", v, "0.16.0-ios")
+	if v != "0.17.0" {
+		t.Errorf("Version() = %q, want %q", v, "0.17.0")
 	}
 }
 

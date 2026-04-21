@@ -145,6 +145,95 @@ object PantheonBridge {
         return decode(raw)
     }
 
+    // --- RTK ---
+
+    fun rtkFilter(rawOutput: String, configJson: String = ""): FilterResult {
+        val raw = Mobile.rtkFilter(rawOutput, configJson)
+        return decode(raw)
+    }
+
+    fun rtkDefaultConfig(): FilterConfig {
+        val raw = Mobile.rtkDefaultConfig()
+        return decode(raw)
+    }
+
+    // --- Vault ---
+
+    suspend fun vaultStore(source: String, tag: String, content: String, tokens: Int): VaultEntry =
+        withContext(Dispatchers.IO) {
+            val raw = Mobile.vaultStore(source, tag, content, tokens.toLong())
+            decode(raw)
+        }
+
+    suspend fun vaultSearch(query: String, limit: Int = 10): VaultSearchResult =
+        withContext(Dispatchers.IO) {
+            val raw = Mobile.vaultSearch(query, limit.toLong())
+            decode(raw)
+        }
+
+    suspend fun vaultGet(id: Long): VaultEntry =
+        withContext(Dispatchers.IO) {
+            val raw = Mobile.vaultGet(id)
+            decode(raw)
+        }
+
+    fun vaultStats(): VaultStoreStats {
+        val raw = Mobile.vaultStats()
+        return decode(raw)
+    }
+
+    suspend fun vaultPrune(olderThanHours: Int): VaultPruneResult =
+        withContext(Dispatchers.IO) {
+            val raw = Mobile.vaultPrune(olderThanHours.toLong())
+            decode(raw)
+        }
+
+    // --- Horus ---
+
+    suspend fun horusParseDir(root: String): HorusSymbolGraph =
+        withContext(Dispatchers.IO) {
+            val raw = Mobile.horusParseDir(root)
+            decode(raw)
+        }
+
+    fun horusFileOutline(root: String, filePath: String): HorusOutlineResult {
+        val raw = Mobile.horusFileOutline(root, filePath)
+        return decode(raw)
+    }
+
+    fun horusContextFor(root: String, symbolName: String): HorusContextResult {
+        val raw = Mobile.horusContextFor(root, symbolName)
+        return decode(raw)
+    }
+
+    fun horusMatchSymbols(root: String, pattern: String): List<HorusSymbol> {
+        val raw = Mobile.horusMatchSymbols(root, pattern)
+        return decode(raw)
+    }
+
+    // --- Brain ---
+
+    suspend fun brainClassify(filePath: String): FileClassification =
+        withContext(Dispatchers.IO) {
+            val raw = Mobile.brainClassify(filePath)
+            decode(raw)
+        }
+
+    suspend fun brainClassifyBatch(paths: List<String>, workers: Int = 4): BatchResult =
+        withContext(Dispatchers.IO) {
+            val optionsJson = json.encodeToString(
+                BrainBatchRequest.serializer(),
+                BrainBatchRequest(paths, workers),
+            )
+            val raw = Mobile.brainClassifyBatch(optionsJson)
+            decode(raw)
+        }
+
+    fun brainModelInfo(): ModelInfo {
+        val raw = Mobile.brainModelInfo()
+        return decode(raw)
+    }
+
     // --- Version ---
 
     fun version(): String = Mobile.version()
@@ -168,5 +257,11 @@ object PantheonBridge {
     private data class IngestOptions(
         val sources: List<String>,
         @SerialName("since_days") val sinceDays: Int,
+    )
+
+    @Serializable
+    private data class BrainBatchRequest(
+        val paths: List<String>,
+        val workers: Int,
     )
 }

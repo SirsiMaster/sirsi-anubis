@@ -7,7 +7,7 @@ import "encoding/json"
 
 // Version returns the Pantheon mobile SDK version.
 func Version() string {
-	return "0.16.0-ios"
+	return "0.17.0"
 }
 
 // Response is the standard envelope for all mobile bridge responses.

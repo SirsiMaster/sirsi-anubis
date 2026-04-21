@@ -16,6 +16,10 @@ final class AppState: ObservableObject {
         case thoth = "Thoth"
         case seba = "Seba"
         case seshat = "Seshat"
+        case brain = "Brain"
+        case rtk = "RTK"
+        case vault = "Vault"
+        case horus = "Horus"
 
         var id: String { rawValue }
 
@@ -26,6 +30,10 @@ final class AppState: ObservableObject {
             case .thoth:  return "𓁟"
             case .seba:   return "𓇽"
             case .seshat: return "𓁆"
+            case .brain:  return "𓂧"
+            case .rtk:    return "⚡"
+            case .vault:  return "🏛️"
+            case .horus:  return "\u{13080}"
             }
         }
 
@@ -36,6 +44,10 @@ final class AppState: ObservableObject {
             case .thoth:  return "Project Memory"
             case .seba:   return "Hardware Profiling"
             case .seshat: return "Knowledge Bridge"
+            case .brain:  return "Neural Classification"
+            case .rtk:    return "Output Filter"
+            case .vault:  return "Context Keeper"
+            case .horus:  return "Code Graph"
             }
         }
 
@@ -46,6 +58,10 @@ final class AppState: ObservableObject {
             case .thoth:  return "brain.head.profile.fill"
             case .seba:   return "cpu.fill"
             case .seshat: return "books.vertical.fill"
+            case .brain:  return "brain.fill"
+            case .rtk:    return "bolt.fill"
+            case .vault:  return "building.columns.fill"
+            case .horus:  return "eye.circle.fill"
             }
         }
     }
@@ -66,6 +82,10 @@ final class AppState: ObservableObject {
         case "thoth":  activeDeity = .thoth
         case "seba":   activeDeity = .seba
         case "seshat": activeDeity = .seshat
+        case "brain":  activeDeity = .brain
+        case "rtk":    activeDeity = .rtk
+        case "vault":  activeDeity = .vault
+        case "horus":  activeDeity = .horus
         default: break
         }
         viewMode = .gui

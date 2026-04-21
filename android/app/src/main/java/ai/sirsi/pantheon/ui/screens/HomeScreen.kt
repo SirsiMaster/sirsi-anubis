@@ -105,7 +105,35 @@ fun HomeScreen(
                 name = stringResource(R.string.seshat_name),
                 subtitle = stringResource(R.string.seshat_subtitle),
                 description = stringResource(R.string.seshat_description),
-                onClick = { /* Seshat screen not in bottom nav — future deep link */ },
+                onClick = { /* Seshat screen — future deep link */ },
+            )
+            DeityCard(
+                glyph = "\u26A1", // RTK
+                name = stringResource(R.string.rtk_name),
+                subtitle = stringResource(R.string.rtk_subtitle),
+                description = stringResource(R.string.rtk_description),
+                onClick = { onNavigate?.invoke("rtk") },
+            )
+            DeityCard(
+                glyph = "\uD83C\uDFDB", // Vault
+                name = stringResource(R.string.vault_name),
+                subtitle = stringResource(R.string.vault_subtitle),
+                description = stringResource(R.string.vault_description),
+                onClick = { onNavigate?.invoke("vault") },
+            )
+            DeityCard(
+                glyph = "\uD80C\uDC80", // Horus
+                name = stringResource(R.string.horus_name),
+                subtitle = stringResource(R.string.horus_subtitle),
+                description = stringResource(R.string.horus_description),
+                onClick = { onNavigate?.invoke("horus") },
+            )
+            DeityCard(
+                glyph = "\uD83E\uDDE0", // Brain
+                name = stringResource(R.string.brain_name),
+                subtitle = stringResource(R.string.brain_subtitle),
+                description = stringResource(R.string.brain_description),
+                onClick = { onNavigate?.invoke("brain") },
             )
         }
 

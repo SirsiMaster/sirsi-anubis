@@ -122,6 +122,111 @@ final class PantheonBridge: Sendable {
         }.value
     }
 
+    // MARK: - Brain (Inference)
+
+    func brainClassify(filePath: String) async throws -> FileClassification {
+        return try await Task.detached(priority: .userInitiated) {
+            let json = MobileBrainClassify(filePath)
+            return try self.decode(json) as FileClassification
+        }.value
+    }
+
+    func brainClassifyBatch(paths: [String], workers: Int = 4) async throws -> BatchClassificationResult {
+        let pathsData = try JSONEncoder().encode(paths)
+        let pathsStr = String(data: pathsData, encoding: .utf8) ?? "[]"
+
+        return try await Task.detached(priority: .userInitiated) {
+            let json = MobileBrainClassifyBatch(pathsStr, workers)
+            return try self.decode(json) as BatchClassificationResult
+        }.value
+    }
+
+    func brainModelInfo() throws -> ModelInfo {
+        let json = MobileBrainModelInfo()
+        return try decode(json)
+    }
+
+    // MARK: - RTK
+
+    func rtkDefaultConfig() throws -> FilterConfig {
+        let json = MobileRtkDefaultConfig()
+        return try decode(json)
+    }
+
+    func rtkFilter(rawOutput: String, configJSON: String = "") async throws -> FilterResult {
+        return try await Task.detached(priority: .userInitiated) {
+            let json = MobileRtkFilter(rawOutput, configJSON)
+            return try self.decode(json) as FilterResult
+        }.value
+    }
+
+    // MARK: - Vault
+
+    func vaultStore(source: String, tag: String, content: String, tokens: Int) async throws -> VaultEntry {
+        return try await Task.detached(priority: .userInitiated) {
+            let json = MobileVaultStore(source, tag, content, Int64(tokens))
+            return try self.decode(json) as VaultEntry
+        }.value
+    }
+
+    func vaultSearch(query: String, limit: Int = 10) async throws -> VaultSearchResult {
+        return try await Task.detached(priority: .userInitiated) {
+            let json = MobileVaultSearch(query, Int64(limit))
+            return try self.decode(json) as VaultSearchResult
+        }.value
+    }
+
+    func vaultGet(id: Int64) async throws -> VaultEntry {
+        return try await Task.detached(priority: .userInitiated) {
+            let json = MobileVaultGet(id)
+            return try self.decode(json) as VaultEntry
+        }.value
+    }
+
+    func vaultStats() async throws -> VaultStoreStats {
+        return try await Task.detached(priority: .userInitiated) {
+            let json = MobileVaultStats()
+            return try self.decode(json) as VaultStoreStats
+        }.value
+    }
+
+    func vaultPrune(olderThanHours: Int) async throws -> VaultPruneResult {
+        return try await Task.detached(priority: .userInitiated) {
+            let json = MobileVaultPrune(Int64(olderThanHours))
+            return try self.decode(json) as VaultPruneResult
+        }.value
+    }
+
+    // MARK: - Horus
+
+    func horusParseDir(root: String) async throws -> HorusSymbolGraph {
+        return try await Task.detached(priority: .userInitiated) {
+            let json = MobileHorusParseDir(root)
+            return try self.decode(json) as HorusSymbolGraph
+        }.value
+    }
+
+    func horusFileOutline(root: String, filePath: String) async throws -> HorusOutlineResult {
+        return try await Task.detached(priority: .userInitiated) {
+            let json = MobileHorusFileOutline(root, filePath)
+            return try self.decode(json) as HorusOutlineResult
+        }.value
+    }
+
+    func horusContextFor(root: String, symbolName: String) async throws -> HorusContextResult {
+        return try await Task.detached(priority: .userInitiated) {
+            let json = MobileHorusContextFor(root, symbolName)
+            return try self.decode(json) as HorusContextResult
+        }.value
+    }
+
+    func horusMatchSymbols(root: String, pattern: String) async throws -> [HorusSymbol] {
+        return try await Task.detached(priority: .userInitiated) {
+            let json = MobileHorusMatchSymbols(root, pattern)
+            return try self.decode(json) as [HorusSymbol]
+        }.value
+    }
+
     // MARK: - Version
 
     func version() -> String {
