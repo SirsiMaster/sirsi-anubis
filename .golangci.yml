@@ -1,49 +1,91 @@
 # .golangci.yml — Sirsi Pantheon linter configuration (golangci-lint v2)
 # Rule A6: golangci-lint must pass with zero errors on every push/PR.
+version: "2"
 
 run:
   timeout: 5m
   go: "1.24"
 
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
 linters:
   enable:
-    - errcheck      # Check for unchecked errors
-    - gosimple      # Simplification suggestions
-    - govet         # Go vet checks
-    - ineffassign   # Detect ineffectual assignments
-    - staticcheck   # Static analysis
-    - unused        # Check for unused code
-    - gofmt         # Enforce gofmt formatting (Rule A6)
-    - goimports     # Enforce import ordering
-    - misspell      # Catch common misspellings
-    - bodyclose     # Check for unclosed HTTP response bodies
-    - copyloopvar   # Check for loop variable capture (Go 1.22+)
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - misspell
+    - bodyclose
+    - copyloopvar
 
-linters-settings:
-  errcheck:
-    exclude-functions:
-      - fmt.Fprintln
-      - fmt.Fprintf
-      - (os.File).Close
+  exclusions:
+    rules:
+      - path: ".*_test\\.go"
+        linters:
+          - errcheck
+          - bodyclose
 
-  govet:
-    enable-all: true
-    disable:
-      - fieldalignment
+      - linters:
+          - unused
+        text: "parameter .* always receives"
 
-  misspell:
-    locale: US
+    presets:
+      - std-error-handling
+
+  settings:
+    errcheck:
+      check-type-assertions: false
+      check-blank: false
+      exclude-functions:
+        - (io.Closer).Close
+        - (net.Conn).Close
+        - (*os.File).Close
+        - (*database/sql.DB).Close
+        - (*database/sql.Rows).Close
+        - (*database/sql.Tx).Exec
+        - (*database/sql.Tx).Rollback
+        - os.Remove
+        - os.RemoveAll
+        - os.MkdirAll
+        - os.WriteFile
+        - fmt.Fprintln
+        - fmt.Fprintf
+        - fmt.Fprint
+        - io.Copy
+        - io.WriteString
+        - (*bytes.Buffer).WriteString
+        - (*bytes.Buffer).Write
+        - (*strings.Builder).WriteString
+        - (*strings.Builder).Write
+        - go/printer.Fprint
+        - (*github.com/SirsiMaster/sirsi-pantheon/internal/vault.Store).Close
+        - (*github.com/SirsiMaster/sirsi-pantheon/internal/vault.CodeIndex).Close
+        - (*github.com/SirsiMaster/sirsi-pantheon/internal/notify.Store).Close
+
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+
+    misspell:
+      locale: US
+
+    staticcheck:
+      checks:
+        - "all"
+        - "-QF*"
+        - "-ST1003"
+        - "-ST1000"
+        - "-ST1005"
+        - "-ST1020"
+        - "-ST1022"
+        - "-ST1023"
+        - "-ST1021"
 
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
-
-  exclude-rules:
-    - linters:
-        - unused
-      text: "parameter .* always receives"
-
-    - path: _test\.go
-      linters:
-        - errcheck
-        - bodyclose

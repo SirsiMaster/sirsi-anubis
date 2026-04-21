@@ -121,10 +121,7 @@ func runSetup(_ *cobra.Command, _ []string) error {
 				status = "not installed"
 			}
 		}
-		ver := s.Version
-		if ver == "" {
-			ver = "—"
-		}
+		_ = s.Version // version available for --json output
 		rows = append(rows, []string{icon, s.Name, s.Description, status})
 	}
 	output.Table([]string{"", "Tool", "Purpose", "Status"}, rows)
