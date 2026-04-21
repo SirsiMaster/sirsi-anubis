@@ -18,10 +18,6 @@ set -e
 
 DEPTH="${MAAT_DEPTH:-fast}"
 
-echo ""
-echo "  𓆄 Ma'at pre-push gate... [Pantheon | depth: $DEPTH]"
-echo ""
-
 # ── Detect tag-only pushes + capture push refs ───────────────────────
 # Git pre-push hook receives: <local-ref> <local-sha> <remote-ref> <remote-sha>
 # on stdin. remote_sha is what the remote has NOW — the correct base
@@ -41,47 +37,109 @@ while read local_ref local_sha remote_ref remote_sha; do
 done
 
 if [ "$TAG_ONLY" = "true" ]; then
+    echo ""
+    echo "  𓆄 Ma'at pre-push gate... [Pantheon | depth: fast]"
+    echo ""
     echo "  ⏭️  Tag push — fast pass"
     exit 0
 fi
 
-# ── Detect changed Go packages (for diff-based testing) ─────────────
-# Priority:
-#   1. Use PUSH_REMOTE_SHA from stdin (most reliable — actual remote state)
-#   2. Fall back to @{push} (remote tracking ref)
-#   3. Fall back to HEAD~1 (at least test the last commit)
-#   4. No ref available — test everything
-
+# ── Detect changed files (for diff-based testing + auto-escalation) ──
 CHANGED_PKGS=""
 ZERO_SHA="0000000000000000000000000000000000000000"
 
 if [ -n "$PUSH_REMOTE_SHA" ] && [ "$PUSH_REMOTE_SHA" != "$ZERO_SHA" ]; then
-    # Best case: compare against actual remote state from stdin
     DIFF_BASE="$PUSH_REMOTE_SHA"
 elif [ -n "$PUSH_REMOTE_SHA" ] && [ "$PUSH_REMOTE_SHA" = "$ZERO_SHA" ]; then
-    # New branch — no remote history, test everything
     DIFF_BASE=""
 else
-    # Fallback: try @{push} then HEAD~1
     DIFF_BASE=$(git rev-parse --verify @{push} 2>/dev/null || \
                 git rev-parse --verify HEAD~1 2>/dev/null || echo "")
 fi
 
 if [ -z "$DIFF_BASE" ]; then
     CHANGED_GO_FILES="all"
+    ALL_CHANGED_FILES="all"
 elif [ -n "$PUSH_LOCAL_SHA" ]; then
     CHANGED_GO_FILES=$(git diff --name-only "$DIFF_BASE" "$PUSH_LOCAL_SHA" -- '*.go' 2>/dev/null || echo "")
+    ALL_CHANGED_FILES=$(git diff --name-only "$DIFF_BASE" "$PUSH_LOCAL_SHA" 2>/dev/null || echo "")
 else
     CHANGED_GO_FILES=$(git diff --name-only "$DIFF_BASE" HEAD -- '*.go' 2>/dev/null || echo "")
+    ALL_CHANGED_FILES=$(git diff --name-only "$DIFF_BASE" HEAD 2>/dev/null || echo "")
 fi
 
 if [ "$CHANGED_GO_FILES" = "all" ]; then
     CHANGED_PKGS="./..."
 elif [ -n "$CHANGED_GO_FILES" ]; then
-    # Extract unique package directories from changed files (skip deleted dirs)
     CHANGED_PKGS=$(echo "$CHANGED_GO_FILES" | xargs -I{} dirname {} | sort -u | \
                    while read dir; do [ -d "$dir" ] && echo "./$dir"; done | tr '\n' ' ')
 fi
+
+# ── Auto-escalation: detect when fast mode isn't enough ──────────────
+# Only escalate if user didn't explicitly set MAAT_DEPTH.
+ESCALATION_REASON=""
+if [ -z "$MAAT_DEPTH" ]; then
+
+    # 1. VERSION file changed → release in progress → deep
+    if echo "$ALL_CHANGED_FILES" | grep -q "^VERSION$" 2>/dev/null; then
+        DEPTH="deep"
+        ESCALATION_REASON="VERSION changed (release detected)"
+    fi
+
+    # 2. Safety-critical files → standard
+    if echo "$ALL_CHANGED_FILES" | grep -qE "(internal/cleaner/safety|internal/guard/|internal/platform/|\.githooks/)" 2>/dev/null; then
+        [ "$DEPTH" = "fast" ] && DEPTH="standard"
+        ESCALATION_REASON="safety-critical files modified"
+    fi
+
+    # 3. MCP/public API surface → standard
+    if echo "$ALL_CHANGED_FILES" | grep -qE "(internal/mcp/server\.go|internal/mcp/tools\.go)" 2>/dev/null; then
+        [ "$DEPTH" = "fast" ] && DEPTH="standard"
+        ESCALATION_REASON="MCP API surface changed"
+    fi
+
+    # 4. New packages detected → standard
+    if [ "$CHANGED_GO_FILES" != "all" ] && [ -n "$CHANGED_GO_FILES" ]; then
+        NEW_DIRS=$(echo "$CHANGED_GO_FILES" | xargs -I{} dirname {} | sort -u | \
+                   while read dir; do
+                       # Check if this directory existed on the remote
+                       if [ -n "$DIFF_BASE" ] && ! git ls-tree -d "$DIFF_BASE" -- "$dir" >/dev/null 2>&1; then
+                           echo "$dir"
+                       fi
+                   done)
+        if [ -n "$NEW_DIRS" ]; then
+            [ "$DEPTH" = "fast" ] && DEPTH="standard"
+            ESCALATION_REASON="new package(s): $(echo $NEW_DIRS | tr '\n' ' ')"
+        fi
+    fi
+
+    # 5. Large changeset (>15 Go files) → standard
+    if [ "$CHANGED_GO_FILES" != "all" ] && [ -n "$CHANGED_GO_FILES" ]; then
+        FILE_COUNT=$(echo "$CHANGED_GO_FILES" | wc -l | tr -d ' ')
+        if [ "$FILE_COUNT" -gt 15 ]; then
+            [ "$DEPTH" = "fast" ] && DEPTH="standard"
+            ESCALATION_REASON="large changeset ($FILE_COUNT Go files)"
+        fi
+    fi
+
+    # 6. Previous CI failed → standard
+    if command -v gh >/dev/null 2>&1; then
+        LAST_CI=$(gh run list --limit 1 --json conclusion -q '.[0].conclusion' 2>/dev/null || echo "")
+        if [ "$LAST_CI" = "failure" ]; then
+            [ "$DEPTH" = "fast" ] && DEPTH="standard"
+            ESCALATION_REASON="previous CI run failed"
+        fi
+    fi
+fi
+
+echo ""
+if [ -n "$ESCALATION_REASON" ]; then
+    echo "  𓆄 Ma'at pre-push gate... [Pantheon | depth: $DEPTH ← auto-escalated]"
+    echo "  ↑ Reason: $ESCALATION_REASON"
+else
+    echo "  𓆄 Ma'at pre-push gate... [Pantheon | depth: $DEPTH]"
+fi
+echo ""
 
 # ── 1. gofmt — formatting must be canonical ─────────────────────────
 BAD_FMT=$(gofmt -l ./internal/ ./cmd/ 2>/dev/null || true)
@@ -99,13 +157,33 @@ if ! go vet ./... 2>/dev/null; then
     exit 1
 fi
 
-# ── 3. Build check — both binaries ──────────────────────────────────
+# ── 3. golangci-lint — matches CI exactly ───────────────────────────
+if command -v golangci-lint >/dev/null 2>&1; then
+    if [ -n "$CHANGED_PKGS" ] && [ "$CHANGED_PKGS" != "./..." ]; then
+        # Lint only changed packages for speed
+        if ! golangci-lint run $CHANGED_PKGS 2>/dev/null; then
+            echo "  ❌ golangci-lint failed on changed packages"
+            echo "  Fix: golangci-lint run --fix $CHANGED_PKGS"
+            exit 1
+        fi
+    else
+        if ! golangci-lint run ./... 2>/dev/null; then
+            echo "  ❌ golangci-lint failed"
+            echo "  Fix: golangci-lint run --fix ./..."
+            exit 1
+        fi
+    fi
+else
+    echo "  ⚠️  golangci-lint not installed — skipping (CI will catch issues)"
+fi
+
+# ── 4. Build check — both binaries ──────────────────────────────────
 if ! go build ./... 2>/dev/null; then
     echo "  ❌ build failed"
     exit 1
 fi
 
-# ── 4. Tests — diff-based or full depending on depth ────────────────
+# ── 5. Tests — diff-based or full depending on depth ────────────────
 if [ "$DEPTH" = "deep" ]; then
     # Deep: full test suite (same as CI)
     echo "  🧪 Running full test suite..."
@@ -124,7 +202,7 @@ else
     echo "  🧪 No Go files changed — skipping tests"
 fi
 
-# ── 5. Ma'at — only on standard/deep ────────────────────────────────
+# ── 6. Ma'at — only on standard/deep ────────────────────────────────
 if [ "$DEPTH" = "standard" ] || [ "$DEPTH" = "deep" ]; then
     go build -o ./sirsi ./cmd/sirsi/ 2>/dev/null
     if [ -x "./sirsi" ]; then
@@ -139,7 +217,7 @@ elif [ "$DEPTH" = "fast" ]; then
     echo "  ⏭️  Ma'at skipped (use MAAT_DEPTH=standard for assessment)"
 fi
 
-# ── 6. Thoth health ─────────────────────────────────────────────────
+# ── 7. Thoth health ─────────────────────────────────────────────────
 if [ -f ".thoth/memory.yaml" ]; then
     if ! grep -q "project: sirsi-pantheon" .thoth/memory.yaml 2>/dev/null; then
         echo "  ⚠️  Thoth memory mismatch (non-blocking)"
