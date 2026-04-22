@@ -183,45 +183,80 @@ func (s *Server) handleOverview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	body := fmt.Sprintf(`
-<h1 class="page-title">System Overview</h1>
-<div id="stats-grid" class="grid grid-4" style="margin-bottom:24px">
- <a href="/guard" class="card-link"><div class="card"><div class="card-title">RAM Pressure</div>
-  <div class="card-value" id="ram-val">—</div>
+<h1 class="page-title">Command Center</h1>
+
+<!-- ── Status Bar ─────────────────────────────────────────────── -->
+<div class="grid grid-4" style="margin-bottom:20px">
+ <a href="/guard" class="card-link"><div class="card"><div class="card-title">RAM</div>
+  <div class="card-value" id="ram-val" style="font-size:22px">—</div>
   <div class="card-label" id="ram-label"></div></div></a>
- <a href="/notifications" class="card-link"><div class="card"><div class="card-title">Git Status</div>
-  <div class="card-value" id="git-val">—</div>
+ <a href="/notifications" class="card-link"><div class="card"><div class="card-title">Git</div>
+  <div class="card-value" id="git-val" style="font-size:22px">—</div>
   <div class="card-label" id="git-label"></div></div></a>
- <a href="/scan" class="card-link"><div class="card"><div class="card-title">Active Deities</div>
-  <div class="card-value" id="deity-val">0</div>
-  <div class="card-label" id="deity-label">None running</div></div></a>
- <a href="/horus" class="card-link"><div class="card"><div class="card-title">Accelerator</div>
-  <div class="card-value" id="accel-val">—</div>
+ <a href="/scan" class="card-link"><div class="card"><div class="card-title">Deities</div>
+  <div class="card-value" id="deity-val" style="font-size:22px">0</div>
+  <div class="card-label" id="deity-label">None</div></div></a>
+ <a href="/horus" class="card-link"><div class="card"><div class="card-title">Platform</div>
+  <div class="card-value" id="accel-val" style="font-size:22px">—</div>
   <div class="card-label" id="accel-label"></div></div></a>
 </div>
 
-<div class="grid grid-2">
- <div>
-  <a href="/notifications" style="text-decoration:none"><h2 class="page-subtitle" style="cursor:pointer;transition:color .2s"
-   onmouseover="this.style.color='#C8A951'" onmouseout="this.style.color=''">Recent Activity ›</h2></a>
-  <div class="card" style="padding:0;overflow:hidden">
-   <table class="tbl" id="recent-tbl">
-    <thead><tr><th>Source</th><th>Summary</th><th>Status</th><th>Time</th></tr></thead>
-    <tbody id="recent-body"></tbody>
-   </table>
-  </div>
- </div>
- <div>
-  <h2 class="page-subtitle">Ra Deployment</h2>
-  <div class="card" id="ra-card">
-   <div class="empty"><div class="empty-glyph">𓇶</div>No active deployment</div>
-  </div>
+<!-- ── Action Buttons ─────────────────────────────────────────── -->
+<h2 class="page-subtitle">Actions</h2>
+<div class="grid grid-4" style="margin-bottom:20px" id="actions-grid">
+ <button class="action-btn" data-cmd="scan" id="btn-scan"><span class="action-glyph">𓁢</span>Scan</button>
+ <button class="action-btn" data-cmd="ghosts" id="btn-ghosts"><span class="action-glyph">𓂓</span>Ghost Hunt</button>
+ <button class="action-btn" data-cmd="doctor" id="btn-doctor"><span class="action-glyph">𓁐</span>Doctor</button>
+ <button class="action-btn" data-cmd="quality" id="btn-quality"><span class="action-glyph">𓆄</span>Quality</button>
+ <button class="action-btn" data-cmd="network" id="btn-network"><span class="action-glyph">🌐</span>Network</button>
+ <button class="action-btn" data-cmd="hardware" id="btn-hardware"><span class="action-glyph">⚡</span>Hardware</button>
+ <button class="action-btn" data-cmd="dedup" id="btn-dedup"><span class="action-glyph">🔍</span>Duplicates</button>
+ <button class="action-btn" data-cmd="guard" id="btn-guard"><span class="action-glyph">🛡</span>Guard</button>
+</div>
+
+<!-- ── Live Terminal ──────────────────────────────────────────── -->
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+ <h2 class="page-subtitle" style="margin-bottom:0;flex:1">Terminal</h2>
+ <span id="run-status" style="font-size:11px;color:#444;letter-spacing:.5px"></span>
+ <button id="term-clear" style="background:none;border:1px solid rgba(200,169,81,.15);color:#666;
+  font-size:10px;padding:4px 10px;border-radius:4px;cursor:pointer;letter-spacing:.5px;
+  transition:all .2s" onmouseover="this.style.borderColor='rgba(200,169,81,.4)';this.style.color='#C8A951'"
+  onmouseout="this.style.borderColor='rgba(200,169,81,.15)';this.style.color='#666'">CLEAR</button>
+</div>
+<div class="card" id="terminal" style="min-height:280px;max-height:50vh;overflow-y:auto;font-family:'SF Mono',Menlo,Consolas,monospace;
+ font-size:12px;padding:16px;line-height:1.6;background:rgba(3,3,8,.95);border-color:rgba(200,169,81,.08)">
+ <div class="term-line term-dim">☥ Pantheon ready — click an action above to begin</div>
+</div>
+
+<!-- ── Recent Activity (compact) ─────────────────────────────── -->
+<div style="margin-top:20px">
+ <a href="/notifications" style="text-decoration:none"><h2 class="page-subtitle" style="cursor:pointer;transition:color .2s"
+  onmouseover="this.style.color='#C8A951'" onmouseout="this.style.color=''">Recent Activity ›</h2></a>
+ <div class="card" style="padding:0;overflow:hidden">
+  <table class="tbl" id="recent-tbl">
+   <thead><tr><th>Source</th><th>Summary</th><th>Status</th><th>Time</th></tr></thead>
+   <tbody id="recent-body"></tbody>
+  </table>
  </div>
 </div>
 
-<h2 class="page-subtitle" style="margin-top:24px">Live Command Output</h2>
-<div class="card" id="live-log" style="max-height:240px;overflow-y:auto;font-family:monospace;font-size:12px;padding:12px 16px">
- <div style="color:#444;font-size:11px">Waiting for commands…</div>
-</div>
+<style>
+.action-btn{background:rgba(6,6,15,.88);border:1px solid rgba(200,169,81,.12);border-radius:10px;
+ color:#FAFAFA;padding:16px;font-size:13px;cursor:pointer;text-align:center;letter-spacing:.3px;
+ transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:8px;font-family:inherit}
+.action-btn:hover{border-color:rgba(200,169,81,.45);background:rgba(200,169,81,.06);
+ box-shadow:0 4px 20px rgba(200,169,81,.08);transform:translateY(-1px)}
+.action-btn:active{transform:translateY(0);box-shadow:none}
+.action-btn.running{border-color:#C8A951;color:#C8A951;animation:pulse 1.5s ease-in-out infinite}
+.action-btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+.action-glyph{font-size:24px;line-height:1}
+.term-line{margin:0;white-space:pre-wrap;word-break:break-all}
+.term-dim{color:#555}
+.term-out{color:#ccc}
+.term-ok{color:#44FF88}
+.term-err{color:#FF4444}
+.term-info{color:#C8A951}
+</style>
 
 <script>
 (function(){
@@ -234,37 +269,27 @@ const ago=ts=>{if(!ts)return'—';const d=Date.now()-new Date(ts).getTime();
 if(d<60e3)return Math.floor(d/1e3)+'s ago';if(d<3600e3)return Math.floor(d/6e4)+'m ago';
 if(d<864e5)return Math.floor(d/36e5)+'h ago';return Math.floor(d/864e5)+'d ago'};
 
+/* ── Stats ────────────────────────────────────────────── */
 function renderStats(s){
  if(!s)return;
  document.getElementById('ram-val').textContent=(s.ram_icon||'')+' '+Math.round(s.ram_percent||0)+'%%';
- document.getElementById('ram-label').textContent=(s.ram_pressure||'unknown')+' pressure';
- document.getElementById('git-val').textContent=(s.osiris_icon||'')+' '+(s.uncommitted_files||0);
- document.getElementById('git-label').textContent=(s.git_branch||'')+(s.time_since_commit?' • '+s.time_since_commit+' ago':'');
+ document.getElementById('ram-label').textContent=(s.ram_pressure||'unknown');
+ document.getElementById('git-val').textContent=(s.osiris_icon||'')+' '+(s.uncommitted_files||0)+' dirty';
+ document.getElementById('git-label').textContent=(s.git_branch||'')+(s.time_since_commit?' • '+s.time_since_commit:'');
  document.getElementById('deity-val').textContent=s.deity_count||0;
- document.getElementById('deity-label').textContent=(s.active_deities||[]).join(', ')||'None running';
+ document.getElementById('deity-label').textContent=(s.active_deities||[]).join(', ')||'None';
  document.getElementById('accel-val').textContent=s.accel_icon||'💻';
  document.getElementById('accel-label').textContent=s.primary_accelerator||'Unknown';
- const rc=document.getElementById('ra-card');
- if(s.ra_deployed&&s.ra_scopes&&s.ra_scopes.length){
-  rc.textContent='';
-  s.ra_scopes.forEach(function(sc){
-   const row=document.createElement('div');
-   row.style.cssText='display:flex;align-items:center;padding:8px 0;border-bottom:1px solid rgba(200,169,81,.06)';
-   const icon=document.createElement('span');icon.style.cssText='font-size:18px;margin-right:12px';icon.textContent=sc.icon;
-   const name=document.createElement('span');name.style.cssText='flex:1;font-size:13px';name.textContent=sc.name;
-   const state=document.createElement('span');state.style.cssText='font-size:11px;color:#888';state.textContent=sc.state;
-   row.appendChild(icon);row.appendChild(name);row.appendChild(state);rc.appendChild(row)});
- }
 }
 
+/* ── Activity table ───────────────────────────────────── */
 function renderRecent(items){
  const tb=document.getElementById('recent-body');
  tb.textContent='';
  if(!items||!items.length){const tr=document.createElement('tr');const td=document.createElement('td');
   td.colSpan=4;td.className='empty';td.textContent='No activity yet';tr.appendChild(td);tb.appendChild(tr);return}
  items.forEach(function(n){
-  const tr=document.createElement('tr');
-  tr.style.cursor='pointer';
+  const tr=document.createElement('tr');tr.style.cursor='pointer';
   tr.addEventListener('click',function(){window.location.href='/notifications'});
   const tdSrc=document.createElement('td');tdSrc.style.fontWeight='600';tdSrc.textContent=n.source;
   const tdSum=document.createElement('td');const summary=(n.summary||'');
@@ -276,37 +301,95 @@ function renderRecent(items){
   tr.appendChild(tdSrc);tr.appendChild(tdSum);tr.appendChild(tdSev);tr.appendChild(tdTime);tb.appendChild(tr)});
 }
 
+/* ── Terminal ─────────────────────────────────────────── */
+const term=document.getElementById('terminal');
+const statusEl=document.getElementById('run-status');
+let running=false;
+
+function termLine(text,cls){
+ const d=document.createElement('div');
+ d.className='term-line '+(cls||'term-out');
+ d.textContent=text;
+ term.appendChild(d);
+ if(term.children.length>500)term.removeChild(term.firstChild);
+ term.scrollTop=term.scrollHeight;
+}
+
+document.getElementById('term-clear').addEventListener('click',function(){
+ term.textContent='';
+ termLine('☥ Pantheon ready — click an action above to begin','term-dim');
+});
+
+/* ── Action buttons ───────────────────────────────────── */
+function setRunning(key,label){
+ running=true;
+ statusEl.textContent='⟳ Running '+label+'…';
+ statusEl.style.color='#C8A951';
+ document.querySelectorAll('.action-btn').forEach(function(b){
+  if(b.dataset.cmd===key){b.classList.add('running')}
+  else{b.disabled=true}
+ });
+}
+
+function setIdle(){
+ running=false;
+ statusEl.textContent='';
+ document.querySelectorAll('.action-btn').forEach(function(b){
+  b.classList.remove('running');
+  b.disabled=false;
+ });
+}
+
+document.querySelectorAll('.action-btn').forEach(function(btn){
+ btn.addEventListener('click',function(){
+  if(running)return;
+  const cmd=this.dataset.cmd;
+  const label=this.textContent.trim();
+  termLine('','term-dim');
+  termLine('▸ '+label,'term-info');
+  fetch('/api/run?cmd='+encodeURIComponent(cmd),{method:'POST'})
+   .then(function(r){
+    if(!r.ok)return r.json().then(function(e){throw new Error(e.error||'failed')});
+    setRunning(cmd,label);
+   })
+   .catch(function(e){termLine('✗ '+e.message,'term-err')});
+ });
+});
+
+/* ── SSE event stream ─────────────────────────────────── */
+if(typeof EventSource!=='undefined'){
+ const es=new EventSource('/api/events');
+ es.addEventListener('run_start',function(e){
+  try{const d=JSON.parse(e.data);setRunning(d.key,d.label)}catch(x){}
+ });
+ es.addEventListener('run_output',function(e){
+  try{const d=JSON.parse(e.data);termLine(d.line)}catch(x){}
+ });
+ es.addEventListener('run_complete',function(e){
+  try{const d=JSON.parse(e.data);
+   if(d.status==='success'){
+    termLine('✓ '+d.label+' completed ('+d.duration_ms+'ms)','term-ok');
+   }else{
+    termLine('✗ '+d.label+' failed: '+(d.error||'unknown'),'term-err');
+   }
+   setIdle();
+   /* Refresh activity table after command completes */
+   fetch('/api/notifications?limit=8').then(function(r){return r.json()}).then(renderRecent).catch(function(){});
+  }catch(x){setIdle()}
+ });
+}
+
+/* ── Init + polling ───────────────────────────────────── */
 renderStats(S);renderRecent(R);
 setInterval(function(){
  fetch('/api/stats').then(function(r){return r.json()}).then(renderStats).catch(function(){});
  fetch('/api/notifications?limit=8').then(function(r){return r.json()}).then(renderRecent).catch(function(){});
 },10000);
 
-/* SSE live command output */
-(function(){
- var logEl=document.getElementById('live-log');
- if(!logEl||typeof EventSource==='undefined')return;
- var es=new EventSource('/api/events');
- es.addEventListener('output',function(e){
-  try{var d=JSON.parse(e.data);
-  var line=document.createElement('div');line.textContent=(d.handler||'')+': '+(d.line||'');
-  line.style.cssText='font-size:12px;font-family:monospace;color:#ccc;padding:2px 0';
-  logEl.appendChild(line);
-  if(logEl.children.length>200)logEl.removeChild(logEl.firstChild);
-  logEl.scrollTop=logEl.scrollHeight}catch(x){}});
- es.addEventListener('complete',function(e){
-  try{var d=JSON.parse(e.data);
-  var line=document.createElement('div');
-  line.textContent='✓ '+d.handler+' — '+d.summary;
-  line.style.cssText='font-size:12px;font-family:monospace;color:#44FF88;padding:4px 0';
-  logEl.appendChild(line);logEl.scrollTop=logEl.scrollHeight}catch(x){}});
- es.addEventListener('error',function(e){
-  try{var d=JSON.parse(e.data);
-  var line=document.createElement('div');
-  line.textContent='✗ '+d.handler+' — '+d.error;
-  line.style.cssText='font-size:12px;font-family:monospace;color:#FF4444;padding:4px 0';
-  logEl.appendChild(line);logEl.scrollTop=logEl.scrollHeight}catch(x){}});
-})();
+/* Check if something is already running on page load */
+fetch('/api/run/status').then(function(r){return r.json()}).then(function(d){
+ if(d.running)setRunning(d.current,d.current);
+}).catch(function(){});
 })();
 </script>`, safeTextJS, statsJSON, recentJSON)
 

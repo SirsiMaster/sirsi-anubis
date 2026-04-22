@@ -44,11 +44,15 @@ func runDashboard(cmd *cobra.Command, args []string) {
 		output.Warn(fmt.Sprintf("Notification store unavailable: %v", err))
 	}
 
+	// Find our own binary path for the command runner.
+	selfBin, _ := os.Executable()
+
 	srv := dashboard.New(dashboard.Config{
 		Port:     dashboardPort,
 		NotifyDB: nStore,
+		Events:   dashboard.NewEventBuffer(256),
+		SirsiBin: selfBin,
 		StatsFn: func() ([]byte, error) {
-			// Collect live stats using the same collectors as the menubar.
 			snap := collectDashboardStats()
 			return json.Marshal(snap)
 		},

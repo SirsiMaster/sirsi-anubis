@@ -101,10 +101,12 @@ func onReady() {
 	// ── Start dashboard server ──────────────────────────────────────
 	cfg := DefaultStatsConfig()
 	eventBuf := dashboard.NewEventBuffer(256)
+	sirsiBin := findSirsiBinary()
 	dashSrv := dashboard.New(dashboard.Config{
 		Port:     dashboard.DashboardPort,
 		NotifyDB: nStore,
 		Events:   eventBuf,
+		SirsiBin: sirsiBin,
 		StatsFn: func() ([]byte, error) {
 			snap := CollectStats(cfg)
 			return json.Marshal(snap)

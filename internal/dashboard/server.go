@@ -27,6 +27,9 @@ type Config struct {
 	// Events is the shared ring buffer for SSE streaming.
 	// If nil, /api/events returns 503.
 	Events *EventBuffer
+	// SirsiBin is the path to the sirsi binary for command execution.
+	// If empty, the runner is disabled.
+	SirsiBin string
 }
 
 // Server is the Pantheon local dashboard HTTP server.
@@ -36,6 +39,7 @@ type Server struct {
 	unlock  func()
 	mu      sync.RWMutex
 	running bool
+	runner  *Runner
 }
 
 // New creates a dashboard server with all routes registered.
@@ -45,6 +49,11 @@ func New(cfg Config) *Server {
 	}
 
 	s := &Server{cfg: cfg}
+
+	// Initialize runner if we have both an event buffer and a binary path.
+	if cfg.Events != nil && cfg.SirsiBin != "" {
+		s.runner = NewRunner(cfg.Events, cfg.SirsiBin)
+	}
 
 	mux := http.NewServeMux()
 
@@ -62,12 +71,14 @@ func New(cfg Config) *Server {
 	mux.HandleFunc("/api/notifications", s.apiNotifications)
 	mux.HandleFunc("/api/stele", s.apiStele)
 	mux.HandleFunc("/api/events", s.apiEvents)
+	mux.HandleFunc("/api/run", s.apiRun)
+	mux.HandleFunc("/api/run/status", s.apiRunStatus)
 
 	s.srv = &http.Server{
 		Addr:         fmt.Sprintf("127.0.0.1:%d", cfg.Port),
 		Handler:      mux,
 		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 30 * time.Second,
+		WriteTimeout: 0, // SSE connections are long-lived
 	}
 
 	return s
