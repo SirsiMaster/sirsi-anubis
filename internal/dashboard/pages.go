@@ -307,6 +307,7 @@ function viewGuard(){
    out('  '+icon+' '+f.Check+' — '+f.Message)});
   sep();out('');
   out('Process Slayer — type: kill node | kill electron | kill docker | kill lsp | kill build | kill ai','t-dim');
+  out('Renice LSPs  — type: renice (deprioritize Language Servers, nice +10)','t-dim');
  }).catch(function(e){out('Doctor failed: '+e.message,'t-err')});
 }
 
@@ -386,6 +387,15 @@ input.addEventListener('keydown',function(e){
   }).catch(function(e){out('✗ '+e.message,'t-err')});
   return}
 
+ if(raw==='renice'||raw==='renice lsp'){
+  out('▸ renice lsp','t-gold');
+  fetch('/api/guard/renice?target=lsp',{method:'POST'}).then(r=>r.json()).then(function(d){
+   if(d.reniced>0){out('✓ Reniced '+d.reniced+' LSP processes (nice +10, Background QoS)','t-ok');
+    (d.processes||[]).forEach(function(p){out('  PID '+p.pid+' '+p.name+' — '+p.rss_human,'t-dim')})}
+   else out('No LSP processes found to renice','t-dim');
+  }).catch(function(e){out('✗ '+e.message,'t-err')});
+  return}
+
  /* Horus search */
  if(currentView==='horus'||raw.startsWith('horus ')){
   const q=raw.replace(/^horus\s*/,'');
@@ -421,7 +431,7 @@ input.addEventListener('keydown',function(e){
  const cmdMap={scan:'scan',ghosts:'ghosts',doctor:'doctor',guard:'guard',
   network:'network',hardware:'hardware',quality:'quality',dedup:'dedup'};
  const key=cmdMap[raw];
- if(!key){out('Unknown command: '+raw,'t-err');out('Available: scan, ghosts, doctor, guard, network, hardware, quality, dedup, kill <target>','t-dim');return}
+ if(!key){out('Unknown command: '+raw,'t-err');out('Available: scan, ghosts, doctor, guard, network, hardware, quality, dedup, kill <target>, renice','t-dim');return}
  running=true;
  fetch('/api/run?cmd='+key,{method:'POST'}).then(function(r){
   if(!r.ok)return r.json().then(function(e){throw new Error(e.error)});

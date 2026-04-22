@@ -82,6 +82,7 @@ func New(cfg Config) *Server {
 	mux.HandleFunc("/api/doctor", s.apiDoctor)
 	mux.HandleFunc("/api/slay", s.apiSlay)
 	mux.HandleFunc("/api/guard/stats", s.apiGuardStats)
+	mux.HandleFunc("/api/guard/renice", s.apiRenice)
 	mux.HandleFunc("/api/horus/scan", s.apiHorusScan)
 	mux.HandleFunc("/api/horus/query", s.apiHorusQuery)
 	mux.HandleFunc("/api/vault/search", s.apiVaultSearch)

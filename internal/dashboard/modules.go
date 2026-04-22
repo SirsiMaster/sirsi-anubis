@@ -193,6 +193,32 @@ func (s *Server) apiGuardStats(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, stats)
 }
 
+// apiRenice manually renices LSP/background processes.
+// POST /api/guard/renice?target=lsp
+func (s *Server) apiRenice(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+
+	target := r.URL.Query().Get("target")
+	if target == "" {
+		target = "lsp"
+	}
+	if target != "lsp" && target != "all" {
+		writeError(w, "target must be lsp or all", http.StatusBadRequest)
+		return
+	}
+
+	result, err := guard.Renice(guard.ReniceTarget(target))
+	if err != nil {
+		writeError(w, fmt.Sprintf("renice: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, result)
+}
+
 // ── Horus API ────────────────────────────────────────────────────────
 
 // apiHorusScan scans a directory and returns the symbol graph.
