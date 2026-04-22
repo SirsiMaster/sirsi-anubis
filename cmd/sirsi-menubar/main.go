@@ -4,6 +4,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"fyne.io/systray"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/dashboard"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/notify"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
 )
@@ -44,6 +46,9 @@ func onReady() {
 	systray.SetTemplateIcon(AnkhIcon, AnkhIcon)
 	systray.SetTitle("Sirsi")
 	systray.SetTooltip("Sirsi Ecosystem Monitor")
+
+	// ── Dashboard ──────────────────────────────────────────────────
+	mDashboard := systray.AddMenuItem("📊 Open Dashboard", "Open Pantheon dashboard in browser")
 
 	// ── Stats section ───────────────────────────────────────────────
 	mStats := systray.AddMenuItem("Loading...", "Click to refresh stats")
@@ -93,8 +98,21 @@ func onReady() {
 	// ── Open notification store ─────────────────────────────────────
 	nStore, _ := notify.Open(notify.DefaultPath())
 
-	// ── Background stats + recent activity loop ─────────────────────
+	// ── Start dashboard server ──────────────────────────────────────
 	cfg := DefaultStatsConfig()
+	dashSrv := dashboard.New(dashboard.Config{
+		Port:     dashboard.DashboardPort,
+		NotifyDB: nStore,
+		StatsFn: func() ([]byte, error) {
+			snap := CollectStats(cfg)
+			return json.Marshal(snap)
+		},
+	})
+	if err := dashSrv.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "dashboard: %v\n", err)
+	}
+
+	// ── Background stats + recent activity loop ─────────────────────
 	go func() {
 		for {
 			snap := CollectStats(cfg)
@@ -136,6 +154,8 @@ func onReady() {
 
 	for {
 		select {
+		case <-mDashboard.ClickedCh:
+			_ = dashSrv.OpenPage("/")
 		case <-mStats.ClickedCh:
 			snap := CollectStats(cfg)
 			lines := snap.FormatMenuItems()
@@ -190,6 +210,7 @@ func onReady() {
 		case <-mCaseStudies.ClickedCh:
 			_ = OpenCaseStudies()
 		case <-mQuit.ClickedCh:
+			_ = dashSrv.Stop()
 			if nStore != nil {
 				nStore.Close()
 			}
