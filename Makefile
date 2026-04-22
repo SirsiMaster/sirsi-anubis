@@ -3,15 +3,22 @@
 VERSION := $(shell cat VERSION)
 BUILD_DIR ?= bin
 INSTALL_DIR ?= $(HOME)/.local/bin
-GO_FLAGS ?= -ldflags="-X main.version=v$(VERSION)"
+# Release builds strip debug symbols (-s) and DWARF tables (-w) → ~13MB core binary.
+# Use `make build-debug` for full 20MB binary with symbols for dlv/pprof.
+GO_LDFLAGS ?= -s -w -X main.version=v$(VERSION)
+GO_FLAGS ?= -ldflags="$(GO_LDFLAGS)"
 
-.PHONY: all clean build install uninstall build-agent build-menubar bundle publish test test-proof ios ios-framework android-aar brain-train brain-install
+.PHONY: all clean build build-debug install uninstall build-agent build-menubar bundle dmg publish test test-proof ios ios-framework android-aar brain-train brain-install
 
 all: build
 
-# --- Primary Build ---
+# --- Primary Build (stripped, ~13MB) ---
 build:
 	go build $(GO_FLAGS) -o $(BUILD_DIR)/sirsi ./cmd/sirsi/
+
+# --- Debug Build (with symbols, ~20MB) ---
+build-debug:
+	go build -ldflags="-X main.version=v$(VERSION)" -o $(BUILD_DIR)/sirsi ./cmd/sirsi/
 
 # --- Install to PATH ---
 install: build
@@ -27,11 +34,11 @@ clean:
 	rm -rf $(BUILD_DIR)
 	rm -rf Pantheon.app
 
-# --- Agent Binary ---
+# --- Agent Binary (stripped, static) ---
 build-agent:
 	CGO_ENABLED=0 go build $(GO_FLAGS) -o $(BUILD_DIR)/sirsi-agent ./cmd/sirsi-agent/
 
-# --- Menu Bar App (ADR-010) ---
+# --- Menu Bar App (stripped, ADR-010) ---
 build-menubar:
 	go build $(GO_FLAGS) -o $(BUILD_DIR)/sirsi-menubar ./cmd/sirsi-menubar/
 
@@ -46,6 +53,11 @@ bundle: build-menubar
 	@cp cmd/sirsi-menubar/bundle/Info.plist Pantheon.app/Contents/Info.plist
 	@cp cmd/sirsi-menubar/bundle/PkgInfo Pantheon.app/Contents/PkgInfo
 	@echo "✅ Pantheon.app created — install with: cp -R Pantheon.app /Applications/"
+
+# --- macOS DMG Installer ---
+dmg: bundle
+	@echo "📦 Creating DMG installer..."
+	scripts/build-dmg.sh --version $(VERSION) --arch $(shell uname -m)
 
 # --- Horus Auto-Publish ---
 # Generates docs/build-log.html and docs/case-studies.html

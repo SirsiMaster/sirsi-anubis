@@ -134,6 +134,10 @@ builds:
       - -X main.commit={{.ShortCommit}}
       - -X main.date={{.Date}}
 
+  # NOTE: sirsi-menubar requires CGO (systray) and cannot cross-compile.
+  # It is macOS-only and built separately via `make dmg` or `scripts/build-dmg.sh`.
+  # The DMG includes both sirsi-menubar and sirsi CLI in the Pantheon.app bundle.
+
 archives:
   - id: default
     builds:
@@ -253,6 +257,19 @@ archives:
         format: tar.gz
     files:
       - LICENSE
+
+nfpms:
+  - id: sirsi-pantheon
+    package_name: sirsi-pantheon
+    vendor: Sirsi Technologies
+    homepage: https://sirsi.ai/pantheon
+    description: "Unified DevOps Intelligence Platform"
+    license: MPL-2.0
+    maintainer: Sirsi Technologies <engineering@sirsi.ai>
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/local/bin
 
 brews:
   - name: sirsi-pantheon
