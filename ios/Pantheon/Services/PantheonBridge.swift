@@ -164,14 +164,14 @@ final class PantheonBridge: Sendable {
 
     func vaultStore(source: String, tag: String, content: String, tokens: Int) async throws -> VaultEntry {
         return try await Task.detached(priority: .userInitiated) {
-            let json = MobileVaultStore(source, tag, content, Int64(tokens))
+            let json = MobileVaultStore(source, tag, content, tokens)
             return try self.decode(json) as VaultEntry
         }.value
     }
 
     func vaultSearch(query: String, limit: Int = 10) async throws -> VaultSearchResult {
         return try await Task.detached(priority: .userInitiated) {
-            let json = MobileVaultSearch(query, Int64(limit))
+            let json = MobileVaultSearch(query, limit)
             return try self.decode(json) as VaultSearchResult
         }.value
     }
@@ -192,7 +192,7 @@ final class PantheonBridge: Sendable {
 
     func vaultPrune(olderThanHours: Int) async throws -> VaultPruneResult {
         return try await Task.detached(priority: .userInitiated) {
-            let json = MobileVaultPrune(Int64(olderThanHours))
+            let json = MobileVaultPrune(olderThanHours)
             return try self.decode(json) as VaultPruneResult
         }.value
     }
@@ -231,7 +231,7 @@ final class PantheonBridge: Sendable {
 
     func steleReadRecent(count: Int) async throws -> [SteleEntry] {
         return try await Task.detached(priority: .userInitiated) {
-            let json = MobileSteleReadRecent(Int64(count))
+            let json = MobileSteleReadRecent(count)
             return try self.decode(json) as [SteleEntry]
         }.value
     }

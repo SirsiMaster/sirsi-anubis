@@ -383,26 +383,23 @@ struct BrainView: View {
         batchResult = nil
         defer { isBatchRunning = false }
 
-        // Enumerate files in the directory
-        let fm = FileManager.default
-        guard let enumerator = fm.enumerator(at: url, includingPropertiesForKeys: [.isRegularFileKey], options: [.skipsHiddenFiles]) else {
-            errorMessage = "Could not enumerate directory"
-            return
-        }
-
-        var paths: [String] = []
-        for case let fileURL as URL in enumerator {
-            do {
-                let resourceValues = try fileURL.resourceValues(forKeys: [.isRegularFileKey])
-                if resourceValues.isRegularFile == true {
-                    paths.append(fileURL.path)
+        // Enumerate files on a detached task (NSDirectoryEnumerator is not Sendable).
+        let dirPath = url.path
+        let paths: [String] = await Task.detached(priority: .userInitiated) {
+            var result: [String] = []
+            let fm = FileManager.default
+            if let items = fm.subpaths(atPath: dirPath) {
+                for item in items {
+                    let full = (dirPath as NSString).appendingPathComponent(item)
+                    var isDir: ObjCBool = false
+                    if fm.fileExists(atPath: full, isDirectory: &isDir), !isDir.boolValue {
+                        result.append(full)
+                    }
+                    if result.count >= 500 { break }
                 }
-            } catch {
-                continue
             }
-            // Cap at 500 files to avoid UI overload
-            if paths.count >= 500 { break }
-        }
+            return result
+        }.value
 
         guard !paths.isEmpty else {
             errorMessage = "No files found in directory"

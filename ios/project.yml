@@ -41,6 +41,10 @@ targets:
           - "@executable_path/Frameworks"
         SWIFT_EMIT_LOC_STRINGS: true
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        OTHER_LDFLAGS:
+          - "$(inherited)"
+          - "-framework CoreML"
+          - "-framework Foundation"
     dependencies:
       - framework: "../bin/ios/PantheonCore.xcframework"
         embed: true
