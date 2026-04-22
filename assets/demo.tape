@@ -5,33 +5,28 @@
 Output assets/demo.gif
 
 Set Shell "zsh"
-Set FontSize 14
-Set Width 900
-Set Height 500
+Set FontSize 13
+Set Width 880
+Set Height 480
 Set Theme "Catppuccin Mocha"
-Set Padding 20
-Set TypingSpeed 40ms
+Set Padding 16
+Set TypingSpeed 50ms
 
-# Title
-Type "# 𓁢 Sirsi Pantheon — Infrastructure Hygiene"
-Enter
-Sleep 1s
+Sleep 500ms
 
-# Scan
-Type "sirsi scan"
-Enter
-Sleep 8s
-
-# Open dashboard
-Type "sirsi dashboard"
-Enter
-Sleep 3s
-
-# Show version
-Type@200ms "# 80 rules · 627 findings · 31.9 GB waste found"
+Type "sirsi version"
 Enter
 Sleep 2s
 
-Type@200ms "# One binary. All deities. Zero telemetry."
+Type "sirsi scan"
+Enter
+Sleep 10s
+
+Type "sirsi dashboard --no-open"
 Enter
 Sleep 3s
+
+Screenshot assets/demo.png
+
+Type@30ms ""
+Sleep 2s
