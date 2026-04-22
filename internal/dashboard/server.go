@@ -73,6 +73,8 @@ func New(cfg Config) *Server {
 	mux.HandleFunc("/api/events", s.apiEvents)
 	mux.HandleFunc("/api/run", s.apiRun)
 	mux.HandleFunc("/api/run/status", s.apiRunStatus)
+	mux.HandleFunc("/api/findings", s.apiFindings)
+	mux.HandleFunc("/api/clean", s.apiClean)
 
 	s.srv = &http.Server{
 		Addr:         fmt.Sprintf("127.0.0.1:%d", cfg.Port),

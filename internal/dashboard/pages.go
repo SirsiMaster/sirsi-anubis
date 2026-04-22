@@ -587,48 +587,213 @@ setInterval(refresh,20000);
 // ── Scan Page ───────────────────────────────────────────────────────────
 
 func (s *Server) handleScan(w http.ResponseWriter, r *http.Request) {
-	entries := s.readSteleByType(stele.TypeAnubisScan, stele.TypeAnubisJudge, stele.TypeAnubisClean)
-
-	entriesJSON := "[]"
-	if b, err := json.Marshal(entries); err == nil {
-		entriesJSON = string(b)
-	}
-
-	body := fmt.Sprintf(`
+	body := `
 <h1 class="page-title">𓁢 Scan Results</h1>
-<p class="page-subtitle">Findings from Anubis scan operations</p>
 
-<div class="card" style="padding:0;overflow:hidden">
- <table class="tbl">
-  <thead><tr><th>Time</th><th>Type</th><th>Scope</th><th>Details</th></tr></thead>
-  <tbody id="scan-body"></tbody>
- </table>
+<!-- Summary cards -->
+<div class="grid grid-4" style="margin-bottom:20px" id="scan-summary">
+ <div class="card"><div class="card-title">Total Waste</div>
+  <div class="card-value" id="total-waste" style="font-size:22px">—</div></div>
+ <div class="card"><div class="card-title">Findings</div>
+  <div class="card-value" id="total-findings" style="font-size:22px">—</div></div>
+ <div class="card"><div class="card-title">Rules Ran</div>
+  <div class="card-value" id="rules-ran" style="font-size:22px">—</div></div>
+ <div class="card"><div class="card-title">Last Scan</div>
+  <div class="card-value" id="scan-time" style="font-size:16px">—</div></div>
 </div>
+
+<!-- Action bar -->
+<div style="display:flex;gap:12px;margin-bottom:20px;align-items:center">
+ <button class="action-btn" id="btn-rescan" style="flex-direction:row;padding:10px 20px;gap:6px">
+  <span class="action-glyph" style="font-size:16px">𓁢</span> Run Scan</button>
+ <button class="action-btn" id="btn-clean-safe" style="flex-direction:row;padding:10px 20px;gap:6px;display:none">
+  <span class="action-glyph" style="font-size:16px">🧹</span> Clean Safe Items</button>
+ <span id="scan-status" style="font-size:11px;color:#666;flex:1;text-align:right"></span>
+</div>
+
+<!-- Category breakdown -->
+<div id="categories"></div>
+
+<!-- Findings table -->
+<div id="findings-area"></div>
+
+<!-- Empty state -->
+<div id="empty-state" class="card">
+ <div class="empty"><div class="empty-glyph">𓁢</div>No scan results yet. Click "Run Scan" to begin.</div>
+</div>
+
+<style>
+.cat-header{display:flex;align-items:center;gap:12px;padding:14px 20px;cursor:pointer;
+ border-bottom:1px solid rgba(200,169,81,.06);transition:background .15s}
+.cat-header:hover{background:rgba(200,169,81,.04)}
+.cat-chevron{transition:transform .2s;color:#555;font-size:12px}
+.cat-chevron.open{transform:rotate(90deg)}
+.cat-name{font-size:13px;font-weight:600;flex:1;color:#FAFAFA}
+.cat-meta{font-size:11px;color:#888}
+.finding-row{display:flex;align-items:center;gap:12px;padding:10px 20px 10px 44px;
+ border-bottom:1px solid rgba(200,169,81,.04);font-size:12px;transition:background .15s}
+.finding-row:hover{background:rgba(200,169,81,.03)}
+.finding-sev{width:20px;text-align:center}
+.finding-desc{flex:1;color:#ccc}
+.finding-path{color:#666;font-family:monospace;font-size:11px;max-width:300px;overflow:hidden;
+ text-overflow:ellipsis;white-space:nowrap;direction:rtl;text-align:left}
+.finding-size{color:#C8A951;font-weight:600;min-width:70px;text-align:right}
+.finding-action{min-width:60px;text-align:right}
+.clean-btn{background:none;border:1px solid rgba(200,169,81,.2);color:#888;font-size:10px;
+ padding:3px 8px;border-radius:4px;cursor:pointer;transition:all .2s}
+.clean-btn:hover{border-color:#C8A951;color:#C8A951}
+.clean-btn.done{border-color:#44FF88;color:#44FF88;cursor:default}
+.clean-btn.err{border-color:#FF4444;color:#FF4444;cursor:default}
+</style>
 
 <script>
 (function(){
 'use strict';
-const D=%s;
-const fmtTime=ts=>{if(!ts)return'—';const d=new Date(ts);return d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})};
-const typeBadge=t=>({anubis_scan:'badge-info',anubis_judge:'badge-warning',anubis_clean:'badge-success'}[t]||'badge-info');
-const typeLabel=t=>({anubis_scan:'Scan',anubis_judge:'Judge',anubis_clean:'Clean'}[t]||t);
 
-const tb=document.getElementById('scan-body');
-if(!D.length){
- const tr=document.createElement('tr');const td=document.createElement('td');
- td.colSpan=4;td.className='empty';td.textContent='No scan results yet. Run sirsi scan to begin.';
- tr.appendChild(td);tb.appendChild(tr);
-}else{D.forEach(function(e){
- const tr=document.createElement('tr');
- const tdTime=document.createElement('td');tdTime.style.cssText='color:#666;font-size:11px;white-space:nowrap';tdTime.textContent=fmtTime(e.ts);
- const tdType=document.createElement('td');const badge=document.createElement('span');
- badge.className='badge '+typeBadge(e.type);badge.textContent=typeLabel(e.type);tdType.appendChild(badge);
- const tdScope=document.createElement('td');tdScope.textContent=e.scope||'local';
- const tdDetails=document.createElement('td');tdDetails.style.fontSize='12px';
- tdDetails.textContent=Object.entries(e.data||{}).map(function(p){return p[0]+': '+p[1]}).join(' • ');
- tr.appendChild(tdTime);tr.appendChild(tdType);tr.appendChild(tdScope);tr.appendChild(tdDetails);tb.appendChild(tr)})}
+const catIcons={general:'📁',vms:'🖥',dev:'🔧',ai:'🤖',ides:'💻',cloud:'☁️',storage:'💾'};
+const catLabels={general:'General',vms:'Virtualization',dev:'Developer',ai:'AI & ML',
+ ides:'IDEs & Editors',cloud:'Cloud & Infra',storage:'Storage'};
+const sevIcon=s=>({safe:'🟢',caution:'🟡',warning:'🟠'}[s]||'⚪');
+const fmtSize=b=>{if(b>=1073741824)return(b/1073741824).toFixed(1)+' GB';
+ if(b>=1048576)return(b/1048576).toFixed(1)+' MB';if(b>=1024)return(b/1024).toFixed(1)+' KB';return b+' B'};
+const ago=ts=>{if(!ts)return'—';const d=Date.now()-new Date(ts).getTime();
+ if(d<60e3)return'just now';if(d<3600e3)return Math.floor(d/6e4)+'m ago';
+ if(d<864e5)return Math.floor(d/36e5)+'h ago';return Math.floor(d/864e5)+'d ago'};
+
+let scanData=null;
+let openCats={};
+
+function loadFindings(){
+ fetch('/api/findings').then(r=>r.json()).then(function(data){
+  if(data.error&&!data.findings?.length){
+   document.getElementById('empty-state').style.display='';
+   document.getElementById('categories').textContent='';
+   document.getElementById('findings-area').textContent='';
+   return;
+  }
+  scanData=data;
+  document.getElementById('empty-state').style.display='none';
+  renderSummary(data);
+  renderCategories(data);
+ }).catch(function(){});
+}
+
+function renderSummary(data){
+ document.getElementById('total-waste').textContent=fmtSize(data.total_size||0);
+ document.getElementById('total-findings').textContent=(data.findings||[]).length;
+ document.getElementById('rules-ran').textContent=data.rules_ran||0;
+ document.getElementById('scan-time').textContent=ago(data.timestamp);
+ const cleanBtn=document.getElementById('btn-clean-safe');
+ const safeCount=(data.findings||[]).filter(f=>f.severity==='safe').length;
+ if(safeCount>0){cleanBtn.style.display='';cleanBtn.textContent='🧹 Clean '+safeCount+' Safe Items'}
+ else{cleanBtn.style.display='none'}
+}
+
+function renderCategories(data){
+ const cats={};const findings=data.findings||[];
+ findings.forEach(function(f,i){f._idx=i;if(!cats[f.category])cats[f.category]={findings:[],size:0};
+  cats[f.category].findings.push(f);cats[f.category].size+=f.size_bytes});
+
+ const sorted=Object.entries(cats).sort(function(a,b){return b[1].size-a[1].size});
+ const container=document.getElementById('categories');
+ container.textContent='';
+
+ sorted.forEach(function(pair){
+  const cat=pair[0],info=pair[1];
+  const card=document.createElement('div');card.className='card';card.style.cssText='padding:0;overflow:hidden;margin-bottom:12px';
+
+  const header=document.createElement('div');header.className='cat-header';
+  const chevron=document.createElement('span');chevron.className='cat-chevron';chevron.textContent='▸';
+  const icon=document.createElement('span');icon.textContent=catIcons[cat]||'📦';icon.style.fontSize='18px';
+  const name=document.createElement('span');name.className='cat-name';
+  name.textContent=(catLabels[cat]||cat)+' ('+info.findings.length+')';
+  const meta=document.createElement('span');meta.className='cat-meta';meta.textContent=fmtSize(info.size);
+  header.appendChild(chevron);header.appendChild(icon);header.appendChild(name);header.appendChild(meta);
+
+  const body=document.createElement('div');body.style.display=openCats[cat]?'':'none';
+
+  info.findings.forEach(function(f){
+   const row=document.createElement('div');row.className='finding-row';
+   const sev=document.createElement('span');sev.className='finding-sev';sev.textContent=sevIcon(f.severity);
+   const desc=document.createElement('span');desc.className='finding-desc';desc.textContent=f.description;
+   const path=document.createElement('span');path.className='finding-path';path.textContent=f.path;path.title=f.path;
+   const size=document.createElement('span');size.className='finding-size';size.textContent=f.size_human||fmtSize(f.size_bytes);
+   const action=document.createElement('span');action.className='finding-action';
+   if(f.severity==='safe'||f.severity==='caution'){
+    const btn=document.createElement('button');btn.className='clean-btn';btn.textContent='Clean';
+    btn.dataset.idx=f._idx;
+    btn.addEventListener('click',function(e){e.stopPropagation();cleanFinding(btn,f._idx)});
+    action.appendChild(btn);
+   }
+   row.appendChild(sev);row.appendChild(desc);row.appendChild(path);row.appendChild(size);row.appendChild(action);
+   body.appendChild(row);
+  });
+
+  if(openCats[cat])chevron.classList.add('open');
+  header.addEventListener('click',function(){
+   const open=body.style.display==='none';
+   body.style.display=open?'':'none';
+   chevron.classList.toggle('open',open);
+   openCats[cat]=open;
+  });
+
+  card.appendChild(header);card.appendChild(body);container.appendChild(card);
+ });
+}
+
+function cleanFinding(btn,idx){
+ if(btn.classList.contains('done')||btn.classList.contains('err'))return;
+ btn.textContent='...';
+ fetch('/api/clean',{method:'POST',headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({indices:[idx],dry_run:false})
+ }).then(r=>r.json()).then(function(d){
+  if(d.cleaned>0){btn.textContent='✓ '+d.freed_human;btn.classList.add('done')}
+  else{btn.textContent='Skip';btn.classList.add('err')}
+ }).catch(function(){btn.textContent='Err';btn.classList.add('err')});
+}
+
+/* Clean all safe items */
+document.getElementById('btn-clean-safe').addEventListener('click',function(){
+ if(!scanData)return;
+ const safeIdx=[];
+ (scanData.findings||[]).forEach(function(f,i){if(f.severity==='safe')safeIdx.push(i)});
+ if(!safeIdx.length)return;
+ const btn=this;btn.textContent='🧹 Cleaning...';btn.disabled=true;
+ fetch('/api/clean',{method:'POST',headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({indices:safeIdx,dry_run:false})
+ }).then(r=>r.json()).then(function(d){
+  btn.textContent='✓ Freed '+d.freed_human;btn.style.borderColor='#44FF88';btn.style.color='#44FF88';
+  setTimeout(function(){loadFindings()},1500);
+ }).catch(function(){btn.textContent='Error';btn.style.color='#FF4444';btn.disabled=false});
+});
+
+/* Re-scan */
+document.getElementById('btn-rescan').addEventListener('click',function(){
+ const btn=this;const status=document.getElementById('scan-status');
+ btn.disabled=true;btn.textContent='𓁢 Scanning...';status.textContent='';
+ fetch('/api/run?cmd=scan',{method:'POST'}).then(function(r){
+  if(!r.ok)return r.json().then(function(e){throw new Error(e.error)});
+  status.textContent='Scan running...';status.style.color='#C8A951';
+
+  /* Poll for completion */
+  const poll=setInterval(function(){
+   fetch('/api/run/status').then(r=>r.json()).then(function(d){
+    if(!d.running){
+     clearInterval(poll);
+     btn.disabled=false;btn.textContent='𓁢 Run Scan';
+     status.textContent='Scan complete';status.style.color='#44FF88';
+     setTimeout(function(){status.textContent=''},3000);
+     loadFindings();
+    }
+   }).catch(function(){});
+  },1000);
+ }).catch(function(e){btn.disabled=false;btn.textContent='𓁢 Run Scan';
+  status.textContent=e.message;status.style.color='#FF4444'});
+});
+
+loadFindings();
 })();
-</script>`, entriesJSON)
+</script>`
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	fmt.Fprint(w, pageShell("Scan", "/scan", body))

@@ -20,6 +20,7 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/mirror"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/ra"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/stele"
 )
 
 var (
@@ -135,27 +136,211 @@ func init() {
 
 func runWeigh(ctx context.Context) error {
 	start := time.Now()
-	output.Banner()
-	output.Header("ANUBIS — The Weighing of the Heart")
+
+	if !JsonOutput {
+		output.Banner()
+		output.Header("ANUBIS — The Weighing of the Heart")
+	}
 
 	engine := jackal.DefaultEngine()
 	engine.RegisterAll(rules.AllRules()...)
 
 	res, _ := engine.Scan(ctx, jackal.ScanOptions{})
+	elapsed := time.Since(start)
 
+	// Persist findings to disk so dashboard/judge can read them.
+	if err := jackal.Persist(res, elapsed); err != nil {
+		output.Warn("Could not persist findings: %v", err)
+	}
+
+	// Inscribe to Stele for dashboard awareness.
+	catBreakdown := make(map[string]string)
+	for cat, summary := range res.ByCategory {
+		catBreakdown[string(cat)] = fmt.Sprintf("%d findings, %s", summary.Findings, jackal.FormatSize(summary.TotalSize))
+	}
+	catBreakdown["total_size"] = fmt.Sprintf("%d", res.TotalSize)
+	catBreakdown["total_findings"] = fmt.Sprintf("%d", len(res.Findings))
+	catBreakdown["rules_ran"] = fmt.Sprintf("%d", res.RulesRan)
+	stele.Inscribe("anubis", stele.TypeAnubisScan, "", catBreakdown)
+
+	// JSON output mode — full structured results.
+	if JsonOutput {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(res)
+	}
+
+	// Terminal output — summary table + top findings.
 	output.Dashboard(map[string]string{
 		"Waste Found": jackal.FormatSize(res.TotalSize),
 		"Pillars Ran": fmt.Sprintf("%d", res.RulesRan),
+		"Findings":    fmt.Sprintf("%d", len(res.Findings)),
 	})
-	output.Footer(time.Since(start))
+
+	// Show category breakdown.
+	if len(res.ByCategory) > 0 {
+		var catRows [][]string
+		for cat, summary := range res.ByCategory {
+			catRows = append(catRows, []string{
+				string(cat),
+				fmt.Sprintf("%d", summary.Findings),
+				jackal.FormatSize(summary.TotalSize),
+			})
+		}
+		sort.Slice(catRows, func(i, j int) bool { return catRows[i][2] > catRows[j][2] })
+		output.Table([]string{"Category", "Findings", "Size"}, catRows)
+	}
+
+	// Show top 10 individual findings.
+	limit := 10
+	if len(res.Findings) < limit {
+		limit = len(res.Findings)
+	}
+	if limit > 0 {
+		output.Info("Top %d findings:", limit)
+		for _, f := range res.Findings[:limit] {
+			sev := "🟢"
+			if f.Severity == jackal.SeverityCaution {
+				sev = "🟡"
+			} else if f.Severity == jackal.SeverityWarning {
+				sev = "🟠"
+			}
+			output.Dim("  %s %s — %s (%s)", sev, f.Description, output.ShortenPath(f.Path), jackal.FormatSize(f.SizeBytes))
+		}
+		if len(res.Findings) > limit {
+			output.Dim("  ... and %d more. Run: sirsi scan --json", len(res.Findings)-limit)
+		}
+	}
+
+	output.Footer(elapsed)
 	return nil
 }
 
 func runJudge(ctx context.Context) error {
+	start := time.Now()
 	output.Banner()
 	output.Header("ANUBIS — The Divine Judgment")
-	output.Info("Reclaiming storage via Jackal engine...")
-	output.Success("Infrastructure waste purged.")
+
+	// Load latest scan results.
+	persisted, err := jackal.LoadLatest()
+	if err != nil {
+		output.Error("No scan results found. Run `sirsi scan` first.")
+		return fmt.Errorf("load findings: %w", err)
+	}
+
+	if len(persisted.Findings) == 0 {
+		output.Success("No findings to judge. System is clean.")
+		return nil
+	}
+
+	output.Info("Loaded %d findings from scan at %s (%s waste)",
+		len(persisted.Findings),
+		persisted.Timestamp.Format("15:04:05"),
+		jackal.FormatSize(persisted.TotalSize))
+
+	// Rebuild Finding structs from persisted data for the engine.
+	var findings []jackal.Finding
+	for _, pf := range persisted.Findings {
+		f := jackal.Finding{
+			RuleName:    pf.RuleName,
+			Category:    pf.Category,
+			Description: pf.Description,
+			Path:        pf.Path,
+			SizeBytes:   pf.SizeBytes,
+			Severity:    pf.Severity,
+			IsDir:       pf.IsDir,
+			FileCount:   pf.FileCount,
+		}
+		if pf.LastModified != "" {
+			f.LastModified, _ = time.Parse(time.RFC3339, pf.LastModified)
+		}
+		findings = append(findings, f)
+	}
+
+	// Filter to safe findings only unless --confirm is set.
+	var safe, caution []jackal.Finding
+	for _, f := range findings {
+		switch f.Severity {
+		case jackal.SeveritySafe:
+			safe = append(safe, f)
+		case jackal.SeverityCaution:
+			caution = append(caution, f)
+		}
+		// SeverityWarning items are never auto-cleaned
+	}
+
+	target := safe
+	if anubisConfirm {
+		target = append(target, caution...)
+	}
+
+	if len(target) == 0 {
+		output.Info("No safe findings to clean. Use --confirm to include caution items.")
+		return nil
+	}
+
+	// Show what would be cleaned.
+	var totalCleanable int64
+	for _, f := range target {
+		totalCleanable += f.SizeBytes
+	}
+
+	output.Info("Cleaning %d findings (%s):", len(target), jackal.FormatSize(totalCleanable))
+	limit := 10
+	if len(target) < limit {
+		limit = len(target)
+	}
+	for _, f := range target[:limit] {
+		output.Dim("  %s — %s (%s)", f.Description, output.ShortenPath(f.Path), jackal.FormatSize(f.SizeBytes))
+	}
+	if len(target) > limit {
+		output.Dim("  ... and %d more", len(target)-limit)
+	}
+
+	// Dry-run mode (default) — just show the plan.
+	if anubisDryRun && !anubisConfirm {
+		output.Info("")
+		output.Info("Dry run — no changes made. Run with --confirm to apply.")
+		output.Footer(time.Since(start))
+		return nil
+	}
+
+	// Confirm interactively.
+	fmt.Fprintf(os.Stderr, "\n  Proceed? Items will be moved to Trash. [y/N] ")
+	reader := bufio.NewReader(os.Stdin)
+	response, _ := reader.ReadString('\n')
+	response = strings.TrimSpace(strings.ToLower(response))
+	if response != "y" && response != "yes" {
+		output.Info("Canceled.")
+		return nil
+	}
+
+	// Execute cleanup.
+	engine := jackal.DefaultEngine()
+	engine.RegisterAll(rules.AllRules()...)
+
+	result, err := engine.Clean(ctx, target, jackal.CleanOptions{
+		DryRun:  false,
+		Confirm: true,
+		UseTrash: true,
+	})
+	if err != nil {
+		return fmt.Errorf("clean failed: %w", err)
+	}
+
+	output.Success("Cleaned %d items. Reclaimed %s.", result.Cleaned, jackal.FormatSize(result.BytesFreed))
+	if result.Skipped > 0 {
+		output.Warn("Skipped %d items (protected or errors)", result.Skipped)
+	}
+
+	// Inscribe judgment to Stele.
+	stele.Inscribe("anubis", stele.TypeAnubisJudge, "", map[string]string{
+		"cleaned":    fmt.Sprintf("%d", result.Cleaned),
+		"bytes_freed": fmt.Sprintf("%d", result.BytesFreed),
+		"skipped":    fmt.Sprintf("%d", result.Skipped),
+	})
+
+	output.Footer(time.Since(start))
 	return nil
 }
 
