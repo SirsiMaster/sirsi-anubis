@@ -493,10 +493,9 @@ render();
 
 func (s *Server) handleGuard(w http.ResponseWriter, r *http.Request) {
 	body := fmt.Sprintf(`
-<h1 class="page-title">🛡 Guard — Watchdog Monitor</h1>
-<p class="page-subtitle">Live system resource monitoring</p>
+<h1 class="page-title">🛡 Guard — System Monitor</h1>
 
-<div class="grid grid-3" style="margin-bottom:24px">
+<div class="grid grid-3" style="margin-bottom:20px">
  <div class="card">
   <div class="card-title">RAM Usage</div>
   <canvas id="ram-chart" width="320" height="100" style="width:100%%;height:100px"></canvas>
@@ -507,76 +506,109 @@ func (s *Server) handleGuard(w http.ResponseWriter, r *http.Request) {
   <div class="card-label" id="ram-state" style="text-align:center"></div>
  </div>
  <div class="card">
-  <div class="card-title">Active Processes</div>
-  <div class="card-value" id="deity-count" style="font-size:48px;text-align:center;padding:12px 0">0</div>
-  <div class="card-label" id="deity-list" style="text-align:center;font-size:11px"></div>
+  <div class="card-title">System Health</div>
+  <div class="card-value" id="health-score" style="font-size:48px;text-align:center;padding:12px 0">—</div>
+  <div class="card-label" id="health-label" style="text-align:center">
+   <button class="clean-btn" id="btn-doctor" style="margin-top:4px">Run Doctor</button></div>
  </div>
 </div>
 
-<h2 class="page-subtitle">Guard Alert History</h2>
+<h2 class="page-subtitle">Process Slayer</h2>
+<div class="grid grid-3" style="margin-bottom:12px">
+ <button class="action-btn slay-btn" data-target="node" style="flex-direction:row;padding:10px 16px;gap:6px;font-size:12px">
+  📦 Kill Node</button>
+ <button class="action-btn slay-btn" data-target="electron" style="flex-direction:row;padding:10px 16px;gap:6px;font-size:12px">
+  ⚡ Kill Electron</button>
+ <button class="action-btn slay-btn" data-target="docker" style="flex-direction:row;padding:10px 16px;gap:6px;font-size:12px">
+  🐳 Kill Docker</button>
+ <button class="action-btn slay-btn" data-target="lsp" style="flex-direction:row;padding:10px 16px;gap:6px;font-size:12px">
+  🔤 Kill LSP</button>
+ <button class="action-btn slay-btn" data-target="build" style="flex-direction:row;padding:10px 16px;gap:6px;font-size:12px">
+  🔨 Kill Builds</button>
+ <button class="action-btn slay-btn" data-target="ai" style="flex-direction:row;padding:10px 16px;gap:6px;font-size:12px">
+  🤖 Kill AI</button>
+</div>
+<div id="slay-result" style="font-size:12px;margin-bottom:20px;color:#666"></div>
+
+<div id="doctor-results" style="display:none">
+ <h2 class="page-subtitle">Health Diagnostics</h2>
+ <div class="card" style="padding:0;overflow:hidden">
+  <table class="tbl"><thead><tr><th></th><th>Check</th><th>Result</th></tr></thead>
+   <tbody id="doctor-body"></tbody></table>
+ </div>
+</div>
+
+<h2 class="page-subtitle" style="margin-top:20px">Alert History</h2>
 <div class="card" style="padding:0;overflow:hidden">
  <table class="tbl">
-  <thead><tr><th>Time</th><th>Summary</th><th>Status</th><th>Duration</th></tr></thead>
-  <tbody id="guard-body"><tr><td colspan="4" class="empty">Loading...</td></tr></tbody>
+  <thead><tr><th>Time</th><th>Summary</th><th>Status</th></tr></thead>
+  <tbody id="guard-body"><tr><td colspan="3" class="empty">Loading...</td></tr></tbody>
  </table>
 </div>
 
 <script>
 (function(){
 'use strict';
-const ramHistory=[];
-const maxPoints=60;
-const canvas=document.getElementById('ram-chart');
-const ctx=canvas.getContext('2d');
-
+const ramHistory=[];const maxPoints=60;
+const canvas=document.getElementById('ram-chart');const ctx=canvas.getContext('2d');
 function drawChart(){
- const w=canvas.width,h=canvas.height;
- ctx.clearRect(0,0,w,h);
- if(!ramHistory.length)return;
+ const w=canvas.width,h=canvas.height;ctx.clearRect(0,0,w,h);if(!ramHistory.length)return;
  ctx.strokeStyle='rgba(200,169,81,.08)';ctx.lineWidth=1;
  for(let y=0;y<=100;y+=25){const py=h-y/100*h;ctx.beginPath();ctx.moveTo(0,py);ctx.lineTo(w,py);ctx.stroke()}
  ctx.strokeStyle='%s';ctx.lineWidth=2;ctx.beginPath();
  ramHistory.forEach(function(v,i){const x=i/(maxPoints-1)*w,y=h-v/100*h;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});
- ctx.stroke();
- const grad=ctx.createLinearGradient(0,0,0,h);
+ ctx.stroke();const grad=ctx.createLinearGradient(0,0,0,h);
  grad.addColorStop(0,'rgba(200,169,81,.15)');grad.addColorStop(1,'transparent');
- ctx.fillStyle=grad;ctx.lineTo((ramHistory.length-1)/(maxPoints-1)*w,h);ctx.lineTo(0,h);ctx.fill();
-}
-
-const sevBadge=s=>({success:'badge-success',error:'badge-error',warning:'badge-warning'}[s]||'badge-info');
-const sevIcon=s=>({success:'✅',error:'❌',warning:'⚠️',info:'ℹ️'}[s]||'ℹ️');
-const fmtDur=ms=>{if(!ms)return'—';if(ms<1000)return ms+'ms';return(ms/1000).toFixed(1)+'s'};
-const fmtTime=ts=>{if(!ts)return'—';const d=new Date(ts);return d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'})};
-
+ ctx.fillStyle=grad;ctx.lineTo((ramHistory.length-1)/(maxPoints-1)*w,h);ctx.lineTo(0,h);ctx.fill()}
 function refresh(){
- fetch('/api/stats').then(function(r){return r.json()}).then(function(s){
-  ramHistory.push(s.ram_percent||0);
-  if(ramHistory.length>maxPoints)ramHistory.shift();
-  drawChart();
+ fetch('/api/stats').then(r=>r.json()).then(function(s){
+  ramHistory.push(s.ram_percent||0);if(ramHistory.length>maxPoints)ramHistory.shift();drawChart();
   document.getElementById('ram-pct').textContent=Math.round(s.ram_percent||0)+'%%';
   document.getElementById('ram-state').textContent=(s.ram_pressure||'unknown')+' pressure';
-  document.getElementById('deity-count').textContent=s.deity_count||0;
-  document.getElementById('deity-list').textContent=(s.active_deities||[]).join(', ')||'None';
  }).catch(function(){});
-
- fetch('/api/notifications?source=isis&limit=20').then(function(r){return r.json()}).then(function(items){
-  const tb=document.getElementById('guard-body');
-  tb.textContent='';
+ fetch('/api/notifications?source=isis&limit=10').then(r=>r.json()).then(function(items){
+  const tb=document.getElementById('guard-body');tb.textContent='';
   if(!items||!items.length){const tr=document.createElement('tr');const td=document.createElement('td');
-   td.colSpan=4;td.className='empty';td.textContent='No guard alerts';tr.appendChild(td);tb.appendChild(tr);return}
-  items.forEach(function(n){
-   const tr=document.createElement('tr');
-   const tdTime=document.createElement('td');tdTime.style.cssText='color:#666;font-size:11px;white-space:nowrap';tdTime.textContent=fmtTime(n.timestamp);
-   const tdSum=document.createElement('td');tdSum.textContent=n.summary;
-   const tdSev=document.createElement('td');const badge=document.createElement('span');
-   badge.className='badge '+sevBadge(n.severity);badge.textContent=sevIcon(n.severity)+' '+n.severity;tdSev.appendChild(badge);
-   const tdDur=document.createElement('td');tdDur.style.cssText='color:#666;font-size:11px';tdDur.textContent=fmtDur(n.duration_ms);
-   tr.appendChild(tdTime);tr.appendChild(tdSum);tr.appendChild(tdSev);tr.appendChild(tdDur);tb.appendChild(tr)});
+   td.colSpan=3;td.className='empty';td.textContent='No alerts';tr.appendChild(td);tb.appendChild(tr);return}
+  items.forEach(function(n){const tr=document.createElement('tr');
+   const t=document.createElement('td');t.style.cssText='color:#666;font-size:11px';
+   t.textContent=new Date(n.timestamp).toLocaleTimeString();
+   const s=document.createElement('td');s.textContent=n.summary;
+   const b=document.createElement('td');const badge=document.createElement('span');
+   badge.className='badge badge-'+({success:'success',error:'error',warning:'warning'}[n.severity]||'info');
+   badge.textContent=n.severity;b.appendChild(badge);
+   tr.appendChild(t);tr.appendChild(s);tr.appendChild(b);tb.appendChild(tr)});
  }).catch(function(){});
 }
-
-refresh();
-setInterval(refresh,20000);
+document.getElementById('btn-doctor').addEventListener('click',function(){
+ const btn=this;btn.textContent='Running...';btn.disabled=true;
+ fetch('/api/doctor').then(r=>r.json()).then(function(rpt){
+  document.getElementById('health-score').textContent=rpt.Score+'/100';
+  document.getElementById('health-label').textContent=rpt.Score>=75?'Healthy':rpt.Score>=50?'Degraded':'Critical';
+  document.getElementById('doctor-results').style.display='';
+  const tb=document.getElementById('doctor-body');tb.textContent='';
+  (rpt.Findings||[]).forEach(function(f){const tr=document.createElement('tr');
+   const i=document.createElement('td');i.textContent=({0:'✅',1:'ℹ️',2:'⚠️',3:'🔴'}[f.Severity]||'⚪');
+   const c=document.createElement('td');c.style.fontWeight='600';c.textContent=f.Check;
+   const m=document.createElement('td');m.textContent=f.Message;
+   tr.appendChild(i);tr.appendChild(c);tr.appendChild(m);tb.appendChild(tr)});
+  btn.textContent='Run Doctor';btn.disabled=false;
+ }).catch(function(){btn.textContent='Error';btn.disabled=false});
+});
+document.querySelectorAll('.slay-btn').forEach(function(btn){
+ btn.addEventListener('click',function(){
+  const target=this.dataset.target;const resEl=document.getElementById('slay-result');
+  btn.disabled=true;
+  fetch('/api/slay?target='+target+'&dry_run=false',{method:'POST'}).then(r=>r.json()).then(function(d){
+   btn.disabled=false;resEl.textContent='';
+   const msg=document.createElement('span');
+   if(d.killed>0){msg.style.color='#44FF88';msg.textContent='✓ Killed '+d.killed+' '+target+' processes'}
+   else{msg.style.color='#888';msg.textContent='No '+target+' processes found'}
+   resEl.appendChild(msg);
+  }).catch(function(){btn.disabled=false});
+ });
+});
+refresh();setInterval(refresh,20000);
 })();
 </script>`, ColorGold)
 
@@ -802,48 +834,97 @@ loadFindings();
 // ── Ghosts Page ─────────────────────────────────────────────────────────
 
 func (s *Server) handleGhosts(w http.ResponseWriter, r *http.Request) {
-	entries := s.readSteleByType(stele.TypeKaHunt, stele.TypeKaClean)
-
-	entriesJSON := "[]"
-	if b, err := json.Marshal(entries); err == nil {
-		entriesJSON = string(b)
-	}
-
-	body := fmt.Sprintf(`
+	body := `
 <h1 class="page-title">𓂓 Ghost Detection</h1>
-<p class="page-subtitle">Ka spirit hunt — dead app remnants</p>
+<div style="display:flex;gap:12px;margin-bottom:20px;align-items:center">
+ <button class="action-btn" id="btn-hunt" style="flex-direction:row;padding:10px 20px;gap:6px">
+  <span class="action-glyph" style="font-size:16px">𓂓</span> Run Ghost Hunt</button>
+ <span id="hunt-status" style="font-size:11px;color:#666;flex:1;text-align:right"></span>
+</div>
 
-<div class="card" style="padding:0;overflow:hidden">
- <table class="tbl">
-  <thead><tr><th>Time</th><th>Type</th><th>Scope</th><th>Details</th></tr></thead>
-  <tbody id="ghost-body"></tbody>
- </table>
+<div class="grid grid-3" style="margin-bottom:20px">
+ <div class="card"><div class="card-title">Ghosts Found</div>
+  <div class="card-value" id="ghost-count" style="font-size:22px">—</div></div>
+ <div class="card"><div class="card-title">Total Waste</div>
+  <div class="card-value" id="ghost-waste" style="font-size:22px">—</div></div>
+ <div class="card"><div class="card-title">Residual Files</div>
+  <div class="card-value" id="ghost-files" style="font-size:22px">—</div></div>
+</div>
+
+<div id="ghosts-list"></div>
+<div id="empty-state" class="card">
+ <div class="empty"><div class="empty-glyph">𓂓</div>Click "Run Ghost Hunt" to scan for dead app remnants</div>
 </div>
 
 <script>
 (function(){
 'use strict';
-const D=%s;
-const fmtTime=ts=>{if(!ts)return'—';const d=new Date(ts);return d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})};
-const typeBadge=t=>({ka_hunt:'badge-warning',ka_clean:'badge-success'}[t]||'badge-info');
-const typeLabel=t=>({ka_hunt:'Hunt',ka_clean:'Clean'}[t]||t);
+const fmtSize=b=>{if(b>=1073741824)return(b/1073741824).toFixed(1)+' GB';
+ if(b>=1048576)return(b/1048576).toFixed(1)+' MB';if(b>=1024)return(b/1024).toFixed(1)+' KB';return b+' B'};
 
-const tb=document.getElementById('ghost-body');
-if(!D.length){
- const tr=document.createElement('tr');const td=document.createElement('td');
- td.colSpan=4;td.className='empty';td.textContent='No ghost hunts yet. Run sirsi ghosts to begin.';
- tr.appendChild(td);tb.appendChild(tr);
-}else{D.forEach(function(e){
- const tr=document.createElement('tr');
- const tdTime=document.createElement('td');tdTime.style.cssText='color:#666;font-size:11px;white-space:nowrap';tdTime.textContent=fmtTime(e.ts);
- const tdType=document.createElement('td');const badge=document.createElement('span');
- badge.className='badge '+typeBadge(e.type);badge.textContent=typeLabel(e.type);tdType.appendChild(badge);
- const tdScope=document.createElement('td');tdScope.textContent=e.scope||'local';
- const tdDetails=document.createElement('td');tdDetails.style.fontSize='12px';
- tdDetails.textContent=Object.entries(e.data||{}).map(function(p){return p[0]+': '+p[1]}).join(' • ');
- tr.appendChild(tdTime);tr.appendChild(tdType);tr.appendChild(tdScope);tr.appendChild(tdDetails);tb.appendChild(tr)})}
+function loadGhosts(){
+ const status=document.getElementById('hunt-status');
+ status.textContent='Scanning...';status.style.color='#C8A951';
+ document.getElementById('btn-hunt').disabled=true;
+ fetch('/api/ghosts').then(r=>r.json()).then(function(ghosts){
+  status.textContent='';document.getElementById('btn-hunt').disabled=false;
+  if(!ghosts.length){document.getElementById('empty-state').style.display='';return}
+  document.getElementById('empty-state').style.display='none';
+  let totalSize=0,totalFiles=0;
+  ghosts.forEach(function(g){totalSize+=g.total_size;totalFiles+=g.total_files});
+  document.getElementById('ghost-count').textContent=ghosts.length;
+  document.getElementById('ghost-waste').textContent=fmtSize(totalSize);
+  document.getElementById('ghost-files').textContent=totalFiles;
+  renderGhosts(ghosts);
+ }).catch(function(e){status.textContent='Error: '+e.message;status.style.color='#FF4444';
+  document.getElementById('btn-hunt').disabled=false});
+}
+
+function renderGhosts(ghosts){
+ const container=document.getElementById('ghosts-list');container.textContent='';
+ ghosts.sort(function(a,b){return b.total_size-a.total_size});
+ ghosts.forEach(function(g){
+  const card=document.createElement('div');card.className='card';card.style.cssText='padding:0;overflow:hidden;margin-bottom:12px';
+  const header=document.createElement('div');header.className='cat-header';
+  const chevron=document.createElement('span');chevron.className='cat-chevron';chevron.textContent='▸';
+  const name=document.createElement('span');name.className='cat-name';
+  name.textContent='👻 '+g.app_name+(g.in_launch_services?' (still in Launch Services)':'');
+  const meta=document.createElement('span');meta.className='cat-meta';
+  meta.textContent=g.total_files+' files · '+fmtSize(g.total_size);
+  const cleanBtn=document.createElement('button');cleanBtn.className='clean-btn';
+  cleanBtn.textContent='Clean';cleanBtn.style.marginLeft='12px';
+  cleanBtn.addEventListener('click',function(e){e.stopPropagation();cleanGhost(cleanBtn,g.app_name)});
+  header.appendChild(chevron);header.appendChild(name);header.appendChild(meta);header.appendChild(cleanBtn);
+
+  const body=document.createElement('div');body.style.display='none';
+  g.residuals.forEach(function(r){
+   const row=document.createElement('div');row.className='finding-row';
+   const type=document.createElement('span');type.className='finding-desc';type.style.color='#999';
+   type.textContent=r.type;type.style.minWidth='140px';type.style.flex='none';
+   const path=document.createElement('span');path.className='finding-path';path.textContent=r.path;path.title=r.path;path.style.flex='1';
+   const size=document.createElement('span');size.className='finding-size';size.textContent=fmtSize(r.size_bytes);
+   row.appendChild(type);row.appendChild(path);row.appendChild(size);body.appendChild(row);
+  });
+
+  header.addEventListener('click',function(){
+   const open=body.style.display==='none';body.style.display=open?'':'none';
+   chevron.classList.toggle('open',open)});
+  card.appendChild(header);card.appendChild(body);container.appendChild(card);
+ });
+}
+
+function cleanGhost(btn,appName){
+ if(btn.classList.contains('done'))return;btn.textContent='...';
+ fetch('/api/ghosts/clean',{method:'POST',headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({app_name:appName,dry_run:false})
+ }).then(r=>r.json()).then(function(d){
+  btn.textContent='✓ '+d.freed_human;btn.classList.add('done');btn.style.borderColor='#44FF88';btn.style.color='#44FF88';
+ }).catch(function(){btn.textContent='Err';btn.style.color='#FF4444'});
+}
+
+document.getElementById('btn-hunt').addEventListener('click',loadGhosts);
 })();
-</script>`, entriesJSON)
+</script>`
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	fmt.Fprint(w, pageShell("Ghosts", "/ghosts", body))
@@ -852,60 +933,76 @@ if(!D.length){
 // ── Horus Page ──────────────────────────────────────────────────────────
 
 func (s *Server) handleHorus(w http.ResponseWriter, r *http.Request) {
-	entries := s.readSteleByType(stele.TypeHorusScan, stele.TypeHorusQuery)
-
-	entriesJSON := "[]"
-	if b, err := json.Marshal(entries); err == nil {
-		entriesJSON = string(b)
-	}
-
-	body := fmt.Sprintf(`
+	body := `
 <h1 class="page-title">𓂀 Horus — Code Graph</h1>
-<p class="page-subtitle">Structural code analysis and symbol browser</p>
 
-<div style="margin-bottom:20px">
- <input type="text" class="search-box" id="horus-search" placeholder="Search symbols, files, or packages...">
+<div style="display:flex;gap:12px;margin-bottom:20px;align-items:center">
+ <input type="text" class="search-box" id="horus-search" placeholder="Search symbols (e.g. Server, *Handler, func)..." style="flex:1">
+ <button class="action-btn" id="btn-horus-scan" style="flex-direction:row;padding:10px 20px;gap:6px;white-space:nowrap">
+  𓂀 Scan Project</button>
 </div>
 
-<div class="grid grid-2">
- <div>
-  <h2 class="page-subtitle">Recent Analysis</h2>
-  <div class="card" style="padding:0;overflow:hidden">
-   <table class="tbl">
-    <thead><tr><th>Time</th><th>Type</th><th>Details</th></tr></thead>
-    <tbody id="horus-body"></tbody>
-   </table>
-  </div>
+<div class="grid grid-4" style="margin-bottom:20px" id="horus-stats">
+ <div class="card"><div class="card-title">Files</div><div class="card-value" id="h-files" style="font-size:22px">—</div></div>
+ <div class="card"><div class="card-title">Packages</div><div class="card-value" id="h-pkgs" style="font-size:22px">—</div></div>
+ <div class="card"><div class="card-title">Types</div><div class="card-value" id="h-types" style="font-size:22px">—</div></div>
+ <div class="card"><div class="card-title">Functions</div><div class="card-value" id="h-funcs" style="font-size:22px">—</div></div>
+</div>
+
+<div id="search-results" style="display:none">
+ <h2 class="page-subtitle">Search Results</h2>
+ <div class="card" style="padding:0;overflow:hidden">
+  <table class="tbl"><thead><tr><th>Kind</th><th>Name</th><th>File</th><th>Line</th></tr></thead>
+   <tbody id="results-body"></tbody></table>
  </div>
- <div>
-  <h2 class="page-subtitle">Symbol Outline</h2>
-  <div class="card" id="outline-card">
-   <div class="empty"><div class="empty-glyph">𓂀</div>Search for a file or run sirsi horus scan</div>
-  </div>
- </div>
+</div>
+
+<div id="empty-state" class="card">
+ <div class="empty"><div class="empty-glyph">𓂀</div>Click "Scan Project" to analyze the codebase, then search for symbols</div>
 </div>
 
 <script>
 (function(){
 'use strict';
-const D=%s;
-const fmtTime=ts=>{if(!ts)return'—';const d=new Date(ts);return d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})};
+const kindBadge={func:'badge-info',method:'badge-info',type:'badge-warning',struct:'badge-warning',
+ interface:'badge-success','const':'badge-info','var':'badge-info',field:'badge-info'};
 
-const tb=document.getElementById('horus-body');
-if(!D.length){
- const tr=document.createElement('tr');const td=document.createElement('td');
- td.colSpan=3;td.className='empty';td.textContent='No Horus analysis yet';
- tr.appendChild(td);tb.appendChild(tr);
-}else{D.forEach(function(e){
- const tr=document.createElement('tr');
- const tdTime=document.createElement('td');tdTime.style.cssText='color:#666;font-size:11px;white-space:nowrap';tdTime.textContent=fmtTime(e.ts);
- const tdType=document.createElement('td');const badge=document.createElement('span');
- badge.className='badge badge-info';badge.textContent=e.type.replace('horus_','');tdType.appendChild(badge);
- const tdDetails=document.createElement('td');tdDetails.style.fontSize='12px';
- tdDetails.textContent=Object.entries(e.data||{}).map(function(p){return p[0]+': '+p[1]}).join(' • ');
- tr.appendChild(tdTime);tr.appendChild(tdType);tr.appendChild(tdDetails);tb.appendChild(tr)})}
+document.getElementById('btn-horus-scan').addEventListener('click',function(){
+ const btn=this;btn.disabled=true;btn.textContent='Scanning...';
+ fetch('/api/horus/scan?path=.').then(r=>r.json()).then(function(g){
+  btn.disabled=false;btn.textContent='𓂀 Scan Project';
+  document.getElementById('empty-state').style.display='none';
+  const s=g.stats||g.Stats||{};
+  document.getElementById('h-files').textContent=s.files||s.Files||0;
+  document.getElementById('h-pkgs').textContent=s.packages||s.Packages||0;
+  document.getElementById('h-types').textContent=s.types||s.Types||0;
+  document.getElementById('h-funcs').textContent=(s.functions||s.Functions||0)+(s.methods||s.Methods||0);
+ }).catch(function(){btn.disabled=false;btn.textContent='Error'});
+});
+
+let searchTimer=null;
+document.getElementById('horus-search').addEventListener('input',function(){
+ clearTimeout(searchTimer);const q=this.value.trim();
+ if(!q){document.getElementById('search-results').style.display='none';return}
+ searchTimer=setTimeout(function(){
+  fetch('/api/horus/query?path=.&filter='+encodeURIComponent('*'+q+'*')).then(r=>r.json()).then(function(symbols){
+   document.getElementById('search-results').style.display='';
+   document.getElementById('empty-state').style.display='none';
+   const tb=document.getElementById('results-body');tb.textContent='';
+   if(!symbols||!symbols.length){const tr=document.createElement('tr');const td=document.createElement('td');
+    td.colSpan=4;td.className='empty';td.textContent='No symbols match';tr.appendChild(td);tb.appendChild(tr);return}
+   symbols.slice(0,50).forEach(function(s){const tr=document.createElement('tr');
+    const k=document.createElement('td');const badge=document.createElement('span');
+    badge.className='badge '+(kindBadge[s.kind]||'badge-info');badge.textContent=s.kind;k.appendChild(badge);
+    const n=document.createElement('td');n.style.fontWeight='600';n.textContent=(s.parent?s.parent+'.':'')+s.name;
+    const f=document.createElement('td');f.className='finding-path';f.textContent=s.file;f.title=s.file;
+    const l=document.createElement('td');l.style.cssText='color:#666;font-size:11px';l.textContent=s.line;
+    tr.appendChild(k);tr.appendChild(n);tr.appendChild(f);tr.appendChild(l);tb.appendChild(tr)});
+  }).catch(function(){});
+ },300);
+});
 })();
-</script>`, entriesJSON)
+</script>`
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	fmt.Fprint(w, pageShell("Horus", "/horus", body))
@@ -914,60 +1011,91 @@ if(!D.length){
 // ── Vault Page ──────────────────────────────────────────────────────────
 
 func (s *Server) handleVault(w http.ResponseWriter, r *http.Request) {
-	entries := s.readSteleByType(stele.TypeVaultStore, stele.TypeVaultSearch, stele.TypeVaultCodeSearch)
-
-	entriesJSON := "[]"
-	if b, err := json.Marshal(entries); err == nil {
-		entriesJSON = string(b)
-	}
-
-	body := fmt.Sprintf(`
+	body := `
 <h1 class="page-title">🏛 Vault — Context Sandbox</h1>
-<p class="page-subtitle">SQLite FTS5 code index and search</p>
 
-<div style="margin-bottom:20px">
- <input type="text" class="search-box" id="vault-search" placeholder="Search indexed code and context...">
+<div style="display:flex;gap:12px;margin-bottom:20px;align-items:center">
+ <input type="text" class="search-box" id="vault-search" placeholder="Full-text search across all sandboxed content..." style="flex:1">
+ <button class="action-btn" id="btn-prune" style="flex-direction:row;padding:10px 16px;gap:6px;white-space:nowrap;font-size:12px">
+  🧹 Prune Old</button>
 </div>
 
-<div class="grid grid-2">
- <div>
-  <h2 class="page-subtitle">Search Results</h2>
-  <div class="card" id="vault-results">
-   <div class="empty"><div class="empty-glyph">🏛</div>Type a query above to search the vault</div>
-  </div>
- </div>
- <div>
-  <h2 class="page-subtitle">Vault Activity</h2>
-  <div class="card" style="padding:0;overflow:hidden">
-   <table class="tbl">
-    <thead><tr><th>Time</th><th>Type</th><th>Details</th></tr></thead>
-    <tbody id="vault-body"></tbody>
-   </table>
-  </div>
- </div>
+<div class="grid grid-4" style="margin-bottom:20px">
+ <div class="card"><div class="card-title">Entries</div><div class="card-value" id="v-entries" style="font-size:22px">—</div></div>
+ <div class="card"><div class="card-title">Total Size</div><div class="card-value" id="v-bytes" style="font-size:22px">—</div></div>
+ <div class="card"><div class="card-title">Tokens</div><div class="card-value" id="v-tokens" style="font-size:22px">—</div></div>
+ <div class="card"><div class="card-title">Tags</div><div class="card-value" id="v-tags" style="font-size:22px">—</div></div>
+</div>
+
+<div id="search-results" style="display:none">
+ <h2 class="page-subtitle" id="results-label">Results</h2>
+ <div id="results-list"></div>
+</div>
+
+<div id="empty-state" class="card">
+ <div class="empty"><div class="empty-glyph">🏛</div>Type a query to search, or use <code>sirsi vault store</code> to add content</div>
 </div>
 
 <script>
 (function(){
 'use strict';
-const D=%s;
-const fmtTime=ts=>{if(!ts)return'—';const d=new Date(ts);return d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})};
+const fmtSize=b=>{if(b>=1073741824)return(b/1073741824).toFixed(1)+' GB';
+ if(b>=1048576)return(b/1048576).toFixed(1)+' MB';if(b>=1024)return(b/1024).toFixed(1)+' KB';return b+' B'};
+const fmtNum=n=>{if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return n};
 
-const tb=document.getElementById('vault-body');
-if(!D.length){
- const tr=document.createElement('tr');const td=document.createElement('td');
- td.colSpan=3;td.className='empty';td.textContent='No vault activity yet';
- tr.appendChild(td);tb.appendChild(tr);
-}else{D.forEach(function(e){
- const tr=document.createElement('tr');
- const tdTime=document.createElement('td');tdTime.style.cssText='color:#666;font-size:11px;white-space:nowrap';tdTime.textContent=fmtTime(e.ts);
- const tdType=document.createElement('td');const badge=document.createElement('span');
- badge.className='badge badge-info';badge.textContent=e.type.replace('vault_','');tdType.appendChild(badge);
- const tdDetails=document.createElement('td');tdDetails.style.fontSize='12px';
- tdDetails.textContent=Object.entries(e.data||{}).map(function(p){return p[0]+': '+p[1]}).join(' • ');
- tr.appendChild(tdTime);tr.appendChild(tdType);tr.appendChild(tdDetails);tb.appendChild(tr)})}
+function loadStats(){
+ fetch('/api/vault/stats').then(r=>r.json()).then(function(s){
+  document.getElementById('v-entries').textContent=s.totalEntries||0;
+  document.getElementById('v-bytes').textContent=fmtSize(s.totalBytes||0);
+  document.getElementById('v-tokens').textContent=fmtNum(s.totalTokens||0);
+  const tags=s.tagCounts||{};
+  document.getElementById('v-tags').textContent=Object.keys(tags).length;
+  if(s.totalEntries>0)document.getElementById('empty-state').style.display='none';
+ }).catch(function(){});
+}
+
+let searchTimer=null;
+document.getElementById('vault-search').addEventListener('input',function(){
+ clearTimeout(searchTimer);const q=this.value.trim();
+ if(!q){document.getElementById('search-results').style.display='none';
+  if(document.getElementById('v-entries').textContent!=='0')document.getElementById('empty-state').style.display='none';
+  return}
+ searchTimer=setTimeout(function(){
+  fetch('/api/vault/search?q='+encodeURIComponent(q)+'&limit=20').then(r=>r.json()).then(function(res){
+   document.getElementById('search-results').style.display='';
+   document.getElementById('empty-state').style.display='none';
+   document.getElementById('results-label').textContent='Results ('+res.totalHits+' hits)';
+   const list=document.getElementById('results-list');list.textContent='';
+   if(!res.entries||!res.entries.length){
+    const card=document.createElement('div');card.className='card';
+    card.textContent='No results for "'+q+'"';card.style.color='#666';
+    list.appendChild(card);return}
+   res.entries.forEach(function(e){
+    const card=document.createElement('div');card.className='card';card.style.marginBottom='8px';
+    const header=document.createElement('div');header.style.cssText='display:flex;gap:12px;align-items:center;margin-bottom:8px';
+    const src=document.createElement('span');src.style.cssText='font-weight:600;color:#C8A951';src.textContent=e.source;
+    const tag=document.createElement('span');tag.className='badge badge-info';tag.textContent=e.tag;
+    const time=document.createElement('span');time.style.cssText='color:#666;font-size:11px;margin-left:auto';time.textContent=e.createdAt;
+    header.appendChild(src);header.appendChild(tag);header.appendChild(time);
+    const snippet=document.createElement('pre');
+    snippet.style.cssText='font-size:12px;color:#aaa;white-space:pre-wrap;word-break:break-all;margin:0;font-family:monospace;max-height:120px;overflow:hidden';
+    snippet.textContent=e.snippet||e.content?.substring(0,200)||'';
+    card.appendChild(header);card.appendChild(snippet);list.appendChild(card)});
+  }).catch(function(){});
+ },300);
+});
+
+document.getElementById('btn-prune').addEventListener('click',function(){
+ const btn=this;btn.disabled=true;btn.textContent='Pruning...';
+ fetch('/api/vault/prune?older_than=720h',{method:'POST'}).then(r=>r.json()).then(function(d){
+  btn.disabled=false;btn.textContent='✓ Removed '+d.removed;
+  setTimeout(function(){btn.textContent='🧹 Prune Old';loadStats()},2000);
+ }).catch(function(){btn.disabled=false;btn.textContent='Error'});
+});
+
+loadStats();
 })();
-</script>`, entriesJSON)
+</script>`
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	fmt.Fprint(w, pageShell("Vault", "/vault", body))

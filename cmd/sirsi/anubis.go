@@ -146,6 +146,40 @@ func runWeigh(ctx context.Context) error {
 	engine.RegisterAll(rules.AllRules()...)
 
 	res, _ := engine.Scan(ctx, jackal.ScanOptions{})
+
+	// Ghost scan is part of a full scan — dead app remnants are waste too.
+	if !JsonOutput {
+		output.Info("Scanning for ghost app remnants...")
+	}
+	ghostScanner := ka.NewScanner()
+	ghosts, _ := ghostScanner.Scan(ctx, false)
+	var ghostWaste int64
+	for _, g := range ghosts {
+		ghostWaste += g.TotalSize
+		// Add ghost findings to the scan result so they appear in persisted output.
+		for _, r := range g.Residuals {
+			res.Findings = append(res.Findings, jackal.Finding{
+				RuleName:    "ka_ghost",
+				Category:    jackal.CategoryGeneral,
+				Description: fmt.Sprintf("Ghost: %s (%s)", g.AppName, r.Type),
+				Path:        r.Path,
+				SizeBytes:   r.SizeBytes,
+				FileCount:   r.FileCount,
+				Severity:    jackal.SeveritySafe,
+				IsDir:       true,
+			})
+		}
+		res.TotalSize += g.TotalSize
+	}
+	if len(ghosts) > 0 {
+		res.RulesWithFindings++
+		cat := res.ByCategory[jackal.CategoryGeneral]
+		cat.Category = jackal.CategoryGeneral
+		cat.Findings += len(ghosts)
+		cat.TotalSize += ghostWaste
+		res.ByCategory[jackal.CategoryGeneral] = cat
+	}
+
 	elapsed := time.Since(start)
 
 	// Persist findings to disk so dashboard/judge can read them.
@@ -171,11 +205,15 @@ func runWeigh(ctx context.Context) error {
 	}
 
 	// Terminal output — summary table + top findings.
-	output.Dashboard(map[string]string{
+	dashMap := map[string]string{
 		"Waste Found": jackal.FormatSize(res.TotalSize),
 		"Pillars Ran": fmt.Sprintf("%d", res.RulesRan),
 		"Findings":    fmt.Sprintf("%d", len(res.Findings)),
-	})
+	}
+	if len(ghosts) > 0 {
+		dashMap["Ghosts"] = fmt.Sprintf("%d (%s)", len(ghosts), jackal.FormatSize(ghostWaste))
+	}
+	output.Dashboard(dashMap)
 
 	// Show category breakdown.
 	if len(res.ByCategory) > 0 {

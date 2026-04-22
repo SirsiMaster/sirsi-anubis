@@ -76,6 +76,18 @@ func New(cfg Config) *Server {
 	mux.HandleFunc("/api/findings", s.apiFindings)
 	mux.HandleFunc("/api/clean", s.apiClean)
 
+	// Module APIs
+	mux.HandleFunc("/api/ghosts", s.apiGhosts)
+	mux.HandleFunc("/api/ghosts/clean", s.apiGhostClean)
+	mux.HandleFunc("/api/doctor", s.apiDoctor)
+	mux.HandleFunc("/api/slay", s.apiSlay)
+	mux.HandleFunc("/api/guard/stats", s.apiGuardStats)
+	mux.HandleFunc("/api/horus/scan", s.apiHorusScan)
+	mux.HandleFunc("/api/horus/query", s.apiHorusQuery)
+	mux.HandleFunc("/api/vault/search", s.apiVaultSearch)
+	mux.HandleFunc("/api/vault/stats", s.apiVaultStats)
+	mux.HandleFunc("/api/vault/prune", s.apiVaultPrune)
+
 	s.srv = &http.Server{
 		Addr:         fmt.Sprintf("127.0.0.1:%d", cfg.Port),
 		Handler:      mux,
