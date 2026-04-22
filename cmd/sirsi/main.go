@@ -109,6 +109,12 @@ var ghostsCmd = &cobra.Command{
 	RunE:  func(cmd *cobra.Command, args []string) error { return runKa(cmd.Context()) },
 }
 
+var judgeCmd = &cobra.Command{
+	Use:   "judge",
+	Short: "Clean artifacts and reclaim storage space",
+	RunE:  func(cmd *cobra.Command, args []string) error { return runJudge(cmd.Context()) },
+}
+
 var dedupCmd = &cobra.Command{
 	Use:   "dedup [directories...]",
 	Short: "Find duplicate files",
@@ -448,7 +454,9 @@ func init() {
 	// Core commands
 	scanCmd.Flags().BoolVar(&anubisAll, "all", false, "Scan all categories")
 	ghostsCmd.Flags().BoolVar(&anubisSudo, "sudo", false, "Include system directories (requires sudo)")
-	rootCmd.AddCommand(scanCmd, ghostsCmd, dedupCmd, guardCmd, doctorCmd, mcpCmd)
+	judgeCmd.Flags().BoolVar(&anubisDryRun, "dry-run", true, "Preview mode")
+	judgeCmd.Flags().BoolVar(&anubisConfirm, "confirm", false, "Confirm and apply")
+	rootCmd.AddCommand(scanCmd, ghostsCmd, dedupCmd, guardCmd, doctorCmd, judgeCmd, mcpCmd)
 	rootCmd.AddCommand(thothCmd, maatCmd, seshatCmd, raCmd, netCmd)
 	rootCmd.AddCommand(anubisCmd, sebaCmd, osirisCmd)
 	rootCmd.AddCommand(benchmarkCmd, versionCmd)

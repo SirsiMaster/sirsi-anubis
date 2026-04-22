@@ -41,7 +41,7 @@ func runDashboard(cmd *cobra.Command, args []string) {
 
 	nStore, err := notify.Open(notify.DefaultPath())
 	if err != nil {
-		output.Warn(fmt.Sprintf("Notification store unavailable: %v", err))
+		output.Warn("Notification store unavailable: %v", err)
 	}
 
 	// Find our own binary path for the command runner.
@@ -59,17 +59,17 @@ func runDashboard(cmd *cobra.Command, args []string) {
 	})
 
 	if err := srv.Start(); err != nil {
-		output.Error(fmt.Sprintf("Failed to start dashboard: %v", err))
+		output.Error("Failed to start dashboard: %v", err)
 		os.Exit(1)
 	}
 
-	output.Success(fmt.Sprintf("Dashboard running at %s", srv.URL()))
+	output.Success("Dashboard running at %s", srv.URL())
 	output.Info("Press Ctrl+C to stop")
 
 	if !dashboardNoBrowser {
 		if err := srv.OpenPage("/"); err != nil {
-			output.Warn(fmt.Sprintf("Could not open browser: %v", err))
-			output.Info(fmt.Sprintf("Open manually: %s", srv.URL()))
+			output.Warn("Could not open browser: %v", err)
+			output.Info("Open manually: %s", srv.URL())
 		}
 	}
 
