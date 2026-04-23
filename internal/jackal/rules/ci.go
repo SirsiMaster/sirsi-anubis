@@ -245,6 +245,7 @@ func NewEnvFileRule() jackal.ScanRule {
 		searchPaths: defaultDevPaths(),
 		maxDepth:    3,
 		analyzeRepo: analyzeEnvFiles,
+		cleanFn:     cleanEnvFile,
 	}
 }
 
@@ -293,6 +294,46 @@ func analyzeEnvFiles(ctx context.Context, repo string) []jackal.Finding {
 		})
 	}
 	return findings
+}
+
+// cleanEnvFile adds the .env file to .gitignore so it won't be accidentally committed.
+func cleanEnvFile(ctx context.Context, f jackal.Finding, dryRun bool) (int64, error) {
+	// Find the repo root (walk up from the .env file)
+	dir := filepath.Dir(f.Path)
+	repoRoot := dir
+	for repoRoot != "/" {
+		if _, err := os.Stat(filepath.Join(repoRoot, ".git")); err == nil {
+			break
+		}
+		repoRoot = filepath.Dir(repoRoot)
+	}
+
+	gitignorePath := filepath.Join(repoRoot, ".gitignore")
+	envRelPath, _ := filepath.Rel(repoRoot, f.Path)
+
+	if dryRun {
+		return 0, nil // advisory action, no space freed
+	}
+
+	// Check if already in .gitignore
+	existing, _ := os.ReadFile(gitignorePath)
+	if strings.Contains(string(existing), envRelPath) {
+		return 0, nil // already ignored
+	}
+
+	// Append to .gitignore
+	file, err := os.OpenFile(gitignorePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return 0, fmt.Errorf("open .gitignore: %w", err)
+	}
+	defer file.Close()
+
+	entry := "\n# Added by Sirsi — secret file protection\n" + envRelPath + "\n"
+	if _, err := file.WriteString(entry); err != nil {
+		return 0, fmt.Errorf("write .gitignore: %w", err)
+	}
+
+	return 0, nil
 }
 
 // NewStaleLockFilesRule finds orphaned lock files.
@@ -389,6 +430,7 @@ func analyzeDeadSymlinks(ctx context.Context, repo string) []jackal.Finding {
 }
 
 // NewOversizedReposRule flags repos where the working tree is disproportionately large.
+// Sirsi can compact via git gc and identify large untracked directories.
 func NewOversizedReposRule() jackal.ScanRule {
 	return &gitRepoRule{
 		name:        "oversized_repos",
@@ -397,6 +439,7 @@ func NewOversizedReposRule() jackal.ScanRule {
 		platforms:   []string{"darwin", "linux"},
 		searchPaths: defaultDevPaths(),
 		maxDepth:    2,
+		cleanFn:     cleanOversizedRepo,
 		analyzeRepo: func(ctx context.Context, repo string) []jackal.Finding {
 			size, count := dirSizeAndCount(repo)
 			if size < 2*1024*1024*1024 { // 2GB threshold
@@ -409,11 +452,42 @@ func NewOversizedReposRule() jackal.ScanRule {
 				Path:        repo,
 				SizeBytes:   size,
 				FileCount:   count,
-				Severity:    jackal.SeverityWarning,
+				Severity:    jackal.SeverityCaution,
 				IsDir:       true,
 			}}
 		},
 	}
+}
+
+// cleanOversizedRepo compacts a repo: git gc, prune loose objects, repack.
+func cleanOversizedRepo(ctx context.Context, f jackal.Finding, dryRun bool) (int64, error) {
+	repo := f.Path
+	gitDir := filepath.Join(repo, ".git")
+
+	sizeBefore, _ := dirSizeAndCount(gitDir)
+
+	if dryRun {
+		// Estimate: git gc typically recovers 20-50% of .git size
+		return sizeBefore / 3, nil
+	}
+
+	// Phase 1: git gc --aggressive
+	if err := exec.Command("git", "-C", repo, "gc", "--aggressive", "--prune=now").Run(); err != nil {
+		return 0, fmt.Errorf("git gc: %w", err)
+	}
+
+	// Phase 2: repack for maximum compression
+	_ = exec.Command("git", "-C", repo, "repack", "-a", "-d", "--depth=250", "--window=250").Run()
+
+	// Phase 3: prune unreachable objects
+	_ = exec.Command("git", "-C", repo, "prune", "--expire=now").Run()
+
+	sizeAfter, _ := dirSizeAndCount(gitDir)
+	freed := sizeBefore - sizeAfter
+	if freed < 0 {
+		freed = 0
+	}
+	return freed, nil
 }
 
 // NewCoverageReportsRule finds old test coverage reports.

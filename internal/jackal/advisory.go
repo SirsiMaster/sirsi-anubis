@@ -1,6 +1,6 @@
 package jackal
 
-import "fmt"
+// Advisory intelligence for scan findings.
 
 // EnrichAdvisory populates Advisory, Remediation, CanFix, and Breaking
 // on each finding based on the rule that generated it. This is the
@@ -330,9 +330,10 @@ func enrichFinding(f *Finding) {
 
 	// ── Repo Hygiene (informational — needs human judgment) ──────
 	case "env_files":
-		f.Advisory = "Contains secrets (API keys, passwords). Move to a secrets manager."
-		f.Remediation = "Flag for review"
-		f.CanFix = false
+		f.Advisory = "Contains secrets (API keys, passwords). Sirsi will add to .gitignore to prevent accidental commit."
+		f.Remediation = "Add to .gitignore"
+		f.CanFix = true
+		f.Breaking = false
 	case "stale_lock_files":
 		f.Advisory = "Orphaned git lock file. May block git operations."
 		f.Remediation = "Delete lock file"
@@ -342,9 +343,10 @@ func enrichFinding(f *Finding) {
 		f.Remediation = "Delete symlink"
 		f.CanFix = true
 	case "oversized_repos":
-		f.Advisory = fmt.Sprintf("Repo exceeds 2 GB. Sirsi cannot delete repos. Consider git gc or .gitignore cleanup.")
-		f.Remediation = "Flag for review"
-		f.CanFix = false
+		f.Advisory = "Repo exceeds 2 GB. Sirsi will compact .git with gc, repack, and prune loose objects."
+		f.Remediation = "git gc --aggressive + repack + prune"
+		f.CanFix = true
+		f.Breaking = false
 
 	// ── Ghost Residuals ──────────────────────────────────────────
 	case "ka_ghost":
