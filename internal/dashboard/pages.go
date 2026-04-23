@@ -272,13 +272,30 @@ function viewScan(){
     const row=document.createElement('div');row.className='t-line t-row';
     const sev=document.createElement('span');sev.textContent=({safe:'🟢',caution:'🟡',warning:'🟠'}[f.severity]||'⚪');
     sev.style.width='20px';
-    const desc=document.createElement('span');desc.className='t-col';desc.style.flex='1';desc.textContent=f.description;
+    const desc=document.createElement('span');desc.className='t-col';desc.style.flex='1';
+    desc.textContent=f.description;
+    if(f.advisory){desc.title=f.advisory+(f.remediation?' | Fix: '+f.remediation:'')}
     const size=document.createElement('span');size.className='t-col-r';size.textContent=f.size_human||fmtSize(f.size_bytes);
-    const act=document.createElement('span');act.className='t-action';act.textContent='[clean]';act.style.marginLeft='12px';
-    act.addEventListener('click',function(){cleanIdx(act,f._i)});
     row.appendChild(sev);row.appendChild(desc);row.appendChild(size);
-    if(f.severity==='safe'||f.severity==='caution')row.appendChild(act);
-    T.appendChild(row)});
+    if(f.can_fix){
+     const act=document.createElement('span');act.className='t-action';
+     act.textContent=f.remediation==='Flag for review'?'[flag]':'['+f.remediation+']';
+     act.style.marginLeft='12px';
+     if(f.breaking){act.style.color='#FF8844'}
+     if(f.remediation!=='Flag for review'){act.addEventListener('click',function(){cleanIdx(act,f._i)})}
+     else{act.style.cursor='default';act.style.textDecoration='none';act.style.color='#666'}
+     row.appendChild(act);
+    }else{
+     const flag=document.createElement('span');flag.style.cssText='margin-left:12px;color:#555;font-size:10px';
+     flag.textContent='review';row.appendChild(flag);
+    }
+    T.appendChild(row);
+    /* Show advisory as sub-line */
+    if(f.advisory){
+     const adv=document.createElement('div');adv.className='t-line';
+     adv.style.cssText='padding-left:24px;font-size:10px;color:#555;margin-top:-2px';
+     adv.textContent=f.advisory;T.appendChild(adv)}
+   });
   });
   sep();out('');
   out('  🟢 safe = always safe to delete (caches, logs, temp files)','t-dim');

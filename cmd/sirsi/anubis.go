@@ -186,6 +186,9 @@ func runWeigh(ctx context.Context) error {
 		res.ByCategory[jackal.CategoryGeneral] = cat
 	}
 
+	// Enrich every finding with advisory intelligence.
+	jackal.EnrichAdvisory(res)
+
 	elapsed := time.Since(start)
 
 	// Persist findings to disk so dashboard/judge can read them.

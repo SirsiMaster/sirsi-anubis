@@ -66,6 +66,21 @@ type Finding struct {
 
 	// Whether this is a directory (vs single file)
 	IsDir bool
+
+	// Advisory is a one-line explanation of what this finding means
+	// and what happens if it's cleaned. Written for the user, not the developer.
+	Advisory string
+
+	// Remediation describes what Sirsi will do to fix this finding.
+	// Examples: "Move to Trash", "git branch -D", "docker image prune", "git gc"
+	Remediation string
+
+	// CanFix indicates whether Sirsi has an automated remediation for this finding.
+	// If false, the finding is informational — flagged but not actionable.
+	CanFix bool
+
+	// Breaking indicates whether remediation could affect running services or workflows.
+	Breaking bool
 }
 
 // CleanResult reports the outcome of a clean operation.

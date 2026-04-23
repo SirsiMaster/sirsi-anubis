@@ -31,6 +31,10 @@ type PersistedFinding struct {
 	Severity     Severity `json:"severity"`
 	LastModified string   `json:"last_modified,omitempty"`
 	IsDir        bool     `json:"is_dir,omitempty"`
+	Advisory     string   `json:"advisory"`
+	Remediation  string   `json:"remediation"`
+	CanFix       bool     `json:"can_fix"`
+	Breaking     bool     `json:"breaking,omitempty"`
 }
 
 // FindingsDir returns the directory where scan results are persisted.
@@ -71,6 +75,10 @@ func Persist(result *ScanResult, duration time.Duration) error {
 			FileCount:   f.FileCount,
 			Severity:    f.Severity,
 			IsDir:       f.IsDir,
+			Advisory:    f.Advisory,
+			Remediation: f.Remediation,
+			CanFix:      f.CanFix,
+			Breaking:    f.Breaking,
 		}
 		if !f.LastModified.IsZero() {
 			pf.LastModified = f.LastModified.Format(time.RFC3339)
