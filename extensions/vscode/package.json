@@ -81,6 +81,16 @@
         "command": "sirsi.crashpadReport",
         "title": "𓃣 Pantheon: Crashpad Stability Report",
         "category": "Pantheon"
+      },
+      {
+        "command": "sirsi.refreshDiagnostics",
+        "title": "𓃣 Pantheon: Refresh Scan Diagnostics",
+        "category": "Pantheon"
+      },
+      {
+        "command": "sirsi.cleanFinding",
+        "title": "𓃣 Pantheon: Clean Finding",
+        "category": "Pantheon"
       }
     ],
     "configuration": {
