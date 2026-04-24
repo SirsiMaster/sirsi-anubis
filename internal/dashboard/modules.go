@@ -222,11 +222,19 @@ func (s *Server) apiRenice(w http.ResponseWriter, r *http.Request) {
 // ── Horus API ────────────────────────────────────────────────────────
 
 // apiHorusScan scans a directory and returns the symbol graph.
+// Uses cache when available, falls back to fresh parse.
 // GET /api/horus/scan?path=.
 func (s *Server) apiHorusScan(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")
 	if path == "" {
 		path = "."
+	}
+
+	// Try cache first
+	cache := horus.NewCache()
+	if g, ok := cache.Get(path); ok {
+		writeJSON(w, g)
+		return
 	}
 
 	parser := horus.NewGoParser()
@@ -235,6 +243,9 @@ func (s *Server) apiHorusScan(w http.ResponseWriter, r *http.Request) {
 		writeError(w, fmt.Sprintf("horus scan: %v", err), http.StatusInternalServerError)
 		return
 	}
+
+	// Cache for next time
+	_ = cache.Put(path, graph)
 	writeJSON(w, graph)
 }
 
