@@ -27,17 +27,28 @@ Rules, design tokens, and business logic from other repositories do NOT apply he
 | **sirsi-rook** (reserved) | **Database Tool** | Database & storage orchestration |
 | **sirsi-rogue** (reserved) | **Security Tool** | Cybersecurity sweeper |
 
-### Internal Modules
+### Deity Hierarchy (ADR-015)
+
+**Horus 𓂀 — Local Workstation Lord (Free Tier)**
+Everything on ONE machine reports to Horus. The dashboard IS Horus.
+
+| Module | Codename | Archetype | Reports To | Role |
+| :--- | :--- | :--- | :--- | :--- |
+| Local Scanner | **Jackal** 🐺 | The Hunter | Horus | Patrols and cleans individual machines |
+| Ghost Hunter | **Ka** 𓂓 | The Spirit | Horus | Detects dead app remnants and residual hauntings |
+| Policy Engine | **Scales** ⚖️ | The Judgment | Horus | Weighs findings against defined policies |
+| Resource Optimizer | **Hapi** 🌊 | The Flow | Horus | Controls VRAM, GPU memory, and storage flow |
+| Output Filter | **RTK** ⚡ | The Sieve | Horus | Strips noise from tool output before it hits AI context |
+| Context Vault | **Vault** 🏛️ | The Keeper | Horus | Sandboxes large output in SQLite FTS5, indexes code for BM25 search |
+| Code Graph | **Horus** 𓂀 | The All-Seeing | — | Structural code symbols, live file watching, workstation dashboard |
+
+**Ra 𓇶 — Fleet Lord (Enterprise Tier)**
+Receives reports from all Horus instances. Orchestrates across all endpoints.
+
 | Module | Codename | Archetype | Role |
 | :--- | :--- | :--- | :--- |
-| Local Scanner | **Jackal** 🐺 | The Hunter | Patrols and cleans individual machines |
-| Ghost Hunter | **Ka** 𓂓 | The Spirit | Detects dead app remnants and residual hauntings |
 | Fleet Sweep | **Scarab** 🪲 | The Transformer | Rolls across VLANs, subnets, domains |
-| Policy Engine | **Scales** ⚖️ | The Judgment | Weighs findings against defined policies |
-| Resource Optimizer | **Hapi** 🌊 | The Flow | Controls VRAM, GPU memory, and storage flow |
-| Output Filter | **RTK** ⚡ | The Sieve | Strips noise from tool output before it hits AI context |
-| Context Vault | **Vault** 🏛️ | The Keeper | Sandboxes large output in SQLite FTS5, indexes code for BM25 search |
-| Code Graph | **Horus** 𓂀 | The All-Seeing | Extracts structural code symbols, serves outlines instead of full files |
+| Fleet Neith | **Net** 𓁯 | The Weaver | Cross-endpoint alignment and drift detection |
 
 ---
 

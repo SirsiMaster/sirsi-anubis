@@ -47,7 +47,7 @@ func pageShell(title, activePage, bodyContent string) string {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>%s — Sirsi Pantheon</title>
+<title>%s — Horus — Sirsi</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:%s;color:%s;font-family:'SF Mono',Menlo,Consolas,'Courier New',monospace;
@@ -110,9 +110,9 @@ font-family:Inter,-apple-system,system-ui,sans-serif;flex-shrink:0}
 </head>
 <body>
 <div class="sidebar">
- <div class="sidebar-brand"><h1>☥ Pantheon</h1></div>
+ <div class="sidebar-brand"><h1>𓂀 Horus</h1></div>
  <nav class="sidebar-nav">%s</nav>
- <div class="sidebar-footer">LOCAL • 127.0.0.1:%d</div>
+ <div class="sidebar-footer">LOCAL NODE • 127.0.0.1:%d</div>
 </div>
 <div class="main">%s</div>
 </body>
@@ -170,7 +170,7 @@ func (s *Server) handleOverview(w http.ResponseWriter, r *http.Request) {
   <span class="term-view-label" id="view-label">home</span>
  </div>
  <div class="terminal" id="terminal">
-  <div class="t-line t-dim">☥ Pantheon — use sidebar or type a command</div>
+  <div class="t-line t-dim">𓂀 Horus — use sidebar or type a command</div>
  </div>
 </div>
 
@@ -216,7 +216,7 @@ window.switchView=function(view){
 };
 
 function viewHome(){
- out('☥ Pantheon Command Center','t-gold');
+ out('𓂀 Horus — Local Workstation Monitor','t-gold');
  out('');
  out('  scan        Scan for infrastructure waste + ghost remnants','t-dim');
  out('  ghosts      Hunt dead application residuals','t-dim');
@@ -536,7 +536,7 @@ viewHome();
 </script>`
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprint(w, pageShell("Pantheon", "home", body))
+	fmt.Fprint(w, pageShell("Horus", "home", body))
 }
 
 // ── Page Redirects (all views are SPA now) ─────────────────────────────

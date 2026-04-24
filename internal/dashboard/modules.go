@@ -11,6 +11,7 @@ import (
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/guard"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/horus"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/ka"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/neith"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/ra"
@@ -217,6 +218,57 @@ func (s *Server) apiRenice(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, result)
+}
+
+// ── Horus Workstation Report ──────────────────────────────────────────
+
+// apiWorkstationReport returns the aggregated local workstation state.
+// GET /api/horus/report — the complete picture of this machine.
+func (s *Server) apiWorkstationReport(w http.ResponseWriter, r *http.Request) {
+	report := horus.WorkstationReport{
+		Timestamp: time.Now(),
+	}
+
+	// Hostname + platform
+	hostname, _ := os.Hostname()
+	report.Hostname = hostname
+	report.OS = "darwin" // runtime.GOOS
+	report.Arch = "arm64" // runtime.GOARCH
+
+	// Scan summary
+	if ps, err := jackal.LoadLatest(); err == nil {
+		report.ScanSummary(ps)
+	}
+
+	// Health
+	if dr, err := guard.Doctor(); err == nil {
+		report.HealthScore = dr.Score
+	}
+
+	// RAM
+	if stats, err := guard.GetStats(); err == nil {
+		report.RAMPressure = stats.PressureLevel
+	}
+
+	// Stats from dashboard
+	if s.cfg.StatsFn != nil {
+		if data, err := s.cfg.StatsFn(); err == nil {
+			var snap map[string]interface{}
+			if json.Unmarshal(data, &snap) == nil {
+				if v, ok := snap["ram_percent"].(float64); ok {
+					report.RAMPercent = v
+				}
+				if v, ok := snap["git_branch"].(string); ok {
+					report.GitBranch = v
+				}
+				if v, ok := snap["uncommitted_files"].(float64); ok {
+					report.UncommittedFiles = int(v)
+				}
+			}
+		}
+	}
+
+	writeJSON(w, report)
 }
 
 // ── Horus API ────────────────────────────────────────────────────────

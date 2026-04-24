@@ -19,8 +19,8 @@ var dashboardNoBrowser bool
 
 var dashboardCmd = &cobra.Command{
 	Use:   "dashboard",
-	Short: "📊 Launch the Pantheon dashboard in your browser",
-	Long: `📊 Dashboard — Pantheon's visual command center
+	Short: "𓂀 Launch the Horus workstation monitor in your browser",
+	Long: `𓂀 Horus — Local Workstation Monitor
 
 Starts a local HTTP server and opens the dashboard in your default browser.
 All data stays on your machine — zero telemetry (Rule A11).
@@ -37,7 +37,7 @@ func init() {
 }
 
 func runDashboard(cmd *cobra.Command, args []string) {
-	output.Header("📊 Pantheon Dashboard")
+	output.Header("𓂀 Horus — Local Workstation Monitor")
 
 	nStore, err := notify.Open(notify.DefaultPath())
 	if err != nil {

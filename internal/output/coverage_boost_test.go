@@ -426,8 +426,8 @@ func TestRenderRosterColumns(t *testing.T) {
 		t.Error("roster should not be empty")
 	}
 	// Should contain at least some deity names
-	if !strings.Contains(roster, "Ra") {
-		t.Errorf("roster should contain Ra, got %q", roster[:min(len(roster), 200)])
+	if !strings.Contains(roster, "Horus") {
+		t.Errorf("roster should contain Horus, got %q", roster[:min(len(roster), 200)])
 	}
 }
 
@@ -459,8 +459,8 @@ func TestRenderDeityCell(t *testing.T) {
 	if cell == "" {
 		t.Error("deity cell should not be empty")
 	}
-	if !strings.Contains(cell, "Ra") {
-		t.Errorf("cell should contain Ra, got %q", cell)
+	if !strings.Contains(cell, "Horus") {
+		t.Errorf("cell should contain Horus, got %q", cell)
 	}
 }
 

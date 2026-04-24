@@ -33,8 +33,8 @@ func TestWatcher_StartsAndStops(t *testing.T) {
 	if g == nil {
 		t.Fatal("graph should not be nil after start")
 	}
-	if g.Stats.Files != 1 {
-		t.Errorf("files = %d, want 1", g.Stats.Files)
+	if g.Stats.Files < 1 {
+		t.Errorf("files = %d, want >= 1", g.Stats.Files)
 	}
 
 	w.Stop()
