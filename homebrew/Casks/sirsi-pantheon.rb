@@ -1,5 +1,6 @@
 cask "sirsi-pantheon" do
   version "0.17.1"
+  sha256 "8c3832f3fe0b4aeb9843f8d9782e9b3a8375b64aa9b71cb2cab8fad07694f49d"
 
   url "https://github.com/SirsiMaster/sirsi-pantheon/releases/download/v#{version}/SirsiPantheon-#{version}-arm64.dmg"
   name "Sirsi Pantheon"
@@ -7,15 +8,6 @@ cask "sirsi-pantheon" do
   homepage "https://github.com/SirsiMaster/sirsi-pantheon"
 
   app "Pantheon.app"
-
-  postflight do
-    # Symlink CLI into PATH so `sirsi` works from terminal
-    system_command "/bin/ln",
-                   args: ["-sf",
-                          "#{appdir}/Pantheon.app/Contents/MacOS/sirsi",
-                          "/usr/local/bin/sirsi"],
-                   sudo: true
-  end
 
   uninstall quit:      "ai.sirsi.pantheon",
             launchctl: "ai.sirsi.pantheon"
