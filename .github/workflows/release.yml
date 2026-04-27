@@ -56,9 +56,27 @@ jobs:
           TAG_NAME="${GITHUB_REF_NAME}"
           echo "VERSION=${TAG_NAME#v}" >> "$GITHUB_OUTPUT"
 
+      - name: Import signing certificate
+        if: env.MACOS_CERTIFICATE != ''
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          KEYCHAIN_PWD: ${{ secrets.KEYCHAIN_PWD }}
+        run: |
+          echo "$MACOS_CERTIFICATE" | base64 --decode > certificate.p12
+          security create-keychain -p "$KEYCHAIN_PWD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PWD" build.keychain
+          security import certificate.p12 -k build.keychain -P "$MACOS_CERTIFICATE_PWD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PWD" build.keychain
+          rm certificate.p12
+
       - name: Build DMG (arm64 — Intel Macs use Rosetta)
         env:
           BUILD_VERSION: ${{ steps.version.outputs.VERSION }}
+          DEVELOPER_ID_APPLICATION: ${{ secrets.DEVELOPER_ID_APPLICATION }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: scripts/build-dmg.sh --version "$BUILD_VERSION" --arch arm64
 
       - name: Upload DMG to release
@@ -69,4 +87,58 @@ jobs:
         run: |
           gh release upload "$TAG_NAME" \
             "bin/SirsiPantheon-${BUILD_VERSION}-arm64.dmg"
+
+  windows-installer:
+    name: Build Windows Installer
+    runs-on: windows-latest
+    needs: release
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Install NSIS
+        run: choco install nsis -y
+
+      - name: Extract version from tag
+        id: version
+        shell: bash
+        run: |
+          TAG_NAME="${GITHUB_REF_NAME}"
+          echo "VERSION=${TAG_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build Windows binaries
+        shell: bash
+        env:
+          BUILD_VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          GO_LDFLAGS="-s -w -X main.version=v${BUILD_VERSION}"
+          mkdir -p bin/windows
+          for cmd in sirsi sirsi-agent; do
+            CGO_ENABLED=0 go build -ldflags="$GO_LDFLAGS" -o "bin/windows/${cmd}.exe" "./cmd/${cmd}/"
+          done
+          declare -A PATHS=(["sirsi-anubis"]="./cmd/anubis/" ["sirsi-maat"]="./cmd/maat/" ["sirsi-thoth"]="./cmd/thoth/" ["sirsi-scarab"]="./cmd/scarab/" ["sirsi-guard"]="./cmd/guard/")
+          for cmd in "${!PATHS[@]}"; do
+            CGO_ENABLED=0 go build -ldflags="$GO_LDFLAGS" -o "bin/windows/${cmd}.exe" "${PATHS[$cmd]}"
+          done
+
+      - name: Build NSIS installer
+        shell: cmd
+        env:
+          BUILD_VERSION: ${{ steps.version.outputs.VERSION }}
+        run: makensis /DVERSION=%BUILD_VERSION% scripts\windows-installer.nsi
+
+      - name: Upload installer to release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.ref_name }}
+          BUILD_VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          gh release upload "$TAG_NAME" \
+            "bin/SirsiPantheon-${BUILD_VERSION}-windows-setup.exe"
 

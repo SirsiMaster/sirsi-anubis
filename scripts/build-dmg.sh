@@ -71,9 +71,31 @@ cp "${PROJECT_ROOT}/cmd/sirsi-menubar/bundle/Info.plist" "${BUNDLE_DIR}/Contents
 cp "${PROJECT_ROOT}/cmd/sirsi-menubar/bundle/PkgInfo"    "${BUNDLE_DIR}/Contents/PkgInfo"
 cp "${PROJECT_ROOT}/cmd/sirsi-menubar/bundle/ai.sirsi.pantheon.plist" "${BUNDLE_DIR}/Contents/Resources/ai.sirsi.pantheon.plist"
 
-# --- Ad-hoc code signing ---
-echo "Signing ${APP_NAME} (ad-hoc)..."
-codesign --force --deep --sign - "${BUNDLE_DIR}"
+# --- Code signing ---
+# If DEVELOPER_ID_APPLICATION is set (CI secret or local env),
+# sign with a real Developer ID for Gatekeeper approval.
+# Otherwise fall back to ad-hoc signing (right-click → Open).
+if [ -n "${DEVELOPER_ID_APPLICATION:-}" ]; then
+    echo "Signing ${APP_NAME} with Developer ID: ${DEVELOPER_ID_APPLICATION}..."
+    codesign --force --deep --options runtime \
+        --sign "${DEVELOPER_ID_APPLICATION}" \
+        --timestamp \
+        "${BUNDLE_DIR}"
+
+    # Notarize if credentials are available
+    if [ -n "${APPLE_ID:-}" ] && [ -n "${APPLE_TEAM_ID:-}" ]; then
+        echo "Submitting for notarization..."
+        xcrun notarytool submit "${DMG_PATH}" \
+            --apple-id "${APPLE_ID}" \
+            --team-id "${APPLE_TEAM_ID}" \
+            --keychain-profile "sirsi-notarize" \
+            --wait || echo "WARNING: Notarization failed — DMG is signed but not notarized"
+        xcrun stapler staple "${DMG_PATH}" 2>/dev/null || true
+    fi
+else
+    echo "Signing ${APP_NAME} (ad-hoc — no Developer ID cert found)..."
+    codesign --force --deep --sign - "${BUNDLE_DIR}"
+fi
 
 # --- Prepare DMG staging area ---
 echo "Staging DMG contents..."
