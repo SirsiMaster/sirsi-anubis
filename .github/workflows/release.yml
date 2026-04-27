@@ -130,7 +130,9 @@ jobs:
         shell: cmd
         env:
           BUILD_VERSION: ${{ steps.version.outputs.VERSION }}
-        run: makensis /DVERSION=%BUILD_VERSION% scripts\windows-installer.nsi
+        run: |
+          set "PATH=%PATH%;C:\Program Files (x86)\NSIS;C:\Program Files\NSIS"
+          makensis /DVERSION=%BUILD_VERSION% scripts\windows-installer.nsi
 
       - name: Upload installer to release
         shell: bash
