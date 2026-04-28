@@ -19,9 +19,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/spinner"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/stele"
 )
@@ -121,7 +121,7 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "q", "esc", "ctrl+c":
 			m.quitting = true
@@ -130,12 +130,10 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.scopes) > 0 {
 				m.focused = (m.focused + 1) % len(m.scopes)
 			}
-			return m, nil
 		case "shift+tab", "k", "up":
 			if len(m.scopes) > 0 {
 				m.focused = (m.focused - 1 + len(m.scopes)) % len(m.scopes)
 			}
-			return m, nil
 		}
 		return m, nil
 
@@ -373,9 +371,9 @@ func (m *MainModel) updateElapsed() {
 
 // ── View ───────────────────────────────────────────────────────────────
 
-func (m MainModel) View() string {
+func (m MainModel) View() tea.View {
 	if m.quitting {
-		return "\n  𓇶 Ra Command Center closed.\n\n"
+		return tea.NewView("\n  𓇶 Ra Command Center closed.\n\n")
 	}
 
 	var b strings.Builder
@@ -394,7 +392,9 @@ func (m MainModel) View() string {
 
 	if len(m.scopes) == 0 {
 		b.WriteString("  No active deployment. Run: sirsi ra deploy\n")
-		return b.String()
+		v := tea.NewView(b.String())
+		v.AltScreen = true
+		return v
 	}
 
 	// Scope cards
@@ -425,7 +425,9 @@ func (m MainModel) View() string {
 		b.WriteString(DimStyle.Render("  ↑/↓ navigate  ·  q quit") + "\n")
 	}
 
-	return b.String()
+	v := tea.NewView(b.String())
+	v.AltScreen = true
+	return v
 }
 
 func (m MainModel) renderScope(idx int, sv scopeView) string {
@@ -574,7 +576,7 @@ func min(a, b int) int {
 
 // LaunchDashboard starts the Ra Command Center TUI.
 func LaunchDashboard() error {
-	p := tea.NewProgram(NewMainModel(), tea.WithAltScreen())
+	p := tea.NewProgram(NewMainModel())
 	_, err := p.Run()
 	return err
 }

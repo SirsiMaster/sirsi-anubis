@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 // ── ShortenPath Tests ───────────────────────────────────────────────────
@@ -137,13 +137,13 @@ func TestMainModel_View_Running(t *testing.T) {
 	t.Parallel()
 	m := NewMainModel()
 	view := m.View()
-	if view == "" {
+	if view.Content == "" {
 		t.Error("View should not be empty")
 	}
-	if !strings.Contains(view, "Ra Command Center") {
-		t.Errorf("View should contain 'Ra Command Center', got %q", view[:60])
+	if !strings.Contains(view.Content, "Ra Command Center") {
+		t.Errorf("View should contain 'Ra Command Center', got %q", view.Content[:60])
 	}
-	if !strings.Contains(view, "q quit") && !strings.Contains(view, "deploy") {
+	if !strings.Contains(view.Content, "q quit") && !strings.Contains(view.Content, "deploy") {
 		t.Error("View should contain navigation or deploy instruction")
 	}
 }
@@ -153,8 +153,8 @@ func TestMainModel_View_Quitting(t *testing.T) {
 	m := NewMainModel()
 	m.quitting = true
 	view := m.View()
-	if !strings.Contains(view, "closed") {
-		t.Errorf("quitting View = %q, want 'closed'", view)
+	if !strings.Contains(view.Content, "closed") {
+		t.Errorf("quitting View = %q, want 'closed'", view.Content)
 	}
 }
 
@@ -162,11 +162,14 @@ func TestMainModel_Update_QuitKeys(t *testing.T) {
 	t.Parallel()
 	for _, key := range []string{"q", "esc", "ctrl+c"} {
 		m := NewMainModel()
-		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(key)}
-		if key == "esc" {
-			msg = tea.KeyMsg{Type: tea.KeyEscape}
-		} else if key == "ctrl+c" {
-			msg = tea.KeyMsg{Type: tea.KeyCtrlC}
+		var msg tea.Msg
+		switch key {
+		case "q":
+			msg = tea.KeyPressMsg{Code: 'q', Text: "q"}
+		case "esc":
+			msg = tea.KeyPressMsg{Code: tea.KeyEscape}
+		case "ctrl+c":
+			msg = tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl}
 		}
 		updatedModel, cmd := m.Update(msg)
 		updated := updatedModel.(MainModel)
@@ -184,8 +187,8 @@ func TestMainModel_Update_QuitKeys(t *testing.T) {
 func TestMainModel_Update_OtherKey(t *testing.T) {
 	t.Parallel()
 	m := NewMainModel()
-	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("x")}
-	updated, cmd := m.Update(msg)
+	keyMsg := tea.KeyPressMsg{Code: 'x', Text: "x"}
+	updated, cmd := m.Update(keyMsg)
 	model := updated.(MainModel)
 	if model.quitting {
 		t.Error("non-quit key should not trigger quitting")

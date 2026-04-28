@@ -482,8 +482,8 @@ func TestRecalcViewportHeight(t *testing.T) {
 	m.height = 40
 	m.width = 100
 	m.recalcViewportHeight()
-	if m.viewport.Height < 5 {
-		t.Errorf("viewport height = %d, expected >= 5", m.viewport.Height)
+	if m.viewport.Height() < 5 {
+		t.Errorf("viewport height = %d, expected >= 5", m.viewport.Height())
 	}
 }
 
@@ -493,8 +493,8 @@ func TestRecalcViewportHeight_Small(t *testing.T) {
 	m.height = 5
 	m.width = 60
 	m.recalcViewportHeight()
-	if m.viewport.Height < 5 {
-		t.Errorf("small terminal viewport height = %d, expected >= 5", m.viewport.Height)
+	if m.viewport.Height() < 5 {
+		t.Errorf("small terminal viewport height = %d, expected >= 5", m.viewport.Height())
 	}
 }
 
@@ -628,7 +628,7 @@ func TestTUIModel_View_NoOutput(t *testing.T) {
 	m.width = 100
 	m.height = 40
 	view := m.View()
-	if !strings.Contains(view, "Sirsi Pantheon") {
+	if !strings.Contains(view.Content, "Sirsi Pantheon") {
 		t.Error("view should contain 'Sirsi Pantheon'")
 	}
 }
@@ -638,8 +638,8 @@ func TestTUIModel_View_Quitting(t *testing.T) {
 	m := NewTUIModel()
 	m.quitting = true
 	view := m.View()
-	if view != "" {
-		t.Errorf("quitting view should be empty, got len=%d", len(view))
+	if view.Content != "" {
+		t.Errorf("quitting view should be empty, got len=%d", len(view.Content))
 	}
 }
 
@@ -650,7 +650,7 @@ func TestTUIModel_View_WithOutput(t *testing.T) {
 	m.height = 40
 	m.outputLines = []string{"test output line 1", "test output line 2"}
 	view := m.View()
-	if view == "" {
+	if view.Content == "" {
 		t.Error("view with output should not be empty")
 	}
 }
@@ -662,7 +662,7 @@ func TestTUIModel_View_Narrow(t *testing.T) {
 	m.height = 30
 	m.outputLines = []string{"narrow output"}
 	view := m.View()
-	if view == "" {
+	if view.Content == "" {
 		t.Error("narrow view should not be empty")
 	}
 }

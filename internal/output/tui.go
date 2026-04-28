@@ -9,18 +9,19 @@ package output
 import (
 	"bytes"
 	"fmt"
+	"image/color"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/notify"
@@ -136,16 +137,17 @@ func NewTUIModel() TUIModel {
 	ti.Placeholder = "scan my dev environment for ghost processes and dead symlinks"
 	ti.Focus()
 	ti.CharLimit = 256
-	ti.Width = 76
-	ti.PromptStyle = lipgloss.NewStyle().Foreground(Gold).Bold(true)
+	ti.SetWidth(76)
 	ti.Prompt = "𓉴 "
-	ti.TextStyle = lipgloss.NewStyle().Foreground(White)
-	ti.PlaceholderStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
-	ti.Cursor.Style = lipgloss.NewStyle().Foreground(Gold)
+	styles := textinput.DefaultDarkStyles()
+	styles.Focused.Prompt = lipgloss.NewStyle().Foreground(Gold).Bold(true)
+	styles.Focused.Text = lipgloss.NewStyle().Foreground(White)
+	styles.Focused.Placeholder = lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
+	styles.Focused.Suggestion = lipgloss.NewStyle().Foreground(lipgloss.Color("#555555"))
+	ti.SetStyles(styles)
 
 	// Fish-shell-style inline predictions
 	ti.ShowSuggestions = true
-	ti.CompletionStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#555555"))
 	ti.KeyMap.AcceptSuggestion = key.NewBinding(key.WithKeys("right"))
 	ti.KeyMap.NextSuggestion = key.NewBinding() // unbind — Up is for history
 	ti.KeyMap.PrevSuggestion = key.NewBinding() // unbind — Down is for history
@@ -155,7 +157,7 @@ func NewTUIModel() TUIModel {
 	sp.Spinner = spinner.MiniDot
 	sp.Style = lipgloss.NewStyle().Foreground(Gold)
 
-	vp := viewport.New(80, 10)
+	vp := viewport.New(viewport.WithWidth(80), viewport.WithHeight(10))
 
 	m := TUIModel{
 		input:       ti,
@@ -183,11 +185,11 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.input.Width = min(msg.Width-8, 80)
+		m.input.SetWidth(min(msg.Width-8, 80))
 		m.recalcViewportHeight()
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		return m.handleKey(msg)
 
 	case cmdBatchMsg:
@@ -216,13 +218,13 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m TUIModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.Type {
-	case tea.KeyCtrlC:
+func (m TUIModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c":
 		m.quitting = true
 		return m, tea.Quit
 
-	case tea.KeyEsc:
+	case "esc":
 		if m.mode == modeRunning {
 			return m, nil
 		}
@@ -235,7 +237,7 @@ func (m TUIModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.quitting = true
 		return m, tea.Quit
 
-	case tea.KeyEnter:
+	case "enter":
 		if m.mode == modeRunning {
 			return m, nil
 		}
@@ -273,7 +275,7 @@ func (m TUIModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.historyIdx = -1
 		return m.executeCommand(raw)
 
-	case tea.KeyUp:
+	case "up":
 		if m.mode == modeRunning {
 			var cmd tea.Cmd
 			m.viewport, cmd = m.viewport.Update(msg)
@@ -295,7 +297,7 @@ func (m TUIModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case tea.KeyDown:
+	case "down":
 		if m.mode == modeRunning {
 			var cmd tea.Cmd
 			m.viewport, cmd = m.viewport.Update(msg)
@@ -314,7 +316,7 @@ func (m TUIModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case tea.KeyRight:
+	case "right":
 		if m.mode != modeIdle {
 			return m, nil
 		}
@@ -608,9 +610,9 @@ func (m *TUIModel) refreshNotifications() {
 
 const leftPaneWidth = 42
 
-func (m TUIModel) View() string {
+func (m TUIModel) View() tea.View {
 	if m.quitting {
-		return ""
+		return tea.NewView("")
 	}
 
 	hasOutput := len(m.outputLines) > 0
@@ -669,7 +671,7 @@ func (m TUIModel) View() string {
 			usedLines++
 		}
 		b.WriteString(m.viewport.View() + "\n")
-		usedLines += m.viewport.Height
+		usedLines += m.viewport.Height()
 
 		b.WriteString(" " + divider + "\n")
 		b.WriteString(" " + m.input.View() + "\n")
@@ -719,7 +721,9 @@ func (m TUIModel) View() string {
 	}
 	b.WriteString(signage)
 
-	return b.String()
+	v := tea.NewView(b.String())
+	v.AltScreen = true
+	return v
 }
 
 // renderRosterColumns renders deities in a column grid that fits the available width.
@@ -768,7 +772,7 @@ func (m TUIModel) renderRosterColumns(compact bool) string {
 func (m TUIModel) renderDeityCell(d deityInfo, width int) string {
 	active := m.activeDeity[d.Key]
 
-	var nameColor, roleColor lipgloss.Color
+	var nameColor, roleColor color.Color
 	if active {
 		nameColor = Gold
 		roleColor = lipgloss.Color("#CCCCCC")
@@ -1064,13 +1068,13 @@ func (m *TUIModel) recalcViewportHeight() {
 	if vpHeight < 5 {
 		vpHeight = 5
 	}
-	m.viewport.Height = vpHeight
+	m.viewport.SetHeight(vpHeight)
 
 	rightWidth := m.width - leftPaneWidth - 5
 	if rightWidth < 20 {
 		rightWidth = 20
 	}
-	m.viewport.Width = rightWidth
+	m.viewport.SetWidth(rightWidth)
 }
 
 func pluralize(word string, n int) string {
@@ -1096,7 +1100,7 @@ func LaunchTUIWithNotify(store *notify.Store) error {
 	m := NewTUIModel()
 	m.notifyStore = store
 	m.refreshNotifications()
-	p := tea.NewProgram(m, tea.WithAltScreen())
+	p := tea.NewProgram(m)
 	_, err := p.Run()
 	return err
 }
