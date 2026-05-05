@@ -1,17 +1,17 @@
 # 𓁟 Thoth — Project Memory for Sirsi Pantheon
 # Read this FIRST before any source files.
-# Last updated: 2026-04-21T10:30:00-04:00
+# Last updated: 2026-05-05T19:21:14.948Z
 
 ## Identity
 project: sirsi-pantheon
 repo: github.com/SirsiMaster/sirsi-pantheon
 language: Go 1.25 / TypeScript / Kotlin / Swift
-version: 0.17.0
+version: 0.18.0
 binary_count: 8 (anubis, guard, maat, scarab, sirsi, sirsi-agent, sirsi-menubar, thoth)
-test_count: 2000+
-line_count: ~60,000
-module_count: 33
-command_count: 92
+test_count: 1613+
+line_count: ~60,062
+module_count: 35
+command_count: 116
 mcp_tools: 16 (scan_workspace, ghost_report, health_check, classify_files, watchdog_alerts + 10 RTK/Vault/Horus + filter_output)
 mobile_targets: 2 (iOS xcframework, Android AAR)
 mobile_bindings: 29 (Anubis 2, Ka 2, Thoth 4, Seba 2, Seshat 3, RTK 2, Vault 5, Horus 4, Brain 3, Version 1, Categories 1)
@@ -21,7 +21,7 @@ vscode_extension: extensions/vscode/ (TypeScript, 7 modules, 10 commands, Thoth 
 
 ## Architecture Quick Reference
 # Modules are named after Egyptian mythology
-# Core scan engine: internal/jackal/ (58 rules across 7 domains)
+# Core scan engine: internal/jackal/ (81 rules across 7 domains)
 # Ghost hunter: internal/ka/ (17 macOS locations)
 # File dedup: internal/mirror/ (3-phase hash, GUI + CLI)
 # RAM audit: internal/guard/ (process grouping, orphan detection)
@@ -101,7 +101,7 @@ vscode_extension: extensions/vscode/ (TypeScript, 7 modules, 10 commands, Thoth 
 # 15. Cross-Agent Referral Logic: deities allude to other deities that
 #     can act upon their findings (cohesive ecosystem, modular design).
 
-## Known Limitations (as of v0.17.0)
+## Known Limitations (as of v0.18.0)
 # - GUI folder picker only works on macOS (Linux: zenity/kdialog in platform/linux.go)
 # - Trash integration only works on macOS (Linux: gio trash in platform/linux.go)
 # - 15/22 modules at 90%+ test coverage (weighted avg 90.1%)

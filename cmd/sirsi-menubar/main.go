@@ -24,7 +24,7 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
 )
 
-var version = "v0.10.0"
+var version = "v0.18.0"
 
 func main() {
 	unlock, err := platform.TryLock("menubar")

@@ -4,8 +4,8 @@
 
 [![Go 1.22+](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go&logoColor=white)](https://go.dev)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-C8A951?style=flat)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-0.17.1-1A1A5E?style=flat)](VERSION)
-[![Tests](https://img.shields.io/badge/tests-2%2C251%2B%20passing-brightgreen?style=flat)](.github/workflows/ci.yml)
+[![Version](https://img.shields.io/badge/Version-0.18.0-1A1A5E?style=flat)](VERSION)
+[![Tests](https://img.shields.io/badge/tests-2%2C200%2B%20passing-brightgreen?style=flat)](.github/workflows/ci.yml)
 [![Product Page](https://img.shields.io/badge/sirsi.ai-pantheon-059669?style=flat)](https://sirsi.ai/pantheon)
 
 ---
@@ -50,7 +50,7 @@ Pantheon has three interfaces that work together:
 
 **CLI (scriptable)** — Every command works standalone: `sirsi scan`, `sirsi ghosts`, etc. All support `--json` for piping and automation.
 
-**Horus Dashboard (web)** — `sirsi horus` opens a terminal-first web app at localhost:9119 with 29 API endpoints, SSE streaming, and a command bar. Optional for power users.
+**Horus Dashboard (web)** — `sirsi dashboard` opens a terminal-first web app at localhost:9119 with API endpoints, SSE streaming, and a command bar. `sirsi horus` is the structural code graph. Optional for power users.
 
 ---
 
