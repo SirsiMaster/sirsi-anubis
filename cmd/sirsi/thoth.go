@@ -168,9 +168,9 @@ func runThothCompact(cmd *cobra.Command, args []string) error {
 	}
 
 	// ADR-016 Phase 2: prefer npm binary, fall back to Go
-	if delegated, err := thoth.TryDelegateCompact(compactOpts); delegated {
-		if err != nil {
-			return err
+	if delegated, delegateErr := thoth.TryDelegateCompact(compactOpts); delegated {
+		if delegateErr != nil {
+			return delegateErr
 		}
 		output.Success("Session decisions persisted to .thoth/ (via sirsi-thoth).")
 		return nil
