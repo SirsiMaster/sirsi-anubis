@@ -30,6 +30,9 @@ var macDeps = []dependency{
 	{Name: "golangci-lint", Description: "Linter (Ma'at pre-push gate, matches CI)", Required: false, InstallCmd: "brew install golangci-lint"},
 	{Name: "gh", Description: "GitHub CLI (Ma'at pipeline checks, Ra CI status)", Required: false, InstallCmd: "brew install gh"},
 	{Name: "python3", Description: "Ra deployment agent (scope orchestration)", Required: false, InstallCmd: "brew install python3"},
+	{Name: "thoth-init", Description: "Thoth project scaffolder (sirsi-thoth npm)", Required: false, InstallCmd: "npm install -g sirsi-thoth"},
+	{Name: "thoth-sync", Description: "Thoth memory sync (sirsi-thoth npm)", Required: false, InstallCmd: "npm install -g sirsi-thoth"},
+	{Name: "thoth-compact", Description: "Thoth session compaction (sirsi-thoth npm)", Required: false, InstallCmd: "npm install -g sirsi-thoth"},
 }
 
 // linuxDeps would differ (apt-get, etc.) — extend when shipping Linux.

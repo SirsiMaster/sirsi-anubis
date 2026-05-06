@@ -69,14 +69,19 @@ injects Thoth read instructions into IDE rules files (CLAUDE.md, GEMINI.md,
 		if len(args) > 0 {
 			root = args[0]
 		}
+		opts := thoth.InitOptions{
+			RepoRoot: root,
+			Name:     thothInitName,
+			Language: thothInitLang,
+			Version:  thothInitVersion,
+			Yes:      thothInitYes,
+		}
+		// ADR-016 Phase 2: prefer npm binary, fall back to Go
 		if thothInitYes {
-			return thoth.Init(thoth.InitOptions{
-				RepoRoot: root,
-				Name:     thothInitName,
-				Language: thothInitLang,
-				Version:  thothInitVersion,
-				Yes:      true,
-			})
+			if delegated, err := thoth.TryDelegateInit(opts); delegated {
+				return err
+			}
+			return thoth.Init(opts)
 		}
 		return thoth.InteractiveInit(root)
 	},
@@ -154,12 +159,24 @@ func runThothCompact(cmd *cobra.Command, args []string) error {
 	}
 
 	output.Header("Thoth Compact")
-	err = thoth.Compact(thoth.CompactOptions{
+
+	compactOpts := thoth.CompactOptions{
 		RepoRoot: repoRoot,
 		Summary:  summary,
 		MaxAge:   thothCompactMaxAge,
 		MaxKeep:  thothCompactMaxKeep,
-	})
+	}
+
+	// ADR-016 Phase 2: prefer npm binary, fall back to Go
+	if delegated, err := thoth.TryDelegateCompact(compactOpts); delegated {
+		if err != nil {
+			return err
+		}
+		output.Success("Session decisions persisted to .thoth/ (via sirsi-thoth).")
+		return nil
+	}
+
+	err = thoth.Compact(compactOpts)
 	if err != nil {
 		return err
 	}
@@ -175,8 +192,18 @@ func runThothSync(cmd *cobra.Command, args []string) error {
 	}
 	output.Header(fmt.Sprintf("𓁟 Thoth Sync — %s", repoRoot))
 
-	// ... (Existing sync logic) ...
-	if err := thoth.Sync(thoth.SyncOptions{RepoRoot: repoRoot, UpdateDate: true}); err != nil {
+	syncOpts := thoth.SyncOptions{RepoRoot: repoRoot, UpdateDate: true}
+
+	// ADR-016 Phase 2: prefer npm binary, fall back to Go
+	if delegated, err := thoth.TryDelegateSync(syncOpts); delegated {
+		if err != nil {
+			return err
+		}
+		output.Success("Memory synced (via sirsi-thoth).")
+		return nil
+	}
+
+	if err := thoth.Sync(syncOpts); err != nil {
 		return err
 	}
 	output.Success("Memory synced.")

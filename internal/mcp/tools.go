@@ -968,6 +968,7 @@ func handleCodeContext(args map[string]interface{}) (*ToolResult, error) {
 }
 
 // handleThothSync triggers Thoth memory and journal sync.
+// ADR-016 Phase 2: prefers npm binary delegation, falls back to Go.
 func handleThothSync(args map[string]interface{}) (*ToolResult, error) {
 	projectPath, _ := args["path"].(string)
 	if projectPath == "" {
@@ -978,8 +979,18 @@ func handleThothSync(args map[string]interface{}) (*ToolResult, error) {
 		}
 	}
 
-	// Sync memory
-	err := thoth.Sync(thoth.SyncOptions{RepoRoot: projectPath, UpdateDate: true})
+	syncOpts := thoth.SyncOptions{RepoRoot: projectPath, UpdateDate: true}
+
+	// Try npm binary first (ADR-016)
+	if delegated, err := thoth.TryDelegateSync(syncOpts); delegated {
+		if err != nil {
+			return textResult(fmt.Sprintf("Thoth sync (npm) failed: %v", err), true), nil
+		}
+		return textResult(fmt.Sprintf("Thoth sync complete (via sirsi-thoth).\n- Memory updated: %s/.thoth/memory.yaml", projectPath), false), nil
+	}
+
+	// Fall back to Go implementation
+	err := thoth.Sync(syncOpts)
 	if err != nil {
 		return textResult(fmt.Sprintf("Thoth memory sync failed: %v", err), true), nil
 	}
