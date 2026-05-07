@@ -8,7 +8,7 @@ package output
 
 import (
 	"bufio"
-	"bytes"
+	"encoding/json"
 	"fmt"
 	"image/color"
 	"io"
@@ -117,6 +117,10 @@ type TUIModel struct {
 	// View stack for back-navigation (esc pops, commands push)
 	viewStack []viewFrame
 
+	// Post-run command suggestions for tab-cycling
+	postRunCmds []string // suggested commands after last run
+	tabIdx      int      // -1 = not cycling; 0..len-1 = position
+
 	// Inline predictions + history recall
 	cmdHistory   []string // deduplicated command strings for up-arrow
 	historyIdx   int      // -1 = not browsing; 0..len-1 = position
@@ -126,6 +130,10 @@ type TUIModel struct {
 	deityState  map[string]deityRunState // tracks last-run outcome per deity
 	steleReader *stele.Reader
 	quitting    bool
+
+	// Streaming command output
+	streamCh  chan string // receives lines from running commands
+	streamErr error       // error from the completed command
 
 	// Notification awareness
 	notifyStore       *notify.Store
@@ -153,6 +161,14 @@ type cmdBatchMsg struct {
 	err   error
 }
 
+// streamLineMsg carries a single line from the streaming channel.
+// An empty line with done=true signals command completion.
+type streamLineMsg struct {
+	line string
+	done bool
+	err  error
+}
+
 // elapsedTickMsg triggers elapsed time updates during running commands.
 type elapsedTickMsg time.Time
 
@@ -162,6 +178,18 @@ func refreshTick() tea.Cmd {
 
 func elapsedTick() tea.Cmd {
 	return tea.Tick(time.Second, func(t time.Time) tea.Msg { return elapsedTickMsg(t) })
+}
+
+// waitForStreamLine returns a tea.Cmd that blocks until a line arrives on
+// the stream channel. Closed channel signals done.
+func waitForStreamLine(ch <-chan string) tea.Cmd {
+	return func() tea.Msg {
+		line, ok := <-ch
+		if !ok {
+			return streamLineMsg{done: true}
+		}
+		return streamLineMsg{line: line}
+	}
 }
 
 // ── Constructor ───────────────────────────────────────────────────────
@@ -201,8 +229,10 @@ func NewTUIModel() TUIModel {
 		height:      40,
 		mode:        modeIdle,
 		historyIdx:  -1,
+		tabIdx:      -1,
 		activeDeity: make(map[string]bool),
 		deityState:  make(map[string]deityRunState),
+		streamCh:    make(chan string, 100),
 		steleReader: stele.NewReader("tui"),
 	}
 	m.refreshActive()
@@ -226,6 +256,9 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyPressMsg:
 		return m.handleKey(msg)
+
+	case streamLineMsg:
+		return m.handleStreamLine(msg)
 
 	case cmdBatchMsg:
 		return m.handleBatchOutput(msg)
@@ -379,6 +412,19 @@ func (m TUIModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case "tab":
+		if m.mode != modeIdle || len(m.postRunCmds) == 0 {
+			return m, nil
+		}
+		// Cycle through post-run suggested commands
+		m.tabIdx++
+		if m.tabIdx >= len(m.postRunCmds) {
+			m.tabIdx = 0
+		}
+		m.input.SetValue(m.postRunCmds[m.tabIdx])
+		m.input.CursorEnd()
+		return m, nil
+
 	case "right":
 		if m.mode != modeIdle {
 			return m, nil
@@ -405,6 +451,7 @@ func (m TUIModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		m.input, cmd = m.input.Update(msg)
 		m.historyIdx = -1 // reset history on any typed input
+		m.tabIdx = -1     // reset tab cycling on any typed input
 		m.updateSuggestionList()
 		return m, cmd
 	}
@@ -439,6 +486,7 @@ func (m TUIModel) executeCommand(raw string) (TUIModel, tea.Cmd) {
 	m.runningCmd = raw
 	m.runningArgs = args
 	m.cmdStartTime = time.Now()
+	m.streamCh = make(chan string, 100) // fresh channel per command
 	m.outputLines = nil
 	m.input.Blur()
 	m.input.Reset()
@@ -610,40 +658,103 @@ func inferSubcommand(deity, lower string) []string {
 	return []string{deity}
 }
 
-// runCommandStreaming runs a command using piped stdout/stderr so the
-// elapsed timer stays live while the command runs.
+// runCommandStreaming runs a command and sends output lines to streamCh
+// one at a time. The channel is closed when the command completes. A
+// goroutine handles the pipe reading so the TUI stays responsive.
 func (m TUIModel) runCommandStreaming(cmd *exec.Cmd) tea.Cmd {
+	ch := m.streamCh
 	return func() tea.Msg {
 		stdoutPipe, err := cmd.StdoutPipe()
 		if err != nil {
-			return cmdBatchMsg{err: err}
+			close(ch)
+			return streamLineMsg{done: true, err: err}
 		}
 		stderrPipe, err := cmd.StderrPipe()
 		if err != nil {
-			return cmdBatchMsg{err: err}
+			close(ch)
+			return streamLineMsg{done: true, err: err}
 		}
 
 		combined := io.MultiReader(stdoutPipe, stderrPipe)
 
 		if err := cmd.Start(); err != nil {
-			return cmdBatchMsg{err: err}
+			close(ch)
+			return streamLineMsg{done: true, err: err}
 		}
 
-		// Read lines and send them — but since bubbletea tea.Cmd returns
-		// a single Msg, we use batch mode with a buffer that accumulates
-		// lines and returns them periodically.
-		var buf bytes.Buffer
-		scanner := bufio.NewScanner(combined)
-		for scanner.Scan() {
-			buf.WriteString(scanner.Text() + "\n")
-		}
+		// Goroutine: scan lines and push to channel, then close.
+		go func() {
+			scanner := bufio.NewScanner(combined)
+			for scanner.Scan() {
+				ch <- scanner.Text()
+			}
+			_ = cmd.Wait()
+			close(ch)
+		}()
 
-		cmdErr := cmd.Wait()
-		return cmdBatchMsg{
-			lines: strings.Split(strings.TrimRight(buf.String(), "\n"), "\n"),
-			err:   cmdErr,
+		// Return first line (or done if command exits immediately).
+		line, ok := <-ch
+		if !ok {
+			return streamLineMsg{done: true}
 		}
+		return streamLineMsg{line: line}
 	}
+}
+
+func (m TUIModel) handleStreamLine(msg streamLineMsg) (TUIModel, tea.Cmd) {
+	if msg.done {
+		// Command finished — finalize like handleBatchOutput does.
+		m.mode = modeIdle
+		m.input.Focus()
+
+		if m.runningDeity != "" {
+			m.activeDeity[m.runningDeity] = true
+		}
+		m.history = append(m.history, historyEntry{
+			deity: m.runningDeity, command: m.runningCmd,
+			output: strings.Join(m.outputLines, "\n"),
+		})
+		m.cmdHistory = deduplicateHistory(m.history)
+
+		if msg.err != nil {
+			m.outputLines = append(m.outputLines, "",
+				lipgloss.NewStyle().Foreground(Red).Render(fmt.Sprintf("  ✗ %v", msg.err)))
+			m.outputLines = append(m.outputLines, m.postRunErrorGuidance(msg.err)...)
+			m.input.Placeholder = "doctor · help  (diagnose or see all commands)"
+			if m.runningDeity != "" {
+				m.deityState[m.runningDeity] = stateFailed
+			}
+		} else {
+			m.outputLines = append(m.outputLines, "",
+				lipgloss.NewStyle().Foreground(Green).Render("  ✓ Done"))
+			m.outputLines = append(m.outputLines, m.postRunSuggestions()...)
+			m.input.Placeholder = m.postRunPlaceholder()
+			m.postRunCmds = m.postRunCommandList()
+			m.tabIdx = -1
+			if m.runningDeity != "" {
+				state := stateSucceeded
+				if m.runningDeity == "anubis" {
+					if scan, err := jackal.LoadLatest(); err == nil && len(scan.Findings) > 0 {
+						state = stateHasData
+					}
+				}
+				m.deityState[m.runningDeity] = state
+			}
+		}
+		m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
+		m.viewport.GotoBottom()
+		m.savePersistedState()
+		m.runningDeity = ""
+		m.runningCmd = ""
+		m.runningArgs = nil
+		return m, nil
+	}
+
+	// Append the new line and keep listening for more.
+	m.outputLines = append(m.outputLines, "  "+msg.line)
+	m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
+	m.viewport.GotoBottom()
+	return m, waitForStreamLine(m.streamCh)
 }
 
 func (m TUIModel) handleBatchOutput(msg cmdBatchMsg) (TUIModel, tea.Cmd) {
@@ -677,6 +788,8 @@ func (m TUIModel) handleBatchOutput(msg cmdBatchMsg) (TUIModel, tea.Cmd) {
 		// Append deity-specific next steps so the user isn't left at a dead end.
 		m.outputLines = append(m.outputLines, m.postRunSuggestions()...)
 		m.input.Placeholder = m.postRunPlaceholder()
+		m.postRunCmds = m.postRunCommandList()
+		m.tabIdx = -1
 		if m.runningDeity != "" {
 			// Check if this deity produced actionable data
 			state := stateSucceeded
@@ -690,6 +803,7 @@ func (m TUIModel) handleBatchOutput(msg cmdBatchMsg) (TUIModel, tea.Cmd) {
 	}
 	m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
 	m.viewport.GotoBottom()
+	m.savePersistedState()
 	m.runningDeity = ""
 	m.runningCmd = ""
 	m.runningArgs = nil
@@ -1046,6 +1160,9 @@ func (m TUIModel) renderHints(splitMode bool) string {
 	if m.mode == modeRunning {
 		hints = append(hints, "↑/↓ scroll")
 	} else {
+		if len(m.postRunCmds) > 0 {
+			hints = append(hints, "tab cycle suggestions")
+		}
 		hints = append(hints, "→ accept", "↑ history", "help")
 		if len(m.viewStack) > 0 {
 			hints = append(hints, fmt.Sprintf("esc back (%d)", len(m.viewStack)))
@@ -1343,6 +1460,56 @@ func (m TUIModel) postRunPlaceholder() string {
 	}
 
 	return "What next?"
+}
+
+// postRunCommandList returns the raw command strings for tab-cycling
+// after a command completes. These mirror what postRunSuggestions shows
+// but without styling — just the commands.
+func (m TUIModel) postRunCommandList() []string {
+	sub := ""
+	if len(m.runningArgs) >= 2 {
+		sub = m.runningArgs[1]
+	}
+
+	switch m.runningDeity {
+	case "anubis":
+		switch sub {
+		case "weigh":
+			return []string{"findings", "clean", "judge"}
+		case "judge":
+			return []string{"findings", "scan"}
+		case "ka":
+			return []string{"findings", "clean"}
+		case "mirror":
+			return []string{"scan"}
+		}
+	case "isis":
+		return []string{"heal", "doctor"}
+	case "maat":
+		return []string{"maat pulse", "maat audit", "heal"}
+	case "ra":
+		switch sub {
+		case "deploy":
+			return []string{"ra status", "ra health", "ra collect"}
+		case "status":
+			return []string{"ra deploy", "ra health", "ra test"}
+		default:
+			return []string{"ra status", "ra deploy"}
+		}
+	case "net":
+		return []string{"net status", "net align", "maat audit"}
+	case "thoth":
+		return []string{"thoth sync", "thoth compact", "osiris assess"}
+	case "seshat":
+		return []string{"seshat list", "seshat export", "seshat ingest"}
+	case "seba":
+		return []string{"seba diagram", "seba scan", "seba hardware"}
+	case "osiris":
+		return []string{"osiris assess", "osiris status", "thoth sync"}
+	case "horus":
+		return []string{"horus scan", "horus outline", "horus stats"}
+	}
+	return nil
 }
 
 // postRunSuggestions returns deity-aware next-step hints based on what
@@ -2084,7 +2251,51 @@ func LaunchTUIWithNotify(store *notify.Store) error {
 	m := NewTUIModel()
 	m.notifyStore = store
 	m.refreshNotifications()
+	m.loadPersistedState()
 	p := tea.NewProgram(m)
 	_, err := p.Run()
 	return err
+}
+
+// ── Persistent State ─────────────────────────────────────────────────
+
+// tuiPersistedState is the JSON-serializable TUI state saved between sessions.
+type tuiPersistedState struct {
+	DeityState map[string]deityRunState `json:"deity_state"`
+	LastUsed   string                   `json:"last_used"`
+}
+
+func tuiStatePath() string {
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".config", "pantheon", "tui-state.json")
+}
+
+// loadPersistedState reads saved deity state from disk.
+func (m *TUIModel) loadPersistedState() {
+	data, err := os.ReadFile(tuiStatePath())
+	if err != nil {
+		return // no saved state — fine
+	}
+	var state tuiPersistedState
+	if err := json.Unmarshal(data, &state); err != nil {
+		return
+	}
+	for k, v := range state.DeityState {
+		m.deityState[k] = v
+	}
+}
+
+// savePersistedState writes deity state to disk.
+func (m *TUIModel) savePersistedState() {
+	state := tuiPersistedState{
+		DeityState: m.deityState,
+		LastUsed:   time.Now().Format(time.RFC3339),
+	}
+	data, err := json.MarshalIndent(state, "", "  ")
+	if err != nil {
+		return
+	}
+	dir := filepath.Dir(tuiStatePath())
+	_ = os.MkdirAll(dir, 0755)
+	_ = os.WriteFile(tuiStatePath(), data, 0644)
 }

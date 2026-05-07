@@ -6,6 +6,58 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 
 ---
 
+## [0.19.0] — 2026-05-06
+
+### Added — TUI & CLI UX Overhaul (7 commits, ~1,500 lines)
+
+#### TUI Post-Run UX (all 10 deities)
+- Contextual "What's Next" panel after every deity command completes — gold-highlighted commands with descriptions
+- Contextual input placeholder per deity/subcommand (replaces generic "What next?")
+- Error state remediation — pattern-matching guidance (permission denied, timeout, connection refused) with deity-specific fallbacks
+- 25+ missing TUI routing rules added (Ra test/lint/nightly, Thoth brain/status, Ma'at scales/heal, Seshat list/export/adapters/mcp, Seba book/compute, Horus all 5 subcommands, Anubis apps)
+- Horus added to intentKeywords (was missing entirely)
+- Help panel expanded with all routable commands + findings drill-down docs
+
+#### Findings Drill-Down
+- `findings <category>` filters by category with full detail (path, remediation, fixability, breaking warnings)
+- Bare category names as shortcuts after scans (type `dev` to drill into dev findings)
+- 20 findings shown in overview (up from 15) with richer per-finding rendering
+
+#### Live Elapsed Timer
+- Running commands show "𓃣 Anubis running... (12s)" with per-second updates
+- Pipe-based command runner for future streaming capability
+
+#### True Line-by-Line Streaming
+- Commands stream output to the TUI viewport line-by-line via channel-based architecture
+- Replaces batch buffering — users see progress as it happens
+
+#### Dynamic Deity State Indicators
+- Left panel dots reflect run outcomes: ✓ green (succeeded), ✗ red (failed), ◆ amber (has data), ● gold (active), · grey (never run)
+- Running deity shows spinner in its roster cell
+
+#### View Stack with Back Navigation
+- Esc pops to previous view (findings → findings dev → esc → findings → esc → roster)
+- Hints show stack depth: "esc back (2)"
+
+#### Tab-to-Cycle Suggestions
+- After a command completes, tab cycles through suggested next commands in the input bar
+- Clears on any typed input
+
+#### Persistent TUI State
+- Deity state (✓/✗/◆) saved to `~/.config/pantheon/tui-state.json` between sessions
+- Roster reflects historical state on relaunch
+
+#### CLI Output Parity
+- `output.NextSteps()` function added to terminal.go
+- All primary deity CLI commands show "What's Next" footer after completion
+- Covers: anubis weigh/judge, maat audit/pulse, seba hardware/diagram/fleet, osiris assess, ra status/deploy, net align, seshat ingest
+
+#### Context-Aware Quick Actions
+- Suggestions rotate based on what's been run, what failed, and what has actionable data
+- Number shortcuts (1/2/3) work throughout the session, not just first command
+
+---
+
 ## [0.18.0] — 2026-05-05
 
 ### Changed — Version Alignment

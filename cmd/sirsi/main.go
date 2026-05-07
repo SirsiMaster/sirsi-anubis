@@ -20,7 +20,7 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/workstream"
 )
 
-var version = "v0.18.0"
+var version = "v0.19.0"
 
 // versionCmd prints the version and optionally checks for updates.
 var versionCmd = &cobra.Command{
@@ -518,7 +518,7 @@ func init() {
 	// When code graph moves under dashboard as a tab, the horus command
 	// will become the dashboard entry point.
 
-	// Workstream manager (sirsi work / sirsi ws)
+	// Workstream manager (sirsi work / sirsi ws / sirsi sw)
 	rootCmd.AddCommand(workCmd)
 
 	// Isis — Health & Remediation
