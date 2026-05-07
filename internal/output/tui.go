@@ -94,8 +94,8 @@ type deityRunState int
 const (
 	stateNeverRun  deityRunState = iota
 	stateSucceeded               // last run completed successfully
-	stateFailed                   // last run had an error
-	stateHasData                  // has actionable data (e.g. Anubis findings)
+	stateFailed                  // last run had an error
+	stateHasData                 // has actionable data (e.g. Anubis findings)
 )
 
 type TUIModel struct {
@@ -109,8 +109,8 @@ type TUIModel struct {
 	mode         tuiMode
 	runningDeity string
 	runningCmd   string
-	runningArgs  []string    // dispatched CLI args (e.g. ["anubis", "weigh"])
-	cmdStartTime time.Time   // when the current command started
+	runningArgs  []string  // dispatched CLI args (e.g. ["anubis", "weigh"])
+	cmdStartTime time.Time // when the current command started
 	spinner      spinner.Model
 	history      []historyEntry
 
