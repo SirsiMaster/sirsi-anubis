@@ -141,25 +141,13 @@ type historyEntry struct {
 type viewFrame struct {
 	outputLines []string
 	placeholder string
-	scrollPos   int
 }
 
 // ── Messages ──────────────────────────────────────────────────────────
 
 type refreshMsg time.Time
 
-// cmdLineMsg is a single line of output streamed from a running command.
-type cmdLineMsg struct {
-	line string
-}
-
-// cmdDoneMsg signals that the command has finished.
-type cmdDoneMsg struct {
-	err     error
-	elapsed time.Duration
-}
-
-// cmdBatchMsg is the legacy batch output for non-streamed commands.
+// cmdBatchMsg carries the output of a completed command.
 type cmdBatchMsg struct {
 	lines []string
 	err   error
@@ -474,7 +462,7 @@ func (m TUIModel) executeCommand(raw string) (TUIModel, tea.Cmd) {
 	exe, _ := os.Executable()
 	cmd := exec.Command(exe, args...)
 
-	return m, tea.Batch(m.spinner.Tick, elapsedTick(), m.runCommandStreaming(cmd, m.cmdStartTime))
+	return m, tea.Batch(m.spinner.Tick, elapsedTick(), m.runCommandStreaming(cmd))
 }
 
 // dispatch routes user input to a deity. Returns (deity, args, intentMatched).
@@ -622,23 +610,23 @@ func inferSubcommand(deity, lower string) []string {
 	return []string{deity}
 }
 
-// runCommandStreaming runs a command and streams stdout/stderr line-by-line
-// to the TUI via cmdLineMsg, followed by a cmdDoneMsg when complete.
-func (m TUIModel) runCommandStreaming(cmd *exec.Cmd, startTime time.Time) tea.Cmd {
+// runCommandStreaming runs a command using piped stdout/stderr so the
+// elapsed timer stays live while the command runs.
+func (m TUIModel) runCommandStreaming(cmd *exec.Cmd) tea.Cmd {
 	return func() tea.Msg {
 		stdoutPipe, err := cmd.StdoutPipe()
 		if err != nil {
-			return cmdDoneMsg{err: err, elapsed: time.Since(startTime)}
+			return cmdBatchMsg{err: err}
 		}
 		stderrPipe, err := cmd.StderrPipe()
 		if err != nil {
-			return cmdDoneMsg{err: err, elapsed: time.Since(startTime)}
+			return cmdBatchMsg{err: err}
 		}
 
 		combined := io.MultiReader(stdoutPipe, stderrPipe)
 
 		if err := cmd.Start(); err != nil {
-			return cmdDoneMsg{err: err, elapsed: time.Since(startTime)}
+			return cmdBatchMsg{err: err}
 		}
 
 		// Read lines and send them — but since bubbletea tea.Cmd returns
@@ -655,17 +643,6 @@ func (m TUIModel) runCommandStreaming(cmd *exec.Cmd, startTime time.Time) tea.Cm
 			lines: strings.Split(strings.TrimRight(buf.String(), "\n"), "\n"),
 			err:   cmdErr,
 		}
-	}
-}
-
-// runCommand is the legacy batch runner (kept for compatibility).
-func (m TUIModel) runCommand(cmd *exec.Cmd) tea.Cmd {
-	return func() tea.Msg {
-		var buf bytes.Buffer
-		cmd.Stdout = &buf
-		cmd.Stderr = &buf
-		err := cmd.Run()
-		return cmdBatchMsg{lines: strings.Split(buf.String(), "\n"), err: err}
 	}
 }
 
