@@ -13,9 +13,9 @@ import (
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/guard"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
-	"github.com/SirsiMaster/sirsi-pantheon/internal/suggest"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/scarab"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/seba"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/suggest"
 )
 
 var (

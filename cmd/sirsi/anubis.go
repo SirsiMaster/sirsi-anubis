@@ -19,9 +19,9 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/ka"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/mirror"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
-	"github.com/SirsiMaster/sirsi-pantheon/internal/suggest"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/ra"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/stele"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/suggest"
 )
 
 var (
