@@ -262,11 +262,17 @@ func runWeigh(ctx context.Context) error {
 			}
 		}
 		if len(res.Findings) > limit {
-			output.Dim("  ... and %d more. Run: sirsi scan --json | sirsi judge | sirsi clean all", len(res.Findings)-limit)
+			output.Dim("  ... and %d more findings.", len(res.Findings)-limit)
 		}
 	}
 
 	output.Footer(elapsed)
+	output.NextSteps([][]string{
+		{"sirsi anubis judge", "Review and clean safe items (dry-run by default)"},
+		{"sirsi anubis judge --confirm", "Apply cleanup (moves to Trash)"},
+		{"sirsi anubis ka", "Hunt ghost app residuals"},
+		{"sirsi anubis weigh --json", "Export full results as JSON"},
+	})
 	return nil
 }
 
@@ -356,6 +362,10 @@ func runJudge(ctx context.Context) error {
 		output.Info("")
 		output.Info("Dry run — no changes made. Run with --confirm to apply.")
 		output.Footer(time.Since(start))
+		output.NextSteps([][]string{
+			{"sirsi anubis judge --confirm", "Apply cleanup (moves to Trash)"},
+			{"sirsi anubis weigh", "Run a fresh scan"},
+		})
 		return nil
 	}
 
@@ -395,6 +405,10 @@ func runJudge(ctx context.Context) error {
 	})
 
 	output.Footer(time.Since(start))
+	output.NextSteps([][]string{
+		{"sirsi anubis weigh", "Run a fresh scan to verify cleanup"},
+		{"sirsi anubis ka", "Hunt remaining ghost app residuals"},
+	})
 	return nil
 }
 

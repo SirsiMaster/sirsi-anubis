@@ -184,6 +184,10 @@ func runSebaDiagram(cmd *cobra.Command, args []string) error {
 		"Format":   map[bool]string{true: "HTML", false: "Mermaid"}[diagramHTML],
 	})
 	output.Footer(time.Since(start))
+	output.NextSteps([][]string{
+		{"sirsi seba scan", "Full topology map"},
+		{"sirsi seba hardware", "Hardware profile"},
+	})
 	return nil
 }
 
@@ -357,6 +361,10 @@ func runSebaHardware(cmd *cobra.Command, args []string) error {
 
 	output.Dashboard(dashboard)
 	output.Footer(time.Since(start))
+	output.NextSteps([][]string{
+		{"sirsi seba diagram", "Visualize architecture"},
+		{"sirsi seba scan", "Full topology map"},
+	})
 	return nil
 }
 
@@ -473,5 +481,9 @@ func runSebaFleet(cmd *cobra.Command, args []string) error {
 		})
 	}
 	output.Footer(time.Since(start))
+	output.NextSteps([][]string{
+		{"sirsi seba diagram", "Visualize fleet topology"},
+		{"sirsi isis network", "Network security audit"},
+	})
 	return nil
 }

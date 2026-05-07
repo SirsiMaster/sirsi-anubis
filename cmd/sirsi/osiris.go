@@ -105,6 +105,10 @@ func runOsirisAssess(cmd *cobra.Command, args []string) error {
 	}
 
 	output.Footer(time.Since(start))
+	output.NextSteps([][]string{
+		{"sirsi osiris status", "Quick risk summary"},
+		{"sirsi thoth sync", "Sync project memory"},
+	})
 	return nil
 }
 

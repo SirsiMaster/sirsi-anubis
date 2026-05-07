@@ -186,6 +186,10 @@ var seshatIngestCmd = &cobra.Command{
 		}
 
 		output.Footer(time.Since(start))
+		output.NextSteps([][]string{
+			{"sirsi seshat list", "Browse ingested items"},
+			{"sirsi seshat export", "Export knowledge to a target"},
+		})
 		return nil
 	},
 }

@@ -145,5 +145,9 @@ func runNetAlign(cmd *cobra.Command, args []string) error {
 
 	output.Success("All modules aligned — tapestry is balanced")
 	output.Footer(time.Since(start))
+	output.NextSteps([][]string{
+		{"sirsi net status", "Check alignment score"},
+		{"sirsi maat audit", "Full quality audit"},
+	})
 	return nil
 }

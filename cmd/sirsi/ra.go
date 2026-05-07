@@ -123,6 +123,10 @@ func runOrchestrator(subcmd string, extraArgs ...string) error {
 		return err
 	}
 	output.Footer(time.Since(start))
+	output.NextSteps([][]string{
+		{"sirsi ra deploy", "Deploy task to repos"},
+		{"sirsi ra health", "Health check across all repos"},
+	})
 	return nil
 }
 
@@ -158,6 +162,10 @@ func runOrchestratorWithPipeline(subcmd, scriptPath string, extraArgs ...string)
 		"\u2600\uFE0F", "\U000130C6", result.ItemsIngested, "\U0001305F", thothStatus)
 
 	output.Footer(result.Duration)
+	output.NextSteps([][]string{
+		{"sirsi ra status", "Check orchestrator progress"},
+		{"sirsi ra collect", "Collect results from windows"},
+	})
 	return nil
 }
 

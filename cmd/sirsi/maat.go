@@ -166,6 +166,10 @@ func runMaatAudit(cmd *cobra.Command, args []string) error {
 		"Failures": fmt.Sprintf("%d", report.Failures),
 	})
 	output.Footer(time.Since(start))
+	output.NextSteps([][]string{
+		{"sirsi maat pulse", "Quick measurement heartbeat"},
+		{"sirsi maat heal", "Auto-remediate governance failures"},
+	})
 	return nil
 }
 
@@ -247,5 +251,9 @@ func runMaatPulse(cmd *cobra.Command, args []string) error {
 
 	output.Success("Metrics written to .sirsi/metrics.json")
 	output.Footer(time.Since(start))
+	output.NextSteps([][]string{
+		{"sirsi maat audit", "Full governance audit"},
+		{"sirsi maat heal", "Auto-remediate governance failures"},
+	})
 	return nil
 }

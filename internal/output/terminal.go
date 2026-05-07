@@ -226,6 +226,30 @@ func Section(title string) {
 	fmt.Fprintf(os.Stderr, "\n%s\n", TitleStyle.Render("𓁢 "+title))
 }
 
+// NextSteps renders a contextual "What's Next" section in the terminal
+// after a command completes. Each step is a command + description pair.
+func NextSteps(steps [][]string) {
+	dim := DimStyle
+	gold := TitleStyle
+
+	fmt.Fprintf(os.Stderr, "\n")
+	fmt.Fprintf(os.Stderr, "  %s\n\n", dim.Render("── What's Next ──────────────────────────"))
+	for _, step := range steps {
+		if len(step) >= 2 {
+			fmt.Fprintf(os.Stderr, "  %s  %s\n", gold.Render(padRight(step[0], 22)), dim.Render(step[1]))
+		}
+	}
+	fmt.Fprintf(os.Stderr, "\n")
+}
+
+// padRight pads a string to a minimum width with spaces.
+func padRight(s string, width int) string {
+	if len(s) >= width {
+		return s
+	}
+	return s + strings.Repeat(" ", width-len(s))
+}
+
 // shortenPath replaces home dir with ~ and truncates long paths.
 func ShortenPath(path string) string {
 	home, _ := os.UserHomeDir()
