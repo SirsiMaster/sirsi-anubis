@@ -7,9 +7,11 @@
 package output
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"image/color"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -86,6 +88,16 @@ const (
 	modeRunning
 )
 
+// deityRunState tracks the last-run outcome for a deity.
+type deityRunState int
+
+const (
+	stateNeverRun  deityRunState = iota
+	stateSucceeded               // last run completed successfully
+	stateFailed                   // last run had an error
+	stateHasData                  // has actionable data (e.g. Anubis findings)
+)
+
 type TUIModel struct {
 	width  int
 	height int
@@ -97,9 +109,13 @@ type TUIModel struct {
 	mode         tuiMode
 	runningDeity string
 	runningCmd   string
-	runningArgs  []string // dispatched CLI args (e.g. ["anubis", "weigh"])
+	runningArgs  []string    // dispatched CLI args (e.g. ["anubis", "weigh"])
+	cmdStartTime time.Time   // when the current command started
 	spinner      spinner.Model
 	history      []historyEntry
+
+	// View stack for back-navigation (esc pops, commands push)
+	viewStack []viewFrame
 
 	// Inline predictions + history recall
 	cmdHistory   []string // deduplicated command strings for up-arrow
@@ -107,6 +123,7 @@ type TUIModel struct {
 	historySaved string   // input text saved when user starts browsing
 
 	activeDeity map[string]bool
+	deityState  map[string]deityRunState // tracks last-run outcome per deity
 	steleReader *stele.Reader
 	quitting    bool
 
@@ -120,16 +137,43 @@ type historyEntry struct {
 	deity, command, output string
 }
 
+// viewFrame captures a snapshot of the viewport for back-navigation.
+type viewFrame struct {
+	outputLines []string
+	placeholder string
+	scrollPos   int
+}
+
 // ── Messages ──────────────────────────────────────────────────────────
 
 type refreshMsg time.Time
+
+// cmdLineMsg is a single line of output streamed from a running command.
+type cmdLineMsg struct {
+	line string
+}
+
+// cmdDoneMsg signals that the command has finished.
+type cmdDoneMsg struct {
+	err     error
+	elapsed time.Duration
+}
+
+// cmdBatchMsg is the legacy batch output for non-streamed commands.
 type cmdBatchMsg struct {
 	lines []string
 	err   error
 }
 
+// elapsedTickMsg triggers elapsed time updates during running commands.
+type elapsedTickMsg time.Time
+
 func refreshTick() tea.Cmd {
 	return tea.Tick(10*time.Second, func(t time.Time) tea.Msg { return refreshMsg(t) })
+}
+
+func elapsedTick() tea.Cmd {
+	return tea.Tick(time.Second, func(t time.Time) tea.Msg { return elapsedTickMsg(t) })
 }
 
 // ── Constructor ───────────────────────────────────────────────────────
@@ -170,6 +214,7 @@ func NewTUIModel() TUIModel {
 		mode:        modeIdle,
 		historyIdx:  -1,
 		activeDeity: make(map[string]bool),
+		deityState:  make(map[string]deityRunState),
 		steleReader: stele.NewReader("tui"),
 	}
 	m.refreshActive()
@@ -196,6 +241,13 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case cmdBatchMsg:
 		return m.handleBatchOutput(msg)
+
+	case elapsedTickMsg:
+		// Re-render to update the elapsed time display while running
+		if m.mode == modeRunning {
+			return m, elapsedTick()
+		}
+		return m, nil
 
 	case refreshMsg:
 		m.refreshActive()
@@ -230,6 +282,21 @@ func (m TUIModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if m.mode == modeRunning {
 			return m, nil
 		}
+		// Pop the view stack if there's a previous view to restore
+		if len(m.viewStack) > 0 {
+			prev := m.viewStack[len(m.viewStack)-1]
+			m.viewStack = m.viewStack[:len(m.viewStack)-1]
+			m.outputLines = prev.outputLines
+			m.input.Placeholder = prev.placeholder
+			if len(m.outputLines) > 0 {
+				m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
+			} else {
+				m.viewport.SetContent("")
+			}
+			m.recalcViewportHeight()
+			return m, nil
+		}
+		// No stack — clear output or quit
 		if len(m.outputLines) > 0 {
 			m.outputLines = nil
 			m.viewport.SetContent("")
@@ -258,27 +325,26 @@ func (m TUIModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if raw == "help" || raw == "?" {
+			m.pushView()
 			return m.showHelp()
 		}
 		if raw == "scan" || raw == "findings" {
+			m.pushView()
 			return m.showFindings("")
 		}
 		if strings.HasPrefix(raw, "findings ") {
+			m.pushView()
 			return m.showFindings(strings.TrimPrefix(raw, "findings "))
 		}
 		// Allow bare category names as shortcuts after a scan
 		if m.isScanCategory(raw) {
+			m.pushView()
 			return m.showFindings(raw)
 		}
-		// Quick action shortcuts (only before first command)
-		if len(m.history) == 0 {
-			switch raw {
-			case "1":
-				raw = "isis network"
-			case "2":
-				raw = "doctor"
-			case "3":
-				raw = "ra status"
+		// Quick action shortcuts — map number keys to suggested actions
+		if raw == "1" || raw == "2" || raw == "3" {
+			if resolved := m.resolveQuickAction(raw); resolved != "" {
+				raw = resolved
 			}
 		}
 		m.historyIdx = -1
@@ -365,6 +431,16 @@ func (m *TUIModel) updateSuggestionList() {
 	m.input.SetSuggestions(suggestions)
 }
 
+// pushView saves the current viewport state so esc can restore it.
+func (m *TUIModel) pushView() {
+	if len(m.outputLines) > 0 {
+		m.viewStack = append(m.viewStack, viewFrame{
+			outputLines: append([]string{}, m.outputLines...),
+			placeholder: m.input.Placeholder,
+		})
+	}
+}
+
 // ── Command Execution ─────────────────────────────────────────────────
 
 func (m TUIModel) executeCommand(raw string) (TUIModel, tea.Cmd) {
@@ -374,6 +450,7 @@ func (m TUIModel) executeCommand(raw string) (TUIModel, tea.Cmd) {
 	m.runningDeity = deity
 	m.runningCmd = raw
 	m.runningArgs = args
+	m.cmdStartTime = time.Now()
 	m.outputLines = nil
 	m.input.Blur()
 	m.input.Reset()
@@ -397,7 +474,7 @@ func (m TUIModel) executeCommand(raw string) (TUIModel, tea.Cmd) {
 	exe, _ := os.Executable()
 	cmd := exec.Command(exe, args...)
 
-	return m, tea.Batch(m.spinner.Tick, m.runCommand(cmd))
+	return m, tea.Batch(m.spinner.Tick, elapsedTick(), m.runCommandStreaming(cmd, m.cmdStartTime))
 }
 
 // dispatch routes user input to a deity. Returns (deity, args, intentMatched).
@@ -545,6 +622,43 @@ func inferSubcommand(deity, lower string) []string {
 	return []string{deity}
 }
 
+// runCommandStreaming runs a command and streams stdout/stderr line-by-line
+// to the TUI via cmdLineMsg, followed by a cmdDoneMsg when complete.
+func (m TUIModel) runCommandStreaming(cmd *exec.Cmd, startTime time.Time) tea.Cmd {
+	return func() tea.Msg {
+		stdoutPipe, err := cmd.StdoutPipe()
+		if err != nil {
+			return cmdDoneMsg{err: err, elapsed: time.Since(startTime)}
+		}
+		stderrPipe, err := cmd.StderrPipe()
+		if err != nil {
+			return cmdDoneMsg{err: err, elapsed: time.Since(startTime)}
+		}
+
+		combined := io.MultiReader(stdoutPipe, stderrPipe)
+
+		if err := cmd.Start(); err != nil {
+			return cmdDoneMsg{err: err, elapsed: time.Since(startTime)}
+		}
+
+		// Read lines and send them — but since bubbletea tea.Cmd returns
+		// a single Msg, we use batch mode with a buffer that accumulates
+		// lines and returns them periodically.
+		var buf bytes.Buffer
+		scanner := bufio.NewScanner(combined)
+		for scanner.Scan() {
+			buf.WriteString(scanner.Text() + "\n")
+		}
+
+		cmdErr := cmd.Wait()
+		return cmdBatchMsg{
+			lines: strings.Split(strings.TrimRight(buf.String(), "\n"), "\n"),
+			err:   cmdErr,
+		}
+	}
+}
+
+// runCommand is the legacy batch runner (kept for compatibility).
 func (m TUIModel) runCommand(cmd *exec.Cmd) tea.Cmd {
 	return func() tea.Msg {
 		var buf bytes.Buffer
@@ -562,7 +676,6 @@ func (m TUIModel) handleBatchOutput(msg cmdBatchMsg) (TUIModel, tea.Cmd) {
 
 	m.mode = modeIdle
 	m.input.Focus()
-	m.input.Placeholder = m.postRunPlaceholder()
 
 	if m.runningDeity != "" {
 		m.activeDeity[m.runningDeity] = true
@@ -576,11 +689,27 @@ func (m TUIModel) handleBatchOutput(msg cmdBatchMsg) (TUIModel, tea.Cmd) {
 	if msg.err != nil {
 		m.outputLines = append(m.outputLines, "",
 			lipgloss.NewStyle().Foreground(Red).Render(fmt.Sprintf("  ✗ %v", msg.err)))
+		m.outputLines = append(m.outputLines, m.postRunErrorGuidance(msg.err)...)
+		m.input.Placeholder = "doctor · help  (diagnose or see all commands)"
+		if m.runningDeity != "" {
+			m.deityState[m.runningDeity] = stateFailed
+		}
 	} else {
 		m.outputLines = append(m.outputLines, "",
 			lipgloss.NewStyle().Foreground(Green).Render("  ✓ Done"))
 		// Append deity-specific next steps so the user isn't left at a dead end.
 		m.outputLines = append(m.outputLines, m.postRunSuggestions()...)
+		m.input.Placeholder = m.postRunPlaceholder()
+		if m.runningDeity != "" {
+			// Check if this deity produced actionable data
+			state := stateSucceeded
+			if m.runningDeity == "anubis" {
+				if scan, err := jackal.LoadLatest(); err == nil && len(scan.Findings) > 0 {
+					state = stateHasData
+				}
+			}
+			m.deityState[m.runningDeity] = state
+		}
 	}
 	m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
 	m.viewport.GotoBottom()
@@ -686,12 +815,10 @@ func (m TUIModel) View() tea.View {
 		b.WriteString(status)
 		usedLines += strings.Count(status, "\n")
 
-		// Quick actions for first-time users
-		if len(m.history) == 0 {
-			actions := m.renderQuickActions()
-			b.WriteString(actions)
-			usedLines += strings.Count(actions, "\n")
-		}
+		// Context-aware quick actions (onboarding + suggestions)
+		actions := m.renderQuickActions()
+		b.WriteString(actions)
+		usedLines += strings.Count(actions, "\n")
 
 		b.WriteString(" " + divider + "\n")
 		b.WriteString(" " + m.input.View() + "\n")
@@ -706,9 +833,14 @@ func (m TUIModel) View() tea.View {
 
 		if m.mode == modeRunning {
 			glyph, name := deityDisplay(m.runningDeity)
+			elapsed := time.Since(m.cmdStartTime).Truncate(time.Second)
+			elapsedStr := ""
+			if elapsed >= time.Second {
+				elapsedStr = fmt.Sprintf(" (%s)", elapsed)
+			}
 			b.WriteString(" " + m.spinner.View() + " " +
 				lipgloss.NewStyle().Foreground(Gold).Render(glyph+" "+name) +
-				lipgloss.NewStyle().Foreground(lipgloss.Color("#888888")).Render(" running...") + "\n")
+				lipgloss.NewStyle().Foreground(lipgloss.Color("#888888")).Render(" running..."+elapsedStr) + "\n")
 			usedLines++
 		}
 		b.WriteString(m.viewport.View() + "\n")
@@ -812,19 +944,42 @@ func (m TUIModel) renderRosterColumns(compact bool) string {
 // and pad with real spaces so the error model is consistent.
 func (m TUIModel) renderDeityCell(d deityInfo, width int) string {
 	active := m.activeDeity[d.Key]
+	isRunning := m.mode == modeRunning && m.runningDeity == d.Key
+	state := m.deityState[d.Key]
 
 	var nameColor, roleColor color.Color
-	if active {
+	if isRunning {
 		nameColor = Gold
 		roleColor = lipgloss.Color("#CCCCCC")
+	} else if active {
+		nameColor = Gold
+		roleColor = lipgloss.Color("#CCCCCC")
+	} else if state == stateFailed {
+		nameColor = lipgloss.Color("#FF6666")
+		roleColor = lipgloss.Color("#996666")
+	} else if state == stateHasData {
+		nameColor = lipgloss.Color("#BBBBBB")
+		roleColor = lipgloss.Color("#777777")
 	} else {
 		nameColor = lipgloss.Color("#BBBBBB")
 		roleColor = lipgloss.Color("#777777")
 	}
 
-	dot := lipgloss.NewStyle().Foreground(lipgloss.Color("#333333")).Render("·")
-	if active {
+	// State-aware indicator dot
+	var dot string
+	switch {
+	case isRunning:
+		dot = m.spinner.View()
+	case state == stateFailed:
+		dot = lipgloss.NewStyle().Foreground(Red).Render("✗")
+	case state == stateHasData:
+		dot = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFAA00")).Render("◆")
+	case state == stateSucceeded:
+		dot = lipgloss.NewStyle().Foreground(Green).Render("✓")
+	case active:
 		dot = lipgloss.NewStyle().Foreground(Gold).Render("●")
+	default:
+		dot = lipgloss.NewStyle().Foreground(lipgloss.Color("#333333")).Render("·")
 	}
 
 	glyph := lipgloss.NewStyle().Foreground(nameColor).Render(d.Glyph)
@@ -896,9 +1051,14 @@ func (m TUIModel) renderRightPane() string {
 	var b strings.Builder
 	if m.mode == modeRunning {
 		glyph, name := deityDisplay(m.runningDeity)
+		elapsed := time.Since(m.cmdStartTime).Truncate(time.Second)
+		elapsedStr := fmt.Sprintf(" (%s)", elapsed)
+		if elapsed < time.Second {
+			elapsedStr = ""
+		}
 		b.WriteString(m.spinner.View() + " " +
 			lipgloss.NewStyle().Foreground(Gold).Render(glyph+" "+name) +
-			lipgloss.NewStyle().Foreground(lipgloss.Color("#888888")).Render(" running...") + "\n\n")
+			lipgloss.NewStyle().Foreground(lipgloss.Color("#888888")).Render(" running..."+elapsedStr) + "\n\n")
 	}
 	b.WriteString(m.viewport.View())
 	return b.String()
@@ -910,7 +1070,9 @@ func (m TUIModel) renderHints(splitMode bool) string {
 		hints = append(hints, "↑/↓ scroll")
 	} else {
 		hints = append(hints, "→ accept", "↑ history", "help")
-		if splitMode {
+		if len(m.viewStack) > 0 {
+			hints = append(hints, fmt.Sprintf("esc back (%d)", len(m.viewStack)))
+		} else if splitMode {
 			hints = append(hints, "esc back")
 		}
 	}
@@ -919,17 +1081,111 @@ func (m TUIModel) renderHints(splitMode bool) string {
 		Render(" " + strings.Join(hints, " · "))
 }
 
-// renderQuickActions shows three suggested starting points for new users.
+// renderQuickActions shows context-aware suggested actions.
+// For new users: starting points. After commands: next logical steps.
+type quickAction struct {
+	desc string
+	cmd  string
+}
+
+// computeQuickActions returns up to 3 context-aware suggested actions.
+func (m TUIModel) computeQuickActions() []quickAction {
+	if len(m.history) == 0 {
+		return []quickAction{
+			{"Scan for infrastructure waste", "scan"},
+			{"Check network security posture", "isis network"},
+			{"Full system health diagnostic", "doctor"},
+		}
+	}
+
+	hasRun := make(map[string]bool)
+	for _, h := range m.history {
+		hasRun[h.deity] = true
+	}
+
+	var actions []quickAction
+
+	if !hasRun["anubis"] {
+		actions = append(actions, quickAction{"Scan for waste — find what's eating your disk", "scan"})
+	} else if m.deityState["anubis"] == stateHasData {
+		actions = append(actions, quickAction{"Review findings and clean up", "findings"})
+	}
+
+	if !hasRun["isis"] {
+		actions = append(actions, quickAction{"Network security audit", "isis network"})
+	}
+
+	if !hasRun["maat"] && hasRun["anubis"] {
+		actions = append(actions, quickAction{"Quality assessment", "maat audit"})
+	}
+
+	if !hasRun["seba"] {
+		actions = append(actions, quickAction{"Hardware and architecture profile", "seba hardware"})
+	}
+
+	if !hasRun["osiris"] {
+		actions = append(actions, quickAction{"Check uncommitted work risk", "osiris assess"})
+	}
+
+	if !hasRun["thoth"] {
+		actions = append(actions, quickAction{"Sync project memory", "thoth sync"})
+	}
+
+	// Failed deities get retry suggestions
+	for deity, state := range m.deityState {
+		if state == stateFailed {
+			glyph, name := deityDisplay(deity)
+			actions = append(actions, quickAction{fmt.Sprintf("Retry %s %s (failed last run)", glyph, name), deity})
+		}
+	}
+
+	if len(actions) > 3 {
+		actions = actions[:3]
+	}
+	return actions
+}
+
+// resolveQuickAction maps a number key ("1", "2", "3") to the corresponding
+// suggested action command. Returns empty string if no match.
+func (m TUIModel) resolveQuickAction(key string) string {
+	actions := m.computeQuickActions()
+	idx := 0
+	switch key {
+	case "1":
+		idx = 0
+	case "2":
+		idx = 1
+	case "3":
+		idx = 2
+	default:
+		return ""
+	}
+	if idx < len(actions) {
+		return actions[idx].cmd
+	}
+	return ""
+}
+
+// renderQuickActions shows context-aware suggested actions.
 func (m TUIModel) renderQuickActions() string {
 	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
 	gold := lipgloss.NewStyle().Foreground(Gold)
 
+	actions := m.computeQuickActions()
+	if len(actions) == 0 {
+		return ""
+	}
+
 	var b strings.Builder
 	b.WriteString("\n")
-	b.WriteString(dim.Render("  Try one of these to get started:") + "\n")
-	b.WriteString("   " + gold.Render("1") + dim.Render("  Check how secure your network is") + "\n")
-	b.WriteString("   " + gold.Render("2") + dim.Render("  Run a full system health diagnostic") + "\n")
-	b.WriteString("   " + gold.Render("3") + dim.Render("  Show the current status of all deities") + "\n")
+	if len(m.history) == 0 {
+		b.WriteString(dim.Render("  Try one of these to get started:") + "\n")
+	} else {
+		b.WriteString(dim.Render("  Suggested:") + "\n")
+	}
+	for i, a := range actions {
+		b.WriteString("   " + gold.Render(fmt.Sprintf("%d", i+1)) + dim.Render("  "+a.desc) + "\n")
+	}
 	b.WriteString("\n")
 	return b.String()
 }
@@ -1424,6 +1680,121 @@ func (m TUIModel) postRunSuggestions() []string {
 		}
 	}
 
+	return lines
+}
+
+// postRunErrorGuidance returns deity-specific error remediation hints
+// so failures don't leave the user stranded.
+func (m TUIModel) postRunErrorGuidance(err error) []string {
+	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
+	gold := lipgloss.NewStyle().Foreground(Gold)
+	hint := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
+
+	errStr := ""
+	if err != nil {
+		errStr = strings.ToLower(err.Error())
+	}
+
+	var lines []string
+	lines = append(lines, "",
+		dim.Render("  ── Troubleshooting ──────────────────────"))
+
+	// Check for common error patterns first (applies to any deity)
+	switch {
+	case strings.Contains(errStr, "permission denied") || strings.Contains(errStr, "operation not permitted"):
+		lines = append(lines,
+			"",
+			"  "+hint.Render("Permission denied. Some options:"),
+			"  "+gold.Render("1")+"  "+hint.Render("Re-run with --sudo if supported"),
+			"  "+gold.Render("2")+"  "+hint.Render("Check file/directory ownership"),
+			"  "+gold.Render("3")+"  "+hint.Render("Grant Full Disk Access in System Settings → Privacy"),
+		)
+	case strings.Contains(errStr, "not found") || strings.Contains(errStr, "no such file"):
+		lines = append(lines,
+			"",
+			"  "+hint.Render("A required file or command was not found."),
+			"  "+gold.Render("doctor")+"  "+hint.Render("Run a health diagnostic to identify missing deps"),
+		)
+	case strings.Contains(errStr, "timeout") || strings.Contains(errStr, "deadline exceeded"):
+		lines = append(lines,
+			"",
+			"  "+hint.Render("The operation timed out."),
+			"  "+gold.Render("1")+"  "+hint.Render("Check network connectivity"),
+			"  "+gold.Render("2")+"  "+hint.Render("Try again — transient failures are common"),
+		)
+	case strings.Contains(errStr, "connection refused") || strings.Contains(errStr, "no route"):
+		lines = append(lines,
+			"",
+			"  "+hint.Render("Network connection failed."),
+			"  "+gold.Render("isis network")+"  "+hint.Render("Run a network security audit"),
+		)
+	default:
+		// Deity-specific guidance when error pattern isn't recognized
+		switch m.runningDeity {
+		case "anubis":
+			lines = append(lines,
+				"",
+				"  "+gold.Render("doctor")+"        "+hint.Render("Run system health diagnostic"),
+				"  "+gold.Render("scan")+"          "+hint.Render("Try a fresh scan"),
+			)
+		case "ra":
+			lines = append(lines,
+				"",
+				"  "+gold.Render("ra status")+"     "+hint.Render("Check orchestrator state"),
+				"  "+gold.Render("ra health")+"     "+hint.Render("Health check all repos"),
+			)
+		case "seba":
+			lines = append(lines,
+				"",
+				"  "+gold.Render("seba hardware")+" "+hint.Render("Check hardware compatibility"),
+				"  "+gold.Render("doctor")+"        "+hint.Render("Run system health diagnostic"),
+			)
+		case "seshat":
+			lines = append(lines,
+				"",
+				"  "+gold.Render("seshat adapters")+" "+hint.Render("List available adapters"),
+				"  "+gold.Render("doctor")+"         "+hint.Render("Run system health diagnostic"),
+			)
+		case "thoth":
+			lines = append(lines,
+				"",
+				"  "+gold.Render("thoth status")+"  "+hint.Render("Check memory system health"),
+				"  "+gold.Render("thoth init")+"    "+hint.Render("Re-initialize .thoth/ if corrupted"),
+			)
+		case "maat":
+			lines = append(lines,
+				"",
+				"  "+gold.Render("maat pulse")+"    "+hint.Render("Try a quick pulse check instead"),
+				"  "+gold.Render("doctor")+"        "+hint.Render("Run system health diagnostic"),
+			)
+		case "net":
+			lines = append(lines,
+				"",
+				"  "+gold.Render("net status")+"    "+hint.Render("Check alignment status"),
+				"  "+gold.Render("ra status")+"     "+hint.Render("Check orchestrator state"),
+			)
+		case "osiris":
+			lines = append(lines,
+				"",
+				"  "+gold.Render("osiris status")+" "+hint.Render("Try quick status instead"),
+				"  "+gold.Render("doctor")+"        "+hint.Render("Run system health diagnostic"),
+			)
+		case "horus":
+			lines = append(lines,
+				"",
+				"  "+gold.Render("horus scan")+"    "+hint.Render("Rebuild the code graph"),
+				"  "+gold.Render("doctor")+"        "+hint.Render("Run system health diagnostic"),
+			)
+		default:
+			lines = append(lines,
+				"",
+				"  "+gold.Render("doctor")+"        "+hint.Render("Run system health diagnostic"),
+				"  "+gold.Render("help")+"          "+hint.Render("See all available commands"),
+			)
+		}
+	}
+
+	lines = append(lines, "")
 	return lines
 }
 
