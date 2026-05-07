@@ -56,10 +56,11 @@ func (a *ChromeHistoryAdapter) Ingest(since time.Time) ([]KnowledgeItem, error) 
 	}
 	defer db.Close()
 
-	// Chrome stores timestamps as microseconds since Jan 1, 1601
-	// Convert Go time to Chrome time
-	chromeEpoch := time.Date(1601, 1, 1, 0, 0, 0, 0, time.UTC)
-	sinceChrome := since.Sub(chromeEpoch).Microseconds()
+	// Chrome stores timestamps as microseconds since 1601-01-01.
+	// time.Duration overflows int64 for spans > ~292 years, so use
+	// arithmetic on Unix seconds instead.
+	const chromeEpochOffset int64 = 11644473600 // seconds between 1601-01-01 and 1970-01-01
+	sinceChrome := (since.Unix() + chromeEpochOffset) * 1_000_000
 
 	query := `
 		SELECT url, title, visit_count, last_visit_time
@@ -86,7 +87,8 @@ func (a *ChromeHistoryAdapter) Ingest(since time.Time) ([]KnowledgeItem, error) 
 			continue
 		}
 
-		visitTime := chromeEpoch.Add(time.Duration(lastVisit) * time.Microsecond)
+		unixSeconds := (lastVisit / 1_000_000) - chromeEpochOffset
+		visitTime := time.Unix(unixSeconds, 0)
 
 		items = append(items, KnowledgeItem{
 			Title:   title,

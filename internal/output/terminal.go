@@ -10,7 +10,23 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"charm.land/lipgloss/v2/table"
+
+	"github.com/SirsiMaster/sirsi-pantheon/internal/suggest"
 )
+
+// SuggestSteps is a convenience that calls suggest.After and formats the
+// result for NextSteps. Use this at the end of every deity CLI command:
+//
+//	output.Footer(elapsed)
+//	output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "anubis", Subcommand: "weigh"}))
+func SuggestSteps(ctx suggest.Context) [][]string {
+	actions := suggest.After(ctx)
+	steps := make([][]string, 0, len(actions))
+	for _, a := range actions {
+		steps = append(steps, []string{a.Command, a.Description})
+	}
+	return steps
+}
 
 // Anubis brand colors (Rule A10)
 var (
@@ -220,6 +236,16 @@ func Footer(elapsed time.Duration) {
 		DimStyle.Render("Completed in"),
 		ValueStyle.Render(elapsed.Round(time.Millisecond).String()),
 	)
+}
+
+// FooterWithSuggestions renders the elapsed time footer followed by
+// contextual "What's Next" suggestions from the suggest package.
+// This is the standard way to end any deity CLI command.
+func FooterWithSuggestions(elapsed time.Duration, actions [][]string) {
+	Footer(elapsed)
+	if len(actions) > 0 {
+		NextSteps(actions)
+	}
 }
 
 func Section(title string) {

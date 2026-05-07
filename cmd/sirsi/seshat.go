@@ -269,6 +269,7 @@ var seshatListCmd = &cobra.Command{
 
 		fmt.Printf("\n  Total: %d knowledge items\n", len(items))
 		output.Footer(time.Since(start))
+		output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "seshat", Subcommand: "list"}))
 		return nil
 	},
 }
@@ -277,6 +278,7 @@ var seshatAdaptersCmd = &cobra.Command{
 	Use:   "adapters",
 	Short: "𓁆 List available source and target adapters",
 	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
 		output.Banner()
 		output.Header("SESHAT — Adapter Registry")
 
@@ -292,6 +294,9 @@ var seshatAdaptersCmd = &cobra.Command{
 		for _, a := range reg.Targets {
 			fmt.Printf("    %-20s %s\n", a.Name(), a.Description())
 		}
+
+		output.Footer(time.Since(start))
+		output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "seshat", Subcommand: "adapters"}))
 	},
 }
 

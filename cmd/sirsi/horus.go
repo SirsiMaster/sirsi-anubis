@@ -3,11 +3,13 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/horus"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/suggest"
 )
 
 var (
@@ -177,6 +179,7 @@ func runHorusContext(_ *cobra.Command, args []string) error {
 }
 
 func runHorusStats(_ *cobra.Command, args []string) error {
+	start := time.Now()
 	path := "."
 	if len(args) > 0 {
 		path = args[0]
@@ -188,13 +191,17 @@ func runHorusStats(_ *cobra.Command, args []string) error {
 	}
 
 	output.Banner()
-	fmt.Printf("𓂀 Horus Graph Stats for %s\n\n", path)
-	fmt.Printf("  Files:      %d\n", graph.Stats.Files)
-	fmt.Printf("  Packages:   %d (%v)\n", graph.Stats.Packages, graph.Packages)
-	fmt.Printf("  Types:      %d\n", graph.Stats.Types)
-	fmt.Printf("  Interfaces: %d\n", graph.Stats.Interfaces)
-	fmt.Printf("  Functions:  %d\n", graph.Stats.Functions)
-	fmt.Printf("  Methods:    %d\n", graph.Stats.Methods)
-	fmt.Printf("  Lines:      %d\n", graph.Stats.TotalLines)
+	output.Header("HORUS — Graph Statistics")
+	output.Dashboard(map[string]string{
+		"Files":     fmt.Sprintf("%d", graph.Stats.Files),
+		"Functions": fmt.Sprintf("%d", graph.Stats.Functions),
+		"Lines":     fmt.Sprintf("%d", graph.Stats.TotalLines),
+	})
+	output.Info("  Packages:   %d (%v)", graph.Stats.Packages, graph.Packages)
+	output.Info("  Types:      %d", graph.Stats.Types)
+	output.Info("  Interfaces: %d", graph.Stats.Interfaces)
+	output.Info("  Methods:    %d", graph.Stats.Methods)
+	output.Footer(time.Since(start))
+	output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "horus", Subcommand: "stats"}))
 	return nil
 }

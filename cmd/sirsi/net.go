@@ -87,6 +87,7 @@ func runNetStatus(cmd *cobra.Command, args []string) error {
 	})
 
 	output.Footer(time.Since(start))
+	output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "net", Subcommand: "status"}))
 	return nil
 }
 
@@ -146,7 +147,7 @@ func runNetAlign(cmd *cobra.Command, args []string) error {
 
 	output.Success("All modules aligned — tapestry is balanced")
 	output.Footer(time.Since(start))
-	actions := suggest.After(suggest.Context{Deity: "net", Subcommand: "weave"})
+	actions := suggest.After(suggest.Context{Deity: "net", Subcommand: "align"})
 	var steps [][]string
 	for _, a := range actions {
 		steps = append(steps, []string{a.Command, a.Description})

@@ -181,6 +181,7 @@ func runMaatScales(cmd *cobra.Command, args []string) error {
 	output.Banner()
 	output.Header("MA'AT — The Scales of Balance")
 	output.Footer(time.Since(start))
+	output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "maat", Subcommand: "scales"}))
 	return nil
 }
 
@@ -208,6 +209,7 @@ func runMaatHeal(cmd *cobra.Command, args []string) error {
 		"Failed":   fmt.Sprintf("%d", res.Failed),
 	})
 	output.Footer(time.Since(start))
+	output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "maat", Subcommand: "heal"}))
 	return nil
 }
 

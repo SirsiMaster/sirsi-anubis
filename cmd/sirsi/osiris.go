@@ -106,7 +106,7 @@ func runOsirisAssess(cmd *cobra.Command, args []string) error {
 	}
 
 	output.Footer(time.Since(start))
-	actions := suggest.After(suggest.Context{Deity: "osiris", Subcommand: "scan"})
+	actions := suggest.After(suggest.Context{Deity: "osiris", Subcommand: "assess"})
 	var steps [][]string
 	for _, a := range actions {
 		steps = append(steps, []string{a.Command, a.Description})
@@ -116,6 +116,8 @@ func runOsirisAssess(cmd *cobra.Command, args []string) error {
 }
 
 func runOsirisStatus(cmd *cobra.Command, args []string) error {
+	start := time.Now()
+
 	repoDir := "."
 	if len(args) > 0 {
 		repoDir = args[0]
@@ -136,6 +138,28 @@ func runOsirisStatus(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	fmt.Println(cp.Summary())
+	output.Banner()
+	output.Header("OSIRIS — State Summary")
+
+	dashboard := map[string]string{
+		"Uncommitted": fmt.Sprintf("%d files", cp.TotalChanges),
+		"Risk Level":  fmt.Sprintf("%s %s", cp.StatusIcon(), cp.Risk),
+	}
+	if !cp.LastCommitTime.IsZero() {
+		dashboard["Last Commit"] = fmt.Sprintf("%s ago", cp.TimeSinceCommit.Round(time.Second))
+	}
+	output.Dashboard(dashboard)
+
+	if cp.ShouldWarn() {
+		output.Warn("%s", cp.Warning)
+	}
+
+	output.Footer(time.Since(start))
+	actions := suggest.After(suggest.Context{Deity: "osiris", Subcommand: "status"})
+	var steps [][]string
+	for _, a := range actions {
+		steps = append(steps, []string{a.Command, a.Description})
+	}
+	output.NextSteps(steps)
 	return nil
 }

@@ -519,6 +519,7 @@ func runClean(cmd *cobra.Command, args []string) error {
 	})
 
 	output.Footer(time.Since(start))
+	output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "anubis", Subcommand: "judge"}))
 	return nil
 }
 
@@ -540,6 +541,7 @@ func runKa(ctx context.Context) error {
 		"Waste":  jackal.FormatSize(totalWaste),
 	})
 	output.Footer(time.Since(start))
+	output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "anubis", Subcommand: "ka"}))
 	return nil
 }
 
@@ -554,6 +556,7 @@ func runAnubisMirror(cmd *cobra.Command, args []string) error {
 		"Waste":      mirror.FormatBytes(res.TotalWasteBytes),
 	})
 	output.Footer(time.Since(start))
+	output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "anubis", Subcommand: "mirror"}))
 	return nil
 }
 
@@ -728,6 +731,7 @@ func runAnubisApps(cmd *cobra.Command, args []string) error {
 		len(apps), ghostAppCount, jackal.FormatSize(totalGhostSize))
 
 	output.Footer(time.Since(start))
+	output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "anubis", Subcommand: "apps"}))
 	return nil
 }
 
@@ -878,5 +882,6 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		"Checks Run":   fmt.Sprintf("%d", len(report.Findings)),
 	})
 	output.Footer(time.Since(start))
+	output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "isis", Subcommand: "doctor"}))
 	return nil
 }

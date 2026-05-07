@@ -16,6 +16,7 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/notify"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/suggest"
 	modversion "github.com/SirsiMaster/sirsi-pantheon/internal/version"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/workstream"
 )
@@ -292,6 +293,7 @@ func runIsisNetwork(cmd *cobra.Command, args []string) error {
 		"Checks Run":     fmt.Sprintf("%d", len(report.Findings)),
 	})
 	output.Footer(time.Since(start))
+	output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "isis", Subcommand: "network"}))
 	return nil
 }
 

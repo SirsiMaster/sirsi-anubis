@@ -5,12 +5,14 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/brain"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/help"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/suggest"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/thoth"
 )
 
@@ -194,12 +196,16 @@ func runThothSync(cmd *cobra.Command, args []string) error {
 
 	syncOpts := thoth.SyncOptions{RepoRoot: repoRoot, UpdateDate: true}
 
+	start := time.Now()
+
 	// ADR-016 Phase 2: prefer npm binary, fall back to Go
 	if delegated, err := thoth.TryDelegateSync(syncOpts); delegated {
 		if err != nil {
 			return err
 		}
 		output.Success("Memory synced (via sirsi-thoth).")
+		output.Footer(time.Since(start))
+		output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "thoth", Subcommand: "sync"}))
 		return nil
 	}
 
@@ -207,6 +213,8 @@ func runThothSync(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	output.Success("Memory synced.")
+	output.Footer(time.Since(start))
+	output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "thoth", Subcommand: "sync"}))
 	return nil
 }
 

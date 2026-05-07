@@ -185,12 +185,7 @@ func runSebaDiagram(cmd *cobra.Command, args []string) error {
 		"Format":   map[bool]string{true: "HTML", false: "Mermaid"}[diagramHTML],
 	})
 	output.Footer(time.Since(start))
-	actions := suggest.After(suggest.Context{Deity: "seba", Subcommand: "status"})
-	var steps [][]string
-	for _, a := range actions {
-		steps = append(steps, []string{a.Command, a.Description})
-	}
-	output.NextSteps(steps)
+	output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "seba", Subcommand: "diagram"}))
 	return nil
 }
 
@@ -252,6 +247,7 @@ func runSebaScan(cmd *cobra.Command, args []string) error {
 	}
 
 	output.Footer(time.Since(start))
+	output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "seba", Subcommand: "scan"}))
 	return nil
 }
 
@@ -364,12 +360,7 @@ func runSebaHardware(cmd *cobra.Command, args []string) error {
 
 	output.Dashboard(dashboard)
 	output.Footer(time.Since(start))
-	actions := suggest.After(suggest.Context{Deity: "seba", Subcommand: "scan"})
-	var steps [][]string
-	for _, a := range actions {
-		steps = append(steps, []string{a.Command, a.Description})
-	}
-	output.NextSteps(steps)
+	output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "seba", Subcommand: "hardware"}))
 	return nil
 }
 
@@ -486,11 +477,6 @@ func runSebaFleet(cmd *cobra.Command, args []string) error {
 		})
 	}
 	output.Footer(time.Since(start))
-	actions := suggest.After(suggest.Context{Deity: "seba", Subcommand: "hardware"})
-	var steps [][]string
-	for _, a := range actions {
-		steps = append(steps, []string{a.Command, a.Description})
-	}
-	output.NextSteps(steps)
+	output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "seba", Subcommand: "fleet"}))
 	return nil
 }
