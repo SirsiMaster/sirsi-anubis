@@ -132,8 +132,7 @@ type TUIModel struct {
 	quitting    bool
 
 	// Streaming command output
-	streamCh  chan string // receives lines from running commands
-	streamErr error       // error from the completed command
+	streamCh chan string // receives lines from running commands
 
 	// Notification awareness
 	notifyStore       *notify.Store
