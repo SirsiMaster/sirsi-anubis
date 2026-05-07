@@ -63,6 +63,7 @@ var intentKeywords = map[string][]string{
 	"anubis": {"scan", "waste", "clean", "judge", "purge", "hygiene", "infrastructure", "dedup", "duplicate", "mirror", "ghost", "dead", "remnant", "uninstall", "residual", "haunt"},
 	"seba":   {"architecture", "topology", "diagram", "map", "dependency", "graph", "network map", "network topology", "fleet", "subnet", "container", "docker", "kubernetes", "k8s", "pod", "gpu", "vram", "hardware", "accelerator", "ane", "cuda", "metal", "npu", "profile"},
 	"osiris": {"checkpoint", "state", "preserve", "restore", "uncommitted", "risk", "drift", "snapshot", "commit status"},
+	"horus":  {"code graph", "symbols", "outline", "declarations", "code index"},
 }
 
 // Top-level CLI aliases that bypass intent matching.
@@ -96,6 +97,7 @@ type TUIModel struct {
 	mode         tuiMode
 	runningDeity string
 	runningCmd   string
+	runningArgs  []string // dispatched CLI args (e.g. ["anubis", "weigh"])
 	spinner      spinner.Model
 	history      []historyEntry
 
@@ -259,7 +261,14 @@ func (m TUIModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			return m.showHelp()
 		}
 		if raw == "scan" || raw == "findings" {
-			return m.showFindings()
+			return m.showFindings("")
+		}
+		if strings.HasPrefix(raw, "findings ") {
+			return m.showFindings(strings.TrimPrefix(raw, "findings "))
+		}
+		// Allow bare category names as shortcuts after a scan
+		if m.isScanCategory(raw) {
+			return m.showFindings(raw)
 		}
 		// Quick action shortcuts (only before first command)
 		if len(m.history) == 0 {
@@ -364,6 +373,7 @@ func (m TUIModel) executeCommand(raw string) (TUIModel, tea.Cmd) {
 	m.mode = modeRunning
 	m.runningDeity = deity
 	m.runningCmd = raw
+	m.runningArgs = args
 	m.outputLines = nil
 	m.input.Blur()
 	m.input.Reset()
@@ -457,19 +467,30 @@ func inferSubcommand(deity, lower string) []string {
 			{[]string{"duplicate", "dedup", "mirror"}, []string{"anubis", "mirror"}},
 			{[]string{"clean", "judge", "purge"}, []string{"anubis", "judge", "--dry-run"}},
 			{[]string{"scan", "waste", "hygiene"}, []string{"anubis", "weigh"}},
+			{[]string{"apps", "installed", "applications"}, []string{"anubis", "apps"}},
 		},
 		"thoth": {
 			{[]string{"sync", "memory"}, []string{"thoth", "sync"}},
 			{[]string{"compact", "persist"}, []string{"thoth", "compact"}},
 			{[]string{"init"}, []string{"thoth", "init"}},
+			{[]string{"brain", "neural", "weights"}, []string{"thoth", "brain"}},
+			{[]string{"status"}, []string{"thoth", "status"}},
 		},
 		"maat": {
 			{[]string{"audit", "quality", "qa"}, []string{"maat", "audit"}},
 			{[]string{"coverage", "test", "lint"}, []string{"maat", "pulse"}},
+			{[]string{"scales", "policy", "enforce"}, []string{"maat", "scales"}},
+			{[]string{"heal", "remediate"}, []string{"maat", "heal"}},
 		},
 		"seshat": {
 			{[]string{"ingest", "graft", "knowledge"}, []string{"seshat", "ingest"}},
 			{[]string{"notebooklm", "notebook"}, []string{"seshat", "notebooklm"}},
+			{[]string{"list", "browse"}, []string{"seshat", "list"}},
+			{[]string{"export"}, []string{"seshat", "export"}},
+			{[]string{"adapters", "sources"}, []string{"seshat", "adapters"}},
+			{[]string{"mcp", "context server"}, []string{"seshat", "mcp"}},
+			{[]string{"auth", "authenticate"}, []string{"seshat", "auth", "google"}},
+			{[]string{"chrome", "profile"}, []string{"seshat", "profiles", "chrome"}},
 		},
 		"seba": {
 			{[]string{"gpu", "vram", "cuda", "metal", "ane", "npu"}, []string{"seba", "hardware"}},
@@ -477,11 +498,21 @@ func inferSubcommand(deity, lower string) []string {
 			{[]string{"diagram", "graph"}, []string{"seba", "diagram"}},
 			{[]string{"architecture", "topology", "map"}, []string{"seba", "scan"}},
 			{[]string{"fleet", "subnet", "container", "docker", "kubernetes"}, []string{"seba", "fleet"}},
+			{[]string{"book", "registry", "projects"}, []string{"seba", "book"}},
+			{[]string{"compute", "tokenize", "ane"}, []string{"seba", "compute"}},
 		},
 		"ra": {
 			{[]string{"status"}, []string{"ra", "status"}},
 			{[]string{"deploy", "sprint"}, []string{"ra", "deploy"}},
 			{[]string{"health"}, []string{"ra", "health"}},
+			{[]string{"test"}, []string{"ra", "test"}},
+			{[]string{"lint"}, []string{"ra", "lint"}},
+			{[]string{"nightly", "ci"}, []string{"ra", "nightly"}},
+			{[]string{"broadcast"}, []string{"ra", "broadcast"}},
+			{[]string{"watch", "logs"}, []string{"ra", "watch"}},
+			{[]string{"kill", "stop"}, []string{"ra", "kill"}},
+			{[]string{"collect"}, []string{"ra", "collect"}},
+			{[]string{"pipeline"}, []string{"ra", "pipeline"}},
 		},
 		"net": {
 			{[]string{"align", "drift"}, []string{"net", "align"}},
@@ -490,6 +521,13 @@ func inferSubcommand(deity, lower string) []string {
 		"osiris": {
 			{[]string{"assess", "checkpoint", "uncommitted", "risk", "drift"}, []string{"osiris", "assess"}},
 			{[]string{"status", "summary"}, []string{"osiris", "status"}},
+		},
+		"horus": {
+			{[]string{"scan", "index", "graph"}, []string{"horus", "scan"}},
+			{[]string{"outline", "declarations"}, []string{"horus", "outline"}},
+			{[]string{"symbols", "search"}, []string{"horus", "symbols"}},
+			{[]string{"context"}, []string{"horus", "context"}},
+			{[]string{"stats", "statistics"}, []string{"horus", "stats"}},
 		},
 	}
 
@@ -524,7 +562,7 @@ func (m TUIModel) handleBatchOutput(msg cmdBatchMsg) (TUIModel, tea.Cmd) {
 
 	m.mode = modeIdle
 	m.input.Focus()
-	m.input.Placeholder = "What next?"
+	m.input.Placeholder = m.postRunPlaceholder()
 
 	if m.runningDeity != "" {
 		m.activeDeity[m.runningDeity] = true
@@ -541,11 +579,14 @@ func (m TUIModel) handleBatchOutput(msg cmdBatchMsg) (TUIModel, tea.Cmd) {
 	} else {
 		m.outputLines = append(m.outputLines, "",
 			lipgloss.NewStyle().Foreground(Green).Render("  ✓ Done"))
+		// Append deity-specific next steps so the user isn't left at a dead end.
+		m.outputLines = append(m.outputLines, m.postRunSuggestions()...)
 	}
 	m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
 	m.viewport.GotoBottom()
 	m.runningDeity = ""
 	m.runningCmd = ""
+	m.runningArgs = nil
 	return m, nil
 }
 
@@ -912,16 +953,31 @@ func (m TUIModel) showHelp() (TUIModel, tea.Cmd) {
 		"",
 		body.Render("  Deities:"),
 		dim.Render("    ra status             Orchestrator status"),
-		dim.Render("    net status            Scope weaver alignment check"),
+		dim.Render("    ra deploy             Deploy task to repos"),
+		dim.Render("    ra test / ra lint     Run tests or linters fleet-wide"),
+		dim.Render("    net align             Cross-module consistency check"),
 		dim.Render("    thoth sync            Sync project memory"),
+		dim.Render("    thoth compact         Persist state for continuations"),
 		dim.Render("    maat audit            Governance and quality scan"),
+		dim.Render("    maat heal             Auto-remediate quality issues"),
 		dim.Render("    isis network          Network security audit"),
 		dim.Render("    isis heal             Auto-remediate failures"),
 		dim.Render("    seshat ingest         Ingest knowledge from sources"),
+		dim.Render("    seshat list           Browse knowledge items"),
 		dim.Render("    anubis weigh          Scan for waste"),
-		dim.Render("    hapi scan             Hardware and accelerator profile"),
+		dim.Render("    anubis apps           List apps and ghost residuals"),
+		dim.Render("    seba hardware         Hardware and accelerator profile"),
 		dim.Render("    seba diagram          Architecture diagram generation"),
-		dim.Render("    osiris                State snapshot keeper"),
+		dim.Render("    seba fleet            Network and container discovery"),
+		dim.Render("    horus scan            Build code symbol graph"),
+		dim.Render("    horus outline <file>  File declaration outline"),
+		dim.Render("    osiris assess         Uncommitted work risk assessment"),
+		"",
+		body.Render("  After Scan:"),
+		dim.Render("    findings              Full breakdown with advisories"),
+		dim.Render("    findings <category>   Drill into dev, ai, cloud, etc."),
+		dim.Render("    clean                 Remove safe items (Trash)"),
+		dim.Render("    judge                 Policy-based review before cleanup"),
 		"",
 		body.Render("  Natural Language:"),
 		dim.Render("    Type what you want in plain English and Pantheon"),
@@ -942,113 +998,693 @@ func (m TUIModel) showHelp() (TUIModel, tea.Cmd) {
 	return m, nil
 }
 
+// ── Post-Run Suggestions ─────────────────────────────────────────
+
+// postRunPlaceholder returns a contextual input placeholder based on what
+// command just finished, guiding the user to the most likely next action.
+func (m TUIModel) postRunPlaceholder() string {
+	sub := ""
+	if len(m.runningArgs) >= 2 {
+		sub = m.runningArgs[1]
+	}
+
+	switch m.runningDeity {
+	case "anubis":
+		switch sub {
+		case "weigh":
+			return "findings · clean · judge  (or type a category like dev, ai, cloud)"
+		case "judge":
+			return "findings · scan  (verify cleanup with a fresh scan)"
+		case "ka":
+			return "findings · clean  (remove ghost residuals)"
+		case "mirror":
+			return "scan · clean  (full scan or reclaim space)"
+		case "apps":
+			return "ghosts · scan · clean  (check residuals or scan waste)"
+		}
+	case "isis":
+		switch sub {
+		case "network":
+			return "heal · doctor  (remediate issues or full health check)"
+		default:
+			return "isis network · doctor · heal  (audit, diagnose, or fix)"
+		}
+	case "maat":
+		switch sub {
+		case "audit":
+			return "maat pulse · heal  (quick summary or auto-remediate)"
+		case "pulse":
+			return "maat audit · heal  (full audit or auto-remediate)"
+		case "heal":
+			return "maat audit · maat pulse  (verify fixes)"
+		default:
+			return "maat audit · maat pulse · heal"
+		}
+	case "ra":
+		switch sub {
+		case "deploy":
+			return "ra status · ra health  (check progress or health)"
+		case "status":
+			return "ra deploy · ra health · ra test  (deploy, check health, or run tests)"
+		case "health":
+			return "ra deploy · ra test · ra lint  (deploy or run checks)"
+		case "test", "lint":
+			return "ra status · heal  (check results or auto-remediate)"
+		default:
+			return "ra status · ra deploy · ra health"
+		}
+	case "net":
+		switch sub {
+		case "align":
+			return "net status · maat audit  (check alignment or run QA)"
+		default:
+			return "net align · maat audit  (check drift or run QA)"
+		}
+	case "thoth":
+		switch sub {
+		case "sync":
+			return "thoth compact · maat audit  (persist state or check quality)"
+		case "compact":
+			return "thoth sync · osiris assess  (sync memory or check risk)"
+		case "init":
+			return "thoth sync  (populate memory from source files)"
+		default:
+			return "thoth sync · thoth compact"
+		}
+	case "seshat":
+		switch sub {
+		case "ingest":
+			return "seshat list · seshat export  (review or export knowledge)"
+		case "notebooklm":
+			return "seshat ingest · seshat list  (ingest more or browse)"
+		default:
+			return "seshat ingest · seshat list · seshat export"
+		}
+	case "seba":
+		switch sub {
+		case "hardware":
+			return "seba diagram · seba scan · scan  (visualize, map, or scan waste)"
+		case "diagram":
+			return "seba scan · seba hardware  (system map or hardware profile)"
+		case "fleet":
+			return "seba diagram · isis network  (visualize fleet or audit network)"
+		case "scan":
+			return "seba diagram · seba hardware  (visualize or profile hardware)"
+		default:
+			return "seba scan · seba diagram · seba hardware"
+		}
+	case "osiris":
+		switch sub {
+		case "assess":
+			return "osiris status · thoth sync  (quick status or sync memory)"
+		default:
+			return "osiris assess · thoth sync  (full assessment or sync state)"
+		}
+	case "horus":
+		switch sub {
+		case "scan":
+			return "horus outline · horus symbols · horus stats  (explore the code graph)"
+		default:
+			return "horus scan · horus outline · horus stats"
+		}
+	}
+
+	return "What next?"
+}
+
+// postRunSuggestions returns deity-aware next-step hints based on what
+// command just finished. This prevents the "Done → dead terminal" problem
+// by surfacing actionable follow-ups in context.
+func (m TUIModel) postRunSuggestions() []string {
+	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
+	gold := lipgloss.NewStyle().Foreground(Gold)
+	hint := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
+
+	// Determine the subcommand from dispatched args.
+	sub := ""
+	if len(m.runningArgs) >= 2 {
+		sub = m.runningArgs[1]
+	} else if len(m.runningArgs) == 1 {
+		sub = m.runningArgs[0]
+	}
+
+	var lines []string
+
+	switch m.runningDeity {
+	case "anubis":
+		switch sub {
+		case "weigh":
+			lines = append(lines,
+				"",
+				dim.Render("  ── What's Next ──────────────────────────"),
+				"",
+				"  "+gold.Render("findings")+"      "+hint.Render("View full breakdown with advisories"),
+				"  "+gold.Render("findings dev")+"  "+hint.Render("Drill into a specific category"),
+				"  "+gold.Render("clean")+"         "+hint.Render("Remove safe items (moves to Trash)"),
+				"  "+gold.Render("judge")+"         "+hint.Render("Policy-based review before cleanup"),
+				"",
+			)
+		case "judge":
+			lines = append(lines,
+				"",
+				dim.Render("  ── What's Next ──────────────────────────"),
+				"",
+				"  "+gold.Render("findings")+"      "+hint.Render("Review remaining findings"),
+				"  "+gold.Render("scan")+"          "+hint.Render("Run a fresh scan to verify cleanup"),
+				"",
+			)
+		case "ka":
+			lines = append(lines,
+				"",
+				dim.Render("  ── What's Next ──────────────────────────"),
+				"",
+				"  "+gold.Render("findings")+"      "+hint.Render("View all findings including ghosts"),
+				"  "+gold.Render("clean")+"         "+hint.Render("Remove ghost residuals"),
+				"",
+			)
+		case "mirror":
+			lines = append(lines,
+				"",
+				dim.Render("  ── What's Next ──────────────────────────"),
+				"",
+				"  "+gold.Render("scan")+"          "+hint.Render("Run full waste scan"),
+				"",
+			)
+		}
+	case "isis":
+		lines = append(lines,
+			"",
+			dim.Render("  ── What's Next ──────────────────────────"),
+			"",
+			"  "+gold.Render("heal")+"          "+hint.Render("Auto-remediate failed checks"),
+			"  "+gold.Render("doctor")+"        "+hint.Render("Full system health diagnostic"),
+			"",
+		)
+	case "maat":
+		lines = append(lines,
+			"",
+			dim.Render("  ── What's Next ──────────────────────────"),
+			"",
+			"  "+gold.Render("maat pulse")+"    "+hint.Render("Quick coverage summary"),
+			"  "+gold.Render("heal")+"          "+hint.Render("Auto-remediate quality issues"),
+			"",
+		)
+	case "seba":
+		switch sub {
+		case "hardware":
+			lines = append(lines,
+				"",
+				dim.Render("  ── What's Next ──────────────────────────"),
+				"",
+				"  "+gold.Render("seba diagram")+"  "+hint.Render("Generate architecture diagram from scan"),
+				"  "+gold.Render("seba scan")+"     "+hint.Render("Full infrastructure topology map"),
+				"  "+gold.Render("scan")+"          "+hint.Render("Scan for infrastructure waste"),
+				"",
+			)
+		case "diagram":
+			lines = append(lines,
+				"",
+				dim.Render("  ── What's Next ──────────────────────────"),
+				"",
+				"  "+gold.Render("seba scan")+"     "+hint.Render("Full infrastructure topology map"),
+				"  "+gold.Render("seba hardware")+" "+hint.Render("Hardware and accelerator profile"),
+				"",
+			)
+		case "fleet":
+			lines = append(lines,
+				"",
+				dim.Render("  ── What's Next ──────────────────────────"),
+				"",
+				"  "+gold.Render("seba diagram")+"  "+hint.Render("Visualize fleet architecture"),
+				"  "+gold.Render("isis network")+"  "+hint.Render("Network security audit"),
+				"",
+			)
+		default:
+			lines = append(lines,
+				"",
+				dim.Render("  ── What's Next ──────────────────────────"),
+				"",
+				"  "+gold.Render("seba diagram")+"  "+hint.Render("Generate architecture diagram"),
+				"  "+gold.Render("seba hardware")+" "+hint.Render("Hardware and accelerator profile"),
+				"  "+gold.Render("scan")+"          "+hint.Render("Scan for infrastructure waste"),
+				"",
+			)
+		}
+	case "ra":
+		switch sub {
+		case "deploy":
+			lines = append(lines,
+				"",
+				dim.Render("  ── What's Next ──────────────────────────"),
+				"",
+				"  "+gold.Render("ra status")+"     "+hint.Render("Check deployment progress"),
+				"  "+gold.Render("ra health")+"     "+hint.Render("Health check across all repos"),
+				"  "+gold.Render("ra collect")+"    "+hint.Render("Collect logs from agents"),
+				"",
+			)
+		case "status":
+			lines = append(lines,
+				"",
+				dim.Render("  ── What's Next ──────────────────────────"),
+				"",
+				"  "+gold.Render("ra deploy")+"     "+hint.Render("Deploy a task to repos"),
+				"  "+gold.Render("ra health")+"     "+hint.Render("Health check across all repos"),
+				"  "+gold.Render("ra test")+"       "+hint.Render("Run tests across all repos"),
+				"",
+			)
+		case "health":
+			lines = append(lines,
+				"",
+				dim.Render("  ── What's Next ──────────────────────────"),
+				"",
+				"  "+gold.Render("ra deploy")+"     "+hint.Render("Deploy a task to repos"),
+				"  "+gold.Render("ra test")+"       "+hint.Render("Run tests across all repos"),
+				"  "+gold.Render("ra lint")+"       "+hint.Render("Run linters across all repos"),
+				"  "+gold.Render("heal")+"          "+hint.Render("Auto-remediate failures"),
+				"",
+			)
+		case "test", "lint":
+			lines = append(lines,
+				"",
+				dim.Render("  ── What's Next ──────────────────────────"),
+				"",
+				"  "+gold.Render("ra status")+"     "+hint.Render("Check overall repo status"),
+				"  "+gold.Render("heal")+"          "+hint.Render("Auto-remediate failures"),
+				"  "+gold.Render("maat audit")+"    "+hint.Render("Full quality assessment"),
+				"",
+			)
+		default:
+			lines = append(lines,
+				"",
+				dim.Render("  ── What's Next ──────────────────────────"),
+				"",
+				"  "+gold.Render("ra status")+"     "+hint.Render("Check orchestrator status"),
+				"  "+gold.Render("ra deploy")+"     "+hint.Render("Deploy a task to repos"),
+				"  "+gold.Render("ra health")+"     "+hint.Render("Health check across all repos"),
+				"",
+			)
+		}
+	case "net":
+		switch sub {
+		case "align":
+			lines = append(lines,
+				"",
+				dim.Render("  ── What's Next ──────────────────────────"),
+				"",
+				"  "+gold.Render("net status")+"    "+hint.Render("Check plan alignment score"),
+				"  "+gold.Render("maat audit")+"    "+hint.Render("Run governance quality check"),
+				"",
+			)
+		default:
+			lines = append(lines,
+				"",
+				dim.Render("  ── What's Next ──────────────────────────"),
+				"",
+				"  "+gold.Render("net align")+"     "+hint.Render("Validate cross-module consistency"),
+				"  "+gold.Render("maat audit")+"    "+hint.Render("Run governance quality check"),
+				"",
+			)
+		}
+	case "thoth":
+		switch sub {
+		case "sync":
+			lines = append(lines,
+				"",
+				dim.Render("  ── What's Next ──────────────────────────"),
+				"",
+				"  "+gold.Render("thoth compact")+" "+hint.Render("Persist state before context compression"),
+				"  "+gold.Render("osiris assess")+" "+hint.Render("Check uncommitted work risk"),
+				"  "+gold.Render("maat audit")+"    "+hint.Render("Run quality assessment"),
+				"",
+			)
+		case "compact":
+			lines = append(lines,
+				"",
+				dim.Render("  ── What's Next ──────────────────────────"),
+				"",
+				"  "+gold.Render("thoth sync")+"    "+hint.Render("Sync memory from source files"),
+				"  "+gold.Render("osiris assess")+" "+hint.Render("Check uncommitted work risk"),
+				"",
+			)
+		case "init":
+			lines = append(lines,
+				"",
+				dim.Render("  ── What's Next ──────────────────────────"),
+				"",
+				"  "+gold.Render("thoth sync")+"    "+hint.Render("Populate memory from source + git history"),
+				"  "+gold.Render("scan")+"          "+hint.Render("Scan for infrastructure waste"),
+				"",
+			)
+		default:
+			lines = append(lines,
+				"",
+				dim.Render("  ── What's Next ──────────────────────────"),
+				"",
+				"  "+gold.Render("thoth sync")+"    "+hint.Render("Sync project memory"),
+				"  "+gold.Render("thoth compact")+" "+hint.Render("Persist state for continuations"),
+				"",
+			)
+		}
+	case "seshat":
+		switch sub {
+		case "ingest":
+			lines = append(lines,
+				"",
+				dim.Render("  ── What's Next ──────────────────────────"),
+				"",
+				"  "+gold.Render("seshat list")+"   "+hint.Render("Browse ingested knowledge items"),
+				"  "+gold.Render("seshat export")+" "+hint.Render("Export knowledge to a target"),
+				"  "+gold.Render("seshat notebooklm")+" "+hint.Render("Export to Google NotebookLM"),
+				"",
+			)
+		case "notebooklm":
+			lines = append(lines,
+				"",
+				dim.Render("  ── What's Next ──────────────────────────"),
+				"",
+				"  "+gold.Render("seshat ingest")+" "+hint.Render("Ingest from more sources"),
+				"  "+gold.Render("seshat list")+"   "+hint.Render("Browse knowledge items"),
+				"",
+			)
+		default:
+			lines = append(lines,
+				"",
+				dim.Render("  ── What's Next ──────────────────────────"),
+				"",
+				"  "+gold.Render("seshat ingest")+" "+hint.Render("Ingest knowledge from sources"),
+				"  "+gold.Render("seshat list")+"   "+hint.Render("Browse knowledge items"),
+				"  "+gold.Render("seshat export")+" "+hint.Render("Export knowledge to a target"),
+				"",
+			)
+		}
+	case "osiris":
+		switch sub {
+		case "assess":
+			lines = append(lines,
+				"",
+				dim.Render("  ── What's Next ──────────────────────────"),
+				"",
+				"  "+gold.Render("osiris status")+" "+hint.Render("Quick one-line risk summary"),
+				"  "+gold.Render("thoth sync")+"    "+hint.Render("Sync memory before committing"),
+				"  "+gold.Render("scan")+"          "+hint.Render("Scan for infrastructure waste"),
+				"",
+			)
+		default:
+			lines = append(lines,
+				"",
+				dim.Render("  ── What's Next ──────────────────────────"),
+				"",
+				"  "+gold.Render("osiris assess")+" "+hint.Render("Full checkpoint assessment"),
+				"  "+gold.Render("thoth sync")+"    "+hint.Render("Sync project memory"),
+				"",
+			)
+		}
+	case "horus":
+		switch sub {
+		case "scan":
+			lines = append(lines,
+				"",
+				dim.Render("  ── What's Next ──────────────────────────"),
+				"",
+				"  "+gold.Render("horus outline <file>")+" "+hint.Render("Print file declaration outline"),
+				"  "+gold.Render("horus symbols")+"       "+hint.Render("Search symbols in the graph"),
+				"  "+gold.Render("horus stats")+"         "+hint.Render("Graph statistics"),
+				"",
+			)
+		default:
+			lines = append(lines,
+				"",
+				dim.Render("  ── What's Next ──────────────────────────"),
+				"",
+				"  "+gold.Render("horus scan")+"    "+hint.Render("Build code symbol graph"),
+				"  "+gold.Render("horus stats")+"   "+hint.Render("Graph statistics"),
+				"  "+gold.Render("seba diagram")+"  "+hint.Render("Architecture diagram"),
+				"",
+			)
+		}
+	}
+
+	return lines
+}
+
 // ── Findings View ────────────────────────────────────────────────
 
 // showFindings loads persisted scan results from disk and renders them
-// in the TUI with category breakdown and advisories.
-func (m TUIModel) showFindings() (TUIModel, tea.Cmd) {
+// in the TUI with category breakdown, advisories, and drill-down.
+// When filter is non-empty, only findings in that category are shown.
+func (m TUIModel) showFindings(filter string) (TUIModel, tea.Cmd) {
 	gold := lipgloss.NewStyle().Foreground(Gold).Bold(true)
 	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
 	warn := lipgloss.NewStyle().Foreground(lipgloss.Color("#FFAA00"))
 	body := lipgloss.NewStyle().Foreground(White)
+	fixable := lipgloss.NewStyle().Foreground(Green).Render("✓ fixable")
+	breakingStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6600"))
 
 	scan, err := jackal.LoadLatest()
 	if err != nil {
 		m.outputLines = []string{
 			gold.Render("  𓁢 Scan Findings"),
 			"",
-			dim.Render("  No scan results found. The menubar runs scans automatically,"),
-			dim.Render("  or run `sirsi weigh` from the terminal for a fresh scan."),
+			dim.Render("  No scan results found. Run `scan` or `sirsi weigh` first."),
 		}
 		m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
 		m.recalcViewportHeight()
 		return m, nil
 	}
 
+	filter = strings.TrimSpace(strings.ToLower(filter))
+	isFiltered := filter != ""
+
 	var lines []string
-	lines = append(lines,
-		gold.Render("  𓁢 Scan Findings"),
-		dim.Render(fmt.Sprintf("  Scanned %s — %d rules, %s total waste",
-			scan.Timestamp.Format("Jan 2 15:04"),
-			scan.RulesRan,
-			jackal.FormatSize(scan.TotalSize))),
-		"",
-	)
 
-	// Category breakdown
-	if len(scan.ByCategory) > 0 {
-		lines = append(lines, body.Render("  Category Breakdown:"))
-		for cat, summary := range scan.ByCategory {
-			icon := "📁"
-			switch string(cat) {
-			case "cache":
-				icon = "🗑"
-			case "logs":
-				icon = "📋"
-			case "build":
-				icon = "🔨"
-			case "containers":
-				icon = "🐳"
-			case "dev-tools":
-				icon = "🔧"
-			case "packages":
-				icon = "📦"
+	if isFiltered {
+		// ── Category drill-down view ──
+		catKey := jackal.Category(filter)
+		summary, catExists := scan.ByCategory[catKey]
+
+		if !catExists {
+			// Try partial match
+			for cat, s := range scan.ByCategory {
+				if strings.Contains(strings.ToLower(string(cat)), filter) {
+					catKey = cat
+					summary = s
+					catExists = true
+					break
+				}
 			}
+		}
+
+		if !catExists {
 			lines = append(lines,
-				fmt.Sprintf("    %s %-14s %s  (%d items)",
-					icon, cat,
-					jackal.FormatSize(summary.TotalSize),
-					summary.Findings))
-		}
-		lines = append(lines, "")
-	}
-
-	// Top findings with advisories
-	shown := 0
-	for _, f := range scan.Findings {
-		if shown >= 15 {
-			remaining := len(scan.Findings) - shown
-			if remaining > 0 {
-				lines = append(lines, dim.Render(fmt.Sprintf("  ... and %d more findings", remaining)))
+				gold.Render(fmt.Sprintf("  𓁢 Findings — \"%s\"", filter)),
+				"",
+				dim.Render(fmt.Sprintf("  No category matching \"%s\". Available:", filter)),
+			)
+			for cat := range scan.ByCategory {
+				lines = append(lines, "    "+gold.Render(string(cat)))
 			}
-			break
-		}
-		severity := "  "
-		switch f.Severity {
-		case jackal.SeveritySafe:
-			severity = lipgloss.NewStyle().Foreground(Green).Render("safe")
-		case jackal.SeverityCaution:
-			severity = warn.Render("caution")
-		case jackal.SeverityWarning:
-			severity = lipgloss.NewStyle().Foreground(Red).Render("warning")
-		}
-		lines = append(lines,
-			fmt.Sprintf("  %s  %-8s  %s",
-				severity,
-				f.SizeHuman,
-				body.Render(f.Description)))
-		if f.Advisory != "" {
-			lines = append(lines, dim.Render("         → "+f.Advisory))
-		}
-		shown++
-	}
+			lines = append(lines, "",
+				dim.Render("  Type `findings` to see all, or `findings <category>` to drill in."))
+		} else {
+			icon := categoryIcon(string(catKey))
+			lines = append(lines,
+				gold.Render(fmt.Sprintf("  %s %s — %s  (%d findings)",
+					icon, catKey,
+					jackal.FormatSize(summary.TotalSize),
+					summary.Findings)),
+				"",
+			)
 
-	lines = append(lines, "",
-		dim.Render("  Type `clean` to remove safe items, or `sirsi judge --dry-run` for policy review."))
+			// Show ALL findings in this category with full detail
+			for _, f := range scan.Findings {
+				if f.Category != catKey {
+					continue
+				}
+				lines = append(lines, m.renderFindingDetail(f, body, dim, warn, fixable, breakingStyle)...)
+			}
+
+			lines = append(lines, "",
+				dim.Render("  ── Actions ──────────────────────────────"),
+				"  "+gold.Render("clean")+"         "+dim.Render("Remove safe items in this category"),
+				"  "+gold.Render("findings")+"      "+dim.Render("Back to full overview"),
+				"",
+			)
+		}
+	} else {
+		// ── Full overview ──
+		lines = append(lines,
+			gold.Render("  𓁢 Scan Findings"),
+			dim.Render(fmt.Sprintf("  Scanned %s — %d rules, %s total waste",
+				scan.Timestamp.Format("Jan 2 15:04"),
+				scan.RulesRan,
+				jackal.FormatSize(scan.TotalSize))),
+			"",
+		)
+
+		// Category breakdown — now interactive (type category name to drill in)
+		if len(scan.ByCategory) > 0 {
+			lines = append(lines, body.Render("  Category Breakdown:")+" "+dim.Render("(type a name to drill in)"))
+			for cat, s := range scan.ByCategory {
+				icon := categoryIcon(string(cat))
+				lines = append(lines,
+					fmt.Sprintf("    %s "+gold.Render("%-14s")+" %s  (%d items)",
+						icon, cat,
+						jackal.FormatSize(s.TotalSize),
+						s.Findings))
+			}
+			lines = append(lines, "")
+		}
+
+		// Top findings with richer detail
+		limit := 20
+		if len(scan.Findings) < limit {
+			limit = len(scan.Findings)
+		}
+		if limit > 0 {
+			lines = append(lines, body.Render(fmt.Sprintf("  Top %d of %d findings:", limit, len(scan.Findings))))
+			lines = append(lines, "")
+			for _, f := range scan.Findings[:limit] {
+				lines = append(lines, m.renderFindingDetail(f, body, dim, warn, fixable, breakingStyle)...)
+			}
+			if len(scan.Findings) > limit {
+				remaining := len(scan.Findings) - limit
+				lines = append(lines, "",
+					dim.Render(fmt.Sprintf("  ... and %d more. Type a category name to see all findings in it.", remaining)))
+			}
+		}
+
+		lines = append(lines, "",
+			dim.Render("  ── Actions ──────────────────────────────"),
+			"  "+gold.Render("clean")+"              "+dim.Render("Remove safe items (Trash)"),
+			"  "+gold.Render("judge")+"              "+dim.Render("Policy review before cleanup"),
+			"  "+gold.Render("findings <category>")+" "+dim.Render("Drill into one category"),
+			"",
+		)
+	}
 
 	m.outputLines = lines
 	m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
 	m.recalcViewportHeight()
 	m.viewport.GotoTop()
 
-	// Record in history
+	histCmd := "findings"
+	if isFiltered {
+		histCmd = "findings " + filter
+	}
 	m.history = append(m.history, historyEntry{
-		deity: "anubis", command: "scan",
+		deity: "anubis", command: histCmd,
 		output: strings.Join(lines, "\n"),
 	})
 	m.cmdHistory = deduplicateHistory(m.history)
 
 	return m, nil
+}
+
+// renderFindingDetail formats a single finding with severity, size,
+// description, advisory, remediation status, and path.
+func (m TUIModel) renderFindingDetail(
+	f jackal.PersistedFinding,
+	body, dim, warn lipgloss.Style,
+	fixableLabel string,
+	breakingStyle lipgloss.Style,
+) []string {
+	severity := "  "
+	switch f.Severity {
+	case jackal.SeveritySafe:
+		severity = lipgloss.NewStyle().Foreground(Green).Render("safe")
+	case jackal.SeverityCaution:
+		severity = warn.Render("caution")
+	case jackal.SeverityWarning:
+		severity = lipgloss.NewStyle().Foreground(Red).Render("warning")
+	}
+
+	// Main line: severity + size + description
+	lines := []string{
+		fmt.Sprintf("  %-9s %-8s %s",
+			severity, f.SizeHuman, body.Render(f.Description)),
+	}
+
+	// Path (shortened for readability)
+	if f.Path != "" {
+		lines = append(lines, dim.Render("           "+ShortenPath(f.Path)))
+	}
+
+	// Advisory
+	if f.Advisory != "" {
+		lines = append(lines, dim.Render("           → "+f.Advisory))
+	}
+
+	// Remediation + fixability
+	if f.CanFix && f.Remediation != "" {
+		remLine := "           " + fixableLabel + "  " + dim.Render(f.Remediation)
+		if f.Breaking {
+			remLine += "  " + breakingStyle.Render("⚠ may affect running services")
+		}
+		lines = append(lines, remLine)
+	}
+
+	lines = append(lines, "") // spacing between findings
+	return lines
+}
+
+// categoryIcon returns an emoji for a scan category.
+func categoryIcon(cat string) string {
+	switch cat {
+	case "cache":
+		return "🗑"
+	case "logs":
+		return "📋"
+	case "build":
+		return "🔨"
+	case "containers":
+		return "🐳"
+	case "dev-tools", "dev":
+		return "🔧"
+	case "packages":
+		return "📦"
+	case "ai":
+		return "🤖"
+	case "ides":
+		return "💻"
+	case "cloud":
+		return "☁️"
+	case "storage":
+		return "💾"
+	case "vms":
+		return "🖥"
+	case "general":
+		return "📁"
+	default:
+		return "📁"
+	}
+}
+
+// isScanCategory returns true if the input matches a known Anubis scan
+// category, enabling bare category names as shortcuts for drill-down.
+func (m TUIModel) isScanCategory(raw string) bool {
+	// Only treat bare words as categories if we have a recent scan in history.
+	hasAnubisHistory := false
+	for _, h := range m.history {
+		if h.deity == "anubis" {
+			hasAnubisHistory = true
+			break
+		}
+	}
+	if !hasAnubisHistory {
+		return false
+	}
+
+	scan, err := jackal.LoadLatest()
+	if err != nil {
+		return false
+	}
+	lower := strings.ToLower(strings.TrimSpace(raw))
+	for cat := range scan.ByCategory {
+		if strings.ToLower(string(cat)) == lower {
+			return true
+		}
+	}
+	return false
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
