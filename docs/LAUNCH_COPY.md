@@ -52,7 +52,7 @@ I built Anubis because existing Mac cleaners don't understand developer workstat
 
 Anubis has 81 scan rules across 7 domains, a ghost app hunter (Ka), a neural file classifier (Brain), and an MCP server so your AI coding assistant can use it as a context sanitizer.
 
-New in v0.18.0 — **Token Optimization Suite**: Three native packages that cut AI context waste by 8-49x:
+New in v0.19.0 — **Token Optimization Suite**: Three native packages that cut AI context waste by 8-49x:
 - **RTK** — Strips ANSI codes, deduplicates repeated output, truncates noise before it hits the context window
 - **Vault** — Sandboxes large output in SQLite FTS5 for BM25 search instead of flooding context
 - **Horus** — Serves structural code outlines (declarations, signatures) instead of full source files

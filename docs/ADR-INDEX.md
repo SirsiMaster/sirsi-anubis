@@ -2,7 +2,7 @@
 
 This index tracks **all** architectural decisions for the Sirsi Pantheon ecosystem.
 
-**Total ADRs: 15** | **Next available: ADR-016**
+**Total ADRs: 16** | **Next available: ADR-017**
 
 ---
 
@@ -19,12 +19,13 @@ This index tracks **all** architectural decisions for the Sirsi Pantheon ecosyst
 | [ADR-007](ADR-007-UNIFIED-FINDINGS-PORTAL.md) | Unified Findings Portal — Horus as canonical aggregator for deity findings | Accepted | 2026-03-24 |
 | [ADR-008](ADR-008-SHARED-FILESYSTEM-INDEX.md) | Shared Filesystem Index — Walk once, query everywhere via Horus manifest cache | Accepted | 2026-03-24 |
 | [ADR-009](ADR-009-INJECTABLE-SYSTEM-PROVIDERS.md) | Injectable System Providers — standard interface injection for 99% coverage | Accepted | 2026-03-24 |
-| [ADR-010](ADR-010-MENUBAR-APPLICATION.md) | Pantheon Menu Bar Application — native macOS status bar + Finder presence | Proposed | 2026-03-25 |
+| [ADR-010](ADR-010-MENUBAR-APPLICATION.md) | Pantheon Menu Bar Application — native macOS status bar + Finder presence | Accepted | 2026-03-25 |
 | [ADR-011](ADR-011-DEITY-ALIGNMENT.md) | Deity Alignment & Context Architecture — canonical scopes for all deities | Accepted | 2026-03-25 |
 | [ADR-012](ADR-012-VSCODE-EXTENSION.md) | Pantheon VS Code Extension — always-on Guardian, status bar ankh, Thoth context | Accepted | 2026-03-25 |
 | [ADR-013](ADR-013-TILED-CONTEXT-RENDERING.md) | Tiled Context Rendering — GPU-inspired relevance scoring, token budgets, deferred manifest | Accepted | 2026-04-05 |
 | [ADR-014](ADR-014-STELE-LEDGER.md) | Stele Ledger — append-only hash-chained event log for all deity communications | Accepted | 2026-04-03 |
 | [ADR-015](ADR-015-DEITY-HIERARCHY.md) | Deity Hierarchy — Horus as local workstation lord, Ra as fleet lord | Accepted | 2026-04-24 |
+| [ADR-016](ADR-016-TUI-PRIMARY-INTERFACE.md) | TUI as Primary Interface — shared suggest engine, streaming, view stack, persistent state | Accepted | 2026-05-06 |
 
 ---
 
@@ -39,6 +40,7 @@ This index tracks **all** architectural decisions for the Sirsi Pantheon ecosyst
 - ADR-012: Pantheon VS Code Extension
 - ADR-014: Stele Ledger
 - ADR-015: Deity Hierarchy
+- ADR-016: TUI as Primary Interface
 
 ### Ghost Detection & Indexing
 - ADR-002: Ka Ghost Detection

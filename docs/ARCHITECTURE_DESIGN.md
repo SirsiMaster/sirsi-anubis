@@ -181,4 +181,63 @@ gantt
 
 ---
 
-*𓁯 This document follows Neith's Architecture Triad (Rule A22). Updated to v2.2.0 for the v1.0.0-rc1 Stability Hardening (Session 37).*
+## 7. TUI Architecture (v0.19.0)
+
+The TUI (`internal/output/tui.go`) is the primary interactive interface, launched via `sirsi` with no arguments.
+
+### 7.1 Core Components
+- **BubbleTea Model** — `TUIModel` struct with viewport, input bar, deity roster, view stack
+- **Streaming Output** — Commands stream line-by-line via `chan string` + `bufio.Scanner` (replaces batch buffering)
+- **Suggest Engine** — `internal/suggest/` provides context-aware action recommendations consumed by TUI, CLI, and menubar
+- **View Stack** — Push/pop navigation: `esc` pops to previous view, enabling safe drill-down (findings → category → back)
+- **Persistent State** — Deity run outcomes saved to `~/.config/pantheon/tui-state.json`
+
+### 7.2 Data Flow
+
+```
+User Input → dispatch() → inferSubcommand() → exec.Command (piped)
+                                                    ↓
+                                              streamCh (chan string)
+                                                    ↓
+                                         handleStreamLine() → viewport
+                                                    ↓
+                                         suggest.After(ctx) → "What's Next" panel
+                                                    ↓
+                                         savePersistedState() → tui-state.json
+```
+
+### 7.3 Shared Suggestion Engine (`internal/suggest/`)
+
+| Function | Purpose |
+| :--- | :--- |
+| `After(ctx Context) []Action` | Success suggestions for all 10 deities |
+| `OnError(ctx Context) []Action` | Error remediation with pattern matching |
+| `Placeholder(ctx Context) string` | Contextual input bar hints |
+| `Commands(ctx Context) []string` | Tab-cycle command list |
+
+**Consumers:** TUI (BubbleTea), CLI (terminal footer), Menubar (toast + SSE events)
+
+---
+
+## 8. Package Registry
+
+| Package | Path | Role |
+| :--- | :--- | :--- |
+| jackal | `internal/jackal/` | Scan rules and findings |
+| maat | `internal/maat/` | Governance and quality gates |
+| brain | `internal/brain/` | Thoth memory and MCP server |
+| guard | `internal/guard/` | Isis health and remediation |
+| seba | `internal/seba/` | Hardware and topology |
+| horus | `internal/horus/` | Code graph and symbols |
+| rtk | `internal/rtk/` | Output filtering |
+| vault | `internal/vault/` | Context sandbox (SQLite FTS5) |
+| osiris | `internal/osiris/` | Snapshot risk detection |
+| seshat | `internal/seshat/` | Knowledge bridge |
+| ra | `internal/ra/` | Agent orchestration |
+| neith | `internal/neith/` | Scope weaving |
+| **suggest** | **`internal/suggest/`** | **Context-aware action recommendations (TUI, CLI, menubar)** |
+| output | `internal/output/` | TUI model, rendering, view stack |
+
+---
+
+*𓁯 This document follows Neith's Architecture Triad (Rule A22). Updated to v2.3.0 for the v0.19.0 TUI UX Overhaul.*

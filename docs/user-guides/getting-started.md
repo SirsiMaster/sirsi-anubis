@@ -15,6 +15,20 @@ brew install sirsi-pantheon
 
 ## Quick Start
 
+The fastest way to get started is the interactive TUI:
+
+```bash
+sirsi                    # Opens the persistent TUI session
+```
+
+Once inside, type any command in plain English. Try `scan` to run a waste scan. After it completes, you'll see gold-highlighted "What's Next" suggestions — press Tab to cycle through them, or type your own command.
+
+TUI state persists between sessions. Deity run outcomes (✓/✗/◆) are saved to `~/.config/pantheon/tui-state.json`.
+
+### Standalone CLI commands
+
+Every command also works directly from your shell:
+
 ```bash
 # Scan your machine for infrastructure waste
 sirsi scan
@@ -30,9 +44,6 @@ sirsi seba hardware
 
 # Check for uncommitted work at risk
 sirsi osiris assess
-
-# Launch the interactive TUI
-sirsi
 ```
 
 ## The 12 Modules

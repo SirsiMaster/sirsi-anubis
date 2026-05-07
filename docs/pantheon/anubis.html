@@ -201,6 +201,31 @@
 
   <section>
     <div class="container">
+      <h2>TUI Features</h2>
+      <p style="color:var(--text-dim);margin-bottom:1.5rem;">Launch the interactive TUI with <code style="font-family:var(--font-mono);color:var(--emerald-light);">sirsi</code> (no arguments). Anubis findings are fully integrated into the TUI experience.</p>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="f-header"><span class="f-icon">📡</span><span class="f-name">Streaming Output</span></div>
+          <p class="f-desc">Scan results stream line-by-line into the viewport as they arrive — no waiting for the full scan to complete before seeing results.</p>
+        </div><div class="feature-card">
+          <div class="f-header"><span class="f-icon">🔎</span><span class="f-name">Findings Drill-Down</span></div>
+          <p class="f-desc">Navigate findings by category with push/pop view stack. Press enter to drill into a domain, esc to return. Full keyboard navigation.</p>
+        </div><div class="feature-card">
+          <div class="f-header"><span class="f-icon">💡</span><span class="f-name">What's Next Panel</span></div>
+          <p class="f-desc">After every command, context-aware suggestions appear: "Run judge --dry-run to preview cleanup" or "Try sirsi ghosts for deeper analysis."</p>
+        </div><div class="feature-card">
+          <div class="f-header"><span class="f-icon">🟢</span><span class="f-name">Deity State Indicators</span></div>
+          <p class="f-desc">The sidebar shows each deity's last run status — green for success, amber for warnings, red for errors. State persists across sessions.</p>
+        </div><div class="feature-card">
+          <div class="f-header"><span class="f-icon">⏱️</span><span class="f-name">Elapsed Timer</span></div>
+          <p class="f-desc">A live elapsed timer shows how long the current command has been running. Helps identify unexpectedly slow scans.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
       <h2>Download</h2>
       <div class="download-section">
         <a href="https://github.com/SirsiMaster/sirsi-pantheon/releases" class="dl-card">

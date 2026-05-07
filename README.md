@@ -4,7 +4,7 @@
 
 [![Go 1.22+](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go&logoColor=white)](https://go.dev)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-C8A951?style=flat)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-0.18.0-1A1A5E?style=flat)](VERSION)
+[![Version](https://img.shields.io/badge/Version-0.19.0-1A1A5E?style=flat)](VERSION)
 [![Tests](https://img.shields.io/badge/tests-2%2C200%2B%20passing-brightgreen?style=flat)](.github/workflows/ci.yml)
 [![Product Page](https://img.shields.io/badge/sirsi.ai-pantheon-059669?style=flat)](https://sirsi.ai/pantheon)
 
@@ -29,6 +29,14 @@ Or download from [GitHub Releases](https://github.com/SirsiMaster/sirsi-pantheon
 ## Quick Start
 
 ```bash
+sirsi                           # Opens interactive TUI
+```
+
+Type `scan` in the TUI to run a waste scan. After completion, you'll see gold-highlighted "What's Next" suggestions — contextual follow-up commands like `findings`, `clean`, `judge`. Press Tab to cycle through them.
+
+Or use standalone commands directly:
+
+```bash
 sirsi scan       # Find waste — caches, build artifacts, orphaned files (81 rules)
 sirsi doctor     # System health — RAM pressure, disk space, kernel panics
 sirsi ghosts     # Find remnants of apps you already uninstalled
@@ -46,9 +54,11 @@ Pantheon has three interfaces that work together:
 
 **Menu bar (always on)** — An ankh icon sits in your macOS menu bar. It runs a guard watchdog, periodic infrastructure scan, and shows live state: 🟢 Clean / 🟡 12 GB waste / 🔴 RAM pressure / ⚠️ process alert. Click to open the TUI.
 
-**TUI (interactive)** — `sirsi` with no subcommand opens a full-screen terminal UI. Type commands, see streaming output, browse command history. The TUI reads persisted scan findings from the menubar's background scans.
+**Interactive TUI** — `sirsi` with no args opens a persistent session. Type commands in plain English, see real-time streaming output, get contextual "What's Next" suggestions after every command. Findings drill-down by category. Tab cycles through suggestions. State persists across sessions.
 
 **CLI (scriptable)** — Every command works standalone: `sirsi scan`, `sirsi ghosts`, etc. All support `--json` for piping and automation.
+
+**Shared suggestion engine** — `internal/suggest/` is the action recommendation engine used by TUI, CLI, and menubar. After any command completes, it computes contextual next steps based on the command's output and current system state.
 
 **Horus Dashboard (web)** — `sirsi dashboard` opens a terminal-first web app at localhost:9119 with API endpoints, SSE streaming, and a command bar. `sirsi horus` is the structural code graph. Optional for power users.
 

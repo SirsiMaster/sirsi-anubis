@@ -2,14 +2,14 @@
 
 **Resume Name:** `pantheon-main`
 **Date:** May 4, 2026
-**Version:** v0.18.0 (latest release)
+**Version:** v0.19.0 (latest release)
 **Git Status:** Uncommitted: `.thoth/memory.yaml` update + `docs/diagrams/` (new)
 
 ---
 
 ## Current State
 
-Pantheon is shipping. v0.18.0 is the latest release with BubbleTea v2 upgrade, goreleaser, DMG signing, Windows installer, Homebrew cask. 81 scan rules, 13 deities, ~81K LOC Go.
+Pantheon is shipping. v0.19.0 is the latest release with BubbleTea v2 upgrade, goreleaser, DMG signing, Windows installer, Homebrew cask. 81 scan rules, 13 deities, ~81K LOC Go.
 
 ## Uncommitted Work
 
@@ -45,7 +45,7 @@ A competitor (github.com/siddsachar/Thoth, 871 stars) uses the exact same name, 
 - Git history predates competitor — document prior art
 
 ### P4: sirsi.ai Pantheon Pages — Stale Data
-The React Pantheon pages (in SirsiNexusApp) reference 58 rules / v0.15.0. Should be 81 rules / v0.18.0. Files:
+The React Pantheon pages (in SirsiNexusApp) reference 58 rules / v0.15.0. Should be 81 rules / v0.19.0. Files:
 - `SirsiNexusApp/.../src/routes/pantheon.tsx` (terminal demo, feature copy)
 - `SirsiNexusApp/.../src/routes/pantheon/case-studies.tsx` (metrics may be stale)
 

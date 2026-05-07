@@ -619,6 +619,24 @@
                         <td><span class="tool-name">Who built this?</span></td>
                         <td><strong>Sirsi Technologies</strong> (<a href="https://sirsi.ai" style="color: var(--gold);">sirsi.ai</a>) — an infrastructure intelligence company building tools that help developers and teams understand, optimize, and govern their compute environments.</td>
                     </tr>
+                    <tr>
+                        <td><span class="tool-name">What is the TUI and how do I launch it?</span></td>
+                        <td>
+                            The TUI (Terminal User Interface) is Pantheon's primary interactive mode. Launch it by running <code style="color: var(--green); font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.85rem;">sirsi</code> with no arguments. It provides streaming output, a view stack for drill-down navigation (press esc to go back), deity state indicators, and contextual "What's Next" suggestions after every command.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="tool-name">What are "What's Next" suggestions?</span></td>
+                        <td>
+                            After every command completes, the TUI displays context-aware action recommendations. For example, after <code style="color: var(--green); font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.85rem;">sirsi weigh</code>, it might suggest "Run judge --dry-run to preview cleanup." These suggestions are powered by the <code style="color: var(--green); font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.85rem;">internal/suggest/</code> engine, which also drives CLI footer hints and menubar toast notifications.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="tool-name">Does the TUI remember state across sessions?</span></td>
+                        <td>
+                            Yes. Deity run outcomes (success, warning, error) are persisted to <code style="color: var(--green); font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.85rem;">~/.config/pantheon/tui-state.json</code>. When you reopen the TUI, the sidebar shows each deity's last known status, so you can see at a glance what needs attention.
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>

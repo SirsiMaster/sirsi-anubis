@@ -346,6 +346,32 @@
   <section class="steps">
     <div class="container">
 
+      <!-- Step 0: TUI Quick Start -->
+      <div class="step" id="tui">
+        <div class="step-header">
+          <div class="step-number">0</div>
+          <h2>Launch the TUI</h2>
+        </div>
+        <p>After installing, the fastest way to explore Pantheon is the interactive TUI. Just type <code class="mono">sirsi</code> with no arguments:</p>
+        <pre><code><span class="cmd-prompt">$</span> sirsi</code></pre>
+
+        <span class="output-label">What you get</span>
+        <div class="output-block"><code>  The TUI launches with:
+  - Sidebar showing all deity statuses (persisted across sessions)
+  - Input bar with contextual placeholder hints
+  - Tab-cycle through available commands
+  - Streaming output as commands run
+  - "What's Next" suggestions after every command completes
+
+  Navigation:
+    Enter — run command / drill into findings
+    Esc   — pop back to previous view
+    Tab   — cycle through suggested commands
+    q     — quit</code></div>
+
+        <p>Everything below can be run inside the TUI or directly from your shell. The TUI just wraps it in a richer interactive experience with streaming, suggestions, and state tracking.</p>
+      </div>
+
       <!-- Step 1: Install -->
       <div class="step" id="install">
         <div class="step-header">

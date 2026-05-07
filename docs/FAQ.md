@@ -128,3 +128,25 @@ The `sirsi install` command will auto-detect your environment and offer the righ
 | Agent (`sirsi-agent`) | **~1.2 MB** | **2.1 MB** | < 5 MB ✅ |
 
 Zero external dependencies. Zero telemetry. Zero network calls (except GitHub update check).
+
+---
+
+## TUI & Interactive Mode
+
+**Q: How do I open the TUI?**
+A: Run `sirsi` with no arguments, or click the ankh (☥) in the menu bar.
+
+**Q: What is the "What's Next" panel?**
+A: After every command completes, the TUI shows contextual follow-up actions — gold-highlighted commands specific to what you just ran. For example, after `scan`, you'll see: `findings`, `clean`, `judge`.
+
+**Q: How do I drill into scan findings?**
+A: Type `findings dev` to see all findings in the dev category. Or just type the bare category name (`dev`, `ai`, `cloud`) after running a scan.
+
+**Q: Does TUI state persist between sessions?**
+A: Yes. Deity run outcomes (✓ succeeded, ✗ failed, ◆ has data) are saved to `~/.config/pantheon/tui-state.json` and restored on next launch.
+
+**Q: What do the deity roster dots mean?**
+A: ✓ green = last run succeeded, ✗ red = last run failed, ◆ amber = has actionable data (e.g. Anubis findings), ● gold = currently active, · grey = never run in this session.
+
+**Q: How does tab-cycling work?**
+A: After a command completes, press Tab to cycle through suggested next commands in the input bar. Start typing to clear and enter your own command.

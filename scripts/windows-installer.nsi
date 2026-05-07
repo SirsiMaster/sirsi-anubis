@@ -1,7 +1,7 @@
 ; Sirsi Pantheon — Windows Installer (NSIS)
 ; Builds SirsiPantheon-VERSION-windows-setup.exe
 ;
-; Usage: makensis /DVERSION=0.18.0 windows-installer.nsi
+; Usage: makensis /DVERSION=0.19.0 windows-installer.nsi
 ; Requires: NSIS 3.x (https://nsis.sourceforge.io)
 
 !include "MUI2.nsh"

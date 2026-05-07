@@ -1,6 +1,6 @@
 ---
 name: ✨ Feature Request
-about: Suggest a new feature or scan rule for Anubis
+about: Suggest a new feature or scan rule for Sirsi Pantheon
 title: "[FEATURE] "
 labels: enhancement
 assignees: ''
@@ -23,6 +23,8 @@ A clear description of what you'd like to happen.
 - [ ] 📋 Profile (configuration)
 - [ ] 🧠 Brain (neural/AI)
 - [ ] 🔌 MCP (IDE integration)
+- [ ] 🖥️ TUI (interactive interface)
+- [ ] ☥ Menu Bar (macOS monitor)
 - [ ] 📜 New scan rule
 
 ## If New Scan Rule
