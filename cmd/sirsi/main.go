@@ -20,7 +20,7 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/workstream"
 )
 
-var version = "v0.17.0"
+var version = "v0.18.0"
 
 // versionCmd prints the version and optionally checks for updates.
 var versionCmd = &cobra.Command{

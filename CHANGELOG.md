@@ -6,6 +6,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 
 ---
 
+## [0.18.0] — 2026-05-05
+
+### Changed — Version Alignment
+- Synced version across all surfaces: VERSION file, main.go, README badge, CHANGELOG, sirsi.ai/pantheon terminal demo
+
+---
+
 ## [0.17.1] — 2026-04-24
 
 ### Added — Horus Dashboard, Advisory Intelligence, Deity Hierarchy (32 commits, 8,290 lines)

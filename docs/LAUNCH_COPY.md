@@ -12,7 +12,7 @@ Sirsi Anubis scans, judges, and purges infrastructure waste — from 200 GB of s
 
 Built as an Egyptian-themed CLI toolkit, Anubis speaks the language of judgment:
 
-- `anubis weigh` — discover waste across 7 domains, 58 scan rules
+- `anubis weigh` — discover waste across 7 domains, 81 scan rules
 - `anubis ka` — hunt ghost apps (remnants of uninstalled applications)
 - `anubis mcp` — connect to Claude, Cursor, or Windsurf as a context sanitizer
 - `anubis install-brain` — download neural models for semantic file classification
@@ -21,7 +21,7 @@ Built as an Egyptian-themed CLI toolkit, Anubis speaks the language of judgment:
 - `sirsi vault search` — FTS5 context sandbox with BM25 code search
 - `sirsi horus outline` — structural code outlines (8-49x context reduction)
 
-Free forever. Open source under MIT. Written in Go. Ships as two binaries under 10 MB total. No telemetry. No tracking. Zero footprint with `--stealth` mode.
+Free forever. Open source under MIT. Written in Go. Ships as two binaries under 12 MB total. No telemetry. No tracking. Zero footprint with `--stealth` mode.
 
 *The jackal sees everything. Nothing escapes the Weighing.*
 
@@ -50,16 +50,16 @@ I built Anubis because existing Mac cleaners don't understand developer workstat
 - Zombie LSP servers eating 17 GB of RAM
 - Docker containers from projects you abandoned 6 months ago
 
-Anubis has 58 scan rules across 7 domains, a ghost app hunter (Ka), a neural file classifier (Brain), and an MCP server so your AI coding assistant can use it as a context sanitizer.
+Anubis has 81 scan rules across 7 domains, a ghost app hunter (Ka), a neural file classifier (Brain), and an MCP server so your AI coding assistant can use it as a context sanitizer.
 
-New in v0.17.0 — **Token Optimization Suite**: Three native packages that cut AI context waste by 8-49x:
+New in v0.18.0 — **Token Optimization Suite**: Three native packages that cut AI context waste by 8-49x:
 - **RTK** — Strips ANSI codes, deduplicates repeated output, truncates noise before it hits the context window
 - **Vault** — Sandboxes large output in SQLite FTS5 for BM25 search instead of flooding context
 - **Horus** — Serves structural code outlines (declarations, signatures) instead of full source files
 
 16 new files, 31 tests, 10 MCP tools. Zero new external dependencies — built entirely on Go's standard library.
 
-Written in Go. Two binaries under 10 MB. No telemetry, no tracking, no analytics. MIT licensed.
+Written in Go. Two binaries under 12 MB. No telemetry, no tracking, no analytics. MIT licensed.
 
 The Egyptian theme is intentional — every module is named after mythology: Jackal (scanner), Ka (ghost hunter), Scales (policy engine), Hapi (resource optimizer), Scarab (fleet sweep).
 
@@ -77,7 +77,7 @@ GitHub: https://github.com/SirsiMaster/sirsi-pantheon
 Every Mac cleaner treats your machine as a consumer device.
 Anubis treats it as a developer workstation.
 
-58 scan rules. Ghost app hunting. Neural classification. MCP server.
+81 scan rules. Ghost app hunting. Neural classification. MCP server.
 Free. Open source. MIT.
 
 github.com/SirsiMaster/sirsi-pantheon
@@ -104,7 +104,7 @@ No telemetry. No tracking. Zero footprint.
 
 `--stealth` mode: Anubis comes, judges, and vanishes.
 
-Written in Go. Under 10 MB. Ships today.
+Written in Go. Under 12 MB. Ships today.
 
 *The jackal sees everything. Nothing escapes the Weighing.* 𓁢
 
@@ -114,12 +114,12 @@ Written in Go. Under 10 MB. Ships today.
 
 | Metric | Value |
 |:-------|:------|
-| CLI commands | 17 |
-| Scan rules | 58 across 7 domains |
-| Internal modules | 17 (15 with tests) |
-| Tests | 453 (15 test suites, 0 failures) |
-| Binary size | anubis: ~8 MB, agent: ~2 MB |
-| Lines of Go | ~15,000 |
+| CLI commands | 33 |
+| Scan rules | 81 across 7 domains |
+| Internal modules | 33 modules |
+| Tests | 2,200+ |
+| Binary size | 12 MB total |
+| Lines of Go | ~81,000 |
 | Dedup speedup | 27.3x vs naive, 98.8% less disk I/O |
 | Protected paths | 29 hardcoded |
 | Telemetry | Zero |
