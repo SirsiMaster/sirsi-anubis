@@ -20,6 +20,7 @@ import (
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/dashboard"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/notify"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/suggest"
 )
 
 // Handler wraps a menu action with name and execution logic.
@@ -140,12 +141,26 @@ func (h *Handler) ExecuteWithNotifyAndEvents(store *notify.Store, events *dashbo
 			Details:    output,
 		}
 
+		// Build suggestion context from the command that just ran.
+		sCtx := suggest.Context{
+			Deity:      h.source(),
+			Subcommand: h.action(),
+			Err:        err,
+		}
+		actions := suggest.After(sCtx)
+
 		if err != nil {
 			n.Severity = notify.SeverityError
 			n.Summary = fmt.Sprintf("%s failed (%s)", h.Name, elapsed.Truncate(time.Second))
+			actions = suggest.OnError(sCtx)
 		} else {
 			n.Severity = notify.SeveritySuccess
 			n.Summary = parseSummary(h.Name, output, elapsed)
+		}
+
+		// Append top suggestion to notification details so toast is actionable.
+		if len(actions) > 0 {
+			n.Summary += " → " + actions[0].Short
 		}
 
 		if store != nil {
@@ -153,10 +168,17 @@ func (h *Handler) ExecuteWithNotifyAndEvents(store *notify.Store, events *dashbo
 		}
 
 		if events != nil {
+			// Push completion event with suggestions for the dashboard.
+			suggestJSON := "[]"
+			if len(actions) > 0 {
+				if data, err := json.Marshal(actions); err == nil {
+					suggestJSON = string(data)
+				}
+			}
 			events.Push(dashboard.Event{
 				Type: "complete",
-				Data: fmt.Sprintf(`{"handler":%q,"severity":%q,"summary":%q,"duration_ms":%d}`,
-					h.Name, n.Severity, n.Summary, n.DurationMs),
+				Data: fmt.Sprintf(`{"handler":%q,"severity":%q,"summary":%q,"duration_ms":%d,"suggestions":%s}`,
+					h.Name, n.Severity, n.Summary, n.DurationMs, suggestJSON),
 			})
 		}
 	}()

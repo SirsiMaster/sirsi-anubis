@@ -12,6 +12,7 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/isis"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/maat"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/suggest"
 )
 
 var (
@@ -166,10 +167,12 @@ func runMaatAudit(cmd *cobra.Command, args []string) error {
 		"Failures": fmt.Sprintf("%d", report.Failures),
 	})
 	output.Footer(time.Since(start))
-	output.NextSteps([][]string{
-		{"sirsi maat pulse", "Quick measurement heartbeat"},
-		{"sirsi maat heal", "Auto-remediate governance failures"},
-	})
+	actions := suggest.After(suggest.Context{Deity: "maat", Subcommand: "audit"})
+	var steps [][]string
+	for _, a := range actions {
+		steps = append(steps, []string{a.Command, a.Description})
+	}
+	output.NextSteps(steps)
 	return nil
 }
 
@@ -251,9 +254,11 @@ func runMaatPulse(cmd *cobra.Command, args []string) error {
 
 	output.Success("Metrics written to .sirsi/metrics.json")
 	output.Footer(time.Since(start))
-	output.NextSteps([][]string{
-		{"sirsi maat audit", "Full governance audit"},
-		{"sirsi maat heal", "Auto-remediate governance failures"},
-	})
+	actions := suggest.After(suggest.Context{Deity: "maat", Subcommand: "pulse"})
+	var steps [][]string
+	for _, a := range actions {
+		steps = append(steps, []string{a.Command, a.Description})
+	}
+	output.NextSteps(steps)
 	return nil
 }

@@ -13,6 +13,7 @@ import (
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/help"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/suggest"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/ra"
 )
 
@@ -123,10 +124,12 @@ func runOrchestrator(subcmd string, extraArgs ...string) error {
 		return err
 	}
 	output.Footer(time.Since(start))
-	output.NextSteps([][]string{
-		{"sirsi ra deploy", "Deploy task to repos"},
-		{"sirsi ra health", "Health check across all repos"},
-	})
+	actions := suggest.After(suggest.Context{Deity: "ra", Subcommand: "status"})
+	var steps [][]string
+	for _, a := range actions {
+		steps = append(steps, []string{a.Command, a.Description})
+	}
+	output.NextSteps(steps)
 	return nil
 }
 
@@ -162,10 +165,12 @@ func runOrchestratorWithPipeline(subcmd, scriptPath string, extraArgs ...string)
 		"\u2600\uFE0F", "\U000130C6", result.ItemsIngested, "\U0001305F", thothStatus)
 
 	output.Footer(result.Duration)
-	output.NextSteps([][]string{
-		{"sirsi ra status", "Check orchestrator progress"},
-		{"sirsi ra collect", "Collect results from windows"},
-	})
+	actions := suggest.After(suggest.Context{Deity: "ra", Subcommand: "deploy"})
+	var steps [][]string
+	for _, a := range actions {
+		steps = append(steps, []string{a.Command, a.Description})
+	}
+	output.NextSteps(steps)
 	return nil
 }
 

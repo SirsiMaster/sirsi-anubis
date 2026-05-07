@@ -10,6 +10,7 @@ import (
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/osiris"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/suggest"
 )
 
 var osirisCmd = &cobra.Command{
@@ -105,10 +106,12 @@ func runOsirisAssess(cmd *cobra.Command, args []string) error {
 	}
 
 	output.Footer(time.Since(start))
-	output.NextSteps([][]string{
-		{"sirsi osiris status", "Quick risk summary"},
-		{"sirsi thoth sync", "Sync project memory"},
-	})
+	actions := suggest.After(suggest.Context{Deity: "osiris", Subcommand: "scan"})
+	var steps [][]string
+	for _, a := range actions {
+		steps = append(steps, []string{a.Command, a.Description})
+	}
+	output.NextSteps(steps)
 	return nil
 }
 

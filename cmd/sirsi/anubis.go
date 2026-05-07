@@ -19,6 +19,7 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/ka"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/mirror"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/suggest"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/ra"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/stele"
 )
@@ -267,12 +268,12 @@ func runWeigh(ctx context.Context) error {
 	}
 
 	output.Footer(elapsed)
-	output.NextSteps([][]string{
-		{"sirsi anubis judge", "Review and clean safe items (dry-run by default)"},
-		{"sirsi anubis judge --confirm", "Apply cleanup (moves to Trash)"},
-		{"sirsi anubis ka", "Hunt ghost app residuals"},
-		{"sirsi anubis weigh --json", "Export full results as JSON"},
-	})
+	actions := suggest.After(suggest.Context{Deity: "anubis", Subcommand: "weigh"})
+	var steps [][]string
+	for _, a := range actions {
+		steps = append(steps, []string{a.Command, a.Description})
+	}
+	output.NextSteps(steps)
 	return nil
 }
 
@@ -362,10 +363,12 @@ func runJudge(ctx context.Context) error {
 		output.Info("")
 		output.Info("Dry run — no changes made. Run with --confirm to apply.")
 		output.Footer(time.Since(start))
-		output.NextSteps([][]string{
-			{"sirsi anubis judge --confirm", "Apply cleanup (moves to Trash)"},
-			{"sirsi anubis weigh", "Run a fresh scan"},
-		})
+		actions := suggest.After(suggest.Context{Deity: "anubis", Subcommand: "judge", Err: nil})
+		var steps [][]string
+		for _, a := range actions {
+			steps = append(steps, []string{a.Command, a.Description})
+		}
+		output.NextSteps(steps)
 		return nil
 	}
 
@@ -405,10 +408,12 @@ func runJudge(ctx context.Context) error {
 	})
 
 	output.Footer(time.Since(start))
-	output.NextSteps([][]string{
-		{"sirsi anubis weigh", "Run a fresh scan to verify cleanup"},
-		{"sirsi anubis ka", "Hunt remaining ghost app residuals"},
-	})
+	actions := suggest.After(suggest.Context{Deity: "anubis", Subcommand: "judge"})
+	var steps [][]string
+	for _, a := range actions {
+		steps = append(steps, []string{a.Command, a.Description})
+	}
+	output.NextSteps(steps)
 	return nil
 }
 

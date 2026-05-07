@@ -10,6 +10,7 @@ import (
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/neith"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/suggest"
 )
 
 var netCmd = &cobra.Command{
@@ -145,9 +146,11 @@ func runNetAlign(cmd *cobra.Command, args []string) error {
 
 	output.Success("All modules aligned — tapestry is balanced")
 	output.Footer(time.Since(start))
-	output.NextSteps([][]string{
-		{"sirsi net status", "Check alignment score"},
-		{"sirsi maat audit", "Full quality audit"},
-	})
+	actions := suggest.After(suggest.Context{Deity: "net", Subcommand: "weave"})
+	var steps [][]string
+	for _, a := range actions {
+		steps = append(steps, []string{a.Command, a.Description})
+	}
+	output.NextSteps(steps)
 	return nil
 }

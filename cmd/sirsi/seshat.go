@@ -13,6 +13,7 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/help"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/mcp"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/suggest"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/seshat"
 )
@@ -186,10 +187,12 @@ var seshatIngestCmd = &cobra.Command{
 		}
 
 		output.Footer(time.Since(start))
-		output.NextSteps([][]string{
-			{"sirsi seshat list", "Browse ingested items"},
-			{"sirsi seshat export", "Export knowledge to a target"},
-		})
+		actions := suggest.After(suggest.Context{Deity: "seshat", Subcommand: "ingest"})
+		var steps [][]string
+		for _, a := range actions {
+			steps = append(steps, []string{a.Command, a.Description})
+		}
+		output.NextSteps(steps)
 		return nil
 	},
 }

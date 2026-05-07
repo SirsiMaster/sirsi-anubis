@@ -28,6 +28,7 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/notify"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/stele"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/suggest"
 )
 
 // ── Deity Definitions ─────────────────────────────────────────────────
@@ -1349,166 +1350,36 @@ func (m TUIModel) showHelp() (TUIModel, tea.Cmd) {
 
 // ── Post-Run Suggestions ─────────────────────────────────────────
 
-// postRunPlaceholder returns a contextual input placeholder based on what
-// command just finished, guiding the user to the most likely next action.
-func (m TUIModel) postRunPlaceholder() string {
+// buildSuggestContext creates a suggest.Context from the current TUI state.
+func (m TUIModel) buildSuggestContext() suggest.Context {
 	sub := ""
 	if len(m.runningArgs) >= 2 {
 		sub = m.runningArgs[1]
 	}
-
-	switch m.runningDeity {
-	case "anubis":
-		switch sub {
-		case "weigh":
-			return "findings · clean · judge  (or type a category like dev, ai, cloud)"
-		case "judge":
-			return "findings · scan  (verify cleanup with a fresh scan)"
-		case "ka":
-			return "findings · clean  (remove ghost residuals)"
-		case "mirror":
-			return "scan · clean  (full scan or reclaim space)"
-		case "apps":
-			return "ghosts · scan · clean  (check residuals or scan waste)"
-		}
-	case "isis":
-		switch sub {
-		case "network":
-			return "heal · doctor  (remediate issues or full health check)"
-		default:
-			return "isis network · doctor · heal  (audit, diagnose, or fix)"
-		}
-	case "maat":
-		switch sub {
-		case "audit":
-			return "maat pulse · heal  (quick summary or auto-remediate)"
-		case "pulse":
-			return "maat audit · heal  (full audit or auto-remediate)"
-		case "heal":
-			return "maat audit · maat pulse  (verify fixes)"
-		default:
-			return "maat audit · maat pulse · heal"
-		}
-	case "ra":
-		switch sub {
-		case "deploy":
-			return "ra status · ra health  (check progress or health)"
-		case "status":
-			return "ra deploy · ra health · ra test  (deploy, check health, or run tests)"
-		case "health":
-			return "ra deploy · ra test · ra lint  (deploy or run checks)"
-		case "test", "lint":
-			return "ra status · heal  (check results or auto-remediate)"
-		default:
-			return "ra status · ra deploy · ra health"
-		}
-	case "net":
-		switch sub {
-		case "align":
-			return "net status · maat audit  (check alignment or run QA)"
-		default:
-			return "net align · maat audit  (check drift or run QA)"
-		}
-	case "thoth":
-		switch sub {
-		case "sync":
-			return "thoth compact · maat audit  (persist state or check quality)"
-		case "compact":
-			return "thoth sync · osiris assess  (sync memory or check risk)"
-		case "init":
-			return "thoth sync  (populate memory from source files)"
-		default:
-			return "thoth sync · thoth compact"
-		}
-	case "seshat":
-		switch sub {
-		case "ingest":
-			return "seshat list · seshat export  (review or export knowledge)"
-		case "notebooklm":
-			return "seshat ingest · seshat list  (ingest more or browse)"
-		default:
-			return "seshat ingest · seshat list · seshat export"
-		}
-	case "seba":
-		switch sub {
-		case "hardware":
-			return "seba diagram · seba scan · scan  (visualize, map, or scan waste)"
-		case "diagram":
-			return "seba scan · seba hardware  (system map or hardware profile)"
-		case "fleet":
-			return "seba diagram · isis network  (visualize fleet or audit network)"
-		case "scan":
-			return "seba diagram · seba hardware  (visualize or profile hardware)"
-		default:
-			return "seba scan · seba diagram · seba hardware"
-		}
-	case "osiris":
-		switch sub {
-		case "assess":
-			return "osiris status · thoth sync  (quick status or sync memory)"
-		default:
-			return "osiris assess · thoth sync  (full assessment or sync state)"
-		}
-	case "horus":
-		switch sub {
-		case "scan":
-			return "horus outline · horus symbols · horus stats  (explore the code graph)"
-		default:
-			return "horus scan · horus outline · horus stats"
+	ctx := suggest.Context{
+		Deity:      m.runningDeity,
+		Subcommand: sub,
+	}
+	// Populate FindingsCount for Anubis so suggestions can adapt.
+	if m.runningDeity == "anubis" {
+		if scan, err := jackal.LoadLatest(); err == nil {
+			ctx.FindingsCount = len(scan.Findings)
 		}
 	}
+	return ctx
+}
 
-	return "What next?"
+// postRunPlaceholder returns a contextual input placeholder based on what
+// command just finished, guiding the user to the most likely next action.
+func (m TUIModel) postRunPlaceholder() string {
+	return suggest.Placeholder(m.buildSuggestContext())
 }
 
 // postRunCommandList returns the raw command strings for tab-cycling
 // after a command completes. These mirror what postRunSuggestions shows
 // but without styling — just the commands.
 func (m TUIModel) postRunCommandList() []string {
-	sub := ""
-	if len(m.runningArgs) >= 2 {
-		sub = m.runningArgs[1]
-	}
-
-	switch m.runningDeity {
-	case "anubis":
-		switch sub {
-		case "weigh":
-			return []string{"findings", "clean", "judge"}
-		case "judge":
-			return []string{"findings", "scan"}
-		case "ka":
-			return []string{"findings", "clean"}
-		case "mirror":
-			return []string{"scan"}
-		}
-	case "isis":
-		return []string{"heal", "doctor"}
-	case "maat":
-		return []string{"maat pulse", "maat audit", "heal"}
-	case "ra":
-		switch sub {
-		case "deploy":
-			return []string{"ra status", "ra health", "ra collect"}
-		case "status":
-			return []string{"ra deploy", "ra health", "ra test"}
-		default:
-			return []string{"ra status", "ra deploy"}
-		}
-	case "net":
-		return []string{"net status", "net align", "maat audit"}
-	case "thoth":
-		return []string{"thoth sync", "thoth compact", "osiris assess"}
-	case "seshat":
-		return []string{"seshat list", "seshat export", "seshat ingest"}
-	case "seba":
-		return []string{"seba diagram", "seba scan", "seba hardware"}
-	case "osiris":
-		return []string{"osiris assess", "osiris status", "thoth sync"}
-	case "horus":
-		return []string{"horus scan", "horus outline", "horus stats"}
-	}
-	return nil
+	return suggest.Commands(m.buildSuggestContext())
 }
 
 // postRunSuggestions returns deity-aware next-step hints based on what
@@ -1519,310 +1390,27 @@ func (m TUIModel) postRunSuggestions() []string {
 	gold := lipgloss.NewStyle().Foreground(Gold)
 	hint := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
 
-	// Determine the subcommand from dispatched args.
-	sub := ""
-	if len(m.runningArgs) >= 2 {
-		sub = m.runningArgs[1]
-	} else if len(m.runningArgs) == 1 {
-		sub = m.runningArgs[0]
+	actions := suggest.After(m.buildSuggestContext())
+	if len(actions) == 0 {
+		return nil
 	}
 
 	var lines []string
-
-	switch m.runningDeity {
-	case "anubis":
-		switch sub {
-		case "weigh":
-			lines = append(lines,
-				"",
-				dim.Render("  ── What's Next ──────────────────────────"),
-				"",
-				"  "+gold.Render("findings")+"      "+hint.Render("View full breakdown with advisories"),
-				"  "+gold.Render("findings dev")+"  "+hint.Render("Drill into a specific category"),
-				"  "+gold.Render("clean")+"         "+hint.Render("Remove safe items (moves to Trash)"),
-				"  "+gold.Render("judge")+"         "+hint.Render("Policy-based review before cleanup"),
-				"",
-			)
-		case "judge":
-			lines = append(lines,
-				"",
-				dim.Render("  ── What's Next ──────────────────────────"),
-				"",
-				"  "+gold.Render("findings")+"      "+hint.Render("Review remaining findings"),
-				"  "+gold.Render("scan")+"          "+hint.Render("Run a fresh scan to verify cleanup"),
-				"",
-			)
-		case "ka":
-			lines = append(lines,
-				"",
-				dim.Render("  ── What's Next ──────────────────────────"),
-				"",
-				"  "+gold.Render("findings")+"      "+hint.Render("View all findings including ghosts"),
-				"  "+gold.Render("clean")+"         "+hint.Render("Remove ghost residuals"),
-				"",
-			)
-		case "mirror":
-			lines = append(lines,
-				"",
-				dim.Render("  ── What's Next ──────────────────────────"),
-				"",
-				"  "+gold.Render("scan")+"          "+hint.Render("Run full waste scan"),
-				"",
-			)
+	lines = append(lines,
+		"",
+		dim.Render("  ── What's Next ──────────────────────────"),
+		"",
+	)
+	for _, a := range actions {
+		cmd := strings.TrimPrefix(a.Command, "sirsi ")
+		// Pad command to 14 chars for alignment.
+		padded := cmd
+		if len(padded) < 14 {
+			padded += strings.Repeat(" ", 14-len(padded))
 		}
-	case "isis":
-		lines = append(lines,
-			"",
-			dim.Render("  ── What's Next ──────────────────────────"),
-			"",
-			"  "+gold.Render("heal")+"          "+hint.Render("Auto-remediate failed checks"),
-			"  "+gold.Render("doctor")+"        "+hint.Render("Full system health diagnostic"),
-			"",
-		)
-	case "maat":
-		lines = append(lines,
-			"",
-			dim.Render("  ── What's Next ──────────────────────────"),
-			"",
-			"  "+gold.Render("maat pulse")+"    "+hint.Render("Quick coverage summary"),
-			"  "+gold.Render("heal")+"          "+hint.Render("Auto-remediate quality issues"),
-			"",
-		)
-	case "seba":
-		switch sub {
-		case "hardware":
-			lines = append(lines,
-				"",
-				dim.Render("  ── What's Next ──────────────────────────"),
-				"",
-				"  "+gold.Render("seba diagram")+"  "+hint.Render("Generate architecture diagram from scan"),
-				"  "+gold.Render("seba scan")+"     "+hint.Render("Full infrastructure topology map"),
-				"  "+gold.Render("scan")+"          "+hint.Render("Scan for infrastructure waste"),
-				"",
-			)
-		case "diagram":
-			lines = append(lines,
-				"",
-				dim.Render("  ── What's Next ──────────────────────────"),
-				"",
-				"  "+gold.Render("seba scan")+"     "+hint.Render("Full infrastructure topology map"),
-				"  "+gold.Render("seba hardware")+" "+hint.Render("Hardware and accelerator profile"),
-				"",
-			)
-		case "fleet":
-			lines = append(lines,
-				"",
-				dim.Render("  ── What's Next ──────────────────────────"),
-				"",
-				"  "+gold.Render("seba diagram")+"  "+hint.Render("Visualize fleet architecture"),
-				"  "+gold.Render("isis network")+"  "+hint.Render("Network security audit"),
-				"",
-			)
-		default:
-			lines = append(lines,
-				"",
-				dim.Render("  ── What's Next ──────────────────────────"),
-				"",
-				"  "+gold.Render("seba diagram")+"  "+hint.Render("Generate architecture diagram"),
-				"  "+gold.Render("seba hardware")+" "+hint.Render("Hardware and accelerator profile"),
-				"  "+gold.Render("scan")+"          "+hint.Render("Scan for infrastructure waste"),
-				"",
-			)
-		}
-	case "ra":
-		switch sub {
-		case "deploy":
-			lines = append(lines,
-				"",
-				dim.Render("  ── What's Next ──────────────────────────"),
-				"",
-				"  "+gold.Render("ra status")+"     "+hint.Render("Check deployment progress"),
-				"  "+gold.Render("ra health")+"     "+hint.Render("Health check across all repos"),
-				"  "+gold.Render("ra collect")+"    "+hint.Render("Collect logs from agents"),
-				"",
-			)
-		case "status":
-			lines = append(lines,
-				"",
-				dim.Render("  ── What's Next ──────────────────────────"),
-				"",
-				"  "+gold.Render("ra deploy")+"     "+hint.Render("Deploy a task to repos"),
-				"  "+gold.Render("ra health")+"     "+hint.Render("Health check across all repos"),
-				"  "+gold.Render("ra test")+"       "+hint.Render("Run tests across all repos"),
-				"",
-			)
-		case "health":
-			lines = append(lines,
-				"",
-				dim.Render("  ── What's Next ──────────────────────────"),
-				"",
-				"  "+gold.Render("ra deploy")+"     "+hint.Render("Deploy a task to repos"),
-				"  "+gold.Render("ra test")+"       "+hint.Render("Run tests across all repos"),
-				"  "+gold.Render("ra lint")+"       "+hint.Render("Run linters across all repos"),
-				"  "+gold.Render("heal")+"          "+hint.Render("Auto-remediate failures"),
-				"",
-			)
-		case "test", "lint":
-			lines = append(lines,
-				"",
-				dim.Render("  ── What's Next ──────────────────────────"),
-				"",
-				"  "+gold.Render("ra status")+"     "+hint.Render("Check overall repo status"),
-				"  "+gold.Render("heal")+"          "+hint.Render("Auto-remediate failures"),
-				"  "+gold.Render("maat audit")+"    "+hint.Render("Full quality assessment"),
-				"",
-			)
-		default:
-			lines = append(lines,
-				"",
-				dim.Render("  ── What's Next ──────────────────────────"),
-				"",
-				"  "+gold.Render("ra status")+"     "+hint.Render("Check orchestrator status"),
-				"  "+gold.Render("ra deploy")+"     "+hint.Render("Deploy a task to repos"),
-				"  "+gold.Render("ra health")+"     "+hint.Render("Health check across all repos"),
-				"",
-			)
-		}
-	case "net":
-		switch sub {
-		case "align":
-			lines = append(lines,
-				"",
-				dim.Render("  ── What's Next ──────────────────────────"),
-				"",
-				"  "+gold.Render("net status")+"    "+hint.Render("Check plan alignment score"),
-				"  "+gold.Render("maat audit")+"    "+hint.Render("Run governance quality check"),
-				"",
-			)
-		default:
-			lines = append(lines,
-				"",
-				dim.Render("  ── What's Next ──────────────────────────"),
-				"",
-				"  "+gold.Render("net align")+"     "+hint.Render("Validate cross-module consistency"),
-				"  "+gold.Render("maat audit")+"    "+hint.Render("Run governance quality check"),
-				"",
-			)
-		}
-	case "thoth":
-		switch sub {
-		case "sync":
-			lines = append(lines,
-				"",
-				dim.Render("  ── What's Next ──────────────────────────"),
-				"",
-				"  "+gold.Render("thoth compact")+" "+hint.Render("Persist state before context compression"),
-				"  "+gold.Render("osiris assess")+" "+hint.Render("Check uncommitted work risk"),
-				"  "+gold.Render("maat audit")+"    "+hint.Render("Run quality assessment"),
-				"",
-			)
-		case "compact":
-			lines = append(lines,
-				"",
-				dim.Render("  ── What's Next ──────────────────────────"),
-				"",
-				"  "+gold.Render("thoth sync")+"    "+hint.Render("Sync memory from source files"),
-				"  "+gold.Render("osiris assess")+" "+hint.Render("Check uncommitted work risk"),
-				"",
-			)
-		case "init":
-			lines = append(lines,
-				"",
-				dim.Render("  ── What's Next ──────────────────────────"),
-				"",
-				"  "+gold.Render("thoth sync")+"    "+hint.Render("Populate memory from source + git history"),
-				"  "+gold.Render("scan")+"          "+hint.Render("Scan for infrastructure waste"),
-				"",
-			)
-		default:
-			lines = append(lines,
-				"",
-				dim.Render("  ── What's Next ──────────────────────────"),
-				"",
-				"  "+gold.Render("thoth sync")+"    "+hint.Render("Sync project memory"),
-				"  "+gold.Render("thoth compact")+" "+hint.Render("Persist state for continuations"),
-				"",
-			)
-		}
-	case "seshat":
-		switch sub {
-		case "ingest":
-			lines = append(lines,
-				"",
-				dim.Render("  ── What's Next ──────────────────────────"),
-				"",
-				"  "+gold.Render("seshat list")+"   "+hint.Render("Browse ingested knowledge items"),
-				"  "+gold.Render("seshat export")+" "+hint.Render("Export knowledge to a target"),
-				"  "+gold.Render("seshat notebooklm")+" "+hint.Render("Export to Google NotebookLM"),
-				"",
-			)
-		case "notebooklm":
-			lines = append(lines,
-				"",
-				dim.Render("  ── What's Next ──────────────────────────"),
-				"",
-				"  "+gold.Render("seshat ingest")+" "+hint.Render("Ingest from more sources"),
-				"  "+gold.Render("seshat list")+"   "+hint.Render("Browse knowledge items"),
-				"",
-			)
-		default:
-			lines = append(lines,
-				"",
-				dim.Render("  ── What's Next ──────────────────────────"),
-				"",
-				"  "+gold.Render("seshat ingest")+" "+hint.Render("Ingest knowledge from sources"),
-				"  "+gold.Render("seshat list")+"   "+hint.Render("Browse knowledge items"),
-				"  "+gold.Render("seshat export")+" "+hint.Render("Export knowledge to a target"),
-				"",
-			)
-		}
-	case "osiris":
-		switch sub {
-		case "assess":
-			lines = append(lines,
-				"",
-				dim.Render("  ── What's Next ──────────────────────────"),
-				"",
-				"  "+gold.Render("osiris status")+" "+hint.Render("Quick one-line risk summary"),
-				"  "+gold.Render("thoth sync")+"    "+hint.Render("Sync memory before committing"),
-				"  "+gold.Render("scan")+"          "+hint.Render("Scan for infrastructure waste"),
-				"",
-			)
-		default:
-			lines = append(lines,
-				"",
-				dim.Render("  ── What's Next ──────────────────────────"),
-				"",
-				"  "+gold.Render("osiris assess")+" "+hint.Render("Full checkpoint assessment"),
-				"  "+gold.Render("thoth sync")+"    "+hint.Render("Sync project memory"),
-				"",
-			)
-		}
-	case "horus":
-		switch sub {
-		case "scan":
-			lines = append(lines,
-				"",
-				dim.Render("  ── What's Next ──────────────────────────"),
-				"",
-				"  "+gold.Render("horus outline <file>")+" "+hint.Render("Print file declaration outline"),
-				"  "+gold.Render("horus symbols")+"       "+hint.Render("Search symbols in the graph"),
-				"  "+gold.Render("horus stats")+"         "+hint.Render("Graph statistics"),
-				"",
-			)
-		default:
-			lines = append(lines,
-				"",
-				dim.Render("  ── What's Next ──────────────────────────"),
-				"",
-				"  "+gold.Render("horus scan")+"    "+hint.Render("Build code symbol graph"),
-				"  "+gold.Render("horus stats")+"   "+hint.Render("Graph statistics"),
-				"  "+gold.Render("seba diagram")+"  "+hint.Render("Architecture diagram"),
-				"",
-			)
-		}
+		lines = append(lines, "  "+gold.Render(padded)+" "+hint.Render(a.Description))
 	}
-
+	lines = append(lines, "")
 	return lines
 }
 
@@ -1833,110 +1421,28 @@ func (m TUIModel) postRunErrorGuidance(err error) []string {
 	gold := lipgloss.NewStyle().Foreground(Gold)
 	hint := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
 
-	errStr := ""
-	if err != nil {
-		errStr = strings.ToLower(err.Error())
-	}
+	ctx := m.buildSuggestContext()
+	ctx.Err = err
+	actions := suggest.OnError(ctx)
 
 	var lines []string
 	lines = append(lines, "",
-		dim.Render("  ── Troubleshooting ──────────────────────"))
-
-	// Check for common error patterns first (applies to any deity)
-	switch {
-	case strings.Contains(errStr, "permission denied") || strings.Contains(errStr, "operation not permitted"):
-		lines = append(lines,
-			"",
-			"  "+hint.Render("Permission denied. Some options:"),
-			"  "+gold.Render("1")+"  "+hint.Render("Re-run with --sudo if supported"),
-			"  "+gold.Render("2")+"  "+hint.Render("Check file/directory ownership"),
-			"  "+gold.Render("3")+"  "+hint.Render("Grant Full Disk Access in System Settings → Privacy"),
-		)
-	case strings.Contains(errStr, "not found") || strings.Contains(errStr, "no such file"):
-		lines = append(lines,
-			"",
-			"  "+hint.Render("A required file or command was not found."),
-			"  "+gold.Render("doctor")+"  "+hint.Render("Run a health diagnostic to identify missing deps"),
-		)
-	case strings.Contains(errStr, "timeout") || strings.Contains(errStr, "deadline exceeded"):
-		lines = append(lines,
-			"",
-			"  "+hint.Render("The operation timed out."),
-			"  "+gold.Render("1")+"  "+hint.Render("Check network connectivity"),
-			"  "+gold.Render("2")+"  "+hint.Render("Try again — transient failures are common"),
-		)
-	case strings.Contains(errStr, "connection refused") || strings.Contains(errStr, "no route"):
-		lines = append(lines,
-			"",
-			"  "+hint.Render("Network connection failed."),
-			"  "+gold.Render("isis network")+"  "+hint.Render("Run a network security audit"),
-		)
-	default:
-		// Deity-specific guidance when error pattern isn't recognized
-		switch m.runningDeity {
-		case "anubis":
-			lines = append(lines,
-				"",
-				"  "+gold.Render("doctor")+"        "+hint.Render("Run system health diagnostic"),
-				"  "+gold.Render("scan")+"          "+hint.Render("Try a fresh scan"),
-			)
-		case "ra":
-			lines = append(lines,
-				"",
-				"  "+gold.Render("ra status")+"     "+hint.Render("Check orchestrator state"),
-				"  "+gold.Render("ra health")+"     "+hint.Render("Health check all repos"),
-			)
-		case "seba":
-			lines = append(lines,
-				"",
-				"  "+gold.Render("seba hardware")+" "+hint.Render("Check hardware compatibility"),
-				"  "+gold.Render("doctor")+"        "+hint.Render("Run system health diagnostic"),
-			)
-		case "seshat":
-			lines = append(lines,
-				"",
-				"  "+gold.Render("seshat adapters")+" "+hint.Render("List available adapters"),
-				"  "+gold.Render("doctor")+"         "+hint.Render("Run system health diagnostic"),
-			)
-		case "thoth":
-			lines = append(lines,
-				"",
-				"  "+gold.Render("thoth status")+"  "+hint.Render("Check memory system health"),
-				"  "+gold.Render("thoth init")+"    "+hint.Render("Re-initialize .thoth/ if corrupted"),
-			)
-		case "maat":
-			lines = append(lines,
-				"",
-				"  "+gold.Render("maat pulse")+"    "+hint.Render("Try a quick pulse check instead"),
-				"  "+gold.Render("doctor")+"        "+hint.Render("Run system health diagnostic"),
-			)
-		case "net":
-			lines = append(lines,
-				"",
-				"  "+gold.Render("net status")+"    "+hint.Render("Check alignment status"),
-				"  "+gold.Render("ra status")+"     "+hint.Render("Check orchestrator state"),
-			)
-		case "osiris":
-			lines = append(lines,
-				"",
-				"  "+gold.Render("osiris status")+" "+hint.Render("Try quick status instead"),
-				"  "+gold.Render("doctor")+"        "+hint.Render("Run system health diagnostic"),
-			)
-		case "horus":
-			lines = append(lines,
-				"",
-				"  "+gold.Render("horus scan")+"    "+hint.Render("Rebuild the code graph"),
-				"  "+gold.Render("doctor")+"        "+hint.Render("Run system health diagnostic"),
-			)
-		default:
-			lines = append(lines,
-				"",
-				"  "+gold.Render("doctor")+"        "+hint.Render("Run system health diagnostic"),
-				"  "+gold.Render("help")+"          "+hint.Render("See all available commands"),
-			)
+		dim.Render("  ── Troubleshooting ──────────────────────"),
+		"",
+	)
+	for _, a := range actions {
+		if a.Command == "" {
+			// Description-only guidance (e.g. permission hints).
+			lines = append(lines, "  "+hint.Render(a.Description))
+		} else {
+			cmd := strings.TrimPrefix(a.Command, "sirsi ")
+			padded := cmd
+			if len(padded) < 14 {
+				padded += strings.Repeat(" ", 14-len(padded))
+			}
+			lines = append(lines, "  "+gold.Render(padded)+" "+hint.Render(a.Description))
 		}
 	}
-
 	lines = append(lines, "")
 	return lines
 }

@@ -13,6 +13,7 @@ import (
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/guard"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/suggest"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/scarab"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/seba"
 )
@@ -184,10 +185,12 @@ func runSebaDiagram(cmd *cobra.Command, args []string) error {
 		"Format":   map[bool]string{true: "HTML", false: "Mermaid"}[diagramHTML],
 	})
 	output.Footer(time.Since(start))
-	output.NextSteps([][]string{
-		{"sirsi seba scan", "Full topology map"},
-		{"sirsi seba hardware", "Hardware profile"},
-	})
+	actions := suggest.After(suggest.Context{Deity: "seba", Subcommand: "status"})
+	var steps [][]string
+	for _, a := range actions {
+		steps = append(steps, []string{a.Command, a.Description})
+	}
+	output.NextSteps(steps)
 	return nil
 }
 
@@ -361,10 +364,12 @@ func runSebaHardware(cmd *cobra.Command, args []string) error {
 
 	output.Dashboard(dashboard)
 	output.Footer(time.Since(start))
-	output.NextSteps([][]string{
-		{"sirsi seba diagram", "Visualize architecture"},
-		{"sirsi seba scan", "Full topology map"},
-	})
+	actions := suggest.After(suggest.Context{Deity: "seba", Subcommand: "scan"})
+	var steps [][]string
+	for _, a := range actions {
+		steps = append(steps, []string{a.Command, a.Description})
+	}
+	output.NextSteps(steps)
 	return nil
 }
 
@@ -481,9 +486,11 @@ func runSebaFleet(cmd *cobra.Command, args []string) error {
 		})
 	}
 	output.Footer(time.Since(start))
-	output.NextSteps([][]string{
-		{"sirsi seba diagram", "Visualize fleet topology"},
-		{"sirsi isis network", "Network security audit"},
-	})
+	actions := suggest.After(suggest.Context{Deity: "seba", Subcommand: "hardware"})
+	var steps [][]string
+	for _, a := range actions {
+		steps = append(steps, []string{a.Command, a.Description})
+	}
+	output.NextSteps(steps)
 	return nil
 }
