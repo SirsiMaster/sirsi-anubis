@@ -96,8 +96,8 @@ func onReady() {
 	systray.AddSeparator()
 
 	// ── Quick access ────────────────────────────────────────────────
-	mBuildLog := systray.AddMenuItem("📋 Build Log", "Open build-log.html")
-	mCaseStudies := systray.AddMenuItem("📊 Case Studies", "Open case-studies.html")
+	mBuildLog := systray.AddMenuItem("𓇽 Architecture Diagrams", "Generate diagrams in TUI")
+	mCaseStudies := systray.AddMenuItem("𓁹 Risk Assessment", "Uncommitted work check")
 
 	systray.AddSeparator()
 	mQuit := systray.AddMenuItem("Quit Sirsi", "Exit menubar app")
@@ -177,16 +177,8 @@ func onReady() {
 		case <-mDashboard.ClickedCh:
 			spawnTUIWindow()
 		case <-mStats.ClickedCh:
-			snap := CollectStats(cfg)
-			lines := snap.FormatMenuItems()
-			mStats.SetTitle(lines[0])
-			mStats.SetTooltip(snap.StatusLine())
-			for i, item := range raScopes {
-				if i < len(snap.RaScopes) {
-					s := snap.RaScopes[i]
-					item.SetTitle(fmt.Sprintf("  %s %s — %s", s.Icon, s.Name, s.State))
-				}
-			}
+			// Open TUI with doctor for full system stats
+			spawnTUIWithCommand("doctor")
 		case <-mRaHeader.ClickedCh:
 			spawnTUIWithCommand("ra status")
 		case <-mRaDeploy.ClickedCh:
@@ -196,25 +188,13 @@ func onReady() {
 		case <-mRaCollect.ClickedCh:
 			spawnTUIWithCommand("ra collect")
 		case <-raScopes[0].ClickedCh:
-			snap := CollectStats(cfg)
-			if len(snap.RaScopes) > 0 {
-				_ = OpenScopeLog(snap.RaScopes[0].Name)
-			}
+			spawnTUIWithCommand("ra status")
 		case <-raScopes[1].ClickedCh:
-			snap := CollectStats(cfg)
-			if len(snap.RaScopes) > 1 {
-				_ = OpenScopeLog(snap.RaScopes[1].Name)
-			}
+			spawnTUIWithCommand("ra status")
 		case <-raScopes[2].ClickedCh:
-			snap := CollectStats(cfg)
-			if len(snap.RaScopes) > 2 {
-				_ = OpenScopeLog(snap.RaScopes[2].Name)
-			}
+			spawnTUIWithCommand("ra status")
 		case <-raScopes[3].ClickedCh:
-			snap := CollectStats(cfg)
-			if len(snap.RaScopes) > 3 {
-				_ = OpenScopeLog(snap.RaScopes[3].Name)
-			}
+			spawnTUIWithCommand("ra status")
 		case <-mScan.ClickedCh:
 			spawnTUIWithCommand("scan")
 		case <-mJudge.ClickedCh:
@@ -226,9 +206,9 @@ func onReady() {
 		case <-mGuard.ClickedCh:
 			spawnTUIWithCommand("guard")
 		case <-mBuildLog.ClickedCh:
-			_ = OpenBuildLog()
+			spawnTUIWithCommand("seba diagram")
 		case <-mCaseStudies.ClickedCh:
-			_ = OpenCaseStudies()
+			spawnTUIWithCommand("osiris assess")
 		case <-mQuit.ClickedCh:
 			cancel()
 			_ = dashSrv.Stop()
