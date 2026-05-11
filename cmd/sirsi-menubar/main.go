@@ -55,7 +55,7 @@ func onReady() {
 	systray.SetTooltip("Sirsi Ecosystem Monitor")
 
 	// ── Open TUI ──────────────────────────────────────────────────
-	mDashboard := systray.AddMenuItem("𓂀 Open Horus", "Open TUI in Terminal")
+	mDashboard := systray.AddMenuItem("𓂀 Open Pantheon", "Open TUI in Terminal")
 
 	// ── Stats section ───────────────────────────────────────────────
 	mStats := systray.AddMenuItem("Loading...", "Click to refresh stats")
@@ -171,10 +171,7 @@ func onReady() {
 		}
 	}()
 
-	// ── Event loop ──────────────────────────────────────────────────
-	handlers := SirsiHandlers()
-	raHandlers := RaHandlers()
-
+	// ── Event loop — all user actions route through the TUI ─────────
 	for {
 		select {
 		case <-mDashboard.ClickedCh:
@@ -191,13 +188,13 @@ func onReady() {
 				}
 			}
 		case <-mRaHeader.ClickedCh:
-			_ = OpenCommandCenter()
+			spawnTUIWithCommand("ra status")
 		case <-mRaDeploy.ClickedCh:
-			raHandlers[0].ExecuteWithNotifyAndEvents(nStore, eventBuf)
+			spawnTUIWithCommand("ra deploy")
 		case <-mRaKill.ClickedCh:
-			raHandlers[1].ExecuteWithNotifyAndEvents(nStore, eventBuf)
+			spawnTUIWithCommand("ra kill")
 		case <-mRaCollect.ClickedCh:
-			raHandlers[2].ExecuteWithNotifyAndEvents(nStore, eventBuf)
+			spawnTUIWithCommand("ra collect")
 		case <-raScopes[0].ClickedCh:
 			snap := CollectStats(cfg)
 			if len(snap.RaScopes) > 0 {
@@ -219,15 +216,15 @@ func onReady() {
 				_ = OpenScopeLog(snap.RaScopes[3].Name)
 			}
 		case <-mScan.ClickedCh:
-			handlers[0].ExecuteWithNotifyAndEvents(nStore, eventBuf)
+			spawnTUIWithCommand("scan")
 		case <-mJudge.ClickedCh:
-			handlers[1].ExecuteWithNotifyAndEvents(nStore, eventBuf)
+			spawnTUIWithCommand("clean")
 		case <-mKa.ClickedCh:
-			handlers[3].ExecuteWithNotifyAndEvents(nStore, eventBuf)
+			spawnTUIWithCommand("ghosts")
 		case <-mMaat.ClickedCh:
-			handlers[5].ExecuteWithNotifyAndEvents(nStore, eventBuf)
+			spawnTUIWithCommand("maat pulse")
 		case <-mGuard.ClickedCh:
-			QuickActions()[0].ExecuteWithNotifyAndEvents(nStore, eventBuf)
+			spawnTUIWithCommand("guard")
 		case <-mBuildLog.ClickedCh:
 			_ = OpenBuildLog()
 		case <-mCaseStudies.ClickedCh:
@@ -251,34 +248,84 @@ func onExit() {}
 // spawnTUIWindow opens Terminal.app (or iTerm2) running `sirsi` which
 // launches the BubbleTea TUI. Uses the same AppleScript pattern as
 // ra.SpawnWindow but without the agent machinery.
+// spawnTUIWindow opens the TUI with no pre-loaded command.
 func spawnTUIWindow() {
+	spawnTUIWithCommand("")
+}
+
+// spawnTUIWithCommand opens or activates the Pantheon TUI and optionally
+// types a command into the input bar. If a TUI window (titled "☥ Sirsi")
+// already exists, it activates that window and types the command into it.
+// If not, it spawns a new TUI session.
+//
+// This is the ONLY way the menubar should interact with the user —
+// everything happens inside the TUI viewport (ADR-016).
+func spawnTUIWithCommand(command string) {
 	sirsiBin := findSirsiBinary()
+
+	// Build the command to type into the TUI input bar after it's ready.
+	typeCmd := ""
+	if command != "" {
+		typeCmd = fmt.Sprintf(`
+		delay 0.5
+		tell application "System Events"
+			keystroke "%s"
+			keystroke return
+		end tell`, escapeAppleScript(command))
+	}
 
 	// Check if iTerm2 is installed, prefer it over Terminal.app
 	if _, err := os.Stat("/Applications/iTerm.app"); err == nil {
+		// Try to find existing TUI window first
 		script := fmt.Sprintf(`tell application "iTerm"
 	activate
-	set newWindow to (create window with default profile)
-	tell current session of newWindow
-		write text "%s"
-		set name to "☥ Sirsi"
-	end tell
-end tell`, escapeAppleScript(sirsiBin))
+	-- Look for existing Sirsi TUI window
+	set foundSession to false
+	repeat with aWindow in windows
+		repeat with aTab in tabs of aWindow
+			repeat with aSession in sessions of aTab
+				if name of aSession contains "Sirsi" or name of aSession contains "sirsi" then
+					select aSession
+					set foundSession to true
+					exit repeat
+				end if
+			end repeat
+			if foundSession then exit repeat
+		end repeat
+		if foundSession then exit repeat
+	end repeat
+	if not foundSession then
+		set newWindow to (create window with default profile)
+		tell current session of newWindow
+			write text "%s"
+			set name to "☥ Sirsi"
+		end tell
+	end if
+end tell%s`, escapeAppleScript(sirsiBin), typeCmd)
 		_ = exec.Command("osascript", "-e", script).Start()
 		return
 	}
 
-	// Fallback: launch via `open -a Terminal` to avoid Script Editor interception,
-	// then use AppleScript to run the command in the new window.
+	// Terminal.app fallback — check for existing window, create if needed
 	script := fmt.Sprintf(`
-do shell script "open -a Terminal"
-delay 0.5
+-- Check if a Sirsi TUI window already exists
 tell application "Terminal"
-	activate
-	do script "%s" in front window
-	delay 0.3
-	set custom title of front window to "☥ Sirsi"
-end tell`, escapeAppleScript(sirsiBin))
+	set foundWindow to false
+	repeat with w in windows
+		if custom title of w is "☥ Sirsi" or name of w contains "sirsi" then
+			set frontmost of w to true
+			activate
+			set foundWindow to true
+			exit repeat
+		end if
+	end repeat
+	if not foundWindow then
+		activate
+		do script "%s"
+		delay 0.5
+		set custom title of front window to "☥ Sirsi"
+	end if
+end tell%s`, escapeAppleScript(sirsiBin), typeCmd)
 	_ = exec.Command("osascript", "-e", script).Start()
 }
 
