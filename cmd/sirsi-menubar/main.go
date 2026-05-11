@@ -241,7 +241,7 @@ func spawnTUIWindow() {
 // This is the ONLY way the menubar should interact with the user —
 // everything happens inside the TUI viewport (ADR-016).
 func spawnTUIWithCommand(command string) {
-	sirsiBin := findSirsiBinary()
+	sirsiBin := findSirsiBinary() + " pantheon"
 
 	// Build the command to type into the TUI input bar after it's ready.
 	typeCmd := ""

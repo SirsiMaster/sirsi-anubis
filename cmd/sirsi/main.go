@@ -362,6 +362,23 @@ Configure in your IDE:
 // showGateway presents the Sirsi brand gateway when no subcommand is given.
 // Shows environment status (AI, IDE, workstreams) and routes the user.
 // On a clean install with nothing configured, guides through setup.
+// pantheonTUICmd launches the BubbleTea TUI directly, bypassing the gateway.
+// Used by the menubar to ensure the user always lands in the TUI.
+var pantheonTUICmd = &cobra.Command{
+	Use:     "pantheon",
+	Aliases: []string{"tui"},
+	Short:   "Launch the interactive Pantheon TUI",
+	Run: func(cmd *cobra.Command, args []string) {
+		nStore, _ := notify.Open(notify.DefaultPath())
+		if err := output.LaunchTUIWithNotify(nStore); err != nil {
+			fmt.Fprintf(os.Stderr, "TUI error: %v\n", err)
+		}
+		if nStore != nil {
+			nStore.Close()
+		}
+	},
+}
+
 func showGateway(cmd *cobra.Command) {
 	gold := output.TitleStyle
 	dim := output.DimStyle
@@ -538,6 +555,9 @@ func init() {
 
 	// Workstream manager (sirsi work / sirsi ws / sirsi sw)
 	rootCmd.AddCommand(workCmd)
+
+	// Direct TUI launch (sirsi pantheon / sirsi tui) — bypasses gateway
+	rootCmd.AddCommand(pantheonTUICmd)
 
 	// Isis — Health & Remediation
 	isisNetworkCmd.Flags().BoolVar(&isisNetworkFix, "fix", false, "Auto-apply safe fixes (DNS, firewall)")
