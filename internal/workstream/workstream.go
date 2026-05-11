@@ -21,8 +21,7 @@ const (
 )
 
 // Workstream represents a named development context.
-// The struct is backwards-compatible with the existing sw script's JSON schema;
-// new fields use omitempty so the sw script ignores them.
+// New fields use omitempty for forward compatibility.
 type Workstream struct {
 	Name      string           `json:"name"`
 	Dir       string           `json:"dir"`

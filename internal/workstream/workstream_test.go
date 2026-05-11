@@ -228,7 +228,7 @@ func TestBoundsChecks(t *testing.T) {
 }
 
 func TestBackwardsCompatibility(t *testing.T) {
-	// The existing sw script writes JSON without new fields.
+	// Legacy JSON without newer fields (ai, ide, tags, etc.)
 	// Verify we can load it.
 	legacy := `[
 		{"name": "FinalWishes", "dir": "~/Development/FinalWishes", "memory": "project_finalwishes_overhaul.md", "status": "active"},

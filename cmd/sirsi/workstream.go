@@ -28,7 +28,7 @@ var (
 
 var workCmd = &cobra.Command{
 	Use:     "work",
-	Aliases: []string{"ws"},
+	Aliases: []string{"ws", "sw"},
 	Short:   "Workstream manager — launch AI sessions across projects",
 	Long: `Workstream Manager — shape your development context
 
@@ -37,6 +37,7 @@ and IDEs. Supports Claude, Codex, Gemini, Antigravity, VS Code,
 Cursor, Windsurf, and Zed.
 
   sirsi work                   Interactive workstream picker
+  sirsi sw                     Same as sirsi work (alias)
   sirsi work list              List all workstreams
   sirsi work add <name>        Add a new workstream
   sirsi work launch <n>        Launch workstream with AI/IDE
@@ -47,7 +48,7 @@ Cursor, Windsurf, and Zed.
 			output.Info("Opening workstream docs...")
 			return help.OpenDocs("workstream")
 		}
-		// If a number is passed directly (e.g., `sirsi work 5` or `sw 5`), launch it
+		// If a number is passed directly (e.g., `sirsi work 5` or `sirsi sw 5`), launch it
 		if len(args) > 0 {
 			num, err := strconv.Atoi(args[0])
 			if err == nil {
@@ -790,7 +791,7 @@ func runSetupFlow() error {
 	_ = workstream.SaveInventory(inv)
 
 	fmt.Println()
-	output.Success("Setup complete. Run 'sirsi' or 'sw' to get started.")
+	output.Success("Setup complete. Run 'sirsi' or 'sirsi sw' to get started.")
 	return nil
 }
 
