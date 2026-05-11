@@ -27,13 +27,7 @@ var version = "v0.19.0"
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show Pantheon version and check for updates",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("𓉴 Sirsi Pantheon %s\n", version)
-		fmt.Println("  Unified DevOps Intelligence Platform")
-		fmt.Println("  \"One Install. All Deities.\"")
-		fmt.Println()
-		fmt.Println("  Module Versions:")
-		// Display modules in a two-column layout for readability.
+	RunE: func(cmd *cobra.Command, args []string) error {
 		type entry struct {
 			display string
 			key     string
@@ -49,6 +43,27 @@ var versionCmd = &cobra.Command{
 			{"Seba", "seba"},
 			{"Osiris", "osiris"},
 		}
+
+		if JsonOutput {
+			modules := make(map[string]string, len(layout))
+			for _, e := range layout {
+				modules[e.key] = modversion.Get(e.key)
+			}
+			result := map[string]interface{}{
+				"version": version,
+				"product": "Sirsi Pantheon",
+				"modules": modules,
+			}
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			return enc.Encode(result)
+		}
+
+		fmt.Printf("𓉴 Sirsi Pantheon %s\n", version)
+		fmt.Println("  Unified DevOps Intelligence Platform")
+		fmt.Println("  \"One Install. All Deities.\"")
+		fmt.Println()
+		fmt.Println("  Module Versions:")
 		for i := 0; i < len(layout); i += 2 {
 			left := layout[i]
 			line := fmt.Sprintf("    %-10s%-8s", left.display, modversion.Get(left.key))
@@ -58,6 +73,7 @@ var versionCmd = &cobra.Command{
 			}
 			fmt.Println(line)
 		}
+		return nil
 	},
 }
 

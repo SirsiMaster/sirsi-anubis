@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -232,9 +233,7 @@ var raNightlyCmd = &cobra.Command{
 var raStatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show orchestrator status and repo config",
-	Run: func(cmd *cobra.Command, args []string) {
-		output.Header("\u2600\uFE0F Ra \u2014 Orchestrator Status")
-
+	RunE: func(cmd *cobra.Command, args []string) error {
 		repos := raRepos()
 
 		// Check python3 availability
@@ -252,6 +251,35 @@ var raStatusCmd = &cobra.Command{
 		if out, err := sdkCheck.Output(); err == nil && strings.TrimSpace(string(out)) == "ok" {
 			sdkOk = true
 		}
+
+		if JsonOutput {
+			repoStatus := make(map[string]interface{})
+			for name, repo := range repos {
+				exists := true
+				if _, err := os.Stat(repo.Path); os.IsNotExist(err) {
+					exists = false
+				}
+				repoStatus[name] = map[string]interface{}{
+					"path":        repo.Path,
+					"description": repo.Desc,
+					"exists":      exists,
+				}
+			}
+			result := map[string]interface{}{
+				"python3":      python3Ok,
+				"orchestrator": scriptErr == nil,
+				"sdk":          sdkOk,
+				"repos":        repoStatus,
+			}
+			if scriptErr == nil {
+				result["orchestrator_path"] = scriptPath
+			}
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			return enc.Encode(result)
+		}
+
+		output.Header("\u2600\uFE0F Ra \u2014 Orchestrator Status")
 
 		// Prerequisites
 		output.Section("Prerequisites")
@@ -285,6 +313,7 @@ var raStatusCmd = &cobra.Command{
 		}
 
 		fmt.Println()
+		return nil
 	},
 }
 
