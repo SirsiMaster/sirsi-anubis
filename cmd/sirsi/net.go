@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -48,20 +49,14 @@ func init() {
 
 func runNetStatus(cmd *cobra.Command, args []string) error {
 	start := time.Now()
-	output.Banner()
-	output.Header("NET — Plan Alignment")
 
 	logContent := ""
 	for _, path := range []string{"BUILD_LOG.md", "docs/BUILD_LOG.md"} {
 		data, err := os.ReadFile(path)
 		if err == nil {
 			logContent = string(data)
-			output.Info("Loaded %s (%d bytes)", path, len(data))
 			break
 		}
-	}
-	if logContent == "" {
-		output.Warn("No BUILD_LOG.md found — alignment will report 1.0 (no log to compare)")
 	}
 
 	w := &neith.Weave{
@@ -78,6 +73,28 @@ func runNetStatus(cmd *cobra.Command, args []string) error {
 	verdict := "ALIGNED"
 	if score < 0.5 {
 		verdict = "DRIFTING"
+	}
+
+	if JsonOutput {
+		result := map[string]interface{}{
+			"alignment_score": score,
+			"verdict":         verdict,
+			"plan_items":      len(w.Plan),
+			"plan":            w.Plan,
+			"elapsed_ms":      time.Since(start).Milliseconds(),
+		}
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(result)
+	}
+
+	output.Banner()
+	output.Header("NET — Plan Alignment")
+
+	if logContent != "" {
+		output.Info("Loaded BUILD_LOG.md")
+	} else {
+		output.Warn("No BUILD_LOG.md found — alignment will report 1.0 (no log to compare)")
 	}
 
 	output.Dashboard(map[string]string{

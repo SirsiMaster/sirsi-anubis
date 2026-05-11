@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -188,6 +189,23 @@ func runHorusStats(_ *cobra.Command, args []string) error {
 	graph, err := horusParseDir(path)
 	if err != nil {
 		return err
+	}
+
+	if JsonOutput {
+		result := map[string]interface{}{
+			"files":      graph.Stats.Files,
+			"packages":   graph.Stats.Packages,
+			"types":      graph.Stats.Types,
+			"interfaces": graph.Stats.Interfaces,
+			"functions":  graph.Stats.Functions,
+			"methods":    graph.Stats.Methods,
+			"lines":      graph.Stats.TotalLines,
+			"symbols":    len(graph.Symbols),
+			"elapsed_ms": time.Since(start).Milliseconds(),
+		}
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(result)
 	}
 
 	output.Banner()

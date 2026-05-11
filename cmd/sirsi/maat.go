@@ -216,7 +216,9 @@ func runMaatHeal(cmd *cobra.Command, args []string) error {
 func runMaatPulse(cmd *cobra.Command, args []string) error {
 	start := time.Now()
 
-	if !pulseJSON {
+	// Honor both the global --json flag and the local --json flag.
+	wantJSON := pulseJSON || JsonOutput
+	if !wantJSON {
 		output.Banner()
 		output.Header("MA'AT — The Pulse of Truth")
 		output.Info("Measuring all vital signs...")
@@ -236,7 +238,7 @@ func runMaatPulse(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("pulse failed: %w", err)
 	}
 
-	if pulseJSON {
+	if wantJSON {
 		// Pure JSON to stdout — perfect for CI consumption
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")

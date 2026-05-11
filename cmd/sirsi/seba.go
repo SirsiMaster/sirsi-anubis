@@ -133,8 +133,6 @@ func init() {
 
 func runSebaDiagram(cmd *cobra.Command, args []string) error {
 	start := time.Now()
-	output.Banner()
-	output.Header("SEBA — Diagram Engine")
 
 	// Find project root
 	projectRoot, _ := os.Getwd()
@@ -147,7 +145,6 @@ func runSebaDiagram(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("generate all: %w", err)
 		}
 		diagrams = results
-		output.Success("Generated %d diagrams", len(diagrams))
 	} else {
 		dt := seba.DiagramType(diagramType)
 		result, err := seba.GenerateDiagram(projectRoot, dt)
@@ -155,7 +152,39 @@ func runSebaDiagram(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("generate %s: %w", diagramType, err)
 		}
 		diagrams = append(diagrams, result)
-		output.Success("Generated: %s", result.Title)
+	}
+
+	if JsonOutput {
+		type diagramJSON struct {
+			Title   string `json:"title"`
+			Type    string `json:"type"`
+			Mermaid string `json:"mermaid"`
+		}
+		var out []diagramJSON
+		for _, d := range diagrams {
+			out = append(out, diagramJSON{
+				Title:   d.Title,
+				Type:    string(d.Type),
+				Mermaid: d.Mermaid,
+			})
+		}
+		result := map[string]interface{}{
+			"diagrams":   out,
+			"count":      len(out),
+			"elapsed_ms": time.Since(start).Milliseconds(),
+		}
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(result)
+	}
+
+	output.Banner()
+	output.Header("SEBA — Diagram Engine")
+
+	if diagramType == "all" {
+		output.Success("Generated %d diagrams", len(diagrams))
+	} else {
+		output.Success("Generated: %s", diagrams[0].Title)
 	}
 
 	if diagramHTML {

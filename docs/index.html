@@ -710,6 +710,7 @@
       .feat-term { font-size: 0.6rem; }
       .mod-grid { grid-template-columns: repeat(2, 1fr); gap: 1px; }
       .mod-cell { padding: 1.2rem 0.5rem; }
+      #architecture > div { grid-template-columns: 1fr !important; }
     }
   </style>
 </head>
@@ -922,6 +923,60 @@ Android: pantheon.aar (37 MB) <span style="color:#28c840;">✓</span></div></div
   <span class="t-white">sirsi weigh</span> <span class="t-muted">— scan for waste</span>
   <span class="t-white">sirsi maat</span>  <span class="t-muted">— audit quality</span>
   <span class="t-white">sirsi ghosts</span> <span class="t-muted">— hunt dead apps</span></div></div>
+    </div>
+  </section>
+
+  <hr class="rule-gold">
+
+  <!-- ARCHITECTURE DIAGRAMS -->
+  <section class="features" id="architecture">
+    <div class="features-header reveal">
+      <h2>Architecture</h2>
+      <p>How the modules connect — from CLI to fleet.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;" class="reveal">
+      <div style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:12px;padding:1.5rem;backdrop-filter:blur(20px);">
+        <div style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--color-gold);margin-bottom:0.75rem;">Core Architecture</div>
+        <img src="diagrams/rendered/01-core-architecture.svg" alt="Pantheon Core Architecture" style="max-width:100%;border-radius:8px;background:#0a0a0a;padding:0.5rem;">
+      </div>
+      <div style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:12px;padding:1.5rem;backdrop-filter:blur(20px);">
+        <div style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--color-gold);margin-bottom:0.75rem;">Deity Hierarchy</div>
+        <img src="diagrams/rendered/02-deity-hierarchy.svg" alt="Deity Hierarchy" style="max-width:100%;border-radius:8px;background:#0a0a0a;padding:0.5rem;">
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;" class="reveal reveal-delay-1">
+      <div style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:12px;padding:1.5rem;backdrop-filter:blur(20px);">
+        <div style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--color-gold);margin-bottom:0.75rem;">Token Intelligence</div>
+        <img src="diagrams/rendered/03-token-intelligence.svg" alt="Token Intelligence Pipeline" style="max-width:100%;border-radius:8px;background:#0a0a0a;padding:0.5rem;">
+      </div>
+      <div style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:12px;padding:1.5rem;backdrop-filter:blur(20px);">
+        <div style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--color-gold);margin-bottom:0.75rem;">Thoth Memory System</div>
+        <img src="diagrams/rendered/04-thoth-memory.svg" alt="Thoth Memory Architecture" style="max-width:100%;border-radius:8px;background:#0a0a0a;padding:0.5rem;">
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1.5rem;" class="reveal reveal-delay-2">
+      <div style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:12px;padding:1.5rem;backdrop-filter:blur(20px);">
+        <div style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--color-gold);margin-bottom:0.75rem;">Local Workstation</div>
+        <img src="diagrams/rendered/05-local-workstation.svg" alt="Local Workstation Architecture" style="max-width:100%;border-radius:8px;background:#0a0a0a;padding:0.5rem;">
+      </div>
+      <div style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:12px;padding:1.5rem;backdrop-filter:blur(20px);">
+        <div style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--color-gold);margin-bottom:0.75rem;">Fleet Architecture</div>
+        <img src="diagrams/rendered/06-fleet-architecture.svg" alt="Fleet Architecture" style="max-width:100%;border-radius:8px;background:#0a0a0a;padding:0.5rem;">
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1.5rem;" class="reveal reveal-delay-3">
+      <div style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:12px;padding:1.5rem;backdrop-filter:blur(20px);">
+        <div style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--color-gold);margin-bottom:0.75rem;">Governance Cycle</div>
+        <img src="diagrams/rendered/07-governance-cycle.svg" alt="Ma'at Governance Cycle" style="max-width:100%;border-radius:8px;background:#0a0a0a;padding:0.5rem;">
+      </div>
+      <div style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:12px;padding:1.5rem;backdrop-filter:blur(20px);">
+        <div style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--color-gold);margin-bottom:0.75rem;">Scan Pipeline</div>
+        <img src="diagrams/rendered/08-scan-pipeline.svg" alt="Anubis Scan Pipeline" style="max-width:100%;border-radius:8px;background:#0a0a0a;padding:0.5rem;">
+      </div>
     </div>
   </section>
 

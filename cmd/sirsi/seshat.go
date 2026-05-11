@@ -236,11 +236,19 @@ var seshatListCmd = &cobra.Command{
 	Short: "𓁆 List ingested Knowledge Items",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		start := time.Now()
-		output.Banner()
-		output.Header("SESHAT — Knowledge Library")
 
 		items, err := loadLatestKnowledgeItems()
 		if err != nil {
+			if JsonOutput {
+				enc := json.NewEncoder(os.Stdout)
+				enc.SetIndent("", "  ")
+				return enc.Encode(map[string]interface{}{
+					"items": []interface{}{},
+					"total": 0,
+				})
+			}
+			output.Banner()
+			output.Header("SESHAT — Knowledge Library")
 			// Fall back to legacy Antigravity KIs
 			paths := seshat.DefaultPaths()
 			legacyItems, _ := seshat.ListKnowledgeItems(paths)
@@ -254,6 +262,19 @@ var seshatListCmd = &cobra.Command{
 			output.Footer(time.Since(start))
 			return nil
 		}
+
+		if JsonOutput {
+			result := map[string]interface{}{
+				"items": items,
+				"total": len(items),
+			}
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			return enc.Encode(result)
+		}
+
+		output.Banner()
+		output.Header("SESHAT — Knowledge Library")
 
 		for i, ki := range items {
 			source := "unknown"
