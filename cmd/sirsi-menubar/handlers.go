@@ -34,12 +34,12 @@ type Handler struct {
 func SirsiHandlers() []Handler {
 	sirsiBin := findSirsiBinary()
 	return []Handler{
-		{Name: "Scan (Weigh)", Command: sirsiBin, Args: []string{"weigh"}},
-		{Name: "Judge", Command: sirsiBin, Args: []string{"judge"}},
-		{Name: "Guard", Command: sirsiBin, Args: []string{"guard"}},
-		{Name: "Ka (Ghost Hunt)", Command: sirsiBin, Args: []string{"ka"}},
-		{Name: "Mirror (Dedup)", Command: sirsiBin, Args: []string{"mirror"}},
-		{Name: "Ma'at (QA)", Command: sirsiBin, Args: []string{"maat"}},
+		{Name: "Scan (Weigh)", Command: sirsiBin, Args: []string{"anubis", "weigh"}},
+		{Name: "Judge", Command: sirsiBin, Args: []string{"anubis", "judge", "--dry-run"}},
+		{Name: "Guard", Command: sirsiBin, Args: []string{"anubis", "guard"}},
+		{Name: "Ka (Ghost Hunt)", Command: sirsiBin, Args: []string{"anubis", "ka"}},
+		{Name: "Mirror (Dedup)", Command: sirsiBin, Args: []string{"anubis", "mirror"}},
+		{Name: "Ma'at (QA)", Command: sirsiBin, Args: []string{"maat", "pulse"}},
 	}
 }
 
@@ -185,27 +185,21 @@ func (h *Handler) ExecuteWithNotifyAndEvents(store *notify.Store, events *dashbo
 }
 
 // source maps handler args to the deity name for notification display.
+// Args are now full subcommand paths like ["anubis", "weigh"] or ["ra", "deploy"].
 func (h *Handler) source() string {
-	if len(h.Args) > 0 && h.Args[0] == "ra" {
-		return "ra"
-	}
-	sourceMap := map[string]string{
-		"weigh": "anubis", "judge": "anubis",
-		"guard": "isis", "ka": "anubis",
-		"mirror": "anubis", "maat": "maat",
-	}
 	if len(h.Args) > 0 {
-		if s, ok := sourceMap[h.Args[0]]; ok {
-			return s
-		}
+		return h.Args[0]
 	}
 	return "sirsi"
 }
 
-// action extracts the action verb from the handler args.
+// action extracts the subcommand verb from the handler args.
 func (h *Handler) action() string {
-	if len(h.Args) > 0 {
-		return h.Args[len(h.Args)-1]
+	if len(h.Args) >= 2 {
+		return h.Args[1]
+	}
+	if len(h.Args) == 1 {
+		return h.Args[0]
 	}
 	return "unknown"
 }

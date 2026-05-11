@@ -254,9 +254,8 @@ func onExit() {}
 func spawnTUIWindow() {
 	sirsiBin := findSirsiBinary()
 
-	// Check if iTerm2 is available, prefer it over Terminal.app
-	_, err := exec.LookPath("/Applications/iTerm.app/Contents/MacOS/iTerm2")
-	if err == nil {
+	// Check if iTerm2 is installed, prefer it over Terminal.app
+	if _, err := os.Stat("/Applications/iTerm.app"); err == nil {
 		script := fmt.Sprintf(`tell application "iTerm"
 	activate
 	set newWindow to (create window with default profile)
@@ -269,13 +268,16 @@ end tell`, escapeAppleScript(sirsiBin))
 		return
 	}
 
-	script := fmt.Sprintf(`tell application "Terminal"
+	// Fallback: launch via `open -a Terminal` to avoid Script Editor interception,
+	// then use AppleScript to run the command in the new window.
+	script := fmt.Sprintf(`
+do shell script "open -a Terminal"
+delay 0.5
+tell application "Terminal"
 	activate
-	do script "%s"
+	do script "%s" in front window
 	delay 0.3
-	tell front window
-		set custom title to "☥ Sirsi"
-	end tell
+	set custom title of front window to "☥ Sirsi"
 end tell`, escapeAppleScript(sirsiBin))
 	_ = exec.Command("osascript", "-e", script).Start()
 }
