@@ -870,7 +870,7 @@ func (m *TUIModel) refreshVitals() {
 	// RAM — sysctl + vm_stat (macOS)
 	if out, err := exec.Command("sysctl", "-n", "hw.memsize").Output(); err == nil {
 		var total int64
-		fmt.Sscanf(strings.TrimSpace(string(out)), "%d", &total)
+		_, _ = fmt.Sscanf(strings.TrimSpace(string(out)), "%d", &total)
 		if total > 0 {
 			if vmOut, err := exec.Command("vm_stat").Output(); err == nil {
 				lines := strings.Split(string(vmOut), "\n")
@@ -882,7 +882,7 @@ func (m *TUIModel) refreshVitals() {
 					}
 					val := strings.TrimSpace(strings.TrimSuffix(parts[1], "."))
 					var n int64
-					fmt.Sscanf(val, "%d", &n)
+					_, _ = fmt.Sscanf(val, "%d", &n)
 					n *= 4096 // pages to bytes
 					switch {
 					case strings.Contains(parts[0], "free"):
