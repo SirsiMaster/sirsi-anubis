@@ -139,6 +139,20 @@ type TUIModel struct {
 	notifyStore       *notify.Store
 	recentNotify      []notify.Notification
 	notifyRefreshTime time.Time
+
+	// System vitals (refreshed on tick, displayed in idle dashboard)
+	vitals systemVitals
+}
+
+// systemVitals holds lightweight system stats for the TUI dashboard.
+type systemVitals struct {
+	RAMPercent  float64
+	RAMPressure string // "low", "medium", "high"
+	RAMIcon     string
+	GitBranch   string
+	Uncommitted int
+	LastCommit  string // "2m", "1h", etc.
+	Accelerator string
 }
 
 type historyEntry struct {
@@ -833,6 +847,7 @@ func (m *TUIModel) refreshActive() {
 	}
 
 	m.refreshNotifications()
+	m.refreshVitals()
 
 	home, _ := os.UserHomeDir()
 	pidDir := filepath.Join(home, ".config", "ra", "pids")
@@ -845,6 +860,84 @@ func (m *TUIModel) refreshActive() {
 		for _, d := range deityRoster {
 			if strings.Contains(strings.ToLower(name), d.Key) {
 				m.activeDeity[d.Key] = true
+			}
+		}
+	}
+}
+
+// refreshVitals collects lightweight system stats for the dashboard.
+func (m *TUIModel) refreshVitals() {
+	// RAM — sysctl + vm_stat (macOS)
+	if out, err := exec.Command("sysctl", "-n", "hw.memsize").Output(); err == nil {
+		var total int64
+		fmt.Sscanf(strings.TrimSpace(string(out)), "%d", &total)
+		if total > 0 {
+			if vmOut, err := exec.Command("vm_stat").Output(); err == nil {
+				lines := strings.Split(string(vmOut), "\n")
+				var free, active, inactive, wired int64
+				for _, line := range lines {
+					parts := strings.Split(line, ":")
+					if len(parts) != 2 {
+						continue
+					}
+					val := strings.TrimSpace(strings.TrimSuffix(parts[1], "."))
+					var n int64
+					fmt.Sscanf(val, "%d", &n)
+					n *= 4096 // pages to bytes
+					switch {
+					case strings.Contains(parts[0], "free"):
+						free = n
+					case strings.Contains(parts[0], "Pages active"):
+						active = n
+					case strings.Contains(parts[0], "inactive"):
+						inactive = n
+					case strings.Contains(parts[0], "wired"):
+						wired = n
+					}
+				}
+				used := active + wired
+				_ = free
+				_ = inactive
+				m.vitals.RAMPercent = float64(used) / float64(total) * 100
+			}
+		}
+		switch {
+		case m.vitals.RAMPercent > 85:
+			m.vitals.RAMPressure = "high"
+			m.vitals.RAMIcon = "🔴"
+		case m.vitals.RAMPercent > 65:
+			m.vitals.RAMPressure = "medium"
+			m.vitals.RAMIcon = "🟡"
+		default:
+			m.vitals.RAMPressure = "low"
+			m.vitals.RAMIcon = "🟢"
+		}
+	}
+
+	// Git — branch + uncommitted count
+	if out, err := exec.Command("git", "branch", "--show-current").Output(); err == nil {
+		m.vitals.GitBranch = strings.TrimSpace(string(out))
+	}
+	if out, err := exec.Command("git", "status", "--porcelain").Output(); err == nil {
+		lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+		if len(lines) == 1 && lines[0] == "" {
+			m.vitals.Uncommitted = 0
+		} else {
+			m.vitals.Uncommitted = len(lines)
+		}
+	}
+	if out, err := exec.Command("git", "log", "-1", "--format=%cr").Output(); err == nil {
+		m.vitals.LastCommit = strings.TrimSpace(string(out))
+	}
+
+	// Accelerator — check for Apple Silicon
+	if out, err := exec.Command("sysctl", "-n", "machdep.cpu.brand_string").Output(); err == nil {
+		m.vitals.Accelerator = strings.TrimSpace(string(out))
+		// Shorten for display
+		if strings.Contains(m.vitals.Accelerator, "Apple") {
+			parts := strings.Fields(m.vitals.Accelerator)
+			if len(parts) >= 2 {
+				m.vitals.Accelerator = parts[len(parts)-1] // "M5" from "Apple M5 Max"
 			}
 		}
 	}
@@ -882,8 +975,6 @@ func (m TUIModel) View() tea.View {
 	divider := dim.Render(strings.Repeat("─", maxW))
 
 	header := lipgloss.NewStyle().Foreground(Gold).Bold(true).Render("𓉴  Sirsi Pantheon")
-	desc := lipgloss.NewStyle().Foreground(lipgloss.Color("#999999")).
-		Render("DevOps intelligence for developers and infrastructure teams")
 	signage := lipgloss.NewStyle().Foreground(lipgloss.Color("#444444")).
 		Render(" Sirsi Technologies, Inc. 2026 (Apache 2.0)")
 
@@ -891,22 +982,102 @@ func (m TUIModel) View() tea.View {
 	usedLines := 0
 
 	if !hasOutput {
-		// ── Single-pane: full roster
+		// ── Dashboard: vitals + roster + recent activity + quick actions
+		gold := lipgloss.NewStyle().Foreground(Gold)
+		dimText := lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
+		body := lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC"))
+		warnText := lipgloss.NewStyle().Foreground(lipgloss.Color("#FFAA00"))
+
 		b.WriteString("\n")
 		b.WriteString(" " + header + "\n")
-		b.WriteString(" " + desc + "\n")
 		b.WriteString(" " + divider + "\n")
-		usedLines += 4
+		usedLines += 3
 
+		// ── System Vitals ──
+		ramColor := dimText
+		if m.vitals.RAMPressure == "high" {
+			ramColor = lipgloss.NewStyle().Foreground(Red)
+		} else if m.vitals.RAMPressure == "medium" {
+			ramColor = warnText
+		}
+
+		vitalsLine := fmt.Sprintf(" %s RAM: %.0f%%  %s",
+			m.vitals.RAMIcon, m.vitals.RAMPercent,
+			dimText.Render(m.vitals.RAMPressure))
+
+		gitInfo := ""
+		if m.vitals.GitBranch != "" {
+			gitInfo = dimText.Render("  🌿 " + m.vitals.GitBranch)
+			if m.vitals.Uncommitted > 0 {
+				gitInfo += "  " + warnText.Render(fmt.Sprintf("%d uncommitted", m.vitals.Uncommitted))
+			}
+			if m.vitals.LastCommit != "" {
+				gitInfo += dimText.Render("  ⏱ " + m.vitals.LastCommit)
+			}
+		}
+		_ = ramColor
+		b.WriteString(vitalsLine + gitInfo + "\n")
+		usedLines++
+
+		if m.vitals.Accelerator != "" {
+			b.WriteString(dimText.Render(fmt.Sprintf(" ⚡ %s", m.vitals.Accelerator)) + "\n")
+			usedLines++
+		}
+
+		b.WriteString(" " + divider + "\n")
+		usedLines++
+
+		// ── Deity Roster ──
 		roster := m.renderRosterColumns(false)
 		b.WriteString(roster)
 		usedLines += strings.Count(roster, "\n")
 
-		status := m.renderStatusLine()
-		b.WriteString(status)
-		usedLines += strings.Count(status, "\n")
+		// ── Recent Activity (from notification store) ──
+		if len(m.recentNotify) > 0 {
+			b.WriteString(" " + dimText.Render("─── Recent ─────────────────────────────") + "\n")
+			usedLines++
+			shown := 0
+			for _, n := range m.recentNotify {
+				if shown >= 4 {
+					break
+				}
+				icon := notify.SeverityIcon(n.Severity)
+				src := gold.Render(n.Source)
+				summary := n.Summary
+				if len(summary) > 50 {
+					summary = summary[:47] + "…"
+				}
+				b.WriteString(fmt.Sprintf(" %s %s  %s\n", icon, src, body.Render(summary)))
+				usedLines++
+				shown++
+			}
+		}
 
-		// Context-aware quick actions (onboarding + suggestions)
+		// ── Disk Waste (if scan data exists) ──
+		if scan, err := jackal.LoadLatest(); err == nil && scan.TotalSize > 0 {
+			age := time.Since(scan.Timestamp)
+			ageStr := "just now"
+			if age > time.Hour {
+				ageStr = fmt.Sprintf("%.0fh ago", age.Hours())
+			} else if age > time.Minute {
+				ageStr = fmt.Sprintf("%.0fm ago", age.Minutes())
+			}
+			wasteIcon := "🟢"
+			if scan.TotalSize > 10*1024*1024*1024 {
+				wasteIcon = "🔴"
+			} else if scan.TotalSize > 5*1024*1024*1024 {
+				wasteIcon = "🟡"
+			}
+			b.WriteString(" " + dimText.Render("─── Waste ──────────────────────────────") + "\n")
+			b.WriteString(fmt.Sprintf(" %s %s reclaimable  %s  %s\n",
+				wasteIcon,
+				gold.Render(jackal.FormatSize(scan.TotalSize)),
+				dimText.Render(fmt.Sprintf("%d findings", len(scan.Findings))),
+				dimText.Render("scanned "+ageStr)))
+			usedLines += 2
+		}
+
+		// ── Quick Actions ──
 		actions := m.renderQuickActions()
 		b.WriteString(actions)
 		usedLines += strings.Count(actions, "\n")
