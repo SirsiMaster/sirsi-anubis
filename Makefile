@@ -52,7 +52,8 @@ bundle: build-menubar
 	@cp $(BUILD_DIR)/sirsi-menubar Pantheon.app/Contents/MacOS/sirsi-menubar
 	@cp cmd/sirsi-menubar/bundle/Info.plist Pantheon.app/Contents/Info.plist
 	@cp cmd/sirsi-menubar/bundle/PkgInfo Pantheon.app/Contents/PkgInfo
-	@echo "✅ Pantheon.app created — install with: cp -R Pantheon.app /Applications/"
+	@codesign --force --deep --sign - Pantheon.app
+	@echo "✅ Pantheon.app created (ad-hoc signed) — install with: cp -R Pantheon.app /Applications/"
 
 # --- macOS DMG Installer ---
 dmg: bundle
