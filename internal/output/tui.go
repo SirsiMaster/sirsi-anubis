@@ -375,10 +375,17 @@ func (m TUIModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.breadcrumb = []string{"Findings", raw}
 			return m.showFindings(raw)
 		}
-		// Quick action shortcuts — only on the dashboard (no output showing)
-		if len(m.outputLines) == 0 && (raw == "1" || raw == "2" || raw == "3") {
-			if resolved := m.resolveQuickAction(raw); resolved != "" {
-				raw = resolved
+		// Number shortcuts — execute quick actions (dashboard) or sticky hints (post-command)
+		if raw == "1" || raw == "2" || raw == "3" {
+			idx := int(raw[0]-'0') - 1
+			if len(m.outputLines) == 0 {
+				// Dashboard mode — use quick actions
+				if resolved := m.resolveQuickAction(raw); resolved != "" {
+					raw = resolved
+				}
+			} else if idx < len(m.postRunCmds) {
+				// Post-command mode — use sticky hint commands
+				raw = m.postRunCmds[idx]
 			}
 		}
 		m.historyIdx = -1
@@ -784,6 +791,25 @@ func (m TUIModel) handleStreamLine(msg streamLineMsg) (TUIModel, tea.Cmd) {
 		m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
 		m.viewport.GotoBottom()
 		m.savePersistedState()
+
+		// Record notification so Recent updates in real time
+		if m.notifyStore != nil && m.runningDeity != "" {
+			sev := notify.SeveritySuccess
+			summary := fmt.Sprintf("%s completed", m.runningCmd)
+			if msg.err != nil {
+				sev = notify.SeverityError
+				summary = fmt.Sprintf("%s failed: %v", m.runningCmd, msg.err)
+			}
+			_ = m.notifyStore.Record(notify.Notification{
+				Source:   m.runningDeity,
+				Action:   m.runningCmd,
+				Severity: sev,
+				Summary:  summary,
+			})
+			m.notifyRefreshTime = time.Time{} // force refresh on next tick
+			m.refreshNotifications()
+		}
+
 		m.runningDeity = ""
 		m.runningCmd = ""
 		m.runningArgs = nil
@@ -842,6 +868,25 @@ func (m TUIModel) handleBatchOutput(msg cmdBatchMsg) (TUIModel, tea.Cmd) {
 	m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
 	m.viewport.GotoBottom()
 	m.savePersistedState()
+
+	// Record notification so Recent updates in real time
+	if m.notifyStore != nil && m.runningDeity != "" {
+		sev := notify.SeveritySuccess
+		summary := fmt.Sprintf("%s completed", m.runningCmd)
+		if msg.err != nil {
+			sev = notify.SeverityError
+			summary = fmt.Sprintf("%s failed: %v", m.runningCmd, msg.err)
+		}
+		_ = m.notifyStore.Record(notify.Notification{
+			Source:   m.runningDeity,
+			Action:   m.runningCmd,
+			Severity: sev,
+			Summary:  summary,
+		})
+		m.notifyRefreshTime = time.Time{} // force refresh
+		m.refreshNotifications()
+	}
+
 	m.runningDeity = ""
 	m.runningCmd = ""
 	m.runningArgs = nil
@@ -1885,23 +1930,45 @@ func deityDisplay(key string) (string, string) {
 }
 
 // renderStickyHints returns the pinned suggestion area (shown between viewport and input).
+// Commands are numbered so the user can press 1/2/3 to execute them directly.
 func (m TUIModel) renderStickyHints() string {
-	if len(m.stickyHints) == 0 {
+	if len(m.postRunCmds) == 0 {
 		return ""
 	}
-	// Cap at 6 lines to prevent hints from eating the viewport
-	lines := m.stickyHints
-	if len(lines) > 6 {
-		lines = lines[:6]
+	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
+	gold := lipgloss.NewStyle().Foreground(Gold)
+	hint := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
+	num := lipgloss.NewStyle().Foreground(Gold).Bold(true)
+
+	var b strings.Builder
+	b.WriteString(dim.Render("  ── What's Next ─────────────────") + "\n")
+	for i, cmd := range m.postRunCmds {
+		if i >= 3 {
+			break
+		}
+		// Find matching description from suggest actions
+		desc := ""
+		ctx := m.buildSuggestContext()
+		for _, a := range suggest.After(ctx) {
+			c := strings.TrimPrefix(a.Command, "sirsi ")
+			if c == cmd {
+				desc = a.Description
+				break
+			}
+		}
+		b.WriteString("  " + num.Render(fmt.Sprintf("%d", i+1)) + " " +
+			gold.Render(cmd) + "  " + hint.Render(desc) + "\n")
 	}
-	return strings.Join(lines, "\n") + "\n"
+	b.WriteString(dim.Render("  press 1-3 or tab to cycle") + "\n")
+	return b.String()
 }
 
 func (m *TUIModel) recalcViewportHeight() {
 	// Reserve: header(2) + divider(1) + input divider(1) + input(1) + hints(1) + padding(2) + sticky hints
-	stickyLines := len(m.stickyHints)
-	if stickyLines > 6 {
-		stickyLines = 6
+	stickyLines := 0
+	if len(m.postRunCmds) > 0 {
+		shown := min(len(m.postRunCmds), 3)
+		stickyLines = shown + 2 // commands + header + "press 1-3" footer
 	}
 	vpHeight := m.height - 8 - stickyLines
 	if vpHeight < 5 {
