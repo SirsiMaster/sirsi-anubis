@@ -25,6 +25,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/deity"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/guard"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal/rules"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/ka"
@@ -45,16 +46,20 @@ import (
 type nativeResult struct {
 	lines    []string // rendered output lines
 	deityKey string   // which deity ran
+	fixCmds  []string // actionable fix commands (override suggest engine)
 	err      error
 }
 
 type nativeResultMsg nativeResult
 
+// tabAction defines one action on a tab. Native functions return
+// (rendered lines, deityKey, fixCmds, error). fixCmds override
+// the suggest engine — these become the numbered "What's Next" items.
 type tabAction struct {
 	Label  string
 	Desc   string
-	Args   []string                         // CLI args (fallback if Native is nil)
-	Native func() ([]string, string, error) // returns (rendered lines, deityKey, error)
+	Args   []string                                   // CLI args (fallback if Native is nil)
+	Native func() ([]string, string, []string, error) // (lines, deityKey, fixCmds, err)
 }
 
 type tabDef struct {
@@ -81,10 +86,10 @@ var tabs = []tabDef{
 		Glyph:   "𓁐",
 		Tagline: "Every system breaks. Not every system heals.",
 		Actions: []tabAction{
-			{"Doctor", "Full system health diagnostic", []string{"doctor"}, nil},
+			{"Doctor", "Full system health diagnostic", []string{"doctor"}, nativeDoctor},
+			{"Network", "Network security posture audit", []string{"isis", "network"}, nativeNetworkAudit},
+			{"Fix Network", "Auto-fix DNS, firewall, and security", []string{"isis", "network", "--fix"}, nativeNetworkFix},
 			{"Guard", "Monitor processes and RAM pressure", []string{"guard"}, nil},
-			{"Network", "Network and security posture audit", []string{"isis", "network"}, nil},
-			{"Heal", "Auto-remediate detected issues", []string{"maat", "heal"}, nil},
 		},
 	},
 	{
@@ -124,56 +129,58 @@ var tabs = []tabDef{
 // nativeCommands maps suggest command strings to native functions.
 // When a post-run suggestion matches one of these, it runs natively
 // instead of shelling out to a subprocess.
-var nativeCommands = map[string]func() ([]string, string, error){
-	"anubis weigh":  nativeScan,
-	"anubis ka":     nativeGhosts,
-	"seba hardware": nativeHardware,
-	"osiris assess": nativeRisk,
-	"findings":      nativeFindings,
-	"scan":          nativeScan,
+var nativeCommands = map[string]func() ([]string, string, []string, error){
+	"anubis weigh":       nativeScan,
+	"anubis ka":          nativeGhosts,
+	"seba hardware":      nativeHardware,
+	"osiris assess":      nativeRisk,
+	"findings":           nativeFindings,
+	"scan":               nativeScan,
+	"doctor":             nativeDoctor,
+	"isis network":       nativeNetworkAudit,
+	"isis network --fix": nativeNetworkFix,
 }
 
 // ── Native Deity Functions ───────────────────────────────────────────
 
-func nativeScan() ([]string, string, error) {
+func nativeScan() ([]string, string, []string, error) {
 	engine := jackal.DefaultEngine()
 	engine.RegisterAll(rules.AllRules()...)
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	res, err := engine.Scan(ctx, jackal.ScanOptions{})
 	if err != nil {
-		return nil, "anubis", err
+		return nil, "anubis", nil, err
 	}
 	jackal.EnrichAdvisory(res)
 	_ = jackal.Persist(res, 0)
-	return RenderScanResult(res), "anubis", nil
+	return RenderScanResult(res), "anubis", nil, nil
 }
 
-func nativeGhosts() ([]string, string, error) {
+func nativeGhosts() ([]string, string, []string, error) {
 	scanner := ka.NewScanner()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	ghosts, err := scanner.Scan(ctx, false)
 	if err != nil {
-		return nil, "anubis", err
+		return nil, "anubis", nil, err
 	}
-	return RenderGhostResult(ghosts), "anubis", nil
+	return RenderGhostResult(ghosts), "anubis", nil, nil
 }
 
-func nativeHardware() ([]string, string, error) {
+func nativeHardware() ([]string, string, []string, error) {
 	hw, err := seba.DetectHardware()
 	if err != nil {
-		return nil, "seba", err
+		return nil, "seba", nil, err
 	}
-	return RenderHardwareProfile(hw), "seba", nil
+	return RenderHardwareProfile(hw), "seba", nil, nil
 }
 
-func nativeFindings() ([]string, string, error) {
+func nativeFindings() ([]string, string, []string, error) {
 	scan, err := jackal.LoadLatest()
 	if err != nil {
-		return []string{"", "  No scan results found. Press esc and run Scan first."}, "anubis", nil
+		return []string{"", "  No scan results found. Press esc and run Scan first."}, "anubis", nil, nil
 	}
-	// Render as a full ScanResult view
 	res := &jackal.ScanResult{
 		Findings:   make([]jackal.Finding, len(scan.Findings)),
 		TotalSize:  scan.TotalSize,
@@ -195,15 +202,42 @@ func nativeFindings() ([]string, string, error) {
 	for cat, s := range scan.ByCategory {
 		res.ByCategory[cat] = s
 	}
-	return RenderScanResult(res), "anubis", nil
+	return RenderScanResult(res), "anubis", nil, nil
 }
 
-func nativeRisk() ([]string, string, error) {
+func nativeNetworkAudit() ([]string, string, []string, error) {
+	report, err := guard.NetworkAudit()
+	if err != nil {
+		return nil, "isis", nil, err
+	}
+	lines, fixCmds := RenderNetworkAudit(report)
+	return lines, "isis", fixCmds, nil
+}
+
+func nativeNetworkFix() ([]string, string, []string, error) {
+	report, err := guard.NetworkAuditFix()
+	if err != nil {
+		return nil, "isis", nil, err
+	}
+	lines, _ := RenderNetworkAudit(report)
+	return lines, "isis", nil, nil
+}
+
+func nativeDoctor() ([]string, string, []string, error) {
+	report, err := guard.Doctor()
+	if err != nil {
+		return nil, "isis", nil, err
+	}
+	lines, fixCmds := RenderDoctorReport(report)
+	return lines, "isis", fixCmds, nil
+}
+
+func nativeRisk() ([]string, string, []string, error) {
 	cp, err := osiris.Assess(".")
 	if err != nil {
-		return nil, "osiris", err
+		return nil, "osiris", nil, err
 	}
-	return RenderRiskAssessment(cp), "osiris", nil
+	return RenderRiskAssessment(cp), "osiris", nil, nil
 }
 
 // ── View Mode ────────────────────────────────────────────────────────
@@ -567,8 +601,8 @@ func (m TUIModel) executeAction(action tabAction) (TUIModel, tea.Cmd) {
 
 		fn := action.Native
 		return m, tea.Batch(m.spinner.Tick, elapsedTick(), func() tea.Msg {
-			lines, deityKey, err := fn()
-			return nativeResultMsg{lines: lines, deityKey: deityKey, err: err}
+			lines, deityKey, fixCmds, err := fn()
+			return nativeResultMsg{lines: lines, deityKey: deityKey, fixCmds: fixCmds, err: err}
 		})
 	}
 	return m.executeArgs(action.Args)
@@ -750,23 +784,34 @@ func (m TUIModel) handleNativeResult(msg nativeResultMsg) (TUIModel, tea.Cmd) {
 		}
 	}
 
-	// Build post-run suggestions using the stored args
-	ctx := m.buildSuggestContext()
-	ctx.Deity = msg.deityKey
-	if msg.err != nil {
-		ctx.Err = msg.err
-		m.postRunActions = suggest.OnError(ctx)
-	} else {
-		m.postRunActions = suggest.After(ctx)
-	}
-	m.postRunCmds = suggest.Commands(ctx)
-	// If Anubis scan, populate findings count for better suggestions
-	if msg.deityKey == "anubis" {
-		if scan, loadErr := jackal.LoadLatest(); loadErr == nil {
-			ctx.FindingsCount = len(scan.Findings)
+	// Use fix commands from the renderer if provided (actionable results).
+	// Otherwise fall back to the generic suggest engine.
+	if len(msg.fixCmds) > 0 {
+		m.postRunCmds = msg.fixCmds
+		m.postRunActions = nil
+		for _, cmd := range msg.fixCmds {
+			m.postRunActions = append(m.postRunActions, suggest.Action{
+				Command:     cmd,
+				Description: "Fix detected issues",
+			})
 		}
-		m.postRunActions = suggest.After(ctx)
+	} else {
+		ctx := m.buildSuggestContext()
+		ctx.Deity = msg.deityKey
+		if msg.err != nil {
+			ctx.Err = msg.err
+			m.postRunActions = suggest.OnError(ctx)
+		} else {
+			m.postRunActions = suggest.After(ctx)
+		}
 		m.postRunCmds = suggest.Commands(ctx)
+		if msg.deityKey == "anubis" {
+			if scan, loadErr := jackal.LoadLatest(); loadErr == nil {
+				ctx.FindingsCount = len(scan.Findings)
+			}
+			m.postRunActions = suggest.After(ctx)
+			m.postRunCmds = suggest.Commands(ctx)
+		}
 	}
 
 	m.viewport.SetContent(strings.Join(m.outputLines, "\n"))

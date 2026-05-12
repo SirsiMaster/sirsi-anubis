@@ -10,6 +10,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/SirsiMaster/sirsi-pantheon/internal/guard"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/ka"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/osiris"
@@ -214,6 +215,125 @@ func RenderRiskAssessment(cp *osiris.Checkpoint) []string {
 	lines = append(lines, "  "+rDim.Render(fmt.Sprintf("%s ago", cp.TimeSinceCommit.Truncate(1e9))))
 
 	return lines
+}
+
+// ── Network Audit ────────────────────────────────────────────────────
+
+// RenderNetworkAudit renders the network security posture results.
+// Returns lines for the viewport AND fixable items as post-run commands.
+func RenderNetworkAudit(report *guard.NetworkReport) ([]string, []string) {
+	var lines []string
+	var fixCmds []string
+
+	// Score hero
+	scoreStyle := rGreen
+	scoreLabel := "HEALTHY"
+	switch {
+	case report.Score < 50:
+		scoreStyle = rRed
+		scoreLabel = "AT RISK"
+	case report.Score < 75:
+		scoreStyle = rWarn
+		scoreLabel = "NEEDS ATTENTION"
+	}
+
+	lines = append(lines, "")
+	lines = append(lines, "  "+rLabel.Render("SECURITY SCORE"))
+	lines = append(lines, "  "+scoreStyle.Bold(true).Render(fmt.Sprintf("%d/100", report.Score))+"  "+scoreStyle.Render(scoreLabel))
+	lines = append(lines, "")
+
+	// Findings with per-item status
+	lines = append(lines, "  "+rLabel.Render("CHECKS"))
+	fixIdx := 0
+	for _, f := range report.Findings {
+		var icon string
+		switch f.Severity {
+		case guard.SeverityOK:
+			icon = rGreen.Render("✓")
+		case guard.SeverityInfo:
+			icon = lipgloss.NewStyle().Foreground(lipgloss.Color("#51A9C8")).Render("ℹ")
+		case guard.SeverityWarn:
+			icon = rWarn.Render("!")
+		default:
+			icon = rRed.Render("✗")
+		}
+
+		line := fmt.Sprintf("  %s  %s", icon, rBody.Render(f.Check))
+		lines = append(lines, line)
+		lines = append(lines, "     "+rDim.Render(f.Message))
+
+		// If failed and fixable, add a numbered fix action
+		if f.Severity >= guard.SeverityWarn {
+			fixIdx++
+			if f.Detail != "" {
+				lines = append(lines, "     "+rDim.Render(f.Detail))
+			}
+		}
+		lines = append(lines, "")
+	}
+
+	// Build fix commands — "isis network --fix" handles all fixable items
+	hasFailed := false
+	for _, f := range report.Findings {
+		if f.Severity >= guard.SeverityWarn {
+			hasFailed = true
+			break
+		}
+	}
+	if hasFailed {
+		fixCmds = append(fixCmds, "isis network --fix")
+	}
+
+	return lines, fixCmds
+}
+
+// ── Doctor ───────────────────────────────────────────────────────────
+
+// RenderDoctorReport renders the system health diagnostic.
+func RenderDoctorReport(report *guard.DoctorReport) ([]string, []string) {
+	var lines []string
+	var fixCmds []string
+
+	// Score hero
+	scoreStyle := rGreen
+	scoreLabel := "EXCELLENT"
+	switch {
+	case report.Score < 50:
+		scoreStyle = rRed
+		scoreLabel = "POOR"
+	case report.Score < 75:
+		scoreStyle = rWarn
+		scoreLabel = "FAIR"
+	case report.Score < 90:
+		scoreStyle = rBody
+		scoreLabel = "GOOD"
+	}
+
+	lines = append(lines, "")
+	lines = append(lines, "  "+rLabel.Render("HEALTH SCORE"))
+	lines = append(lines, "  "+scoreStyle.Bold(true).Render(fmt.Sprintf("%d/100", report.Score))+"  "+scoreStyle.Render(scoreLabel))
+	lines = append(lines, "")
+
+	lines = append(lines, "  "+rLabel.Render("CHECKS"))
+	for _, f := range report.Findings {
+		var icon string
+		switch f.Severity {
+		case guard.SeverityOK:
+			icon = rGreen.Render("✓")
+		case guard.SeverityInfo:
+			icon = lipgloss.NewStyle().Foreground(lipgloss.Color("#51A9C8")).Render("ℹ")
+		case guard.SeverityWarn:
+			icon = rWarn.Render("!")
+		default:
+			icon = rRed.Render("✗")
+		}
+
+		lines = append(lines, fmt.Sprintf("  %s  %s", icon, rBody.Render(f.Check)))
+		lines = append(lines, "     "+rDim.Render(f.Message))
+		lines = append(lines, "")
+	}
+
+	return lines, fixCmds
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
