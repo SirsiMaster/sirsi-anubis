@@ -7,6 +7,7 @@ package output
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"image/color"
 	"io"
@@ -25,7 +26,11 @@ import (
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/deity"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal/rules"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/ka"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/notify"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/osiris"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/seba"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/stele"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/suggest"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/vitals"
@@ -36,10 +41,20 @@ import (
 // and numbered actions. The user never types a command — they press
 // a number.
 
+// nativeResult is returned by native deity calls.
+type nativeResult struct {
+	lines    []string // rendered output lines
+	deityKey string   // which deity ran
+	err      error
+}
+
+type nativeResultMsg nativeResult
+
 type tabAction struct {
-	Label string
-	Desc  string
-	Args  []string // CLI args to execute
+	Label  string
+	Desc   string
+	Args   []string                         // CLI args (fallback if Native is nil)
+	Native func() ([]string, string, error) // returns (rendered lines, deityKey, error)
 }
 
 type tabDef struct {
@@ -55,10 +70,10 @@ var tabs = []tabDef{
 		Glyph:   "𓃣",
 		Tagline: "Weigh what lingers. Purge what wastes.",
 		Actions: []tabAction{
-			{"Scan", "Find infrastructure waste on this machine", []string{"anubis", "weigh"}},
-			{"Ghosts", "Hunt remnants of uninstalled apps", []string{"anubis", "ka"}},
-			{"Clean", "Review and remove safe items", []string{"anubis", "judge", "--dry-run"}},
-			{"Duplicates", "Find duplicate files across directories", []string{"anubis", "mirror"}},
+			{"Scan", "Find infrastructure waste on this machine", []string{"anubis", "weigh"}, nativeScan},
+			{"Ghosts", "Hunt remnants of uninstalled apps", []string{"anubis", "ka"}, nativeGhosts},
+			{"Clean", "Review and remove safe items", []string{"anubis", "judge", "--dry-run"}, nil},
+			{"Duplicates", "Find duplicate files across directories", []string{"anubis", "mirror"}, nil},
 		},
 	},
 	{
@@ -66,10 +81,10 @@ var tabs = []tabDef{
 		Glyph:   "𓁐",
 		Tagline: "Every system breaks. Not every system heals.",
 		Actions: []tabAction{
-			{"Doctor", "Full system health diagnostic", []string{"doctor"}},
-			{"Guard", "Monitor processes and RAM pressure", []string{"guard"}},
-			{"Network", "Network and security posture audit", []string{"isis", "network"}},
-			{"Heal", "Auto-remediate detected issues", []string{"maat", "heal"}},
+			{"Doctor", "Full system health diagnostic", []string{"doctor"}, nil},
+			{"Guard", "Monitor processes and RAM pressure", []string{"guard"}, nil},
+			{"Network", "Network and security posture audit", []string{"isis", "network"}, nil},
+			{"Heal", "Auto-remediate detected issues", []string{"maat", "heal"}, nil},
 		},
 	},
 	{
@@ -77,10 +92,10 @@ var tabs = []tabDef{
 		Glyph:   "𓆄",
 		Tagline: "The feather weighs against the heart.",
 		Actions: []tabAction{
-			{"Audit", "Governance and code quality scan", []string{"maat", "audit"}},
-			{"Risk", "Uncommitted work risk assessment", []string{"osiris", "assess"}},
-			{"Lint", "Run linters across the codebase", []string{"ra", "lint"}},
-			{"Test", "Run test suites fleet-wide", []string{"ra", "test"}},
+			{"Audit", "Governance and code quality scan", []string{"maat", "audit"}, nil},
+			{"Risk", "Uncommitted work risk assessment", []string{"osiris", "assess"}, nativeRisk},
+			{"Lint", "Run linters across the codebase", []string{"ra", "lint"}, nil},
+			{"Test", "Run test suites fleet-wide", []string{"ra", "test"}, nil},
 		},
 	},
 	{
@@ -88,10 +103,10 @@ var tabs = []tabDef{
 		Glyph:   "𓇽",
 		Tagline: "Map the terrain before you march.",
 		Actions: []tabAction{
-			{"Hardware", "Accelerator and architecture profile", []string{"seba", "hardware"}},
-			{"Diagram", "Generate architecture diagrams", []string{"seba", "diagram"}},
-			{"Knowledge", "Ingest knowledge from sources", []string{"seshat", "ingest"}},
-			{"Memory", "Sync project memory state", []string{"thoth", "sync"}},
+			{"Hardware", "Accelerator and architecture profile", []string{"seba", "hardware"}, nativeHardware},
+			{"Diagram", "Generate architecture diagrams", []string{"seba", "diagram"}, nil},
+			{"Knowledge", "Ingest knowledge from sources", []string{"seshat", "ingest"}, nil},
+			{"Memory", "Sync project memory state", []string{"thoth", "sync"}, nil},
 		},
 	},
 	{
@@ -99,11 +114,54 @@ var tabs = []tabDef{
 		Glyph:   "𓂀",
 		Tagline: "It never closes its eyes. Every heartbeat, in its light.",
 		Actions: []tabAction{
-			{"Refresh", "Refresh system vitals", []string{"doctor"}},
-			{"Ra Status", "Fleet orchestrator status", []string{"ra", "status"}},
-			{"Code Graph", "Build code symbol index", []string{"horus", "scan"}},
+			{"Refresh", "Refresh system vitals", []string{"doctor"}, nil},
+			{"Ra Status", "Fleet orchestrator status", []string{"ra", "status"}, nil},
+			{"Code Graph", "Build code symbol index", []string{"horus", "scan"}, nil},
 		},
 	},
+}
+
+// ── Native Deity Functions ───────────────────────────────────────────
+
+func nativeScan() ([]string, string, error) {
+	engine := jackal.DefaultEngine()
+	engine.RegisterAll(rules.AllRules()...)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	res, err := engine.Scan(ctx, jackal.ScanOptions{})
+	if err != nil {
+		return nil, "anubis", err
+	}
+	jackal.EnrichAdvisory(res)
+	_ = jackal.Persist(res, 0)
+	return RenderScanResult(res), "anubis", nil
+}
+
+func nativeGhosts() ([]string, string, error) {
+	scanner := ka.NewScanner()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	ghosts, err := scanner.Scan(ctx, false)
+	if err != nil {
+		return nil, "anubis", err
+	}
+	return RenderGhostResult(ghosts), "anubis", nil
+}
+
+func nativeHardware() ([]string, string, error) {
+	hw, err := seba.DetectHardware()
+	if err != nil {
+		return nil, "seba", err
+	}
+	return RenderHardwareProfile(hw), "seba", nil
+}
+
+func nativeRisk() ([]string, string, error) {
+	cp, err := osiris.Assess(".")
+	if err != nil {
+		return nil, "osiris", err
+	}
+	return RenderRiskAssessment(cp), "osiris", nil
 }
 
 // ── View Mode ────────────────────────────────────────────────────────
@@ -262,6 +320,9 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyPressMsg:
 		return m.handleKey(msg)
+
+	case nativeResultMsg:
+		return m.handleNativeResult(msg)
 
 	case streamLineMsg:
 		return m.handleStreamLine(msg)
@@ -440,6 +501,24 @@ func (m TUIModel) handlePromptKey(key string, msg tea.KeyPressMsg) (tea.Model, t
 // ── Command Execution ────────────────────────────────────────────────
 
 func (m TUIModel) executeAction(action tabAction) (TUIModel, tea.Cmd) {
+	if action.Native != nil {
+		// Native call — run in background, return result as message
+		m.mode = viewRunning
+		m.runningCmd = strings.Join(action.Args, " ")
+		m.runningDeity = ""
+		if len(action.Args) > 0 {
+			m.runningDeity = action.Args[0]
+		}
+		m.cmdStartTime = time.Now()
+		m.outputLines = nil
+		m.postRunCmds = nil
+
+		fn := action.Native
+		return m, tea.Batch(m.spinner.Tick, elapsedTick(), func() tea.Msg {
+			lines, deityKey, err := fn()
+			return nativeResultMsg{lines: lines, deityKey: deityKey, err: err}
+		})
+	}
 	return m.executeArgs(action.Args)
 }
 
@@ -592,6 +671,72 @@ func (m TUIModel) handleStreamLine(msg streamLineMsg) (TUIModel, tea.Cmd) {
 	m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
 	m.viewport.GotoBottom()
 	return m, waitForStreamLine(m.streamCh)
+}
+
+// handleNativeResult processes results from native deity function calls.
+func (m TUIModel) handleNativeResult(msg nativeResultMsg) (TUIModel, tea.Cmd) {
+	m.mode = viewDone
+	m.runningDeity = msg.deityKey
+
+	if msg.err != nil {
+		m.outputLines = []string{
+			"",
+			"  " + lipgloss.NewStyle().Foreground(Red).Render("✗ "+msg.err.Error()),
+		}
+		if msg.deityKey != "" {
+			m.deityState[msg.deityKey] = stateFailed
+		}
+	} else {
+		m.outputLines = msg.lines
+		if msg.deityKey != "" {
+			state := stateSucceeded
+			if msg.deityKey == "anubis" {
+				if scan, err := jackal.LoadLatest(); err == nil && len(scan.Findings) > 0 {
+					state = stateHasData
+				}
+			}
+			m.deityState[msg.deityKey] = state
+		}
+	}
+
+	// Build post-run suggestions
+	ctx := suggest.Context{Deity: msg.deityKey}
+	if len(m.runningArgs) >= 2 {
+		ctx.Subcommand = m.runningArgs[1]
+	}
+	if msg.err != nil {
+		ctx.Err = msg.err
+		m.postRunActions = suggest.OnError(ctx)
+	} else {
+		m.postRunActions = suggest.After(ctx)
+	}
+	m.postRunCmds = suggest.Commands(ctx)
+
+	m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
+	m.recalcViewport()
+	m.viewport.GotoTop()
+	m.savePersistedState()
+
+	// Record notification
+	if m.notifyStore != nil && msg.deityKey != "" {
+		sev := notify.SeveritySuccess
+		summary := fmt.Sprintf("%s completed", m.runningCmd)
+		if msg.err != nil {
+			sev = notify.SeverityError
+			summary = fmt.Sprintf("%s failed", m.runningCmd)
+		}
+		_ = m.notifyStore.Record(notify.Notification{
+			Source: msg.deityKey, Action: m.runningCmd,
+			Severity: sev, Summary: summary,
+		})
+		m.notifyRefreshTime = time.Time{}
+		m.refreshNotifications()
+	}
+
+	m.runningDeity = ""
+	m.runningCmd = ""
+	m.runningArgs = nil
+	return m, nil
 }
 
 // ── View ─────────────────────────────────────────────────────────────
