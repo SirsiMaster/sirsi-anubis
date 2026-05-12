@@ -122,8 +122,18 @@ var (
 	SeverityWarning = lipgloss.NewStyle().Foreground(Red)
 )
 
-// Banner prints the Pantheon banner.
+// inTUI returns true when running as a subprocess inside the Pantheon TUI.
+// CLI chrome (banners, section headers, footers) is suppressed so the TUI
+// can provide its own consistent presentation.
+func inTUI() bool {
+	return os.Getenv("SIRSI_TUI") == "1"
+}
+
+// Banner prints the Pantheon banner. Suppressed inside TUI.
 func Banner() {
+	if inTUI() {
+		return
+	}
 	banner := TitleStyle.Render(`
    P A N T H E O N
    ───────────────────────────────
@@ -135,8 +145,11 @@ func Banner() {
 	fmt.Fprintln(os.Stderr, banner)
 }
 
-// Header prints a section header with the 𓁢 prefix.
+// Header prints a section header with the 𓁢 prefix. Suppressed inside TUI.
 func Header(text string) {
+	if inTUI() {
+		return
+	}
 	fmt.Fprintf(os.Stderr, "\n%s\n", HeaderStyle.Render("𓁢 "+text))
 }
 
@@ -219,8 +232,11 @@ func Table(headers []string, rows [][]string) {
 	fmt.Fprintf(os.Stderr, "\n%s\n", t.Render())
 }
 
-// Summary prints a summary box with totals.
+// Summary prints a summary box with totals. Suppressed inside TUI.
 func Summary(totalSize string, findingCount int, ruleCount int) {
+	if inTUI() {
+		return
+	}
 	content := fmt.Sprintf(
 		"%s found across %s (%s rules matched)",
 		SizeStyle.Render(totalSize),
@@ -230,8 +246,11 @@ func Summary(totalSize string, findingCount int, ruleCount int) {
 	fmt.Fprintf(os.Stderr, "\n%s\n", BoxStyle.Render("𓁢 "+content))
 }
 
-// Footer prints the completion ritual with elapsed time.
+// Footer prints the completion ritual with elapsed time. Suppressed inside TUI.
 func Footer(elapsed time.Duration) {
+	if inTUI() {
+		return
+	}
 	fmt.Fprintf(os.Stderr, "\n  %s %s\n",
 		DimStyle.Render("Completed in"),
 		ValueStyle.Render(elapsed.Round(time.Millisecond).String()),
@@ -249,6 +268,9 @@ func FooterWithSuggestions(elapsed time.Duration, actions [][]string) {
 }
 
 func Section(title string) {
+	if inTUI() {
+		return
+	}
 	fmt.Fprintf(os.Stderr, "\n%s\n", TitleStyle.Render("𓁢 "+title))
 }
 

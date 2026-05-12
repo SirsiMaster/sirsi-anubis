@@ -139,8 +139,9 @@ type TUIModel struct {
 	runningProc  *atomic.Pointer[os.Process]
 
 	// Post-run suggestions
-	postRunCmds []string
-	tabIdx      int
+	postRunCmds    []string
+	postRunActions []suggest.Action // full actions with descriptions
+	tabIdx         int
 
 	// History
 	history    []historyEntry
@@ -555,6 +556,10 @@ func (m TUIModel) handleStreamLine(msg streamLineMsg) (TUIModel, tea.Cmd) {
 			ctx.Err = msg.err
 		}
 		m.postRunCmds = suggest.Commands(ctx)
+		m.postRunActions = suggest.After(ctx)
+		if msg.err != nil {
+			m.postRunActions = suggest.OnError(ctx)
+		}
 
 		m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
 		m.viewport.GotoBottom()
@@ -838,24 +843,21 @@ func (m TUIModel) renderDone() string {
 		b.WriteString("\n")
 		b.WriteString("  " + dim.Render("── What's Next ─────────────────") + "\n\n")
 
-		ctx := m.buildSuggestContext()
-		actions := suggest.After(ctx)
-
 		for i, cmd := range m.postRunCmds {
 			if i >= 3 {
 				break
 			}
 			desc := ""
-			for _, a := range actions {
-				if strings.TrimPrefix(a.Command, "sirsi ") == cmd {
-					desc = a.Description
-					break
-				}
+			if i < len(m.postRunActions) {
+				desc = m.postRunActions[i].Description
 			}
 			b.WriteString("  " + num.Render(fmt.Sprintf(" %d ", i+1)) +
-				"  " + gold.Render(cmd) + "  " + dim.Render(desc) + "\n")
+				"  " + gold.Render(cmd) + "\n")
+			if desc != "" {
+				b.WriteString("       " + dim.Render(desc) + "\n")
+			}
+			b.WriteString("\n")
 		}
-		b.WriteString("\n")
 	}
 
 	return b.String()
