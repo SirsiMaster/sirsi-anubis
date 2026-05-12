@@ -103,9 +103,9 @@ type TUIModel struct {
 	viewStack []viewFrame
 
 	// Post-run command suggestions for tab-cycling
-	postRunCmds  []string  // suggested commands after last run
-	tabIdx       int       // -1 = not cycling; 0..len-1 = position
-	stickyHints  []string  // rendered suggestion lines pinned below viewport
+	postRunCmds []string // suggested commands after last run
+	tabIdx      int      // -1 = not cycling; 0..len-1 = position
+	stickyHints []string // rendered suggestion lines pinned below viewport
 
 	// Inline predictions + history recall
 	cmdHistory   []string // deduplicated command strings for up-arrow
@@ -121,7 +121,7 @@ type TUIModel struct {
 	breadcrumb []string
 
 	// Streaming command output
-	streamCh    chan string     // receives lines from running commands
+	streamCh    chan string                 // receives lines from running commands
 	runningProc *atomic.Pointer[os.Process] // handle to running subprocess for cancellation
 
 	// Notification awareness
