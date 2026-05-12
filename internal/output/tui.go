@@ -545,6 +545,7 @@ func (m TUIModel) executeCommand(raw string) (TUIModel, tea.Cmd) {
 
 	exe, _ := os.Executable()
 	cmd := exec.Command(exe, args...)
+	cmd.Env = append(os.Environ(), "SIRSI_TUI=1")
 
 	return m, tea.Batch(m.spinner.Tick, elapsedTick(), m.runCommandStreaming(cmd))
 }

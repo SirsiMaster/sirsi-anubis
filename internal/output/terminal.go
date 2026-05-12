@@ -254,7 +254,12 @@ func Section(title string) {
 
 // NextSteps renders a contextual "What's Next" section in the terminal
 // after a command completes. Each step is a command + description pair.
+// Suppressed when running inside the TUI (SIRSI_TUI=1) since the TUI
+// renders its own sticky suggestions.
 func NextSteps(steps [][]string) {
+	if os.Getenv("SIRSI_TUI") == "1" {
+		return
+	}
 	dim := DimStyle
 	gold := TitleStyle
 
