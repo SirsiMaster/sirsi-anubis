@@ -562,7 +562,8 @@ func (m TUIModel) handleStreamLine(msg streamLineMsg) (TUIModel, tea.Cmd) {
 		}
 
 		m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
-		m.viewport.GotoBottom()
+		m.recalcViewport() // re-fit viewport to actual content size
+		m.viewport.GotoTop()
 		m.savePersistedState()
 
 		// Record notification
@@ -810,19 +811,20 @@ func (m TUIModel) renderCard(labelText, value, subtitle, icon string, width int)
 // renderRunning shows the command execution screen.
 func (m TUIModel) renderRunning() string {
 	var b strings.Builder
+	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
 
 	glyph, name := deity.Display(m.runningDeity)
 	elapsed := time.Since(m.cmdStartTime).Truncate(time.Second)
 	elapsedStr := ""
 	if elapsed >= time.Second {
-		elapsedStr = fmt.Sprintf(" (%s)", elapsed)
+		elapsedStr = " " + dim.Render(fmt.Sprintf("(%s)", elapsed))
 	}
 
 	b.WriteString("\n")
-	b.WriteString(" " + m.spinner.View() + " " +
+	b.WriteString("  " + m.spinner.View() + " " +
 		lipgloss.NewStyle().Foreground(Gold).Bold(true).Render(glyph+" "+name) +
-		lipgloss.NewStyle().Foreground(lipgloss.Color("#888888")).
-			Render("  "+m.runningCmd+elapsedStr) + "\n\n")
+		"  " + dim.Render(m.runningCmd) + elapsedStr + "\n")
+	b.WriteString("\n")
 	b.WriteString(m.viewport.View() + "\n")
 
 	return b.String()
@@ -833,6 +835,7 @@ func (m TUIModel) renderDone() string {
 	var b strings.Builder
 	gold := lipgloss.NewStyle().Foreground(Gold)
 	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
+	body := lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC"))
 	num := lipgloss.NewStyle().Foreground(Gold).Bold(true)
 
 	b.WriteString("\n")
@@ -841,7 +844,6 @@ func (m TUIModel) renderDone() string {
 	// ── Numbered next actions ──
 	if len(m.postRunCmds) > 0 {
 		b.WriteString("\n")
-		b.WriteString("  " + dim.Render("── What's Next ─────────────────") + "\n\n")
 
 		for i, cmd := range m.postRunCmds {
 			if i >= 3 {
@@ -851,15 +853,20 @@ func (m TUIModel) renderDone() string {
 			if i < len(m.postRunActions) {
 				desc = m.postRunActions[i].Description
 			}
-			b.WriteString("  " + num.Render(fmt.Sprintf(" %d ", i+1)) +
-				"  " + gold.Render(cmd) + "\n")
+			b.WriteString("   " + num.Render(fmt.Sprintf("%d", i+1)) +
+				"  " + body.Render(cmd))
 			if desc != "" {
-				b.WriteString("       " + dim.Render(desc) + "\n")
+				b.WriteString("  " + dim.Render(desc))
 			}
 			b.WriteString("\n")
 		}
+		b.WriteString("\n")
+	} else {
+		// No suggestions — show a gentle nudge
+		b.WriteString("\n   " + dim.Render("Press esc to go back, or : to run a command") + "\n\n")
 	}
 
+	_ = gold // used in styles above
 	return b.String()
 }
 
@@ -965,14 +972,18 @@ func (m *TUIModel) refreshNotifications() {
 // ── Layout ───────────────────────────────────────────────────────────
 
 func (m *TUIModel) recalcViewport() {
-	// Reserve: tab bar(2) + divider(1) + bottom divider(1) + hints(1) + padding(2)
-	vpHeight := m.height - 7
+	// Reserve: tab bar(2) + divider(1) + running header(2) + bottom divider(1) + hints(1) + padding(1)
+	vpHeight := m.height - 8
 	if m.mode == viewDone && len(m.postRunCmds) > 0 {
 		shown := min(len(m.postRunCmds), 3)
-		vpHeight -= shown + 3 // header + actions + spacing
+		vpHeight -= (shown * 3) + 3 // each action ~3 lines + header + spacing
 	}
-	if vpHeight < 5 {
-		vpHeight = 5
+	// Cap viewport to content size — don't waste space with blank lines
+	if len(m.outputLines) > 0 && len(m.outputLines) < vpHeight {
+		vpHeight = len(m.outputLines) + 1
+	}
+	if vpHeight < 3 {
+		vpHeight = 3
 	}
 	m.viewport.SetHeight(vpHeight)
 
