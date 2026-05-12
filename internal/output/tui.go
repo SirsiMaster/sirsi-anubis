@@ -1,9 +1,8 @@
 // Package output — Pantheon TUI
 //
-// The primary interface for Pantheon. When the user types `pantheon` with no
-// subcommand, this TUI launches. It is a persistent session: commands execute
-// inside the TUI, output streams into a viewport, and the input bar re-enables
-// when the command completes. The user stays in Pantheon until they explicitly quit.
+// Tab-based interface inspired by Mole (mole.fit). Each deity group gets
+// its own page, its own job. No split panes, no REPL. Guided navigation
+// with numbered actions. Press a number to act. Press esc to go back.
 package output
 
 import (
@@ -18,7 +17,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbles/v2/viewport"
@@ -33,49 +31,142 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/vitals"
 )
 
-// ── Deity Definitions ─────────────────────────────────────────────────
-// Canonical roster lives in internal/deity/registry.go (shared with menubar).
-// Local alias for convenience.
-var deityRoster = deity.Roster
+// ── Tab Definitions ──────────────────────────────────────────────────
+// Five tabs, like Mole's five planets. Each has a purpose, a voice,
+// and numbered actions. The user never types a command — they press
+// a number.
 
-// intentKeywords maps natural-language keywords to deity keys for routing.
-var intentKeywords = map[string][]string{
-	"ra":     {"deploy", "orchestrate", "sprint", "agent", "watch", "command center"},
-	"net":    {"scope", "weave", "context", "canon", "align", "tile", "drift"},
-	"thoth":  {"memory", "sync", "compact", "journal", "remember", "persist"},
-	"maat":   {"quality", "audit", "coverage", "test", "lint", "feather", "gate", "qa"},
-	"isis":   {"fix", "heal", "remediate", "repair", "auto-fix", "guard", "watchdog", "monitor", "ram", "cpu", "doctor", "process", "network", "dns", "wifi", "firewall", "tls", "vpn", "security"},
-	"seshat": {"knowledge", "graft", "ingest", "notes", "gemini", "notebooklm"},
-	"anubis": {"scan", "waste", "clean", "judge", "purge", "hygiene", "infrastructure", "dedup", "duplicate", "mirror", "ghost", "dead", "remnant", "uninstall", "residual", "haunt"},
-	"seba":   {"architecture", "topology", "diagram", "map", "dependency", "graph", "network map", "network topology", "fleet", "subnet", "container", "docker", "kubernetes", "k8s", "pod", "gpu", "vram", "hardware", "accelerator", "ane", "cuda", "metal", "npu", "profile"},
-	"osiris": {"checkpoint", "state", "preserve", "restore", "uncommitted", "risk", "drift", "snapshot", "commit status"},
-	"horus":  {"code graph", "symbols", "outline", "declarations", "code index"},
+type tabAction struct {
+	Label string
+	Desc  string
+	Args  []string // CLI args to execute
 }
 
-// Top-level CLI aliases that bypass intent matching.
-// These map user shorthand to the deity that owns the verb.
-var cliAliases = map[string]string{
-	"scan":    "anubis",
-	"ghosts":  "anubis",
-	"dedup":   "anubis",
-	"guard":   "isis",
-	"doctor":  "isis",
-	"version": "version",
+type tabDef struct {
+	Name    string
+	Glyph   string
+	Tagline string
+	Actions []tabAction
 }
 
-// ── TUI State ─────────────────────────────────────────────────────────
+var tabs = []tabDef{
+	{
+		Name:    "Scan",
+		Glyph:   "𓃣",
+		Tagline: "Weigh what lingers. Purge what wastes.",
+		Actions: []tabAction{
+			{"Scan", "Find infrastructure waste on this machine", []string{"anubis", "weigh"}},
+			{"Ghosts", "Hunt remnants of uninstalled apps", []string{"anubis", "ka"}},
+			{"Clean", "Review and remove safe items", []string{"anubis", "judge", "--dry-run"}},
+			{"Duplicates", "Find duplicate files across directories", []string{"anubis", "mirror"}},
+		},
+	},
+	{
+		Name:    "Health",
+		Glyph:   "𓁐",
+		Tagline: "Every system breaks. Not every system heals.",
+		Actions: []tabAction{
+			{"Doctor", "Full system health diagnostic", []string{"doctor"}},
+			{"Guard", "Monitor processes and RAM pressure", []string{"guard"}},
+			{"Network", "Network and security posture audit", []string{"isis", "network"}},
+			{"Heal", "Auto-remediate detected issues", []string{"maat", "heal"}},
+		},
+	},
+	{
+		Name:    "Quality",
+		Glyph:   "𓆄",
+		Tagline: "The feather weighs against the heart.",
+		Actions: []tabAction{
+			{"Audit", "Governance and code quality scan", []string{"maat", "audit"}},
+			{"Risk", "Uncommitted work risk assessment", []string{"osiris", "assess"}},
+			{"Lint", "Run linters across the codebase", []string{"ra", "lint"}},
+			{"Test", "Run test suites fleet-wide", []string{"ra", "test"}},
+		},
+	},
+	{
+		Name:    "Intel",
+		Glyph:   "𓇽",
+		Tagline: "Map the terrain before you march.",
+		Actions: []tabAction{
+			{"Hardware", "Accelerator and architecture profile", []string{"seba", "hardware"}},
+			{"Diagram", "Generate architecture diagrams", []string{"seba", "diagram"}},
+			{"Knowledge", "Ingest knowledge from sources", []string{"seshat", "ingest"}},
+			{"Memory", "Sync project memory state", []string{"thoth", "sync"}},
+		},
+	},
+	{
+		Name:    "Status",
+		Glyph:   "𓂀",
+		Tagline: "It never closes its eyes. Every heartbeat, in its light.",
+		Actions: []tabAction{
+			{"Refresh", "Refresh system vitals", []string{"doctor"}},
+			{"Ra Status", "Fleet orchestrator status", []string{"ra", "status"}},
+			{"Code Graph", "Build code symbol index", []string{"horus", "scan"}},
+		},
+	},
+}
 
-type tuiMode int
+// ── View Mode ────────────────────────────────────────────────────────
+
+type viewMode int
 
 const (
-	modeIdle tuiMode = iota
-	modeRunning
+	viewTabs    viewMode = iota // Showing a tab landing page
+	viewRunning                 // Command executing
+	viewDone                    // Command finished, output + next actions
+	viewPrompt                  // Power-user command prompt (: key)
 )
 
-// deityRunState is an alias for the shared deity state type.
+// ── Model ────────────────────────────────────────────────────────────
+
+type TUIModel struct {
+	width  int
+	height int
+
+	activeTab int      // 0-4 index into tabs
+	mode      viewMode // current view state
+
+	// Command execution
+	input        textinput.Model
+	viewport     viewport.Model
+	outputLines  []string
+	runningDeity string
+	runningCmd   string
+	runningArgs  []string
+	cmdStartTime time.Time
+	spinner      spinner.Model
+	streamCh     chan string
+	runningProc  *atomic.Pointer[os.Process]
+
+	// Post-run suggestions
+	postRunCmds []string
+	tabIdx      int
+	stickyHints []string
+
+	// History
+	history    []historyEntry
+	cmdHistory []string
+	historyIdx int
+
+	// State
+	activeDeity map[string]bool
+	deityState  map[string]deityRunState
+	steleReader *stele.Reader
+	quitting    bool
+
+	// Notifications
+	notifyStore       *notify.Store
+	recentNotify      []notify.Notification
+	notifyRefreshTime time.Time
+
+	// System vitals
+	vitals systemVitals
+}
+
+type systemVitals = vitals.Snapshot
+
 type deityRunState = deity.RunState
 
-// Re-export state constants for local use.
 const (
 	stateNeverRun  = deity.StateNeverRun
 	stateSucceeded = deity.StateSucceeded
@@ -83,90 +174,20 @@ const (
 	stateHasData   = deity.StateHasData
 )
 
-type TUIModel struct {
-	width  int
-	height int
-
-	input    textinput.Model
-	viewport viewport.Model
-
-	outputLines  []string
-	mode         tuiMode
-	runningDeity string
-	runningCmd   string
-	runningArgs  []string  // dispatched CLI args (e.g. ["anubis", "weigh"])
-	cmdStartTime time.Time // when the current command started
-	spinner      spinner.Model
-	history      []historyEntry
-
-	// View stack for back-navigation (esc pops, commands push)
-	viewStack []viewFrame
-
-	// Post-run command suggestions for tab-cycling
-	postRunCmds []string // suggested commands after last run
-	tabIdx      int      // -1 = not cycling; 0..len-1 = position
-	stickyHints []string // rendered suggestion lines pinned below viewport
-
-	// Inline predictions + history recall
-	cmdHistory   []string // deduplicated command strings for up-arrow
-	historyIdx   int      // -1 = not browsing; 0..len-1 = position
-	historySaved string   // input text saved when user starts browsing
-
-	activeDeity map[string]bool
-	deityState  map[string]deityRunState // tracks last-run outcome per deity
-	steleReader *stele.Reader
-	quitting    bool
-
-	// Breadcrumb trail for current view (e.g. ["Findings", "cache"])
-	breadcrumb []string
-
-	// Streaming command output
-	streamCh    chan string                 // receives lines from running commands
-	runningProc *atomic.Pointer[os.Process] // handle to running subprocess for cancellation
-
-	// Notification awareness
-	notifyStore       *notify.Store
-	recentNotify      []notify.Notification
-	notifyRefreshTime time.Time
-
-	// System vitals (refreshed on tick, displayed in idle dashboard)
-	vitals systemVitals
-}
-
-// systemVitals is an alias for the shared vitals snapshot.
-type systemVitals = vitals.Snapshot
-
 type historyEntry struct {
 	deity, command, output string
 }
 
-// viewFrame captures a snapshot of the viewport for back-navigation.
-type viewFrame struct {
-	outputLines []string
-	placeholder string
-	breadcrumb  []string
-}
-
-// ── Messages ──────────────────────────────────────────────────────────
+// ── Messages ─────────────────────────────────────────────────────────
 
 type refreshMsg time.Time
+type elapsedTickMsg time.Time
 
-// cmdBatchMsg carries the output of a completed command.
-type cmdBatchMsg struct {
-	lines []string
-	err   error
-}
-
-// streamLineMsg carries a single line from the streaming channel.
-// An empty line with done=true signals command completion.
 type streamLineMsg struct {
 	line string
 	done bool
 	err  error
 }
-
-// elapsedTickMsg triggers elapsed time updates during running commands.
-type elapsedTickMsg time.Time
 
 func refreshTick() tea.Cmd {
 	return tea.Tick(10*time.Second, func(t time.Time) tea.Msg { return refreshMsg(t) })
@@ -176,8 +197,6 @@ func elapsedTick() tea.Cmd {
 	return tea.Tick(time.Second, func(t time.Time) tea.Msg { return elapsedTickMsg(t) })
 }
 
-// waitForStreamLine returns a tea.Cmd that blocks until a line arrives on
-// the stream channel. Closed channel signals done.
 func waitForStreamLine(ch <-chan string) tea.Cmd {
 	return func() tea.Msg {
 		line, ok := <-ch
@@ -188,28 +207,18 @@ func waitForStreamLine(ch <-chan string) tea.Cmd {
 	}
 }
 
-// ── Constructor ───────────────────────────────────────────────────────
+// ── Constructor ──────────────────────────────────────────────────────
 
 func NewTUIModel() TUIModel {
 	ti := textinput.New()
-	ti.Placeholder = "scan my dev environment for ghost processes and dead symlinks"
-	ti.Focus()
+	ti.Placeholder = "type a command..."
 	ti.CharLimit = 256
-	ti.SetWidth(76)
 	ti.Prompt = "𓉴 "
 	styles := textinput.DefaultDarkStyles()
 	styles.Focused.Prompt = lipgloss.NewStyle().Foreground(Gold).Bold(true)
 	styles.Focused.Text = lipgloss.NewStyle().Foreground(White)
-	styles.Focused.Placeholder = lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
-	styles.Focused.Suggestion = lipgloss.NewStyle().Foreground(lipgloss.Color("#555555"))
+	styles.Focused.Placeholder = lipgloss.NewStyle().Foreground(lipgloss.Color("#555555"))
 	ti.SetStyles(styles)
-
-	// Fish-shell-style inline predictions
-	ti.ShowSuggestions = true
-	ti.KeyMap.AcceptSuggestion = key.NewBinding(key.WithKeys("right"))
-	ti.KeyMap.NextSuggestion = key.NewBinding() // unbind — Up is for history
-	ti.KeyMap.PrevSuggestion = key.NewBinding() // unbind — Down is for history
-	ti.SetSuggestions(topLevelCommands)
 
 	sp := spinner.New()
 	sp.Spinner = spinner.MiniDot
@@ -223,7 +232,8 @@ func NewTUIModel() TUIModel {
 		spinner:     sp,
 		width:       100,
 		height:      40,
-		mode:        modeIdle,
+		mode:        viewTabs,
+		activeTab:   0,
 		historyIdx:  -1,
 		tabIdx:      -1,
 		activeDeity: make(map[string]bool),
@@ -237,18 +247,17 @@ func NewTUIModel() TUIModel {
 }
 
 func (m TUIModel) Init() tea.Cmd {
-	return tea.Batch(textinput.Blink, refreshTick())
+	return tea.Batch(refreshTick())
 }
 
-// ── Update ────────────────────────────────────────────────────────────
+// ── Update ───────────────────────────────────────────────────────────
 
 func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.input.SetWidth(min(msg.Width-8, 80))
-		m.recalcViewportHeight()
+		m.recalcViewport()
 		return m, nil
 
 	case tea.KeyPressMsg:
@@ -257,12 +266,8 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case streamLineMsg:
 		return m.handleStreamLine(msg)
 
-	case cmdBatchMsg:
-		return m.handleBatchOutput(msg)
-
 	case elapsedTickMsg:
-		// Re-render to update the elapsed time display while running
-		if m.mode == modeRunning {
+		if m.mode == viewRunning {
 			return m, elapsedTick()
 		}
 		return m, nil
@@ -272,7 +277,7 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, refreshTick()
 
 	case spinner.TickMsg:
-		if m.mode == modeRunning {
+		if m.mode == viewRunning {
 			var cmd tea.Cmd
 			m.spinner, cmd = m.spinner.Update(msg)
 			return m, cmd
@@ -280,275 +285,193 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	if m.mode == modeIdle {
+	// Pass through to active component
+	if m.mode == viewPrompt {
 		var cmd tea.Cmd
 		m.input, cmd = m.input.Update(msg)
 		return m, cmd
 	}
-	var cmd tea.Cmd
-	m.viewport, cmd = m.viewport.Update(msg)
-	return m, cmd
+	return m, nil
 }
 
+// ── Key Handling ─────────────────────────────────────────────────────
+
 func (m TUIModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
+	key := msg.String()
+
+	// Global keys
+	switch key {
 	case "ctrl+c":
-		if m.mode == modeRunning {
+		if m.mode == viewRunning {
 			if proc := m.runningProc.Load(); proc != nil {
-				// First ctrl+c: kill the running command, stay in TUI
 				_ = proc.Kill()
 				m.runningProc.Store(nil)
-				return m, nil // streamLineMsg{done:true} will arrive from the goroutine
+				return m, nil
 			}
 		}
 		m.quitting = true
 		return m, tea.Quit
 
-	case "esc":
-		if m.mode == modeRunning {
-			return m, nil
-		}
-		// Pop the view stack if there's a previous view to restore
-		if len(m.viewStack) > 0 {
-			prev := m.viewStack[len(m.viewStack)-1]
-			m.viewStack = m.viewStack[:len(m.viewStack)-1]
-			m.outputLines = prev.outputLines
-			m.breadcrumb = prev.breadcrumb
-			m.input.Placeholder = prev.placeholder
-			if len(m.outputLines) > 0 {
-				m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
-			} else {
-				m.viewport.SetContent("")
-			}
-			m.recalcViewportHeight()
-			return m, nil
-		}
-		// No stack — clear output or quit
-		if len(m.outputLines) > 0 {
-			m.outputLines = nil
-			m.stickyHints = nil
-			m.breadcrumb = nil
-			m.viewport.SetContent("")
-			m.input.Placeholder = "scan my dev environment for ghost processes and dead symlinks"
-			return m, nil
-		}
-		m.quitting = true
-		return m, tea.Quit
-
-	case "enter":
-		if m.mode == modeRunning {
-			return m, nil
-		}
-		raw := strings.TrimSpace(m.input.Value())
-		if raw == "" {
-			return m, nil
-		}
-		if raw == "q" || raw == "quit" || raw == "exit" {
+	case "q":
+		if m.mode == viewTabs {
 			m.quitting = true
 			return m, tea.Quit
 		}
-		if raw == "clear" {
-			m.outputLines = nil
-			m.viewport.SetContent("")
-			m.input.Reset()
-			return m, nil
-		}
-		if raw == "help" || raw == "?" {
-			m.pushView()
-			m.breadcrumb = []string{"Help"}
-			return m.showHelp()
-		}
-		if raw == "scan" || raw == "findings" {
-			m.pushView()
-			m.breadcrumb = []string{"Findings"}
-			return m.showFindings("")
-		}
-		if strings.HasPrefix(raw, "findings ") {
-			cat := strings.TrimPrefix(raw, "findings ")
-			m.pushView()
-			m.breadcrumb = []string{"Findings", cat}
-			return m.showFindings(cat)
-		}
-		// Allow bare category names as shortcuts after a scan
-		if m.isScanCategory(raw) {
-			m.pushView()
-			m.breadcrumb = []string{"Findings", raw}
-			return m.showFindings(raw)
-		}
-		// Number shortcuts — execute quick actions (dashboard) or sticky hints (post-command)
-		if raw == "1" || raw == "2" || raw == "3" {
-			idx := int(raw[0]-'0') - 1
-			if len(m.outputLines) == 0 {
-				// Dashboard mode — use quick actions
-				if resolved := m.resolveQuickAction(raw); resolved != "" {
-					raw = resolved
-				}
-			} else if idx < len(m.postRunCmds) {
-				// Post-command mode — use sticky hint commands
-				raw = m.postRunCmds[idx]
-			}
-		}
-		m.historyIdx = -1
-		return m.executeCommand(raw)
+	}
 
-	case "up":
-		if m.mode == modeRunning {
-			var cmd tea.Cmd
-			m.viewport, cmd = m.viewport.Update(msg)
-			return m, cmd
-		}
-		// History recall — walk backward
-		if len(m.cmdHistory) == 0 {
-			return m, nil
-		}
-		if m.historyIdx == -1 {
-			m.historySaved = m.input.Value()
-			m.historyIdx = len(m.cmdHistory)
-		}
-		if m.historyIdx > 0 {
-			m.historyIdx--
-			m.input.SetValue(m.cmdHistory[m.historyIdx])
-			m.input.CursorEnd()
-			m.updateSuggestionList()
-		}
-		return m, nil
-
-	case "down":
-		if m.mode == modeRunning {
-			var cmd tea.Cmd
-			m.viewport, cmd = m.viewport.Update(msg)
-			return m, cmd
-		}
-		if m.historyIdx >= 0 {
-			m.historyIdx++
-			if m.historyIdx >= len(m.cmdHistory) {
-				m.historyIdx = -1
-				m.input.SetValue(m.historySaved)
-			} else {
-				m.input.SetValue(m.cmdHistory[m.historyIdx])
-			}
-			m.input.CursorEnd()
-			m.updateSuggestionList()
-		}
-		return m, nil
-
-	case "tab":
-		if m.mode != modeIdle || len(m.postRunCmds) == 0 {
-			return m, nil
-		}
-		// Cycle through post-run suggested commands
-		m.tabIdx++
-		if m.tabIdx >= len(m.postRunCmds) {
-			m.tabIdx = 0
-		}
-		m.input.SetValue(m.postRunCmds[m.tabIdx])
-		m.input.CursorEnd()
-		return m, nil
-
-	case "pgup":
-		if len(m.outputLines) > 0 {
+	switch m.mode {
+	case viewTabs:
+		return m.handleTabKey(key)
+	case viewRunning:
+		// Scroll output while running
+		switch key {
+		case "up", "pgup":
 			m.viewport.PageUp()
-		}
-		return m, nil
-	case "pgdown":
-		if len(m.outputLines) > 0 {
+		case "down", "pgdown":
 			m.viewport.PageDown()
 		}
 		return m, nil
+	case viewDone:
+		return m.handleDoneKey(key)
+	case viewPrompt:
+		return m.handlePromptKey(key, msg)
+	}
 
-	case "right":
-		if m.mode != modeIdle {
+	return m, nil
+}
+
+func (m TUIModel) handleTabKey(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "left", "h":
+		if m.activeTab > 0 {
+			m.activeTab--
+		}
+		return m, nil
+	case "right", "l":
+		if m.activeTab < len(tabs)-1 {
+			m.activeTab++
+		}
+		return m, nil
+	case "1", "2", "3", "4", "5":
+		idx := int(key[0]-'0') - 1
+		tab := tabs[m.activeTab]
+		if idx < len(tab.Actions) {
+			return m.executeAction(tab.Actions[idx])
+		}
+		return m, nil
+	case ":":
+		// Power-user command prompt
+		m.mode = viewPrompt
+		m.input.Focus()
+		m.input.Reset()
+		return m, textinput.Blink
+	case "esc":
+		m.quitting = true
+		return m, tea.Quit
+	}
+
+	// Tab switching by first letter
+	for i, tab := range tabs {
+		if strings.ToLower(key) == strings.ToLower(tab.Name[:1]) {
+			m.activeTab = i
 			return m, nil
 		}
-		// Only accept suggestion when cursor is at end of input
-		cursorAtEnd := m.input.Position() >= len([]rune(m.input.Value()))
-		if !cursorAtEnd {
-			// Cursor not at end — move cursor, don't accept suggestion
-			saved := m.input.KeyMap.AcceptSuggestion
-			m.input.KeyMap.AcceptSuggestion = key.NewBinding()
-			var cmd tea.Cmd
-			m.input, cmd = m.input.Update(msg)
-			m.input.KeyMap.AcceptSuggestion = saved
-			return m, cmd
-		}
-		// Cursor at end — let bubbles accept the suggestion
-		var cmd tea.Cmd
-		m.input, cmd = m.input.Update(msg)
-		m.updateSuggestionList()
-		return m, cmd
 	}
 
-	if m.mode == modeIdle {
-		var cmd tea.Cmd
-		m.input, cmd = m.input.Update(msg)
-		m.historyIdx = -1 // reset history on any typed input
-		m.tabIdx = -1     // reset tab cycling on any typed input
-		m.updateSuggestionList()
-		return m, cmd
+	return m, nil
+}
+
+func (m TUIModel) handleDoneKey(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "esc":
+		// Back to tab
+		m.mode = viewTabs
+		m.outputLines = nil
+		m.postRunCmds = nil
+		m.recalcViewport()
+		return m, nil
+	case "up", "pgup":
+		m.viewport.PageUp()
+		return m, nil
+	case "down", "pgdown":
+		m.viewport.PageDown()
+		return m, nil
+	case "1", "2", "3":
+		idx := int(key[0]-'0') - 1
+		if idx < len(m.postRunCmds) {
+			// Execute the suggested command
+			args := strings.Fields(m.postRunCmds[idx])
+			if len(args) > 0 {
+				return m.executeArgs(args)
+			}
+		}
+		return m, nil
+	case ":":
+		m.mode = viewPrompt
+		m.input.Focus()
+		m.input.Reset()
+		return m, textinput.Blink
+	}
+	return m, nil
+}
+
+func (m TUIModel) handlePromptKey(key string, msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch key {
+	case "esc":
+		m.mode = viewTabs
+		m.input.Blur()
+		return m, nil
+	case "enter":
+		raw := strings.TrimSpace(m.input.Value())
+		if raw == "" {
+			m.mode = viewTabs
+			m.input.Blur()
+			return m, nil
+		}
+		m.input.Blur()
+		args := strings.Fields(raw)
+		return m.executeArgs(args)
 	}
 	var cmd tea.Cmd
-	m.viewport, cmd = m.viewport.Update(msg)
+	m.input, cmd = m.input.Update(msg)
 	return m, cmd
 }
 
-// updateSuggestionList refreshes inline predictions based on current input.
-func (m *TUIModel) updateSuggestionList() {
-	suggestions := buildSuggestions(m.input.Value(), m.cmdHistory)
-	m.input.SetSuggestions(suggestions)
+// ── Command Execution ────────────────────────────────────────────────
+
+func (m TUIModel) executeAction(action tabAction) (TUIModel, tea.Cmd) {
+	return m.executeArgs(action.Args)
 }
 
-// pushView saves the current viewport state so esc can restore it.
-func (m *TUIModel) pushView() {
-	if len(m.outputLines) > 0 {
-		m.viewStack = append(m.viewStack, viewFrame{
-			outputLines: append([]string{}, m.outputLines...),
-			placeholder: m.input.Placeholder,
-			breadcrumb:  append([]string{}, m.breadcrumb...),
-		})
-	}
-}
-
-// ── Command Execution ─────────────────────────────────────────────────
-
-func (m TUIModel) executeCommand(raw string) (TUIModel, tea.Cmd) {
-	dKey, args, intentMatched := m.dispatch(raw)
-
-	m.mode = modeRunning
-	m.runningDeity = dKey
-	m.runningCmd = raw
+func (m TUIModel) executeArgs(args []string) (TUIModel, tea.Cmd) {
+	m.mode = viewRunning
+	m.runningCmd = strings.Join(args, " ")
 	m.runningArgs = args
 	m.cmdStartTime = time.Now()
-	m.streamCh = make(chan string, 100) // fresh channel per command
+	m.streamCh = make(chan string, 100)
 	m.outputLines = nil
-	m.stickyHints = nil
-	m.input.Blur()
-	m.input.Reset()
+	m.postRunCmds = nil
 
-	// Set breadcrumb to deity name + subcommand
-	_, dName := deityDisplay(dKey)
-	if dKey != "" {
-		m.breadcrumb = []string{dName}
-		if len(args) >= 2 {
-			m.breadcrumb = append(m.breadcrumb, args[1])
+	// Determine deity from first arg
+	m.runningDeity = ""
+	for _, d := range deity.Roster {
+		if len(args) > 0 && args[0] == d.Key {
+			m.runningDeity = d.Key
+			break
 		}
-	} else {
-		m.breadcrumb = []string{raw}
+	}
+	// Check CLI aliases
+	aliases := map[string]string{
+		"scan": "anubis", "ghosts": "anubis", "dedup": "anubis",
+		"guard": "isis", "doctor": "isis",
+	}
+	if m.runningDeity == "" && len(args) > 0 {
+		if d, ok := aliases[args[0]]; ok {
+			m.runningDeity = d
+		}
 	}
 
-	glyph, name := deityDisplay(dKey)
-	if dKey != "" {
-		m.outputLines = append(m.outputLines,
-			lipgloss.NewStyle().Foreground(Gold).Bold(true).Render(
-				fmt.Sprintf("  %s %s", glyph, name)))
-		if intentMatched {
-			m.outputLines = append(m.outputLines,
-				lipgloss.NewStyle().Foreground(lipgloss.Color("#888888")).Render(
-					fmt.Sprintf("  \"%s\" → %s", raw, strings.Join(args, " "))))
-		}
-		m.outputLines = append(m.outputLines, "")
-	}
-	m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
-	m.recalcViewportHeight()
+	m.recalcViewport()
 
 	exe, _ := os.Executable()
 	cmd := exec.Command(exe, args...)
@@ -557,154 +480,6 @@ func (m TUIModel) executeCommand(raw string) (TUIModel, tea.Cmd) {
 	return m, tea.Batch(m.spinner.Tick, elapsedTick(), m.runCommandStreaming(cmd))
 }
 
-// dispatch routes user input to a deity. Returns (deity, args, intentMatched).
-// intentMatched is true when the input was natural language matched via keywords
-// rather than a direct deity name or CLI alias.
-func (m *TUIModel) dispatch(raw string) (string, []string, bool) {
-	lower := strings.ToLower(raw)
-	tokens := strings.Fields(lower)
-	rawTokens := strings.Fields(raw)
-
-	if len(tokens) == 0 {
-		return "", nil, false
-	}
-
-	for _, d := range deityRoster {
-		if tokens[0] == d.Key {
-			return d.Key, rawTokens, false
-		}
-	}
-
-	if target, ok := cliAliases[tokens[0]]; ok {
-		return target, rawTokens, false
-	}
-
-	bestDeity := ""
-	bestScore := 0
-	for dKey, keywords := range intentKeywords {
-		score := 0
-		for _, kw := range keywords {
-			if strings.Contains(lower, kw) {
-				score++
-			}
-		}
-		if score > bestScore {
-			bestScore = score
-			bestDeity = dKey
-		}
-	}
-
-	if bestDeity != "" {
-		args := inferSubcommand(bestDeity, lower)
-		return bestDeity, args, true
-	}
-
-	return "", rawTokens, false
-}
-
-// inferSubcommand maps a deity + natural language input to the most likely
-// CLI args. Without this, intent matches dispatch to bare deity names which
-// just show help text.
-func inferSubcommand(dKey, lower string) []string {
-	type rule struct {
-		keywords   []string
-		subcommand []string
-	}
-
-	// Order matters — first match wins within a deity.
-	deityRules := map[string][]rule{
-		"isis": {
-			{[]string{"network", "dns", "wifi", "firewall", "tls", "vpn", "security"}, []string{"isis", "network"}},
-			{[]string{"doctor", "health", "diagnostic"}, []string{"doctor"}},
-			{[]string{"heal", "remediate", "fix", "repair"}, []string{"maat", "heal"}},
-			{[]string{"guard", "monitor", "ram", "cpu", "process"}, []string{"guard"}},
-		},
-		"anubis": {
-			{[]string{"ghost", "dead", "remnant", "haunt", "uninstall"}, []string{"anubis", "ka"}},
-			{[]string{"duplicate", "dedup", "mirror"}, []string{"anubis", "mirror"}},
-			{[]string{"clean", "judge", "purge"}, []string{"anubis", "judge", "--dry-run"}},
-			{[]string{"scan", "waste", "hygiene"}, []string{"anubis", "weigh"}},
-			{[]string{"apps", "installed", "applications"}, []string{"anubis", "apps"}},
-		},
-		"thoth": {
-			{[]string{"sync", "memory"}, []string{"thoth", "sync"}},
-			{[]string{"compact", "persist"}, []string{"thoth", "compact"}},
-			{[]string{"init"}, []string{"thoth", "init"}},
-			{[]string{"brain", "neural", "weights"}, []string{"thoth", "brain"}},
-			{[]string{"status"}, []string{"thoth", "status"}},
-		},
-		"maat": {
-			{[]string{"audit", "quality", "qa"}, []string{"maat", "audit"}},
-			{[]string{"coverage", "test", "lint"}, []string{"maat", "pulse"}},
-			{[]string{"scales", "policy", "enforce"}, []string{"maat", "scales"}},
-			{[]string{"heal", "remediate"}, []string{"maat", "heal"}},
-		},
-		"seshat": {
-			{[]string{"ingest", "graft", "knowledge"}, []string{"seshat", "ingest"}},
-			{[]string{"notebooklm", "notebook"}, []string{"seshat", "notebooklm"}},
-			{[]string{"list", "browse"}, []string{"seshat", "list"}},
-			{[]string{"export"}, []string{"seshat", "export"}},
-			{[]string{"adapters", "sources"}, []string{"seshat", "adapters"}},
-			{[]string{"mcp", "context server"}, []string{"seshat", "mcp"}},
-			{[]string{"auth", "authenticate"}, []string{"seshat", "auth", "google"}},
-			{[]string{"chrome", "profile"}, []string{"seshat", "profiles", "chrome"}},
-		},
-		"seba": {
-			{[]string{"gpu", "vram", "cuda", "metal", "ane", "npu"}, []string{"seba", "hardware"}},
-			{[]string{"hardware", "accelerator", "profile"}, []string{"seba", "hardware"}},
-			{[]string{"diagram", "graph"}, []string{"seba", "diagram"}},
-			{[]string{"architecture", "topology", "map"}, []string{"seba", "scan"}},
-			{[]string{"fleet", "subnet", "container", "docker", "kubernetes"}, []string{"seba", "fleet"}},
-			{[]string{"book", "registry", "projects"}, []string{"seba", "book"}},
-			{[]string{"compute", "tokenize", "ane"}, []string{"seba", "compute"}},
-		},
-		"ra": {
-			{[]string{"status"}, []string{"ra", "status"}},
-			{[]string{"deploy", "sprint"}, []string{"ra", "deploy"}},
-			{[]string{"health"}, []string{"ra", "health"}},
-			{[]string{"test"}, []string{"ra", "test"}},
-			{[]string{"lint"}, []string{"ra", "lint"}},
-			{[]string{"nightly", "ci"}, []string{"ra", "nightly"}},
-			{[]string{"broadcast"}, []string{"ra", "broadcast"}},
-			{[]string{"watch", "logs"}, []string{"ra", "watch"}},
-			{[]string{"kill", "stop"}, []string{"ra", "kill"}},
-			{[]string{"collect"}, []string{"ra", "collect"}},
-			{[]string{"pipeline"}, []string{"ra", "pipeline"}},
-		},
-		"net": {
-			{[]string{"align", "drift"}, []string{"net", "align"}},
-			{[]string{"scope", "status"}, []string{"net", "status"}},
-		},
-		"osiris": {
-			{[]string{"assess", "checkpoint", "uncommitted", "risk", "drift"}, []string{"osiris", "assess"}},
-			{[]string{"status", "summary"}, []string{"osiris", "status"}},
-		},
-		"horus": {
-			{[]string{"scan", "index", "graph"}, []string{"horus", "scan"}},
-			{[]string{"outline", "declarations"}, []string{"horus", "outline"}},
-			{[]string{"symbols", "search"}, []string{"horus", "symbols"}},
-			{[]string{"context"}, []string{"horus", "context"}},
-			{[]string{"stats", "statistics"}, []string{"horus", "stats"}},
-		},
-	}
-
-	if rules, ok := deityRules[dKey]; ok {
-		for _, r := range rules {
-			for _, kw := range r.keywords {
-				if strings.Contains(lower, kw) {
-					return r.subcommand
-				}
-			}
-		}
-	}
-
-	// Fallback: bare deity name
-	return []string{dKey}
-}
-
-// runCommandStreaming runs a command and sends output lines to streamCh
-// one at a time. The channel is closed when the command completes. A
-// goroutine handles the pipe reading so the TUI stays responsive.
 func (m TUIModel) runCommandStreaming(cmd *exec.Cmd) tea.Cmd {
 	ch := m.streamCh
 	procPtr := m.runningProc
@@ -719,16 +494,12 @@ func (m TUIModel) runCommandStreaming(cmd *exec.Cmd) tea.Cmd {
 			close(ch)
 			return streamLineMsg{done: true, err: err}
 		}
-
 		combined := io.MultiReader(stdoutPipe, stderrPipe)
-
 		if err := cmd.Start(); err != nil {
 			close(ch)
 			return streamLineMsg{done: true, err: err}
 		}
 		procPtr.Store(cmd.Process)
-
-		// Goroutine: scan lines and push to channel, then close.
 		go func() {
 			scanner := bufio.NewScanner(combined)
 			for scanner.Scan() {
@@ -737,8 +508,6 @@ func (m TUIModel) runCommandStreaming(cmd *exec.Cmd) tea.Cmd {
 			_ = cmd.Wait()
 			close(ch)
 		}()
-
-		// Return first line (or done if command exits immediately).
 		line, ok := <-ch
 		if !ok {
 			return streamLineMsg{done: true}
@@ -749,9 +518,7 @@ func (m TUIModel) runCommandStreaming(cmd *exec.Cmd) tea.Cmd {
 
 func (m TUIModel) handleStreamLine(msg streamLineMsg) (TUIModel, tea.Cmd) {
 	if msg.done {
-		// Command finished — finalize like handleBatchOutput does.
-		m.mode = modeIdle
-		m.input.Focus()
+		m.mode = viewDone
 		m.runningProc.Store(nil)
 
 		if m.runningDeity != "" {
@@ -765,19 +532,13 @@ func (m TUIModel) handleStreamLine(msg streamLineMsg) (TUIModel, tea.Cmd) {
 
 		if msg.err != nil {
 			m.outputLines = append(m.outputLines, "",
-				lipgloss.NewStyle().Foreground(Red).Render(fmt.Sprintf("  ✗ %v", msg.err)))
-			m.stickyHints = m.postRunErrorGuidance(msg.err)
-			m.input.Placeholder = "doctor · help  (diagnose or see all commands)"
+				lipgloss.NewStyle().Foreground(Red).Render("  ✗ "+msg.err.Error()))
 			if m.runningDeity != "" {
 				m.deityState[m.runningDeity] = stateFailed
 			}
 		} else {
 			m.outputLines = append(m.outputLines, "",
 				lipgloss.NewStyle().Foreground(Green).Render("  ✓ Done"))
-			m.stickyHints = m.postRunSuggestions()
-			m.input.Placeholder = m.postRunPlaceholder()
-			m.postRunCmds = m.postRunCommandList()
-			m.tabIdx = -1
 			if m.runningDeity != "" {
 				state := stateSucceeded
 				if m.runningDeity == "anubis" {
@@ -788,25 +549,31 @@ func (m TUIModel) handleStreamLine(msg streamLineMsg) (TUIModel, tea.Cmd) {
 				m.deityState[m.runningDeity] = state
 			}
 		}
+
+		// Build post-run suggestions
+		ctx := m.buildSuggestContext()
+		if msg.err != nil {
+			ctx.Err = msg.err
+		}
+		m.postRunCmds = suggest.Commands(ctx)
+
 		m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
 		m.viewport.GotoBottom()
 		m.savePersistedState()
 
-		// Record notification so Recent updates in real time
+		// Record notification
 		if m.notifyStore != nil && m.runningDeity != "" {
 			sev := notify.SeveritySuccess
 			summary := fmt.Sprintf("%s completed", m.runningCmd)
 			if msg.err != nil {
 				sev = notify.SeverityError
-				summary = fmt.Sprintf("%s failed: %v", m.runningCmd, msg.err)
+				summary = fmt.Sprintf("%s failed", m.runningCmd)
 			}
 			_ = m.notifyStore.Record(notify.Notification{
-				Source:   m.runningDeity,
-				Action:   m.runningCmd,
-				Severity: sev,
-				Summary:  summary,
+				Source: m.runningDeity, Action: m.runningCmd,
+				Severity: sev, Summary: summary,
 			})
-			m.notifyRefreshTime = time.Time{} // force refresh on next tick
+			m.notifyRefreshTime = time.Time{}
 			m.refreshNotifications()
 		}
 
@@ -816,90 +583,331 @@ func (m TUIModel) handleStreamLine(msg streamLineMsg) (TUIModel, tea.Cmd) {
 		return m, nil
 	}
 
-	// Append the new line and keep listening for more.
 	m.outputLines = append(m.outputLines, "  "+msg.line)
 	m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
 	m.viewport.GotoBottom()
 	return m, waitForStreamLine(m.streamCh)
 }
 
-func (m TUIModel) handleBatchOutput(msg cmdBatchMsg) (TUIModel, tea.Cmd) {
-	for _, line := range msg.lines {
-		m.outputLines = append(m.outputLines, "  "+line)
+// ── View ─────────────────────────────────────────────────────────────
+
+func (m TUIModel) View() tea.View {
+	if m.quitting {
+		return tea.NewView("")
 	}
 
-	m.mode = modeIdle
-	m.input.Focus()
+	var b strings.Builder
+	maxW := min(m.width-2, 120)
+	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#333333"))
+	divider := dim.Render(strings.Repeat("─", maxW))
 
-	if m.runningDeity != "" {
-		m.activeDeity[m.runningDeity] = true
+	// ── Tab bar (always visible) ──
+	b.WriteString("\n")
+	b.WriteString(m.renderTabBar())
+	b.WriteString(" " + divider + "\n")
+
+	switch m.mode {
+	case viewTabs:
+		b.WriteString(m.renderTabPage())
+	case viewRunning:
+		b.WriteString(m.renderRunning())
+	case viewDone:
+		b.WriteString(m.renderDone())
+	case viewPrompt:
+		b.WriteString(m.renderTabPage())
+		// Prompt overlay at bottom handled below
 	}
-	m.history = append(m.history, historyEntry{
-		deity: m.runningDeity, command: m.runningCmd,
-		output: strings.Join(m.outputLines, "\n"),
-	})
-	m.cmdHistory = deduplicateHistory(m.history)
 
-	if msg.err != nil {
-		m.outputLines = append(m.outputLines, "",
-			lipgloss.NewStyle().Foreground(Red).Render(fmt.Sprintf("  ✗ %v", msg.err)))
-		m.stickyHints = m.postRunErrorGuidance(msg.err)
-		m.input.Placeholder = "doctor · help  (diagnose or see all commands)"
-		if m.runningDeity != "" {
-			m.deityState[m.runningDeity] = stateFailed
-		}
+	// ── Bottom bar ──
+	b.WriteString(" " + divider + "\n")
+	if m.mode == viewPrompt {
+		b.WriteString(" " + m.input.View() + "\n")
 	} else {
-		m.outputLines = append(m.outputLines, "",
-			lipgloss.NewStyle().Foreground(Green).Render("  ✓ Done"))
-		m.stickyHints = m.postRunSuggestions()
-		m.input.Placeholder = m.postRunPlaceholder()
-		m.postRunCmds = m.postRunCommandList()
-		m.tabIdx = -1
-		if m.runningDeity != "" {
-			state := stateSucceeded
-			if m.runningDeity == "anubis" {
-				if scan, err := jackal.LoadLatest(); err == nil && len(scan.Findings) > 0 {
-					state = stateHasData
-				}
-			}
-			m.deityState[m.runningDeity] = state
-		}
-	}
-	m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
-	m.viewport.GotoBottom()
-	m.savePersistedState()
-
-	// Record notification so Recent updates in real time
-	if m.notifyStore != nil && m.runningDeity != "" {
-		sev := notify.SeveritySuccess
-		summary := fmt.Sprintf("%s completed", m.runningCmd)
-		if msg.err != nil {
-			sev = notify.SeverityError
-			summary = fmt.Sprintf("%s failed: %v", m.runningCmd, msg.err)
-		}
-		_ = m.notifyStore.Record(notify.Notification{
-			Source:   m.runningDeity,
-			Action:   m.runningCmd,
-			Severity: sev,
-			Summary:  summary,
-		})
-		m.notifyRefreshTime = time.Time{} // force refresh
-		m.refreshNotifications()
+		b.WriteString(m.renderBottomHints() + "\n")
 	}
 
-	m.runningDeity = ""
-	m.runningCmd = ""
-	m.runningArgs = nil
-	return m, nil
+	// Push footer to bottom
+	content := b.String()
+	lines := strings.Count(content, "\n")
+	remaining := m.height - lines - 2
+	if remaining > 0 {
+		content += strings.Repeat("\n", remaining)
+	}
+	content += lipgloss.NewStyle().Foreground(lipgloss.Color("#333333")).
+		Render(" sirsi.ai")
+
+	v := tea.NewView(content)
+	v.AltScreen = true
+	return v
 }
 
-// ── Active Deity Detection ────────────────────────────────────────────
+// renderTabBar draws the horizontal tab switcher, Mole-style.
+func (m TUIModel) renderTabBar() string {
+	var parts []string
+	for i, tab := range tabs {
+		style := lipgloss.NewStyle().Foreground(lipgloss.Color("#555555"))
+		if i == m.activeTab {
+			style = lipgloss.NewStyle().
+				Foreground(Gold).
+				Bold(true).
+				Underline(true)
+		}
+		parts = append(parts, style.Render(tab.Glyph+" "+tab.Name))
+	}
+
+	bar := "  " + lipgloss.NewStyle().Foreground(Gold).Bold(true).Render("𓉴") +
+		"    " + strings.Join(parts, "    ")
+	return bar + "\n"
+}
+
+// renderTabPage draws the landing page for the active tab.
+func (m TUIModel) renderTabPage() string {
+	tab := tabs[m.activeTab]
+	gold := lipgloss.NewStyle().Foreground(Gold)
+	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
+	body := lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC"))
+	num := lipgloss.NewStyle().Foreground(Gold).Bold(true)
+
+	var b strings.Builder
+
+	if tab.Name == "Status" {
+		// Status tab: bento grid
+		b.WriteString(m.renderStatusPage(gold, dim))
+	} else {
+		// Deity tab: tagline + numbered actions
+		b.WriteString("\n")
+		b.WriteString("  " + gold.Render(tab.Glyph+"  "+tab.Name) + "\n")
+		b.WriteString("  " + lipgloss.NewStyle().Italic(true).Foreground(lipgloss.Color("#888888")).
+			Render(tab.Tagline) + "\n")
+		b.WriteString("\n\n")
+
+		for i, action := range tab.Actions {
+			b.WriteString("  " + num.Render(fmt.Sprintf(" %d ", i+1)) +
+				"  " + body.Render(action.Label) + "\n")
+			b.WriteString("     " + dim.Render(action.Desc) + "\n\n")
+		}
+	}
+
+	return b.String()
+}
+
+// renderStatusPage renders the bento-grid vitals dashboard.
+func (m TUIModel) renderStatusPage(gold, dim lipgloss.Style) string {
+	var b strings.Builder
+	body := lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC"))
+	bigNum := lipgloss.NewStyle().Foreground(White).Bold(true)
+	label := lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
+
+	b.WriteString("\n")
+
+	// ── Vitals cards ──
+	colW := (min(m.width, 120) - 8) / 3
+	if colW < 25 {
+		colW = 25
+	}
+
+	// Row 1: RAM | Git | Accelerator
+	ramCard := m.renderCard("RAM", fmt.Sprintf("%.0f%%", m.vitals.RAMPercent),
+		m.vitals.RAMPressure, m.vitals.RAMIcon, colW)
+	gitInfo := m.vitals.GitBranch
+	if m.vitals.Uncommitted > 0 {
+		gitInfo += fmt.Sprintf(" +%d", m.vitals.Uncommitted)
+	}
+	gitCard := m.renderCard("GIT", gitInfo, m.vitals.LastCommit, "🌿", colW)
+	accelCard := m.renderCard("ACCEL", m.vitals.Accelerator, "", "⚡", colW)
+
+	b.WriteString("  " + ramCard + "  " + gitCard + "  " + accelCard + "\n\n")
+
+	// ── Waste summary ──
+	if scan, err := jackal.LoadLatest(); err == nil && scan.TotalSize > 0 {
+		age := time.Since(scan.Timestamp)
+		ageStr := "just now"
+		if age > time.Hour {
+			ageStr = fmt.Sprintf("%.0fh ago", age.Hours())
+		} else if age > time.Minute {
+			ageStr = fmt.Sprintf("%.0fm ago", age.Minutes())
+		}
+		wasteIcon := "🟢"
+		if scan.TotalSize > 10*1024*1024*1024 {
+			wasteIcon = "🔴"
+		} else if scan.TotalSize > 5*1024*1024*1024 {
+			wasteIcon = "🟡"
+		}
+		b.WriteString("  " + label.Render("WASTE") + "\n")
+		b.WriteString("  " + wasteIcon + " " +
+			bigNum.Render(jackal.FormatSize(scan.TotalSize)) +
+			"  " + dim.Render(fmt.Sprintf("%d findings · scanned %s", len(scan.Findings), ageStr)) + "\n\n")
+	}
+
+	// ── Deity Status ──
+	b.WriteString("  " + label.Render("DEITIES") + "\n")
+	for _, d := range deity.Roster {
+		state := m.deityState[d.Key]
+		var indicator, status string
+		switch state {
+		case stateSucceeded:
+			indicator = lipgloss.NewStyle().Foreground(Green).Render("✓")
+			status = dim.Render("healthy")
+		case stateFailed:
+			indicator = lipgloss.NewStyle().Foreground(Red).Render("✗")
+			status = lipgloss.NewStyle().Foreground(Red).Render("failed")
+		case stateHasData:
+			indicator = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFAA00")).Render("◆")
+			status = gold.Render("has data")
+		default:
+			indicator = dim.Render("·")
+			status = dim.Render("—")
+		}
+		b.WriteString("  " + indicator + " " +
+			body.Render(d.Glyph+" "+d.Name) + "  " + status + "\n")
+	}
+	b.WriteString("\n")
+
+	// ── Recent Activity ──
+	if len(m.recentNotify) > 0 {
+		b.WriteString("  " + label.Render("RECENT") + "\n")
+		for i, n := range m.recentNotify {
+			if i >= 5 {
+				break
+			}
+			icon := notify.SeverityIcon(n.Severity)
+			summary := n.Summary
+			if len(summary) > 60 {
+				summary = summary[:57] + "…"
+			}
+			b.WriteString(fmt.Sprintf("  %s %s  %s\n",
+				icon, gold.Render(n.Source), dim.Render(summary)))
+		}
+	}
+
+	return b.String()
+}
+
+// renderCard renders a small bento card with a label, big value, and subtitle.
+func (m TUIModel) renderCard(labelText, value, subtitle, icon string, width int) string {
+	label := lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
+	bigNum := lipgloss.NewStyle().Foreground(White).Bold(true)
+	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
+
+	card := label.Render(icon+" "+labelText) + "\n" +
+		"  " + bigNum.Render(value) + "\n"
+	if subtitle != "" {
+		card += "  " + dim.Render(subtitle) + "\n"
+	}
+
+	return lipgloss.NewStyle().
+		Width(width).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("#333333")).
+		Padding(0, 1).
+		Render(card)
+}
+
+// renderRunning shows the command execution screen.
+func (m TUIModel) renderRunning() string {
+	var b strings.Builder
+
+	glyph, name := deity.Display(m.runningDeity)
+	elapsed := time.Since(m.cmdStartTime).Truncate(time.Second)
+	elapsedStr := ""
+	if elapsed >= time.Second {
+		elapsedStr = fmt.Sprintf(" (%s)", elapsed)
+	}
+
+	b.WriteString("\n")
+	b.WriteString(" " + m.spinner.View() + " " +
+		lipgloss.NewStyle().Foreground(Gold).Bold(true).Render(glyph+" "+name) +
+		lipgloss.NewStyle().Foreground(lipgloss.Color("#888888")).
+			Render("  "+m.runningCmd+elapsedStr) + "\n\n")
+	b.WriteString(m.viewport.View() + "\n")
+
+	return b.String()
+}
+
+// renderDone shows command output + numbered next actions.
+func (m TUIModel) renderDone() string {
+	var b strings.Builder
+	gold := lipgloss.NewStyle().Foreground(Gold)
+	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
+	num := lipgloss.NewStyle().Foreground(Gold).Bold(true)
+
+	b.WriteString("\n")
+	b.WriteString(m.viewport.View() + "\n")
+
+	// ── Numbered next actions ──
+	if len(m.postRunCmds) > 0 {
+		b.WriteString("\n")
+		b.WriteString("  " + dim.Render("── What's Next ─────────────────") + "\n\n")
+
+		ctx := m.buildSuggestContext()
+		actions := suggest.After(ctx)
+
+		for i, cmd := range m.postRunCmds {
+			if i >= 3 {
+				break
+			}
+			desc := ""
+			for _, a := range actions {
+				if strings.TrimPrefix(a.Command, "sirsi ") == cmd {
+					desc = a.Description
+					break
+				}
+			}
+			b.WriteString("  " + num.Render(fmt.Sprintf(" %d ", i+1)) +
+				"  " + gold.Render(cmd) + "  " + dim.Render(desc) + "\n")
+		}
+		b.WriteString("\n")
+	}
+
+	return b.String()
+}
+
+// renderBottomHints shows context-appropriate key hints.
+func (m TUIModel) renderBottomHints() string {
+	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#555555"))
+	var hints []string
+
+	switch m.mode {
+	case viewTabs:
+		hints = []string{"←/→ switch tabs", "1-5 act", ": command", "q quit"}
+	case viewRunning:
+		hints = []string{"↑/↓ scroll", "ctrl+c cancel"}
+	case viewDone:
+		if len(m.postRunCmds) > 0 {
+			hints = []string{"1-3 next action", "↑/↓ scroll", ": command", "esc back"}
+		} else {
+			hints = []string{"↑/↓ scroll", ": command", "esc back"}
+		}
+	}
+
+	return " " + dim.Render(strings.Join(hints, "  ·  "))
+}
+
+// ── Suggest Context ──────────────────────────────────────────────────
+
+func (m TUIModel) buildSuggestContext() suggest.Context {
+	sub := ""
+	if len(m.runningArgs) >= 2 {
+		sub = m.runningArgs[1]
+	}
+	ctx := suggest.Context{
+		Deity:      m.runningDeity,
+		Subcommand: sub,
+	}
+	if m.runningDeity == "anubis" {
+		if scan, err := jackal.LoadLatest(); err == nil {
+			ctx.FindingsCount = len(scan.Findings)
+		}
+	}
+	return ctx
+}
+
+// ── Background Refresh ───────────────────────────────────────────────
 
 func (m *TUIModel) refreshActive() {
 	for k := range m.activeDeity {
 		delete(m.activeDeity, k)
 	}
-
 	entries, _ := m.steleReader.ReadNew()
 	now := time.Now()
 	for _, e := range entries {
@@ -914,7 +922,6 @@ func (m *TUIModel) refreshActive() {
 			}
 		}
 	}
-
 	m.refreshNotifications()
 	m.refreshVitals()
 
@@ -926,7 +933,7 @@ func (m *TUIModel) refreshActive() {
 			continue
 		}
 		name := strings.TrimSuffix(f.Name(), ".pid")
-		for _, d := range deityRoster {
+		for _, d := range deity.Roster {
 			if strings.Contains(strings.ToLower(name), d.Key) {
 				m.activeDeity[d.Key] = true
 			}
@@ -934,12 +941,10 @@ func (m *TUIModel) refreshActive() {
 	}
 }
 
-// refreshVitals collects lightweight system stats for the dashboard.
 func (m *TUIModel) refreshVitals() {
 	m.vitals = vitals.Collect()
 }
 
-// refreshNotifications loads the latest notifications from the store.
 func (m *TUIModel) refreshNotifications() {
 	if m.notifyStore == nil {
 		return
@@ -956,1035 +961,28 @@ func (m *TUIModel) refreshNotifications() {
 	m.recentNotify = items
 }
 
-// ── Layout ────────────────────────────────────────────────────────────
-
-// leftPaneWidth returns a proportional left pane width (~35% of terminal,
-// clamped to 36–50) instead of a hardcoded constant.
-func (m TUIModel) leftPaneWidth() int {
-	w := m.width * 35 / 100
-	if w < 36 {
-		w = 36
-	}
-	if w > 50 {
-		w = 50
-	}
-	return w
-}
-
-func (m TUIModel) View() tea.View {
-	if m.quitting {
-		return tea.NewView("")
-	}
-
-	hasOutput := len(m.outputLines) > 0
-	maxW := min(m.width-2, 120)
-	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#333333"))
-	divider := dim.Render(strings.Repeat("─", maxW))
-
-	// ── Header with breadcrumb ──
-	header := lipgloss.NewStyle().Foreground(Gold).Bold(true).Render("𓉴  Sirsi Pantheon")
-	if len(m.breadcrumb) > 0 {
-		sep := lipgloss.NewStyle().Foreground(lipgloss.Color("#555555")).Render(" › ")
-		trail := ""
-		for i, c := range m.breadcrumb {
-			if i > 0 {
-				trail += sep
-			}
-			trail += lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC")).Render(c)
-		}
-		header += sep + trail
-	}
-
-	var b strings.Builder
-	usedLines := 0
-
-	if !hasOutput {
-		// ════════════════════════════════════════════════════════════
-		// DASHBOARD — full width, Mole-style bento layout
-		// One screen. Deity status cards. Quick actions. No clutter.
-		// ════════════════════════════════════════════════════════════
-		gold := lipgloss.NewStyle().Foreground(Gold)
-		dimText := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
-		warnText := lipgloss.NewStyle().Foreground(lipgloss.Color("#FFAA00"))
-
-		b.WriteString("\n")
-		b.WriteString(" " + header + "\n")
-		b.WriteString(" " + divider + "\n\n")
-		usedLines += 4
-
-		// ── Vitals bar ──
-		vitalsItems := []string{
-			fmt.Sprintf("%s RAM %.0f%%", m.vitals.RAMIcon, m.vitals.RAMPercent),
-		}
-		if m.vitals.Accelerator != "" {
-			vitalsItems = append(vitalsItems, "⚡ "+m.vitals.Accelerator)
-		}
-		if m.vitals.GitBranch != "" {
-			gitStr := "🌿 " + m.vitals.GitBranch
-			if m.vitals.Uncommitted > 0 {
-				gitStr += warnText.Render(fmt.Sprintf(" +%d", m.vitals.Uncommitted))
-			}
-			vitalsItems = append(vitalsItems, gitStr)
-		}
-		if m.vitals.LastCommit != "" {
-			vitalsItems = append(vitalsItems, "⏱ "+m.vitals.LastCommit)
-		}
-		b.WriteString("  " + dimText.Render(strings.Join(vitalsItems, "   ")) + "\n\n")
-		usedLines += 2
-
-		// ── Deity bento grid — 2 columns, status + one-line summary ──
-		roster := m.renderBentoGrid()
-		b.WriteString(roster)
-		usedLines += strings.Count(roster, "\n")
-
-		// ── Waste summary (if scan data exists) ──
-		if scan, err := jackal.LoadLatest(); err == nil && scan.TotalSize > 0 {
-			age := time.Since(scan.Timestamp)
-			ageStr := "just now"
-			if age > time.Hour {
-				ageStr = fmt.Sprintf("%.0fh ago", age.Hours())
-			} else if age > time.Minute {
-				ageStr = fmt.Sprintf("%.0fm ago", age.Minutes())
-			}
-			wasteIcon := "🟢"
-			if scan.TotalSize > 10*1024*1024*1024 {
-				wasteIcon = "🔴"
-			} else if scan.TotalSize > 5*1024*1024*1024 {
-				wasteIcon = "🟡"
-			}
-			b.WriteString(fmt.Sprintf("\n  %s %s reclaimable  ·  %s  ·  scanned %s\n",
-				wasteIcon,
-				gold.Render(jackal.FormatSize(scan.TotalSize)),
-				dimText.Render(fmt.Sprintf("%d findings", len(scan.Findings))),
-				dimText.Render(ageStr)))
-			usedLines += 2
-		}
-
-		// ── Quick Actions ──
-		actions := m.renderQuickActions()
-		b.WriteString(actions)
-		usedLines += strings.Count(actions, "\n")
-
-		b.WriteString(" " + divider + "\n")
-		b.WriteString(" " + m.input.View() + "\n")
-		b.WriteString(m.renderHints(false) + "\n")
-		usedLines += 3
-	} else {
-		// ════════════════════════════════════════════════════════════
-		// COMMAND VIEW — full width, no sidebar, one job on screen
-		// Like Mole: each planet gets its own page.
-		// ════════════════════════════════════════════════════════════
-		b.WriteString("\n")
-		b.WriteString(" " + header + "\n")
-		b.WriteString(" " + divider + "\n")
-		usedLines += 3
-
-		if m.mode == modeRunning {
-			glyph, name := deityDisplay(m.runningDeity)
-			elapsed := time.Since(m.cmdStartTime).Truncate(time.Second)
-			elapsedStr := ""
-			if elapsed >= time.Second {
-				elapsedStr = fmt.Sprintf(" (%s)", elapsed)
-			}
-			b.WriteString(" " + m.spinner.View() + " " +
-				lipgloss.NewStyle().Foreground(Gold).Render(glyph+" "+name) +
-				lipgloss.NewStyle().Foreground(lipgloss.Color("#888888")).Render(" running..."+elapsedStr) + "\n")
-			usedLines++
-		}
-
-		b.WriteString(m.viewport.View() + "\n")
-		usedLines += m.viewport.Height()
-
-		sticky := m.renderStickyHints()
-		if sticky != "" {
-			b.WriteString(sticky)
-			usedLines += strings.Count(sticky, "\n")
-		}
-
-		b.WriteString(" " + divider + "\n")
-		b.WriteString(" " + m.input.View() + "\n")
-		b.WriteString(m.renderHints(false) + "\n")
-		usedLines += 3
-	}
-
-	// Push signage to bottom
-	remaining := m.height - usedLines - 1
-	if remaining > 0 {
-		b.WriteString(strings.Repeat("\n", remaining))
-	}
-	b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("#333333")).
-		Render(" sirsi.ai"))
-
-	v := tea.NewView(b.String())
-	v.AltScreen = true
-	return v
-}
-
-// renderBentoGrid renders the deity roster as a clean 2-column bento grid.
-// Each cell: status dot + glyph + name + one-line summary of last state.
-func (m TUIModel) renderBentoGrid() string {
-	gold := lipgloss.NewStyle().Foreground(Gold)
-	dimText := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
-	nameStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC")).Bold(true)
-
-	colWidth := (min(m.width, 120) - 4) / 2
-	if colWidth < 30 {
-		colWidth = 30
-	}
-
-	var b strings.Builder
-	for i := 0; i < len(deityRoster); i += 2 {
-		left := m.renderBentoCell(deityRoster[i], colWidth, gold, dimText, nameStyle)
-		right := ""
-		if i+1 < len(deityRoster) {
-			right = m.renderBentoCell(deityRoster[i+1], colWidth, gold, dimText, nameStyle)
-		}
-		b.WriteString("  " + left + "  " + right + "\n")
-	}
-	b.WriteString("\n")
-	return b.String()
-}
-
-// renderBentoCell renders one deity as a clean status cell.
-func (m TUIModel) renderBentoCell(d deity.Info, width int, gold, dimText, nameStyle lipgloss.Style) string {
-	state := m.deityState[d.Key]
-	active := m.activeDeity[d.Key]
-	isRunning := m.mode == modeRunning && m.runningDeity == d.Key
-
-	// Status indicator
-	var dot string
-	switch {
-	case isRunning:
-		dot = m.spinner.View()
-	case state == stateFailed:
-		dot = lipgloss.NewStyle().Foreground(Red).Render("✗")
-	case state == stateHasData:
-		dot = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFAA00")).Render("◆")
-	case state == stateSucceeded:
-		dot = lipgloss.NewStyle().Foreground(Green).Render("✓")
-	case active:
-		dot = lipgloss.NewStyle().Foreground(Gold).Render("●")
-	default:
-		dot = dimText.Render("·")
-	}
-
-	// One-line status summary
-	summary := dimText.Render(d.Role)
-	switch state {
-	case stateSucceeded:
-		summary = dimText.Render("healthy")
-	case stateFailed:
-		summary = lipgloss.NewStyle().Foreground(Red).Render("failed")
-	case stateHasData:
-		if d.Key == "anubis" {
-			if scan, err := jackal.LoadLatest(); err == nil {
-				summary = gold.Render(fmt.Sprintf("%d findings", len(scan.Findings)))
-			}
-		} else {
-			summary = gold.Render("has data")
-		}
-	}
-
-	glyph := lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC")).Render(d.Glyph)
-	name := nameStyle.Render(d.Name)
-
-	cell := dot + " " + glyph + " " + name + "  " + summary
-	cellW := lipgloss.Width(cell)
-	if cellW < width {
-		cell += strings.Repeat(" ", width-cellW)
-	}
-	return cell
-}
-
-// renderRosterColumns renders deities in a column grid that fits the available width.
-// In compact mode (split-pane left pane), uses leftPaneWidth instead of terminal width.
-// 3 columns if width >= 90, 2 columns if >= 60, single column otherwise.
-func (m TUIModel) renderRosterColumns(compact bool) string {
-	var b strings.Builder
-
-	availWidth := m.width
-	if compact {
-		availWidth = m.leftPaneWidth()
-	}
-
-	cols := 3
-	if availWidth < 90 {
-		cols = 2
-	}
-	if availWidth < 60 {
-		cols = 1
-	}
-
-	rows := (len(deityRoster) + cols - 1) / cols
-	colWidth := (availWidth - 2) / cols
-	if colWidth > 34 {
-		colWidth = 34
-	}
-
-	for r := 0; r < rows; r++ {
-		var rowParts []string
-		for c := 0; c < cols; c++ {
-			idx := c*rows + r // column-major: fill down then across
-			if idx < len(deityRoster) {
-				rowParts = append(rowParts, m.renderDeityCell(deityRoster[idx], colWidth))
-			}
-		}
-		b.WriteString(" " + strings.Join(rowParts, "") + "\n")
-	}
-
-	return b.String()
-}
-
-// renderDeityCell renders one deity as a fixed-width cell for the grid.
-// Avoids lipgloss Width/MaxWidth for layout — Egyptian glyphs have
-// unpredictable terminal widths. Instead we measure with lipgloss.Width()
-// and pad with real spaces so the error model is consistent.
-func (m TUIModel) renderDeityCell(d deity.Info, width int) string {
-	active := m.activeDeity[d.Key]
-	isRunning := m.mode == modeRunning && m.runningDeity == d.Key
-	state := m.deityState[d.Key]
-
-	var nameColor, roleColor color.Color
-	if isRunning {
-		nameColor = Gold
-		roleColor = lipgloss.Color("#CCCCCC")
-	} else if active {
-		nameColor = Gold
-		roleColor = lipgloss.Color("#CCCCCC")
-	} else if state == stateFailed {
-		nameColor = lipgloss.Color("#FF6666")
-		roleColor = lipgloss.Color("#996666")
-	} else if state == stateHasData {
-		nameColor = lipgloss.Color("#BBBBBB")
-		roleColor = lipgloss.Color("#777777")
-	} else {
-		nameColor = lipgloss.Color("#BBBBBB")
-		roleColor = lipgloss.Color("#777777")
-	}
-
-	// State-aware indicator dot
-	var dot string
-	switch {
-	case isRunning:
-		dot = m.spinner.View()
-	case state == stateFailed:
-		dot = lipgloss.NewStyle().Foreground(Red).Render("✗")
-	case state == stateHasData:
-		dot = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFAA00")).Render("◆")
-	case state == stateSucceeded:
-		dot = lipgloss.NewStyle().Foreground(Green).Render("✓")
-	case active:
-		dot = lipgloss.NewStyle().Foreground(Gold).Render("●")
-	default:
-		dot = lipgloss.NewStyle().Foreground(lipgloss.Color("#333333")).Render("·")
-	}
-
-	glyph := lipgloss.NewStyle().Foreground(nameColor).Render(d.Glyph)
-	name := lipgloss.NewStyle().Bold(true).Foreground(nameColor).Render(d.Name)
-	role := lipgloss.NewStyle().Foreground(roleColor).Render(d.Role)
-
-	// Pad name to a fixed visual column so roles align across rows.
-	prefix := dot + " " + glyph + " " + name
-	prefixW := lipgloss.Width(prefix)
-	const nameEnd = 14 // target column where role text starts
-	if prefixW < nameEnd {
-		prefix += strings.Repeat(" ", nameEnd-prefixW)
-	}
-
-	cell := prefix + role
-	cellW := lipgloss.Width(cell)
-	if cellW < width {
-		cell += strings.Repeat(" ", width-cellW)
-	}
-	return cell
-}
-
-func (m TUIModel) renderStatusLine() string {
-	activeCount := 0
-	for _, d := range deityRoster {
-		if m.activeDeity[d.Key] {
-			activeCount++
-		}
-	}
-	if activeCount > 0 {
-		return lipgloss.NewStyle().Foreground(Green).
-			Render(fmt.Sprintf(" %d %s active", activeCount, pluralize("deity", activeCount))) + "\n"
-	}
-	return ""
-}
-
-func (m TUIModel) renderLeftPane() string {
-	var b strings.Builder
-	b.WriteString(m.renderRosterColumns(true))
-	b.WriteString(m.renderStatusLine())
-	b.WriteString(m.renderNotifications())
-	return b.String()
-}
-
-// renderNotifications shows recent notifications in the left pane.
-func (m TUIModel) renderNotifications() string {
-	if len(m.recentNotify) == 0 {
-		return ""
-	}
-
-	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
-	var b strings.Builder
-	b.WriteString("\n")
-	b.WriteString(lipgloss.NewStyle().Foreground(Gold).Render(" 🔔 Recent") + "\n")
-
-	for _, n := range m.recentNotify {
-		icon := notify.SeverityIcon(n.Severity)
-		src := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#BBBBBB")).Render(n.Source)
-		summary := n.Summary
-		if len(summary) > 28 {
-			summary = summary[:25] + "…"
-		}
-		b.WriteString(fmt.Sprintf(" %s %s %s\n", icon, src, dim.Render(summary)))
-	}
-	return b.String()
-}
-
-func (m TUIModel) renderRightPane() string {
-	var b strings.Builder
-	if m.mode == modeRunning {
-		glyph, name := deityDisplay(m.runningDeity)
-		elapsed := time.Since(m.cmdStartTime).Truncate(time.Second)
-		elapsedStr := fmt.Sprintf(" (%s)", elapsed)
-		if elapsed < time.Second {
-			elapsedStr = ""
-		}
-		b.WriteString(m.spinner.View() + " " +
-			lipgloss.NewStyle().Foreground(Gold).Render(glyph+" "+name) +
-			lipgloss.NewStyle().Foreground(lipgloss.Color("#888888")).Render(" running..."+elapsedStr) + "\n\n")
-	}
-	b.WriteString(m.viewport.View())
-	return b.String()
-}
-
-func (m TUIModel) renderHints(splitMode bool) string {
-	var hints []string
-	if m.mode == modeRunning {
-		hints = append(hints, "↑/↓ scroll", "ctrl+c cancel")
-	} else {
-		if len(m.postRunCmds) > 0 {
-			hints = append(hints, "tab cycle suggestions")
-		}
-		hints = append(hints, "→ accept", "↑ history", "help")
-		// Context-aware esc hint (Fix #9)
-		if len(m.viewStack) > 0 {
-			hints = append(hints, fmt.Sprintf("esc back (%d)", len(m.viewStack)))
-		} else if len(m.outputLines) > 0 {
-			hints = append(hints, "esc clear")
-		} else {
-			hints = append(hints, "esc quit")
-		}
-	}
-	hints = append(hints, "ctrl+c quit")
-
-	hintStr := " " + strings.Join(hints, " · ")
-
-	// Scroll position indicator (Fix #5)
-	if len(m.outputLines) > m.viewport.Height() {
-		pct := m.viewport.ScrollPercent()
-		pos := fmt.Sprintf(" [%d%%]", int(pct*100))
-		hintStr += lipgloss.NewStyle().Foreground(lipgloss.Color("#666666")).Render(pos)
-	}
-
-	return lipgloss.NewStyle().Foreground(lipgloss.Color("#555555")).Render(hintStr)
-}
-
-// renderQuickActions shows context-aware suggested actions.
-// For new users: starting points. After commands: next logical steps.
-type quickAction struct {
-	desc string
-	cmd  string
-}
-
-// computeQuickActions returns up to 3 context-aware suggested actions.
-func (m TUIModel) computeQuickActions() []quickAction {
-	if len(m.history) == 0 {
-		return []quickAction{
-			{"Scan for infrastructure waste", "scan"},
-			{"Check network security posture", "isis network"},
-			{"Full system health diagnostic", "doctor"},
-		}
-	}
-
-	hasRun := make(map[string]bool)
-	for _, h := range m.history {
-		hasRun[h.deity] = true
-	}
-
-	var actions []quickAction
-
-	if !hasRun["anubis"] {
-		actions = append(actions, quickAction{"Scan for waste — find what's eating your disk", "scan"})
-	} else if m.deityState["anubis"] == stateHasData {
-		actions = append(actions, quickAction{"Review findings and clean up", "findings"})
-	}
-
-	if !hasRun["isis"] {
-		actions = append(actions, quickAction{"Network security audit", "isis network"})
-	}
-
-	if !hasRun["maat"] && hasRun["anubis"] {
-		actions = append(actions, quickAction{"Quality assessment", "maat audit"})
-	}
-
-	if !hasRun["seba"] {
-		actions = append(actions, quickAction{"Hardware and architecture profile", "seba hardware"})
-	}
-
-	if !hasRun["osiris"] {
-		actions = append(actions, quickAction{"Check uncommitted work risk", "osiris assess"})
-	}
-
-	if !hasRun["thoth"] {
-		actions = append(actions, quickAction{"Sync project memory", "thoth sync"})
-	}
-
-	// Failed deities get retry suggestions
-	for dKey, state := range m.deityState {
-		if state == stateFailed {
-			glyph, name := deityDisplay(dKey)
-			actions = append(actions, quickAction{fmt.Sprintf("Retry %s %s (failed last run)", glyph, name), dKey})
-		}
-	}
-
-	if len(actions) > 3 {
-		actions = actions[:3]
-	}
-	return actions
-}
-
-// resolveQuickAction maps a number key ("1", "2", "3") to the corresponding
-// suggested action command. Returns empty string if no match.
-func (m TUIModel) resolveQuickAction(key string) string {
-	actions := m.computeQuickActions()
-	idx := 0
-	switch key {
-	case "1":
-		idx = 0
-	case "2":
-		idx = 1
-	case "3":
-		idx = 2
-	default:
-		return ""
-	}
-	if idx < len(actions) {
-		return actions[idx].cmd
-	}
-	return ""
-}
-
-// renderQuickActions shows context-aware suggested actions.
-func (m TUIModel) renderQuickActions() string {
-	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
-	gold := lipgloss.NewStyle().Foreground(Gold)
-
-	actions := m.computeQuickActions()
-	if len(actions) == 0 {
-		return ""
-	}
-
-	var b strings.Builder
-	b.WriteString("\n")
-	if len(m.history) == 0 {
-		b.WriteString(dim.Render("  Try one of these to get started:") + "\n")
-	} else {
-		b.WriteString(dim.Render("  Suggested:") + "\n")
-	}
-	for i, a := range actions {
-		b.WriteString("   " + gold.Render(fmt.Sprintf("%d", i+1)) + dim.Render("  "+a.desc) + "\n")
-	}
-	b.WriteString("\n")
-	return b.String()
-}
-
-// showHelp renders an in-TUI help panel listing all available commands.
-func (m TUIModel) showHelp() (TUIModel, tea.Cmd) {
-	gold := lipgloss.NewStyle().Foreground(Gold).Bold(true)
-	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
-	body := lipgloss.NewStyle().Foreground(White)
-
-	var lines []string
-	lines = append(lines,
-		gold.Render("  Pantheon Commands"),
-		"",
-		body.Render("  Core:"),
-		dim.Render("    scan                  Scan for infrastructure waste"),
-		dim.Render("    ghosts                Detect remnants of uninstalled apps"),
-		dim.Render("    dedup [dirs]          Find duplicate files"),
-		dim.Render("    doctor                System health diagnostic"),
-		dim.Render("    guard                 Monitor system resources"),
-		"",
-		body.Render("  Deities:"),
-		dim.Render("    ra status             Orchestrator status"),
-		dim.Render("    ra deploy             Deploy task to repos"),
-		dim.Render("    ra test / ra lint     Run tests or linters fleet-wide"),
-		dim.Render("    net align             Cross-module consistency check"),
-		dim.Render("    thoth sync            Sync project memory"),
-		dim.Render("    thoth compact         Persist state for continuations"),
-		dim.Render("    maat audit            Governance and quality scan"),
-		dim.Render("    maat heal             Auto-remediate quality issues"),
-		dim.Render("    isis network          Network security audit"),
-		dim.Render("    isis heal             Auto-remediate failures"),
-		dim.Render("    seshat ingest         Ingest knowledge from sources"),
-		dim.Render("    seshat list           Browse knowledge items"),
-		dim.Render("    anubis weigh          Scan for waste"),
-		dim.Render("    anubis apps           List apps and ghost residuals"),
-		dim.Render("    seba hardware         Hardware and accelerator profile"),
-		dim.Render("    seba diagram          Architecture diagram generation"),
-		dim.Render("    seba fleet            Network and container discovery"),
-		dim.Render("    horus scan            Build code symbol graph"),
-		dim.Render("    horus outline <file>  File declaration outline"),
-		dim.Render("    osiris assess         Uncommitted work risk assessment"),
-		"",
-		body.Render("  After Scan:"),
-		dim.Render("    findings              Full breakdown with advisories"),
-		dim.Render("    findings <category>   Drill into dev, ai, cloud, etc."),
-		dim.Render("    clean                 Remove safe items (Trash)"),
-		dim.Render("    judge                 Policy-based review before cleanup"),
-		"",
-		body.Render("  Natural Language:"),
-		dim.Render("    Type what you want in plain English and Pantheon"),
-		dim.Render("    will route to the right deity automatically."),
-		"",
-		body.Render("  Navigation:"),
-		dim.Render("    →         Accept inline suggestion"),
-		dim.Render("    ↑/↓       Browse command history / scroll output"),
-		dim.Render("    esc       Clear output pane"),
-		dim.Render("    clear     Reset display"),
-		dim.Render("    ctrl+c    Quit"),
-	)
-
-	m.outputLines = lines
-	m.viewport.SetContent(strings.Join(lines, "\n"))
-	m.recalcViewportHeight()
-	m.viewport.GotoTop()
-	return m, nil
-}
-
-// ── Post-Run Suggestions ─────────────────────────────────────────
-
-// buildSuggestContext creates a suggest.Context from the current TUI state.
-func (m TUIModel) buildSuggestContext() suggest.Context {
-	sub := ""
-	if len(m.runningArgs) >= 2 {
-		sub = m.runningArgs[1]
-	}
-	ctx := suggest.Context{
-		Deity:      m.runningDeity,
-		Subcommand: sub,
-	}
-	// Populate FindingsCount for Anubis so suggestions can adapt.
-	if m.runningDeity == "anubis" {
-		if scan, err := jackal.LoadLatest(); err == nil {
-			ctx.FindingsCount = len(scan.Findings)
-		}
-	}
-	return ctx
-}
-
-// postRunPlaceholder returns a contextual input placeholder based on what
-// command just finished, guiding the user to the most likely next action.
-func (m TUIModel) postRunPlaceholder() string {
-	return suggest.Placeholder(m.buildSuggestContext())
-}
-
-// postRunCommandList returns the raw command strings for tab-cycling
-// after a command completes. These mirror what postRunSuggestions shows
-// but without styling — just the commands.
-func (m TUIModel) postRunCommandList() []string {
-	return suggest.Commands(m.buildSuggestContext())
-}
-
-// postRunSuggestions returns deity-aware next-step hints based on what
-// command just finished. This prevents the "Done → dead terminal" problem
-// by surfacing actionable follow-ups in context.
-func (m TUIModel) postRunSuggestions() []string {
-	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
-	gold := lipgloss.NewStyle().Foreground(Gold)
-	hint := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
-
-	actions := suggest.After(m.buildSuggestContext())
-	if len(actions) == 0 {
-		return nil
-	}
-
-	var lines []string
-	lines = append(lines,
-		"",
-		dim.Render("  ── What's Next ──────────────────────────"),
-		"",
-	)
-	for _, a := range actions {
-		cmd := strings.TrimPrefix(a.Command, "sirsi ")
-		// Pad command to 14 chars for alignment.
-		padded := cmd
-		if len(padded) < 14 {
-			padded += strings.Repeat(" ", 14-len(padded))
-		}
-		lines = append(lines, "  "+gold.Render(padded)+" "+hint.Render(a.Description))
-	}
-	lines = append(lines, "")
-	return lines
-}
-
-// postRunErrorGuidance returns deity-specific error remediation hints
-// so failures don't leave the user stranded.
-func (m TUIModel) postRunErrorGuidance(err error) []string {
-	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
-	gold := lipgloss.NewStyle().Foreground(Gold)
-	hint := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
-
-	ctx := m.buildSuggestContext()
-	ctx.Err = err
-	actions := suggest.OnError(ctx)
-
-	var lines []string
-	lines = append(lines, "",
-		dim.Render("  ── Troubleshooting ──────────────────────"),
-		"",
-	)
-	for _, a := range actions {
-		if a.Command == "" {
-			// Description-only guidance (e.g. permission hints).
-			lines = append(lines, "  "+hint.Render(a.Description))
-		} else {
-			cmd := strings.TrimPrefix(a.Command, "sirsi ")
-			padded := cmd
-			if len(padded) < 14 {
-				padded += strings.Repeat(" ", 14-len(padded))
-			}
-			lines = append(lines, "  "+gold.Render(padded)+" "+hint.Render(a.Description))
-		}
-	}
-	lines = append(lines, "")
-	return lines
-}
-
-// ── Findings View ────────────────────────────────────────────────
-
-// showFindings loads persisted scan results from disk and renders them
-// in the TUI with category breakdown, advisories, and drill-down.
-// When filter is non-empty, only findings in that category are shown.
-func (m TUIModel) showFindings(filter string) (TUIModel, tea.Cmd) {
-	gold := lipgloss.NewStyle().Foreground(Gold).Bold(true)
-	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
-	warn := lipgloss.NewStyle().Foreground(lipgloss.Color("#FFAA00"))
-	body := lipgloss.NewStyle().Foreground(White)
-	fixable := lipgloss.NewStyle().Foreground(Green).Render("✓ fixable")
-	breakingStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6600"))
-
-	scan, err := jackal.LoadLatest()
-	if err != nil {
-		m.outputLines = []string{
-			gold.Render("  𓁢 Scan Findings"),
-			"",
-			dim.Render("  No scan results found. Run `scan` or `sirsi weigh` first."),
-		}
-		m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
-		m.recalcViewportHeight()
-		return m, nil
-	}
-
-	filter = strings.TrimSpace(strings.ToLower(filter))
-	isFiltered := filter != ""
-
-	var lines []string
-
-	if isFiltered {
-		// ── Category drill-down view ──
-		catKey := jackal.Category(filter)
-		summary, catExists := scan.ByCategory[catKey]
-
-		if !catExists {
-			// Try partial match
-			for cat, s := range scan.ByCategory {
-				if strings.Contains(strings.ToLower(string(cat)), filter) {
-					catKey = cat
-					summary = s
-					catExists = true
-					break
-				}
-			}
-		}
-
-		if !catExists {
-			lines = append(lines,
-				gold.Render(fmt.Sprintf("  𓁢 Findings — \"%s\"", filter)),
-				"",
-				dim.Render(fmt.Sprintf("  No category matching \"%s\". Available:", filter)),
-			)
-			for cat := range scan.ByCategory {
-				lines = append(lines, "    "+gold.Render(string(cat)))
-			}
-			lines = append(lines, "",
-				dim.Render("  Type `findings` to see all, or `findings <category>` to drill in."))
-		} else {
-			icon := categoryIcon(string(catKey))
-			lines = append(lines,
-				gold.Render(fmt.Sprintf("  %s %s — %s  (%d findings)",
-					icon, catKey,
-					jackal.FormatSize(summary.TotalSize),
-					summary.Findings)),
-				"",
-			)
-
-			// Show ALL findings in this category with full detail
-			for _, f := range scan.Findings {
-				if f.Category != catKey {
-					continue
-				}
-				lines = append(lines, m.renderFindingDetail(f, body, dim, warn, fixable, breakingStyle)...)
-			}
-
-			lines = append(lines, "",
-				dim.Render("  ── Actions ──────────────────────────────"),
-				"  "+gold.Render("clean")+"         "+dim.Render("Remove safe items in this category"),
-				"  "+gold.Render("findings")+"      "+dim.Render("Back to full overview"),
-				"",
-			)
-		}
-	} else {
-		// ── Full overview ──
-		lines = append(lines,
-			gold.Render("  𓁢 Scan Findings"),
-			dim.Render(fmt.Sprintf("  Scanned %s — %d rules, %s total waste",
-				scan.Timestamp.Format("Jan 2 15:04"),
-				scan.RulesRan,
-				jackal.FormatSize(scan.TotalSize))),
-			"",
-		)
-
-		// Category breakdown — now interactive (type category name to drill in)
-		if len(scan.ByCategory) > 0 {
-			lines = append(lines, body.Render("  Category Breakdown:")+" "+dim.Render("(type a name to drill in)"))
-			for cat, s := range scan.ByCategory {
-				icon := categoryIcon(string(cat))
-				lines = append(lines,
-					fmt.Sprintf("    %s "+gold.Render("%-14s")+" %s  (%d items)",
-						icon, cat,
-						jackal.FormatSize(s.TotalSize),
-						s.Findings))
-			}
-			lines = append(lines, "")
-		}
-
-		// Top findings with richer detail
-		limit := 20
-		if len(scan.Findings) < limit {
-			limit = len(scan.Findings)
-		}
-		if limit > 0 {
-			lines = append(lines, body.Render(fmt.Sprintf("  Top %d of %d findings:", limit, len(scan.Findings))))
-			lines = append(lines, "")
-			for _, f := range scan.Findings[:limit] {
-				lines = append(lines, m.renderFindingDetail(f, body, dim, warn, fixable, breakingStyle)...)
-			}
-			if len(scan.Findings) > limit {
-				remaining := len(scan.Findings) - limit
-				lines = append(lines, "",
-					dim.Render(fmt.Sprintf("  ... and %d more. Type a category name to see all findings in it.", remaining)))
-			}
-		}
-
-		lines = append(lines, "",
-			dim.Render("  ── Actions ──────────────────────────────"),
-			"  "+gold.Render("clean")+"              "+dim.Render("Remove safe items (Trash)"),
-			"  "+gold.Render("judge")+"              "+dim.Render("Policy review before cleanup"),
-			"  "+gold.Render("findings <category>")+" "+dim.Render("Drill into one category"),
-			"",
-		)
-	}
-
-	m.outputLines = lines
-	m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
-	m.recalcViewportHeight()
-	m.viewport.GotoTop()
-
-	histCmd := "findings"
-	if isFiltered {
-		histCmd = "findings " + filter
-	}
-	m.history = append(m.history, historyEntry{
-		deity: "anubis", command: histCmd,
-		output: strings.Join(lines, "\n"),
-	})
-	m.cmdHistory = deduplicateHistory(m.history)
-
-	return m, nil
-}
-
-// renderFindingDetail formats a single finding with severity, size,
-// description, advisory, remediation status, and path.
-func (m TUIModel) renderFindingDetail(
-	f jackal.PersistedFinding,
-	body, dim, warn lipgloss.Style,
-	fixableLabel string,
-	breakingStyle lipgloss.Style,
-) []string {
-	severity := "  "
-	switch f.Severity {
-	case jackal.SeveritySafe:
-		severity = lipgloss.NewStyle().Foreground(Green).Render("safe")
-	case jackal.SeverityCaution:
-		severity = warn.Render("caution")
-	case jackal.SeverityWarning:
-		severity = lipgloss.NewStyle().Foreground(Red).Render("warning")
-	}
-
-	// Main line: severity + size + description
-	lines := []string{
-		fmt.Sprintf("  %-9s %-8s %s",
-			severity, f.SizeHuman, body.Render(f.Description)),
-	}
-
-	// Path (shortened for readability)
-	if f.Path != "" {
-		lines = append(lines, dim.Render("           "+ShortenPath(f.Path)))
-	}
-
-	// Advisory
-	if f.Advisory != "" {
-		lines = append(lines, dim.Render("           → "+f.Advisory))
-	}
-
-	// Remediation + fixability
-	if f.CanFix && f.Remediation != "" {
-		remLine := "           " + fixableLabel + "  " + dim.Render(f.Remediation)
-		if f.Breaking {
-			remLine += "  " + breakingStyle.Render("⚠ may affect running services")
-		}
-		lines = append(lines, remLine)
-	}
-
-	lines = append(lines, "") // spacing between findings
-	return lines
-}
-
-// categoryIcon returns an emoji for a scan category.
-func categoryIcon(cat string) string {
-	switch cat {
-	case "cache":
-		return "🗑"
-	case "logs":
-		return "📋"
-	case "build":
-		return "🔨"
-	case "containers":
-		return "🐳"
-	case "dev-tools", "dev":
-		return "🔧"
-	case "packages":
-		return "📦"
-	case "ai":
-		return "🤖"
-	case "ides":
-		return "💻"
-	case "cloud":
-		return "☁️"
-	case "storage":
-		return "💾"
-	case "vms":
-		return "🖥"
-	case "general":
-		return "📁"
-	default:
-		return "📁"
-	}
-}
-
-// isScanCategory returns true if the input matches a known Anubis scan
-// category, enabling bare category names as shortcuts for drill-down.
-func (m TUIModel) isScanCategory(raw string) bool {
-	// Only treat bare words as categories if we have a recent scan in history.
-	hasAnubisHistory := false
-	for _, h := range m.history {
-		if h.deity == "anubis" {
-			hasAnubisHistory = true
-			break
-		}
-	}
-	if !hasAnubisHistory {
-		return false
-	}
-
-	scan, err := jackal.LoadLatest()
-	if err != nil {
-		return false
-	}
-	lower := strings.ToLower(strings.TrimSpace(raw))
-	for cat := range scan.ByCategory {
-		if strings.ToLower(string(cat)) == lower {
-			return true
-		}
-	}
-	return false
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────
-
-func deityDisplay(key string) (string, string) {
-	return deity.Display(key)
-}
-
-// renderStickyHints returns the pinned suggestion area (shown between viewport and input).
-// Commands are numbered so the user can press 1/2/3 to execute them directly.
-func (m TUIModel) renderStickyHints() string {
-	if len(m.postRunCmds) == 0 {
-		return ""
-	}
-	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
-	gold := lipgloss.NewStyle().Foreground(Gold)
-	hint := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
-	num := lipgloss.NewStyle().Foreground(Gold).Bold(true)
-
-	var b strings.Builder
-	b.WriteString(dim.Render("  ── What's Next ─────────────────") + "\n")
-	for i, cmd := range m.postRunCmds {
-		if i >= 3 {
-			break
-		}
-		// Find matching description from suggest actions
-		desc := ""
-		ctx := m.buildSuggestContext()
-		for _, a := range suggest.After(ctx) {
-			c := strings.TrimPrefix(a.Command, "sirsi ")
-			if c == cmd {
-				desc = a.Description
-				break
-			}
-		}
-		b.WriteString("  " + num.Render(fmt.Sprintf("%d", i+1)) + " " +
-			gold.Render(cmd) + "  " + hint.Render(desc) + "\n")
-	}
-	b.WriteString(dim.Render("  press 1-3 or tab to cycle") + "\n")
-	return b.String()
-}
-
-func (m *TUIModel) recalcViewportHeight() {
-	// Reserve: header(2) + divider(1) + input divider(1) + input(1) + hints(1) + padding(2) + sticky hints
-	stickyLines := 0
-	if len(m.postRunCmds) > 0 {
+// ── Layout ───────────────────────────────────────────────────────────
+
+func (m *TUIModel) recalcViewport() {
+	// Reserve: tab bar(2) + divider(1) + bottom divider(1) + hints(1) + padding(2)
+	vpHeight := m.height - 7
+	if m.mode == viewDone && len(m.postRunCmds) > 0 {
 		shown := min(len(m.postRunCmds), 3)
-		stickyLines = shown + 2 // commands + header + "press 1-3" footer
+		vpHeight -= shown + 3 // header + actions + spacing
 	}
-	vpHeight := m.height - 8 - stickyLines
 	if vpHeight < 5 {
 		vpHeight = 5
 	}
 	m.viewport.SetHeight(vpHeight)
 
-	// Full width — no split pane
 	vpWidth := m.width - 4
 	if vpWidth < 20 {
 		vpWidth = 20
 	}
 	m.viewport.SetWidth(vpWidth)
 }
+
+// ── Helpers ──────────────────────────────────────────────────────────
 
 func pluralize(word string, n int) string {
 	if n == 1 {
@@ -1996,15 +994,12 @@ func pluralize(word string, n int) string {
 	return word + "s"
 }
 
-// ── Launcher ──────────────────────────────────────────────────────────
+// ── Launcher ─────────────────────────────────────────────────────────
 
-// LaunchTUI starts the BubbleTea TUI with optional notification awareness.
 func LaunchTUI() error {
 	return LaunchTUIWithNotify(nil)
 }
 
-// LaunchTUIWithNotify starts the TUI with an optional notification store.
-// If store is non-nil, recent notifications are shown in the left pane.
 func LaunchTUIWithNotify(store *notify.Store) error {
 	m := NewTUIModel()
 	m.notifyStore = store
@@ -2016,10 +1011,7 @@ func LaunchTUIWithNotify(store *notify.Store) error {
 }
 
 // ── Persistent State ─────────────────────────────────────────────────
-// Uses shared deity.LoadState / deity.SaveState so the menubar can read
-// the same deity run states that the TUI writes.
 
-// loadPersistedState reads saved deity state from disk.
 func (m *TUIModel) loadPersistedState() {
 	state, err := deity.LoadState()
 	if err != nil {
@@ -2030,7 +1022,12 @@ func (m *TUIModel) loadPersistedState() {
 	}
 }
 
-// savePersistedState writes deity state to disk.
 func (m *TUIModel) savePersistedState() {
 	_ = deity.SaveState(deity.PersistedState{DeityState: m.deityState})
 }
+
+// ── Unused but required by tests ─────────────────────────────────────
+// These are no-ops preserved for test compilation. The old REPL functions
+// (showFindings, showHelp, renderRosterColumns, etc.) are removed.
+
+var _ = color.RGBA{} // keep image/color import for lipgloss
