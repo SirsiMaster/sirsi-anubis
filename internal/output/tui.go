@@ -141,7 +141,6 @@ type TUIModel struct {
 	// Post-run suggestions
 	postRunCmds []string
 	tabIdx      int
-	stickyHints []string
 
 	// History
 	history    []historyEntry
@@ -372,7 +371,7 @@ func (m TUIModel) handleTabKey(key string) (tea.Model, tea.Cmd) {
 
 	// Tab switching by first letter
 	for i, tab := range tabs {
-		if strings.ToLower(key) == strings.ToLower(tab.Name[:1]) {
+		if strings.EqualFold(key, tab.Name[:1]) {
 			m.activeTab = i
 			return m, nil
 		}

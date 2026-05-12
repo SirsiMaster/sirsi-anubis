@@ -10,13 +10,6 @@ import (
 	"strings"
 )
 
-// topLevelCommands are available at the root prompt.
-var topLevelCommands = []string{
-	"scan", "ghosts", "dedup", "guard", "doctor", "mcp", "version", "help",
-	"ra", "net", "thoth", "maat", "isis", "seshat",
-	"anubis", "seba", "osiris",
-}
-
 // deduplicateHistory extracts unique command strings from history entries,
 // preserving the original casing, most recent occurrence wins.
 func deduplicateHistory(history []historyEntry) []string {
