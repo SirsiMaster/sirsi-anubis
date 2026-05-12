@@ -502,9 +502,9 @@ func (m TUIModel) handlePromptKey(key string, msg tea.KeyPressMsg) (tea.Model, t
 
 func (m TUIModel) executeAction(action tabAction) (TUIModel, tea.Cmd) {
 	if action.Native != nil {
-		// Native call — run in background, return result as message
 		m.mode = viewRunning
 		m.runningCmd = strings.Join(action.Args, " ")
+		m.runningArgs = action.Args
 		m.runningDeity = ""
 		if len(action.Args) > 0 {
 			m.runningDeity = action.Args[0]
@@ -699,11 +699,9 @@ func (m TUIModel) handleNativeResult(msg nativeResultMsg) (TUIModel, tea.Cmd) {
 		}
 	}
 
-	// Build post-run suggestions
-	ctx := suggest.Context{Deity: msg.deityKey}
-	if len(m.runningArgs) >= 2 {
-		ctx.Subcommand = m.runningArgs[1]
-	}
+	// Build post-run suggestions using the stored args
+	ctx := m.buildSuggestContext()
+	ctx.Deity = msg.deityKey
 	if msg.err != nil {
 		ctx.Err = msg.err
 		m.postRunActions = suggest.OnError(ctx)
@@ -711,6 +709,14 @@ func (m TUIModel) handleNativeResult(msg nativeResultMsg) (TUIModel, tea.Cmd) {
 		m.postRunActions = suggest.After(ctx)
 	}
 	m.postRunCmds = suggest.Commands(ctx)
+	// If Anubis scan, populate findings count for better suggestions
+	if msg.deityKey == "anubis" {
+		if scan, loadErr := jackal.LoadLatest(); loadErr == nil {
+			ctx.FindingsCount = len(scan.Findings)
+		}
+		m.postRunActions = suggest.After(ctx)
+		m.postRunCmds = suggest.Commands(ctx)
+	}
 
 	m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
 	m.recalcViewport()
@@ -978,40 +984,44 @@ func (m TUIModel) renderRunning() string {
 // renderDone shows command output + numbered next actions.
 func (m TUIModel) renderDone() string {
 	var b strings.Builder
-	gold := lipgloss.NewStyle().Foreground(Gold)
 	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
+	green := lipgloss.NewStyle().Foreground(Green)
 	body := lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC"))
 	num := lipgloss.NewStyle().Foreground(Gold).Bold(true)
 
 	b.WriteString("\n")
 	b.WriteString(m.viewport.View() + "\n")
 
-	// ── Numbered next actions ──
-	if len(m.postRunCmds) > 0 {
-		b.WriteString("\n")
+	// ── Completion ──
+	b.WriteString("\n")
+	b.WriteString("  " + green.Render("✓ Done") + "\n")
+	b.WriteString("\n")
 
-		for i, cmd := range m.postRunCmds {
-			if i >= 3 {
-				break
-			}
-			desc := ""
-			if i < len(m.postRunActions) {
-				desc = m.postRunActions[i].Description
-			}
-			b.WriteString("   " + num.Render(fmt.Sprintf("%d", i+1)) +
-				"  " + body.Render(cmd))
-			if desc != "" {
-				b.WriteString("  " + dim.Render(desc))
-			}
-			b.WriteString("\n")
+	// ── Numbered next actions ──
+	shown := 0
+	for i, cmd := range m.postRunCmds {
+		if i >= 3 {
+			break
 		}
-		b.WriteString("\n")
-	} else {
-		// No suggestions — show a gentle nudge
-		b.WriteString("\n   " + dim.Render("Press esc to go back, or : to run a command") + "\n\n")
+		desc := ""
+		if i < len(m.postRunActions) {
+			desc = m.postRunActions[i].Description
+		}
+		line := "   " + num.Render(fmt.Sprintf("%d", i+1)) + "  " + body.Render(cmd)
+		if desc != "" {
+			line += "  " + dim.Render(desc)
+		}
+		b.WriteString(line + "\n")
+		shown++
 	}
 
-	_ = gold // used in styles above
+	b.WriteString("\n")
+	if shown > 0 {
+		b.WriteString("   " + dim.Render(fmt.Sprintf("press 1-%d to continue  ·  esc back  ·  : command", shown)) + "\n")
+	} else {
+		b.WriteString("   " + dim.Render("esc back  ·  : command") + "\n")
+	}
+
 	return b.String()
 }
 
