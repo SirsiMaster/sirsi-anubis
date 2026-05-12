@@ -77,7 +77,7 @@ var tabs = []tabDef{
 		Actions: []tabAction{
 			{"Scan", "Find infrastructure waste on this machine", []string{"anubis", "weigh"}, nativeScan},
 			{"Ghosts", "Hunt remnants of uninstalled apps", []string{"anubis", "ka"}, nativeGhosts},
-			{"Clean", "Review and remove safe items", []string{"anubis", "judge", "--dry-run"}, nil},
+			{"Clean", "Preview and remove safe items (Trash)", []string{"anubis", "judge", "--dry-run"}, nativeCleanDryRun},
 			{"Duplicates", "Find duplicate files across directories", []string{"anubis", "mirror"}, nil},
 		},
 	},
@@ -130,15 +130,17 @@ var tabs = []tabDef{
 // When a post-run suggestion matches one of these, it runs natively
 // instead of shelling out to a subprocess.
 var nativeCommands = map[string]func() ([]string, string, []string, error){
-	"anubis weigh":       nativeScan,
-	"anubis ka":          nativeGhosts,
-	"seba hardware":      nativeHardware,
-	"osiris assess":      nativeRisk,
-	"findings":           nativeFindings,
-	"scan":               nativeScan,
-	"doctor":             nativeDoctor,
-	"isis network":       nativeNetworkAudit,
-	"isis network --fix": nativeNetworkFix,
+	"anubis weigh":           nativeScan,
+	"anubis ka":              nativeGhosts,
+	"seba hardware":          nativeHardware,
+	"osiris assess":          nativeRisk,
+	"findings":               nativeFindings,
+	"scan":                   nativeScan,
+	"doctor":                 nativeDoctor,
+	"isis network":           nativeNetworkAudit,
+	"isis network --fix":     nativeNetworkFix,
+	"anubis clean --confirm": nativeCleanConfirm,
+	"anubis judge --dry-run": nativeCleanDryRun,
 }
 
 // ── Native Deity Functions ───────────────────────────────────────────
@@ -154,7 +156,19 @@ func nativeScan() ([]string, string, []string, error) {
 	}
 	jackal.EnrichAdvisory(res)
 	_ = jackal.Persist(res, 0)
-	return RenderScanResult(res), "anubis", nil, nil
+
+	// Offer cleanup as the primary next action
+	var fixCmds []string
+	safeCount := 0
+	for _, f := range res.Findings {
+		if f.Severity == jackal.SeveritySafe && f.CanFix {
+			safeCount++
+		}
+	}
+	if safeCount > 0 {
+		fixCmds = append(fixCmds, "anubis judge --dry-run") // preview clean
+	}
+	return RenderScanResult(res), "anubis", fixCmds, nil
 }
 
 func nativeGhosts() ([]string, string, []string, error) {
@@ -230,6 +244,79 @@ func nativeDoctor() ([]string, string, []string, error) {
 	}
 	lines, fixCmds := RenderDoctorReport(report)
 	return lines, "isis", fixCmds, nil
+}
+
+func nativeCleanDryRun() ([]string, string, []string, error) {
+	scan, err := jackal.LoadLatest()
+	if err != nil {
+		return []string{"", "  No scan results. Run Scan first."}, "anubis", nil, nil
+	}
+
+	// Filter to safe findings only
+	var safeFindings []jackal.Finding
+	for _, f := range scan.Findings {
+		if f.Severity == jackal.SeveritySafe && f.CanFix {
+			safeFindings = append(safeFindings, jackal.Finding{
+				RuleName:    f.RuleName,
+				Description: f.Description,
+				Path:        f.Path,
+				SizeBytes:   f.SizeBytes,
+				Severity:    f.Severity,
+				Category:    f.Category,
+				CanFix:      f.CanFix,
+			})
+		}
+	}
+
+	if len(safeFindings) == 0 {
+		return []string{"", "  No safe items to clean."}, "anubis", nil, nil
+	}
+
+	lines := RenderCleanPreview(safeFindings)
+	return lines, "anubis", []string{"anubis clean --confirm"}, nil
+}
+
+func nativeCleanConfirm() ([]string, string, []string, error) {
+	scan, err := jackal.LoadLatest()
+	if err != nil {
+		return []string{"", "  No scan results. Run Scan first."}, "anubis", nil, nil
+	}
+
+	var safeFindings []jackal.Finding
+	for _, f := range scan.Findings {
+		if f.Severity == jackal.SeveritySafe && f.CanFix {
+			safeFindings = append(safeFindings, jackal.Finding{
+				RuleName:    f.RuleName,
+				Description: f.Description,
+				Path:        f.Path,
+				SizeBytes:   f.SizeBytes,
+				Severity:    f.Severity,
+				Category:    f.Category,
+				IsDir:       f.IsDir,
+				CanFix:      f.CanFix,
+			})
+		}
+	}
+
+	if len(safeFindings) == 0 {
+		return []string{"", "  Nothing to clean."}, "anubis", nil, nil
+	}
+
+	engine := jackal.DefaultEngine()
+	engine.RegisterAll(rules.AllRules()...)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	result, err := engine.Clean(ctx, safeFindings, jackal.CleanOptions{
+		Confirm:  true,
+		UseTrash: true,
+	})
+	if err != nil {
+		return nil, "anubis", nil, err
+	}
+
+	lines := RenderCleanResult(result)
+	return lines, "anubis", []string{"anubis weigh"}, nil
 }
 
 func nativeRisk() ([]string, string, []string, error) {
@@ -786,13 +873,26 @@ func (m TUIModel) handleNativeResult(msg nativeResultMsg) (TUIModel, tea.Cmd) {
 
 	// Use fix commands from the renderer if provided (actionable results).
 	// Otherwise fall back to the generic suggest engine.
+	// Known fix descriptions
+	fixDescs := map[string]string{
+		"anubis judge --dry-run": "Preview safe items to clean",
+		"anubis clean --confirm": "Clean safe items (move to Trash)",
+		"anubis weigh":           "Run a fresh scan",
+		"isis network --fix":     "Auto-fix DNS, firewall, security",
+		"doctor":                 "Full system health check",
+	}
+
 	if len(msg.fixCmds) > 0 {
 		m.postRunCmds = msg.fixCmds
 		m.postRunActions = nil
 		for _, cmd := range msg.fixCmds {
+			desc := fixDescs[cmd]
+			if desc == "" {
+				desc = "Run " + cmd
+			}
 			m.postRunActions = append(m.postRunActions, suggest.Action{
 				Command:     cmd,
-				Description: "Fix detected issues",
+				Description: desc,
 			})
 		}
 	} else {

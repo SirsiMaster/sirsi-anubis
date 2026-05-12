@@ -217,6 +217,67 @@ func RenderRiskAssessment(cp *osiris.Checkpoint) []string {
 	return lines
 }
 
+// ── Clean Preview ────────────────────────────────────────────────────
+
+func RenderCleanPreview(findings []jackal.Finding) []string {
+	var lines []string
+	totalSize := int64(0)
+	for _, f := range findings {
+		totalSize += f.SizeBytes
+	}
+
+	lines = append(lines, "")
+	lines = append(lines, "  "+rLabel.Render("CLEANUP PREVIEW"))
+	lines = append(lines, "  "+rBig.Render(jackal.FormatSize(totalSize))+"  "+rDim.Render("will be moved to Trash"))
+	lines = append(lines, "  "+rDim.Render(fmt.Sprintf("%d safe items", len(findings))))
+	lines = append(lines, "")
+
+	// Show what will be cleaned
+	limit := min(len(findings), 15)
+	for _, f := range findings[:limit] {
+		lines = append(lines, fmt.Sprintf("  %s  %8s  %s",
+			rGreen.Render("✓"),
+			jackal.FormatSize(f.SizeBytes),
+			rBody.Render(f.Description)))
+		lines = append(lines, "     "+rDim.Render(ShortenPath(f.Path)))
+	}
+	if len(findings) > limit {
+		lines = append(lines, "  "+rDim.Render(fmt.Sprintf("  ... and %d more", len(findings)-limit)))
+	}
+
+	lines = append(lines, "")
+	lines = append(lines, "  "+rWarn.Render("Press 1 to confirm cleanup"))
+
+	return lines
+}
+
+// RenderCleanResult shows what was freed after cleaning.
+func RenderCleanResult(result *jackal.CleanResult) []string {
+	var lines []string
+
+	lines = append(lines, "")
+	if result.BytesFreed > 0 {
+		lines = append(lines, "  "+rGreen.Render("✓")+"  "+rLabel.Render("SPACE FREED"))
+		lines = append(lines, "  "+rBig.Render(jackal.FormatSize(result.BytesFreed)))
+		lines = append(lines, "  "+rDim.Render(fmt.Sprintf("%d items cleaned, %d skipped", result.Cleaned, result.Skipped)))
+	} else {
+		lines = append(lines, "  "+rDim.Render("No space freed."))
+		if result.Skipped > 0 {
+			lines = append(lines, "  "+rDim.Render(fmt.Sprintf("%d items skipped (protected or in use)", result.Skipped)))
+		}
+	}
+
+	if len(result.Errors) > 0 {
+		lines = append(lines, "")
+		lines = append(lines, "  "+rLabel.Render("ERRORS"))
+		for _, e := range result.Errors {
+			lines = append(lines, "  "+rRed.Render("✗")+"  "+rDim.Render(e.Error()))
+		}
+	}
+
+	return lines
+}
+
 // ── Network Audit ────────────────────────────────────────────────────
 
 // RenderNetworkAudit renders the network security posture results.
