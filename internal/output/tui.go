@@ -121,6 +121,18 @@ var tabs = []tabDef{
 	},
 }
 
+// nativeCommands maps suggest command strings to native functions.
+// When a post-run suggestion matches one of these, it runs natively
+// instead of shelling out to a subprocess.
+var nativeCommands = map[string]func() ([]string, string, error){
+	"anubis weigh":  nativeScan,
+	"anubis ka":     nativeGhosts,
+	"seba hardware": nativeHardware,
+	"osiris assess": nativeRisk,
+	"findings":      nativeFindings,
+	"scan":          nativeScan,
+}
+
 // ── Native Deity Functions ───────────────────────────────────────────
 
 func nativeScan() ([]string, string, error) {
@@ -154,6 +166,36 @@ func nativeHardware() ([]string, string, error) {
 		return nil, "seba", err
 	}
 	return RenderHardwareProfile(hw), "seba", nil
+}
+
+func nativeFindings() ([]string, string, error) {
+	scan, err := jackal.LoadLatest()
+	if err != nil {
+		return []string{"", "  No scan results found. Press esc and run Scan first."}, "anubis", nil
+	}
+	// Render as a full ScanResult view
+	res := &jackal.ScanResult{
+		Findings:   make([]jackal.Finding, len(scan.Findings)),
+		TotalSize:  scan.TotalSize,
+		RulesRan:   scan.RulesRan,
+		ByCategory: make(map[jackal.Category]jackal.CategorySummary),
+	}
+	for i, f := range scan.Findings {
+		res.Findings[i] = jackal.Finding{
+			Description: f.Description,
+			Path:        f.Path,
+			SizeBytes:   f.SizeBytes,
+			Severity:    f.Severity,
+			Category:    f.Category,
+			Advisory:    f.Advisory,
+			CanFix:      f.CanFix,
+			Remediation: f.Remediation,
+		}
+	}
+	for cat, s := range scan.ByCategory {
+		res.ByCategory[cat] = s
+	}
+	return RenderScanResult(res), "anubis", nil
 }
 
 func nativeRisk() ([]string, string, error) {
@@ -460,8 +502,18 @@ func (m TUIModel) handleDoneKey(key string) (tea.Model, tea.Cmd) {
 	case "1", "2", "3":
 		idx := int(key[0]-'0') - 1
 		if idx < len(m.postRunCmds) {
-			// Execute the suggested command
-			args := strings.Fields(m.postRunCmds[idx])
+			cmd := m.postRunCmds[idx]
+			// Check for native handlers first
+			if fn, ok := nativeCommands[cmd]; ok {
+				action := tabAction{
+					Label:  cmd,
+					Args:   strings.Fields(cmd),
+					Native: fn,
+				}
+				return m.executeAction(action)
+			}
+			// Fallback to subprocess
+			args := strings.Fields(cmd)
 			if len(args) > 0 {
 				return m.executeArgs(args)
 			}
@@ -616,8 +668,7 @@ func (m TUIModel) handleStreamLine(msg streamLineMsg) (TUIModel, tea.Cmd) {
 				m.deityState[m.runningDeity] = stateFailed
 			}
 		} else {
-			m.outputLines = append(m.outputLines, "",
-				lipgloss.NewStyle().Foreground(Green).Render("  ✓ Done"))
+			// Don't add "✓ Done" here — renderDone handles it
 			if m.runningDeity != "" {
 				state := stateSucceeded
 				if m.runningDeity == "anubis" {
