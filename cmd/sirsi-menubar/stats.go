@@ -341,21 +341,3 @@ func (s *StatsSnapshot) StatusLine() string {
 	return fmt.Sprintf("Sirsi Active — collected in %s", s.CollectedIn)
 }
 
-// formatDuration returns a human-friendly duration.
-func formatDuration(d time.Duration) string {
-	switch {
-	case d < time.Minute:
-		return fmt.Sprintf("%ds", int(d.Seconds()))
-	case d < time.Hour:
-		return fmt.Sprintf("%dm", int(d.Minutes()))
-	case d < 24*time.Hour:
-		h := int(d.Hours())
-		m := int(d.Minutes()) % 60
-		if m > 0 {
-			return fmt.Sprintf("%dh%dm", h, m)
-		}
-		return fmt.Sprintf("%dh", h)
-	default:
-		return fmt.Sprintf("%dd", int(d.Hours()/24))
-	}
-}
