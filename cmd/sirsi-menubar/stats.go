@@ -340,4 +340,3 @@ func (s *StatsSnapshot) FormatMenuItems() []string {
 func (s *StatsSnapshot) StatusLine() string {
 	return fmt.Sprintf("Sirsi Active — collected in %s", s.CollectedIn)
 }
-
