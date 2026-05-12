@@ -977,14 +977,14 @@ func (m TUIModel) View() tea.View {
 	}
 
 	hasOutput := len(m.outputLines) > 0
-	maxW := min(m.width-2, 90)
+	maxW := min(m.width-2, 120)
 	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#333333"))
 	divider := dim.Render(strings.Repeat("─", maxW))
 
+	// ── Header with breadcrumb ──
 	header := lipgloss.NewStyle().Foreground(Gold).Bold(true).Render("𓉴  Sirsi Pantheon")
 	if len(m.breadcrumb) > 0 {
-		crumbStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
-		sep := crumbStyle.Render(" › ")
+		sep := lipgloss.NewStyle().Foreground(lipgloss.Color("#555555")).Render(" › ")
 		trail := ""
 		for i, c := range m.breadcrumb {
 			if i > 0 {
@@ -994,34 +994,30 @@ func (m TUIModel) View() tea.View {
 		}
 		header += sep + trail
 	}
-	signage := lipgloss.NewStyle().Foreground(lipgloss.Color("#444444")).
-		Render(" Sirsi Technologies, Inc. 2026 (Apache 2.0)")
 
 	var b strings.Builder
 	usedLines := 0
 
 	if !hasOutput {
-		// ── Dashboard: vitals + roster + recent activity + quick actions
+		// ════════════════════════════════════════════════════════════
+		// DASHBOARD — full width, Mole-style bento layout
+		// One screen. Deity status cards. Quick actions. No clutter.
+		// ════════════════════════════════════════════════════════════
 		gold := lipgloss.NewStyle().Foreground(Gold)
-		dimText := lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
-		sectionHead := lipgloss.NewStyle().Foreground(lipgloss.Color("#999999")).Bold(true)
-		body := lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC"))
+		dimText := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
 		warnText := lipgloss.NewStyle().Foreground(lipgloss.Color("#FFAA00"))
 
 		b.WriteString("\n")
 		b.WriteString(" " + header + "\n")
-		b.WriteString(" " + divider + "\n")
-		usedLines += 3
+		b.WriteString(" " + divider + "\n\n")
+		usedLines += 4
 
-		// ── System Vitals ──
-		b.WriteString("\n")
-		usedLines++
-
+		// ── Vitals bar ──
 		vitalsItems := []string{
 			fmt.Sprintf("%s RAM %.0f%%", m.vitals.RAMIcon, m.vitals.RAMPercent),
 		}
 		if m.vitals.Accelerator != "" {
-			vitalsItems = append(vitalsItems, fmt.Sprintf("⚡ %s", m.vitals.Accelerator))
+			vitalsItems = append(vitalsItems, "⚡ "+m.vitals.Accelerator)
 		}
 		if m.vitals.GitBranch != "" {
 			gitStr := "🌿 " + m.vitals.GitBranch
@@ -1031,70 +1027,37 @@ func (m TUIModel) View() tea.View {
 			vitalsItems = append(vitalsItems, gitStr)
 		}
 		if m.vitals.LastCommit != "" {
-			vitalsItems = append(vitalsItems, dimText.Render("⏱ "+m.vitals.LastCommit))
+			vitalsItems = append(vitalsItems, "⏱ "+m.vitals.LastCommit)
 		}
-		b.WriteString(" " + dimText.Render(strings.Join(vitalsItems, "  ·  ")) + "\n")
-		usedLines++
-
-		// ── Deity Roster ──
-		b.WriteString("\n")
-		b.WriteString(" " + sectionHead.Render("DEITIES") + "\n")
+		b.WriteString("  " + dimText.Render(strings.Join(vitalsItems, "   ")) + "\n\n")
 		usedLines += 2
 
-		roster := m.renderRosterColumns(false)
+		// ── Deity bento grid — 2 columns, status + one-line summary ──
+		roster := m.renderBentoGrid()
 		b.WriteString(roster)
 		usedLines += strings.Count(roster, "\n")
 
-		// ── Status Strip: recent + waste side by side ──
-		hasRecent := len(m.recentNotify) > 0
-		hasScan := false
-		var scanData *jackal.PersistedScan
+		// ── Waste summary (if scan data exists) ──
 		if scan, err := jackal.LoadLatest(); err == nil && scan.TotalSize > 0 {
-			hasScan = true
-			scanData = scan
-		}
-
-		if hasRecent || hasScan {
-			b.WriteString("\n")
-			b.WriteString(" " + sectionHead.Render("STATUS") + "\n")
+			age := time.Since(scan.Timestamp)
+			ageStr := "just now"
+			if age > time.Hour {
+				ageStr = fmt.Sprintf("%.0fh ago", age.Hours())
+			} else if age > time.Minute {
+				ageStr = fmt.Sprintf("%.0fm ago", age.Minutes())
+			}
+			wasteIcon := "🟢"
+			if scan.TotalSize > 10*1024*1024*1024 {
+				wasteIcon = "🔴"
+			} else if scan.TotalSize > 5*1024*1024*1024 {
+				wasteIcon = "🟡"
+			}
+			b.WriteString(fmt.Sprintf("\n  %s %s reclaimable  ·  %s  ·  scanned %s\n",
+				wasteIcon,
+				gold.Render(jackal.FormatSize(scan.TotalSize)),
+				dimText.Render(fmt.Sprintf("%d findings", len(scan.Findings))),
+				dimText.Render(ageStr)))
 			usedLines += 2
-
-			if hasScan {
-				age := time.Since(scanData.Timestamp)
-				ageStr := "just now"
-				if age > time.Hour {
-					ageStr = fmt.Sprintf("%.0fh ago", age.Hours())
-				} else if age > time.Minute {
-					ageStr = fmt.Sprintf("%.0fm ago", age.Minutes())
-				}
-				wasteIcon := "🟢"
-				if scanData.TotalSize > 10*1024*1024*1024 {
-					wasteIcon = "🔴"
-				} else if scanData.TotalSize > 5*1024*1024*1024 {
-					wasteIcon = "🟡"
-				}
-				b.WriteString(fmt.Sprintf("  %s %s reclaimable · %s · %s\n",
-					wasteIcon,
-					gold.Render(jackal.FormatSize(scanData.TotalSize)),
-					dimText.Render(fmt.Sprintf("%d findings", len(scanData.Findings))),
-					dimText.Render(ageStr)))
-				usedLines++
-			}
-
-			if hasRecent {
-				for i, n := range m.recentNotify {
-					if i >= 3 {
-						break
-					}
-					icon := notify.SeverityIcon(n.Severity)
-					summary := n.Summary
-					if len(summary) > 50 {
-						summary = summary[:47] + "…"
-					}
-					b.WriteString(fmt.Sprintf("  %s %s  %s\n", icon, gold.Render(n.Source), body.Render(summary)))
-					usedLines++
-				}
-			}
 		}
 
 		// ── Quick Actions ──
@@ -1106,8 +1069,11 @@ func (m TUIModel) View() tea.View {
 		b.WriteString(" " + m.input.View() + "\n")
 		b.WriteString(m.renderHints(false) + "\n")
 		usedLines += 3
-	} else if m.width < 70 {
-		// ── Narrow terminal: stack vertically instead of split-pane
+	} else {
+		// ════════════════════════════════════════════════════════════
+		// COMMAND VIEW — full width, no sidebar, one job on screen
+		// Like Mole: each planet gets its own page.
+		// ════════════════════════════════════════════════════════════
 		b.WriteString("\n")
 		b.WriteString(" " + header + "\n")
 		b.WriteString(" " + divider + "\n")
@@ -1125,6 +1091,7 @@ func (m TUIModel) View() tea.View {
 				lipgloss.NewStyle().Foreground(lipgloss.Color("#888888")).Render(" running..."+elapsedStr) + "\n")
 			usedLines++
 		}
+
 		b.WriteString(m.viewport.View() + "\n")
 		usedLines += m.viewport.Height()
 
@@ -1136,62 +1103,97 @@ func (m TUIModel) View() tea.View {
 
 		b.WriteString(" " + divider + "\n")
 		b.WriteString(" " + m.input.View() + "\n")
-		b.WriteString(m.renderHints(true) + "\n")
-		usedLines += 3
-	} else {
-		// ── Split-pane: left roster | right output
-		left := m.renderLeftPane()
-		right := m.renderRightPane()
-
-		leftW := m.leftPaneWidth()
-		leftStyle := lipgloss.NewStyle().
-			Width(leftW).
-			BorderRight(true).
-			BorderStyle(lipgloss.Border{Right: "│"}).
-			BorderForeground(lipgloss.Color("#333333")).
-			PaddingRight(1)
-
-		rightWidth := m.width - leftW - 3
-		if rightWidth < 20 {
-			rightWidth = 20
-		}
-		rightStyle := lipgloss.NewStyle().Width(rightWidth).PaddingLeft(1)
-
-		panes := lipgloss.JoinHorizontal(lipgloss.Top,
-			leftStyle.Render(left),
-			rightStyle.Render(right),
-		)
-
-		b.WriteString("\n")
-		b.WriteString(" " + header + "\n")
-		b.WriteString(" " + divider + "\n")
-		usedLines += 3
-
-		b.WriteString(panes + "\n")
-		usedLines += strings.Count(panes, "\n") + 1
-
-		sticky := m.renderStickyHints()
-		if sticky != "" {
-			b.WriteString(sticky)
-			usedLines += strings.Count(sticky, "\n")
-		}
-
-		b.WriteString(" " + divider + "\n")
-		b.WriteString(" " + m.input.View() + "\n")
-		b.WriteString(m.renderHints(true) + "\n")
+		b.WriteString(m.renderHints(false) + "\n")
 		usedLines += 3
 	}
 
-	// Pad to push signage to the bottom — exactly once
-	remaining := m.height - usedLines - 2
+	// Push signage to bottom
+	remaining := m.height - usedLines - 1
 	if remaining > 0 {
 		b.WriteString(strings.Repeat("\n", remaining))
 	}
-	b.WriteString(signage)
+	b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("#333333")).
+		Render(" sirsi.ai"))
 
 	v := tea.NewView(b.String())
 	v.AltScreen = true
 	return v
+}
+
+// renderBentoGrid renders the deity roster as a clean 2-column bento grid.
+// Each cell: status dot + glyph + name + one-line summary of last state.
+func (m TUIModel) renderBentoGrid() string {
+	gold := lipgloss.NewStyle().Foreground(Gold)
+	dimText := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
+	nameStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC")).Bold(true)
+
+	colWidth := (min(m.width, 120) - 4) / 2
+	if colWidth < 30 {
+		colWidth = 30
+	}
+
+	var b strings.Builder
+	for i := 0; i < len(deityRoster); i += 2 {
+		left := m.renderBentoCell(deityRoster[i], colWidth, gold, dimText, nameStyle)
+		right := ""
+		if i+1 < len(deityRoster) {
+			right = m.renderBentoCell(deityRoster[i+1], colWidth, gold, dimText, nameStyle)
+		}
+		b.WriteString("  " + left + "  " + right + "\n")
+	}
+	b.WriteString("\n")
+	return b.String()
+}
+
+// renderBentoCell renders one deity as a clean status cell.
+func (m TUIModel) renderBentoCell(d deity.Info, width int, gold, dimText, nameStyle lipgloss.Style) string {
+	state := m.deityState[d.Key]
+	active := m.activeDeity[d.Key]
+	isRunning := m.mode == modeRunning && m.runningDeity == d.Key
+
+	// Status indicator
+	var dot string
+	switch {
+	case isRunning:
+		dot = m.spinner.View()
+	case state == stateFailed:
+		dot = lipgloss.NewStyle().Foreground(Red).Render("✗")
+	case state == stateHasData:
+		dot = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFAA00")).Render("◆")
+	case state == stateSucceeded:
+		dot = lipgloss.NewStyle().Foreground(Green).Render("✓")
+	case active:
+		dot = lipgloss.NewStyle().Foreground(Gold).Render("●")
+	default:
+		dot = dimText.Render("·")
+	}
+
+	// One-line status summary
+	summary := dimText.Render(d.Role)
+	switch state {
+	case stateSucceeded:
+		summary = dimText.Render("healthy")
+	case stateFailed:
+		summary = lipgloss.NewStyle().Foreground(Red).Render("failed")
+	case stateHasData:
+		if d.Key == "anubis" {
+			if scan, err := jackal.LoadLatest(); err == nil {
+				summary = gold.Render(fmt.Sprintf("%d findings", len(scan.Findings)))
+			}
+		} else {
+			summary = gold.Render("has data")
+		}
+	}
+
+	glyph := lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC")).Render(d.Glyph)
+	name := nameStyle.Render(d.Name)
+
+	cell := dot + " " + glyph + " " + name + "  " + summary
+	cellW := lipgloss.Width(cell)
+	if cellW < width {
+		cell += strings.Repeat(" ", width-cellW)
+	}
+	return cell
 }
 
 // renderRosterColumns renders deities in a column grid that fits the available width.
@@ -1976,24 +1978,12 @@ func (m *TUIModel) recalcViewportHeight() {
 	}
 	m.viewport.SetHeight(vpHeight)
 
-	// Width depends on layout mode: split-pane uses right column, others use full width
-	hasOutput := len(m.outputLines) > 0
-	if hasOutput && m.width >= 70 {
-		// Split-pane mode — viewport is the right column
-		leftW := m.leftPaneWidth()
-		rightWidth := m.width - leftW - 3
-		if rightWidth < 20 {
-			rightWidth = 20
-		}
-		m.viewport.SetWidth(rightWidth)
-	} else {
-		// Dashboard or narrow mode — viewport uses full width
-		vpWidth := m.width - 4
-		if vpWidth < 20 {
-			vpWidth = 20
-		}
-		m.viewport.SetWidth(vpWidth)
+	// Full width — no split pane
+	vpWidth := m.width - 4
+	if vpWidth < 20 {
+		vpWidth = 20
 	}
+	m.viewport.SetWidth(vpWidth)
 }
 
 func pluralize(word string, n int) string {
