@@ -323,7 +323,6 @@ func buildTerminalScript(shellCmd, title string) string {
 	delay 0.5
 	tell front window
 		set custom title to "%s"
-		set current settings to settings set "Basic"
 	end tell
 end tell`, escapeAppleScript(shellCmd), escapeAppleScript(title))
 }

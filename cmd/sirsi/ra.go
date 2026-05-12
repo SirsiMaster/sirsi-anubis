@@ -438,8 +438,14 @@ var raKillCmd = &cobra.Command{
 	Use:   "kill",
 	Short: "Terminate all deployed Ra windows",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		start := time.Now()
 		output.Header("𓇶 Ra — Kill All Windows")
-		return ra.KillAll(ra.RADir())
+		if err := ra.KillAll(ra.RADir()); err != nil {
+			return err
+		}
+		output.Footer(time.Since(start))
+		output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "ra", Subcommand: "kill"}))
+		return nil
 	},
 }
 
@@ -480,6 +486,7 @@ var raCollectCmd = &cobra.Command{
 				}
 				return "skipped ⚠️"
 			}())
+		output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "ra", Subcommand: "collect"}))
 		return nil
 	},
 }

@@ -561,6 +561,7 @@ func runAnubisMirror(cmd *cobra.Command, args []string) error {
 }
 
 func runAnubisGuard(cmd *cobra.Command, args []string) error {
+	start := time.Now()
 	output.Banner()
 	output.Header("ANUBIS — The Guard Sentry")
 	stats, _ := guard.GetStats()
@@ -569,6 +570,8 @@ func runAnubisGuard(cmd *cobra.Command, args []string) error {
 		"Total":     stats.TotalMemory,
 		"Status":    stats.PressureLevel,
 	})
+	output.Footer(time.Since(start))
+	output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "isis", Subcommand: "guard"}))
 	return nil
 }
 

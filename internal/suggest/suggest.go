@@ -270,6 +270,11 @@ func afterIsis(ctx Context) []Action {
 			{Command: "sirsi maat heal", Short: "Auto-heal", Description: "Auto-remediate failed checks", Priority: 0},
 			{Command: "sirsi doctor", Short: "Full diagnostic", Description: "Full system health diagnostic", Priority: 1},
 		}
+	case "guard", "doctor":
+		return []Action{
+			{Command: "sirsi isis network", Short: "Network audit", Description: "Network security audit", Priority: 0},
+			{Command: "sirsi anubis weigh", Short: "Scan", Description: "Scan for infrastructure waste", Priority: 1},
+		}
 	default:
 		return []Action{
 			{Command: "sirsi isis network", Short: "Network audit", Description: "Network security audit", Priority: 0},
@@ -327,6 +332,16 @@ func afterRa(ctx Context) []Action {
 		return []Action{
 			{Command: "sirsi ra status", Short: "Check status", Description: "Check overall repo status", Priority: 0},
 			{Command: "sirsi maat heal", Short: "Auto-heal", Description: "Auto-remediate failures", Priority: 1},
+		}
+	case "kill":
+		return []Action{
+			{Command: "sirsi ra status", Short: "Check status", Description: "Check which windows are still running", Priority: 0},
+			{Command: "sirsi ra deploy", Short: "Redeploy", Description: "Deploy scopes again", Priority: 1},
+		}
+	case "collect":
+		return []Action{
+			{Command: "sirsi ra status", Short: "Check status", Description: "Check fleet status", Priority: 0},
+			{Command: "sirsi ra deploy", Short: "Deploy", Description: "Deploy a new task", Priority: 1},
 		}
 	default:
 		return []Action{
