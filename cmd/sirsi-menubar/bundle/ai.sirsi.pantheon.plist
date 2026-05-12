@@ -6,7 +6,10 @@
 	<string>ai.sirsi.pantheon</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>/opt/homebrew/bin/sirsi-menubar</string>
+		<string>/bin/zsh</string>
+		<string>-l</string>
+		<string>-c</string>
+		<string>exec "$(command -v sirsi-menubar || echo /opt/homebrew/bin/sirsi-menubar)"</string>
 	</array>
 	<key>RunAtLoad</key>
 	<true/>

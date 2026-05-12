@@ -342,17 +342,29 @@ func TestRenderHints(t *testing.T) {
 		t.Errorf("idle hints should contain 'history', got %q", hints)
 	}
 
-	// Split mode
+	// With output — shows "esc clear"
+	m.outputLines = []string{"some output"}
+	hints = m.renderHints(true)
+	if !strings.Contains(hints, "esc clear") {
+		t.Errorf("split mode with output should contain 'esc clear', got %q", hints)
+	}
+
+	// With view stack — shows "esc back"
+	m.viewStack = []viewFrame{{outputLines: []string{"old"}, placeholder: "test"}}
 	hints = m.renderHints(true)
 	if !strings.Contains(hints, "esc back") {
-		t.Errorf("split mode hints should contain 'esc back', got %q", hints)
+		t.Errorf("split mode with view stack should contain 'esc back', got %q", hints)
 	}
 
 	// Running mode
 	m.mode = modeRunning
+	m.viewStack = nil
 	hints = m.renderHints(false)
 	if !strings.Contains(hints, "scroll") {
 		t.Errorf("running hints should contain 'scroll', got %q", hints)
+	}
+	if !strings.Contains(hints, "cancel") {
+		t.Errorf("running hints should contain 'cancel', got %q", hints)
 	}
 }
 

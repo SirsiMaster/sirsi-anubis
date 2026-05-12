@@ -22,6 +22,9 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/SirsiMaster/sirsi-pantheon/internal/deity"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/vitals"
 )
 
 // StatsSnapshot is a point-in-time collection of system metrics.
@@ -91,134 +94,23 @@ func CollectStats(cfg StatsConfig) *StatsSnapshot {
 		Timestamp: time.Now(),
 	}
 
-	// RAM pressure (lightweight — sysctl + vm_stat)
-	collectRAM(snap)
-
-	// Git status (lightweight — git status --porcelain)
-	collectGit(snap, cfg.RepoDir)
-
-	// Accelerator (cached after first call)
-	collectAccelerator(snap)
-
-	// Active deities (process scan)
-	collectDeities(snap)
-
-	// Ra deployment status
-	collectRa(snap)
-
-	snap.CollectedIn = time.Since(start).Round(time.Millisecond).String()
-	return snap
-}
-
-// ── RAM Collection ──────────────────────────────────────────────────────
-
-func collectRAM(snap *StatsSnapshot) {
-	// Get total RAM
-	out, err := exec.Command("sysctl", "-n", "hw.memsize").Output()
-	if err != nil {
-		snap.RAMPressure = "unknown"
-		snap.RAMIcon = "⚪"
-		return
+	// Shared vitals (RAM, Git, Accelerator) — single source of truth
+	v := vitals.Collect()
+	snap.TotalRAM = 0 // not exposed by shared vitals, not needed for menubar
+	snap.RAMPercent = v.RAMPercent
+	snap.RAMPressure = v.RAMPressure
+	snap.RAMIcon = v.RAMIcon
+	snap.GitBranch = v.GitBranch
+	snap.UncommittedFiles = v.Uncommitted
+	snap.TimeSinceCommit = v.LastCommit
+	snap.PrimaryAccelerator = v.Accelerator
+	if strings.Contains(v.Accelerator, "Apple") || strings.Contains(v.Accelerator, "M") {
+		snap.AccelIcon = "⚡"
+	} else {
+		snap.AccelIcon = "💻"
 	}
 
-	var total int64
-	_, _ = fmt.Sscanf(strings.TrimSpace(string(out)), "%d", &total)
-	snap.TotalRAM = total
-
-	// Use vm_stat for memory info (lightweight — avoids expensive memory_pressure command)
-	collectRAMFromVMStat(snap)
-
-	// Set pressure level
-	switch {
-	case snap.RAMPercent > 85:
-		snap.RAMPressure = "high"
-		snap.RAMIcon = "🔴"
-	case snap.RAMPercent > 65:
-		snap.RAMPressure = "medium"
-		snap.RAMIcon = "🟡"
-	default:
-		snap.RAMPressure = "low"
-		snap.RAMIcon = "🟢"
-	}
-}
-
-func collectRAMFromVMStat(snap *StatsSnapshot) {
-	out, err := exec.Command("vm_stat").Output()
-	if err != nil {
-		return
-	}
-
-	var pageSize int64 = 16384
-	var free, active, wired int64
-
-	for _, line := range strings.Split(string(out), "\n") {
-		switch {
-		case strings.Contains(line, "page size of"):
-			_, _ = fmt.Sscanf(line, "Mach Virtual Memory Statistics: (page size of %d bytes)", &pageSize)
-		case strings.Contains(line, "Pages free"):
-			free = parseVMStatLine(line) * pageSize
-		case strings.Contains(line, "Pages active"):
-			active = parseVMStatLine(line) * pageSize
-		case strings.Contains(line, "Pages wired"):
-			wired = parseVMStatLine(line) * pageSize
-		}
-	}
-
-	snap.UsedRAM = active + wired
-	snap.FreeRAM = free
-	if snap.TotalRAM > 0 {
-		snap.RAMPercent = float64(snap.UsedRAM) / float64(snap.TotalRAM) * 100
-	}
-}
-
-func parseVMStatLine(line string) int64 {
-	parts := strings.Split(line, ":")
-	if len(parts) < 2 {
-		return 0
-	}
-	valStr := strings.TrimSpace(parts[1])
-	valStr = strings.TrimSuffix(valStr, ".")
-	var v int64
-	_, _ = fmt.Sscanf(valStr, "%d", &v)
-	return v
-}
-
-// ── Git Collection ──────────────────────────────────────────────────────
-
-func collectGit(snap *StatsSnapshot, repoDir string) {
-	if repoDir == "" {
-		repoDir = "."
-	}
-
-	// Branch
-	branchOut, err := exec.Command("git", "-C", repoDir, "rev-parse", "--abbrev-ref", "HEAD").Output()
-	if err != nil {
-		snap.GitBranch = "—"
-		return
-	}
-	snap.GitBranch = strings.TrimSpace(string(branchOut))
-
-	// Uncommitted files count
-	statusOut, err := exec.Command("git", "-C", repoDir, "status", "--porcelain").Output()
-	if err != nil {
-		return
-	}
-	status := strings.TrimSpace(string(statusOut))
-	if status != "" {
-		snap.UncommittedFiles = len(strings.Split(status, "\n"))
-	}
-
-	// Time since last commit
-	timeOut, err := exec.Command("git", "-C", repoDir, "log", "-1", "--format=%aI").Output()
-	if err != nil {
-		return
-	}
-	if t, err := time.Parse(time.RFC3339, strings.TrimSpace(string(timeOut))); err == nil {
-		dur := time.Since(t)
-		snap.TimeSinceCommit = formatDuration(dur)
-	}
-
-	// Risk assessment
+	// Risk assessment from uncommitted count
 	switch {
 	case snap.UncommittedFiles == 0:
 		snap.OsirisRisk = "none"
@@ -236,44 +128,31 @@ func collectGit(snap *StatsSnapshot, repoDir string) {
 		snap.OsirisRisk = "critical"
 		snap.OsirisIcon = "🔴"
 	}
-}
 
-// ── Accelerator Collection ──────────────────────────────────────────────
+	// Active deities (process scan)
+	collectDeities(snap)
 
-func collectAccelerator(snap *StatsSnapshot) {
-	// Check for Apple Silicon
-	out, err := exec.Command("sysctl", "-n", "machdep.cpu.brand_string").Output()
-	if err != nil {
-		snap.PrimaryAccelerator = "CPU"
-		snap.AccelIcon = "💻"
-		return
-	}
+	// Ra deployment status
+	collectRa(snap)
 
-	cpuBrand := strings.TrimSpace(string(out))
-	switch {
-	case strings.Contains(cpuBrand, "Apple"):
-		snap.PrimaryAccelerator = "ANE + Metal"
-		snap.AccelIcon = "⚡"
-	case strings.Contains(cpuBrand, "Intel"):
-		snap.PrimaryAccelerator = "CPU (Intel)"
-		snap.AccelIcon = "💻"
-	default:
-		snap.PrimaryAccelerator = "CPU"
-		snap.AccelIcon = "💻"
-	}
+	snap.CollectedIn = time.Since(start).Round(time.Millisecond).String()
+	return snap
 }
 
 // ── Deity Detection ─────────────────────────────────────────────────────
 
-var knownDeities = map[string]string{
-	"sirsi":       "☥ Sirsi",
-	"anubis":      "𓁢 Anubis",
-	"sirsi-agent": "🤖 Agent",
-	"guard":       "🛡 Guard",
-	"maat":        "🪶 Ma'at",
-	"scarab":      "🪲 Scarab",
-	"thoth":       "𓁟 Thoth",
-}
+// knownDeities builds the process-name-to-label map from the shared deity registry.
+// Also includes non-deity process names that appear in ps output.
+var knownDeities = func() map[string]string {
+	m := map[string]string{
+		"sirsi":       "☥ Sirsi",
+		"sirsi-agent": "🤖 Agent",
+	}
+	for _, d := range deity.Roster {
+		m[d.Key] = d.Glyph + " " + d.Name
+	}
+	return m
+}()
 
 func collectDeities(snap *StatsSnapshot) {
 	out, err := exec.Command("ps", "-eo", "comm").Output()
@@ -288,6 +167,38 @@ func collectDeities(snap *StatsSnapshot) {
 		}
 	}
 	snap.DeityCount = len(snap.ActiveDeities)
+
+	// Enrich with TUI deity state (success/failed/hasData indicators)
+	if state, err := deity.LoadState(); err == nil {
+		for key, runState := range state.DeityState {
+			d := deity.Lookup(key)
+			var indicator string
+			switch runState {
+			case deity.StateSucceeded:
+				indicator = "✓"
+			case deity.StateFailed:
+				indicator = "✗"
+			case deity.StateHasData:
+				indicator = "◆"
+			default:
+				continue
+			}
+			// Update matching active deity or add if not present
+			found := false
+			label := d.Glyph + " " + d.Name
+			for i, a := range snap.ActiveDeities {
+				if a == label {
+					snap.ActiveDeities[i] = indicator + " " + label
+					found = true
+					break
+				}
+			}
+			if !found && runState != deity.StateNeverRun {
+				snap.ActiveDeities = append(snap.ActiveDeities, indicator+" "+label)
+			}
+		}
+		snap.DeityCount = len(snap.ActiveDeities)
+	}
 }
 
 // ── Ra Deployment Collection ────────────────────────────────────────────

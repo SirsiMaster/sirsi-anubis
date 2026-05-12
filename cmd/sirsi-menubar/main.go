@@ -24,7 +24,7 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
 )
 
-var version = "v0.19.0"
+var version = "v0.20.0"
 
 func main() {
 	unlock, err := platform.TryLock("menubar")
@@ -62,7 +62,7 @@ func onReady() {
 	systray.AddSeparator()
 
 	// ── Ra section ──────────────────────────────────────────────────
-	mRaHeader := systray.AddMenuItem("𓇶 Ra — Orchestrator", "Click to open Command Center")
+	mRaHeader := systray.AddMenuItem("𓇶 Ra — Fleet Orchestrator", "Click to open Command Center")
 	mRaDeploy := systray.AddMenuItem("  Deploy All Scopes", "sirsi ra deploy")
 	mRaKill := systray.AddMenuItem("  Kill All Windows", "sirsi ra kill")
 	mRaCollect := systray.AddMenuItem("  Collect Results", "sirsi ra collect")
@@ -86,18 +86,21 @@ func onReady() {
 
 	systray.AddSeparator()
 
-	// ── Sirsi commands ─────────────────────────────────────────────
-	mScan := systray.AddMenuItem("𓁢 Scan (Weigh)", "Scan for waste")
-	mJudge := systray.AddMenuItem("⚖️ Judge", "Apply policies")
-	mKa := systray.AddMenuItem("𓂓 Ka (Ghost Hunt)", "Detect dead apps")
-	mMaat := systray.AddMenuItem("🪶 Ma'at (QA)", "Quality governance")
-	mGuard := systray.AddMenuItem("🛡 Start Watchdog", "Guard --watch")
+	// ── Deity Commands (glyphs match internal/deity/registry.go) ───
+	mScan := systray.AddMenuItem("𓃣 Anubis — Scan", "Scan for infrastructure waste")
+	mJudge := systray.AddMenuItem("𓃣 Anubis — Judge", "Policy review before cleanup")
+	mKa := systray.AddMenuItem("𓃣 Anubis — Ghosts", "Detect remnants of dead apps")
+	mMaat := systray.AddMenuItem("𓆄 Ma'at — Quality", "Quality governance audit")
+	mGuard := systray.AddMenuItem("𓁐 Isis — Guard", "Start system watchdog")
 
 	systray.AddSeparator()
 
-	// ── Quick access ────────────────────────────────────────────────
-	mBuildLog := systray.AddMenuItem("𓇽 Architecture Diagrams", "Generate diagrams in TUI")
-	mCaseStudies := systray.AddMenuItem("𓁹 Risk Assessment", "Uncommitted work check")
+	// ── More Deities ────────────────────────────────────────────────
+	mThoth := systray.AddMenuItem("𓁟 Thoth — Sync Memory", "Sync project context")
+	mSeshat := systray.AddMenuItem("𓁆 Seshat — Knowledge", "Ingest knowledge sources")
+	mSeba := systray.AddMenuItem("𓇽 Seba — Hardware", "Hardware & architecture profile")
+	mOsiris := systray.AddMenuItem("𓁹 Osiris — Risk", "Uncommitted work risk assessment")
+	mNet := systray.AddMenuItem("𓁯 Net — Align", "Cross-module consistency check")
 
 	systray.AddSeparator()
 	mQuit := systray.AddMenuItem("Quit Sirsi", "Exit menubar app")
@@ -171,13 +174,12 @@ func onReady() {
 		}
 	}()
 
-	// ── Event loop — all user actions route through the TUI ─────────
+	// ── Event loop — all user actions route through the TUI (ADR-016) ──
 	for {
 		select {
 		case <-mDashboard.ClickedCh:
 			spawnTUIWindow()
 		case <-mStats.ClickedCh:
-			// Open TUI with doctor for full system stats
 			spawnTUIWithCommand("doctor")
 		case <-mRaHeader.ClickedCh:
 			spawnTUIWithCommand("ra status")
@@ -195,20 +197,30 @@ func onReady() {
 			spawnTUIWithCommand("ra status")
 		case <-raScopes[3].ClickedCh:
 			spawnTUIWithCommand("ra status")
+		// Anubis
 		case <-mScan.ClickedCh:
 			spawnTUIWithCommand("scan")
 		case <-mJudge.ClickedCh:
-			spawnTUIWithCommand("clean")
+			spawnTUIWithCommand("anubis judge --dry-run")
 		case <-mKa.ClickedCh:
 			spawnTUIWithCommand("ghosts")
+		// Ma'at
 		case <-mMaat.ClickedCh:
-			spawnTUIWithCommand("maat pulse")
+			spawnTUIWithCommand("maat audit")
+		// Isis
 		case <-mGuard.ClickedCh:
 			spawnTUIWithCommand("guard")
-		case <-mBuildLog.ClickedCh:
-			spawnTUIWithCommand("seba diagram")
-		case <-mCaseStudies.ClickedCh:
+		// Additional deities
+		case <-mThoth.ClickedCh:
+			spawnTUIWithCommand("thoth sync")
+		case <-mSeshat.ClickedCh:
+			spawnTUIWithCommand("seshat ingest")
+		case <-mSeba.ClickedCh:
+			spawnTUIWithCommand("seba hardware")
+		case <-mOsiris.ClickedCh:
 			spawnTUIWithCommand("osiris assess")
+		case <-mNet.ClickedCh:
+			spawnTUIWithCommand("net align")
 		case <-mQuit.ClickedCh:
 			cancel()
 			_ = dashSrv.Stop()
