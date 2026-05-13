@@ -144,7 +144,7 @@ func runWeigh(ctx context.Context) error {
 
 	if !JsonOutput {
 		output.Banner()
-		output.Header("ANUBIS — The Weighing of the Heart")
+		output.Header("ANUBIS — Scan")
 	}
 
 	engine := jackal.DefaultEngine()

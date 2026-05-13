@@ -83,17 +83,33 @@ var rootCmd = &cobra.Command{
 	Long: `Sirsi Pantheon — Infrastructure Hygiene & Developer Intelligence
 
   sirsi                    Launch interactive TUI
-  sirsi scan               Find infrastructure waste (81 rules)
-  sirsi clean              Preview and remove safe items
+
+  Scan & Clean
+  sirsi scan               Find infrastructure waste
+  sirsi clean              Remove safe items (caches, logs, temp)
   sirsi ghosts             Find remnants of uninstalled apps
+  sirsi duplicates         Find duplicate files
+  sirsi purge              Remove project build artifacts
+  sirsi analyze            Visual disk space explorer
+  sirsi installer          Find and remove installer files
+
+  Health & Network
   sirsi diagnose           Full system health check
   sirsi network            Network security audit
+  sirsi fix                Auto-fix DNS, firewall, security
+  sirsi monitor            Watch processes and RAM pressure
+
+  Quality & Intel
+  sirsi audit              Code quality and governance scan
+  sirsi risk               Uncommitted work risk assessment
   sirsi hardware           CPU, GPU, RAM, Neural Engine detection
-  sirsi quality            Code governance audit
-  sirsi thoth sync         Sync project memory
-  sirsi mcp                MCP server for AI IDEs
-  sirsi vault store/search Context sandbox with FTS5 search
-  sirsi horus outline/scan Structural code graph
+  sirsi diagram            Architecture diagrams
+
+  Power User
+  sirsi anubis <verb>      Full Anubis module
+  sirsi isis <verb>        Full Isis module
+  sirsi maat <verb>        Full Ma'at module
+  sirsi ra <verb>          Fleet orchestration
   sirsi version            Show version`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
@@ -145,15 +161,44 @@ Loads findings from the last scan. Run sirsi scan first.`,
 }
 
 var dedupCmd = &cobra.Command{
-	Use:   "dedup [directories...]",
-	Short: "Find duplicate files",
-	RunE:  runAnubisMirror,
+	Use:     "duplicates [directories...]",
+	Aliases: []string{"dedup"},
+	Short:   "Find duplicate files",
+	RunE:    runAnubisMirror,
 }
 
 var guardCmd = &cobra.Command{
-	Use:   "guard",
-	Short: "Monitor system resources and memory pressure",
+	Use:    "guard",
+	Short:  "Monitor system resources and memory pressure",
+	Hidden: true, // prefer `sirsi monitor`
+	RunE:   runAnubisGuard,
+}
+
+var monitorCmd = &cobra.Command{
+	Use:   "monitor",
+	Short: "Watch processes and RAM pressure",
 	RunE:  runAnubisGuard,
+}
+
+var fixCmd = &cobra.Command{
+	Use:   "fix",
+	Short: "Auto-fix DNS, firewall, and security issues",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		isisNetworkFix = true
+		return runIsisNetwork(cmd, args)
+	},
+}
+
+var riskCmd = &cobra.Command{
+	Use:   "risk",
+	Short: "Uncommitted work risk assessment",
+	RunE:  runOsirisAssess,
+}
+
+var auditCmd = &cobra.Command{
+	Use:   "audit",
+	Short: "Code quality and governance scan",
+	RunE:  runMaatAudit,
 }
 
 var doctorCmd = &cobra.Command{
@@ -552,6 +597,7 @@ func init() {
 	judgeCmd.Flags().BoolVar(&anubisDryRun, "dry-run", true, "Preview mode")
 	judgeCmd.Flags().BoolVar(&anubisConfirm, "confirm", false, "Confirm and apply")
 	rootCmd.AddCommand(scanCmd, ghostsCmd, dedupCmd, guardCmd, doctorCmd, judgeCmd, cleanCmd, mcpCmd)
+	rootCmd.AddCommand(monitorCmd, fixCmd, riskCmd, auditCmd)
 	rootCmd.AddCommand(thothCmd, maatCmd, seshatCmd, raCmd, netCmd)
 	rootCmd.AddCommand(anubisCmd, sebaCmd, osirisCmd)
 	rootCmd.AddCommand(benchmarkCmd, versionCmd, quickstartCmd)
