@@ -9,18 +9,15 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/SirsiMaster/sirsi-pantheon/internal/cleaner"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/oplog"
 )
-
-// execCommand is an injectable for exec.Command (Rule A16: side effect injection).
-var execCommand = exec.Command
 
 // ArtifactType identifies the kind of build artifact directory.
 type ArtifactType string
@@ -320,48 +317,31 @@ func deduplicateArtifacts(artifacts []ProjectArtifact) []ProjectArtifact {
 	return kept
 }
 
-// PurgeArtifacts deletes the given artifact directories.
+// PurgeArtifacts deletes the given artifact directories via the cleaner safety
+// layer. Every path is validated against protected-path rules before deletion.
 // If useTrash is true, directories are moved to the system trash (macOS).
 // Returns a CleanResult compatible with the existing rendering system.
 func PurgeArtifacts(artifacts []ProjectArtifact, useTrash bool) (*CleanResult, error) {
 	result := &CleanResult{}
 
 	for _, a := range artifacts {
-		var err error
-		if useTrash {
-			err = moveToTrash(a.ArtifactDir)
-		} else {
-			err = os.RemoveAll(a.ArtifactDir)
-		}
-
+		freed, err := cleaner.DeleteFile(a.ArtifactDir, false, useTrash)
 		if err != nil {
 			result.Errors = append(result.Errors, fmt.Errorf("purge %s: %w", a.ArtifactDir, err))
 			result.Skipped++
 			continue
 		}
-		result.BytesFreed += a.Size
+		result.BytesFreed += freed
 		result.Cleaned++
-		oplog.Log("purge", a.ArtifactDir, a.Size)
+		oplog.Log("purge", a.ArtifactDir, freed)
 	}
 
 	return result, nil
 }
 
-// moveToTrash uses macOS osascript to move a path to the Trash.
-// Falls back to os.RemoveAll if osascript fails.
-func moveToTrash(path string) error {
-	// Use the Finder via osascript for proper Trash behavior on macOS
-	script := fmt.Sprintf(
-		`tell application "Finder" to delete POSIX file %q`,
-		path,
-	)
-	cmd := execCommand("osascript", "-e", script)
-	if err := cmd.Run(); err != nil {
-		// Fallback: direct removal
-		return os.RemoveAll(path)
-	}
-	return nil
-}
+// moveToTrash is removed — all deletion now goes through cleaner.DeleteFile
+// which validates paths and uses platform.Current().MoveToTrash() with no
+// permanent-delete fallback. See internal/cleaner/safety.go.
 
 // DefaultPurgeRoots returns the default directories to scan for artifacts.
 // Only directories that exist are returned.

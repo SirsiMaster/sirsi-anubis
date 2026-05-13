@@ -187,11 +187,13 @@ func TestRemoveInstallersNonexistent(t *testing.T) {
 		t.Fatalf("RemoveInstallers() error = %v", err)
 	}
 
-	if result.Skipped != 1 {
-		t.Errorf("Skipped = %d, want 1", result.Skipped)
+	// cleaner.DeleteFile treats nonexistent files as a no-op (already gone).
+	// This is the correct safety behavior — no phantom errors for missing files.
+	if result.Skipped != 0 {
+		t.Errorf("Skipped = %d, want 0 (nonexistent = no-op)", result.Skipped)
 	}
-	if len(result.Errors) != 1 {
-		t.Errorf("Errors count = %d, want 1", len(result.Errors))
+	if result.BytesFreed != 0 {
+		t.Errorf("BytesFreed = %d, want 0", result.BytesFreed)
 	}
 }
 

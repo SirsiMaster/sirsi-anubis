@@ -247,10 +247,12 @@ func nativeGhosts() ([]string, string, []string, error) {
 			var totalFreed int64
 			var totalCleaned int
 			var names []string
+			var cleanErrors []error
 			for _, item := range selected {
 				if g, ok := item.Data.(ka.Ghost); ok {
 					freed, cleaned, err := s.Clean(g, false, true)
 					if err != nil {
+						cleanErrors = append(cleanErrors, fmt.Errorf("%s: %w", g.AppName, err))
 						continue
 					}
 					totalFreed += freed
@@ -270,6 +272,13 @@ func nativeGhosts() ([]string, string, []string, error) {
 				}
 			} else {
 				lines = append(lines, "  "+rDim.Render("No ghosts were cleaned."))
+			}
+			if len(cleanErrors) > 0 {
+				lines = append(lines, "")
+				for _, e := range cleanErrors {
+					lines = append(lines, "  "+lipgloss.NewStyle().Foreground(Red).Render("✗ "+e.Error()))
+				}
+				return lines, "anubis", []string{"anubis scan"}, fmt.Errorf("%d ghost(s) failed to clean", len(cleanErrors))
 			}
 			return lines, "anubis", []string{"anubis scan"}, nil
 		},
@@ -1293,14 +1302,16 @@ func (m TUIModel) executeAction(action tabAction) (TUIModel, tea.Cmd) {
 			m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
 
 			fn := action.Native
+			var streamErr error
 			return m, tea.Batch(m.spinner.Tick, elapsedTick(), func() tea.Msg {
 				go func() {
-					fn()
+					_, _, _, err := fn()
+					streamErr = err
 					close(ch)
 				}()
 				line, ok := <-ch
 				if !ok {
-					return streamLineMsg{done: true}
+					return streamLineMsg{done: true, err: streamErr}
 				}
 				return streamLineMsg{line: line}
 			})
@@ -2077,12 +2088,18 @@ func (m TUIModel) renderDone() string {
 
 	// ── Completion banner — decree from the deity that ran ──
 	bannerMsg := "Judgment Complete"
+	bannerStyle := green
 	if m.lastDeity != "" {
 		glyph, name := deity.Display(m.lastDeity)
-		bannerMsg = glyph + " " + name + " — Complete"
+		if m.deityState[m.lastDeity] == stateFailed {
+			bannerMsg = glyph + " " + name + " — Failed"
+			bannerStyle = lipgloss.NewStyle().Foreground(Red)
+		} else {
+			bannerMsg = glyph + " " + name + " — Complete"
+		}
 	}
 	b.WriteString("\n")
-	b.WriteString("  " + ResultBanner(bannerMsg, green, 50) + "\n")
+	b.WriteString("  " + ResultBanner(bannerMsg, bannerStyle, 50) + "\n")
 	b.WriteString("\n")
 
 	// ── Numbered next actions ──

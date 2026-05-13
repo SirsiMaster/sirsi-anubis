@@ -371,22 +371,22 @@ func afterThoth(ctx Context) []Action {
 	case "sync":
 		return []Action{
 			{Command: "sirsi thoth compact", Short: "Compact", Description: "Persist state before context compression", Priority: 0},
-			{Command: "sirsi sirsi risk", Short: "Risk check", Description: "Check uncommitted work risk", Priority: 1},
+			{Command: "sirsi risk", Short: "Risk check", Description: "Check uncommitted work risk", Priority: 1},
 			{Command: "sirsi maat audit", Short: "QA check", Description: "Run quality assessment", Priority: 2},
 		}
 	case "compact":
 		return []Action{
-			{Command: "sirsi sirsi thoth sync", Short: "Sync memory", Description: "Sync memory from source files", Priority: 0},
-			{Command: "sirsi sirsi risk", Short: "Risk check", Description: "Check uncommitted work risk", Priority: 1},
+			{Command: "sirsi thoth sync", Short: "Sync memory", Description: "Sync memory from source files", Priority: 0},
+			{Command: "sirsi risk", Short: "Risk check", Description: "Check uncommitted work risk", Priority: 1},
 		}
 	case "init":
 		return []Action{
-			{Command: "sirsi sirsi thoth sync", Short: "Sync", Description: "Populate memory from source + git history", Priority: 0},
+			{Command: "sirsi thoth sync", Short: "Sync", Description: "Populate memory from source + git history", Priority: 0},
 			{Command: "sirsi scan", Short: "Scan", Description: "Scan for infrastructure waste", Priority: 1},
 		}
 	default:
 		return []Action{
-			{Command: "sirsi sirsi thoth sync", Short: "Sync", Description: "Sync project memory", Priority: 0},
+			{Command: "sirsi thoth sync", Short: "Sync", Description: "Sync project memory", Priority: 0},
 			{Command: "sirsi thoth compact", Short: "Compact", Description: "Persist state for continuations", Priority: 1},
 		}
 	}
@@ -444,13 +444,13 @@ func afterOsiris(ctx Context) []Action {
 	case "assess", "risk":
 		return []Action{
 			{Command: "sirsi osiris status", Short: "Quick status", Description: "One-line risk summary", Priority: 0},
-			{Command: "sirsi sirsi thoth sync", Short: "Sync memory", Description: "Sync memory before committing", Priority: 1},
+			{Command: "sirsi thoth sync", Short: "Sync memory", Description: "Sync memory before committing", Priority: 1},
 			{Command: "sirsi scan", Short: "Scan", Description: "Scan for infrastructure waste", Priority: 2},
 		}
 	default:
 		return []Action{
-			{Command: "sirsi sirsi risk", Short: "Full assess", Description: "Full checkpoint assessment", Priority: 0},
-			{Command: "sirsi sirsi thoth sync", Short: "Sync memory", Description: "Sync project memory", Priority: 1},
+			{Command: "sirsi risk", Short: "Full assess", Description: "Full checkpoint assessment", Priority: 0},
+			{Command: "sirsi thoth sync", Short: "Sync memory", Description: "Sync project memory", Priority: 1},
 		}
 	}
 }

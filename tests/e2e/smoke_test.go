@@ -87,10 +87,12 @@ func TestSmoke_Help(t *testing.T) {
 	}
 	out := run(t, testBinary, "--help")
 
-	deities := []string{"anubis", "maat", "thoth", "guard"}
-	for _, d := range deities {
-		if !strings.Contains(strings.ToLower(out), d) {
-			t.Errorf("help output missing deity %q:\n%s", d, out)
+	// Verify key user-facing commands appear in help output.
+	// Hidden deity commands (thoth, guard) are excluded — users see plain verbs.
+	expected := []string{"scan", "clean", "ghosts", "audit", "anubis", "maat"}
+	for _, cmd := range expected {
+		if !strings.Contains(strings.ToLower(out), cmd) {
+			t.Errorf("help output missing command %q:\n%s", cmd, out)
 		}
 	}
 }

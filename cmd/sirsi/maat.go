@@ -121,7 +121,7 @@ func runMaatAudit(cmd *cobra.Command, args []string) error {
 
 	assessor := &maat.CoverageAssessor{
 		Thresholds: maat.DefaultThresholds(),
-		DiffOnly:   !auditSkipTests,
+		DiffOnly:   auditSkipTests,
 		SkipTests:  auditSkipTests,
 		ProgressFn: func(p maat.PackageProgress) {
 			prefix := fmt.Sprintf("  [%d/%d]", p.Current, p.Total)

@@ -14,6 +14,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/SirsiMaster/sirsi-pantheon/internal/cleaner"
 )
 
 // installerExtensions are the file extensions we consider installer files.
@@ -191,26 +193,21 @@ func isInstallerFile(name string) bool {
 	return false
 }
 
-// RemoveInstallers deletes the given installer files.
+// RemoveInstallers deletes the given installer files via the cleaner safety
+// layer. Every path is validated against protected-path rules before deletion.
 // If useTrash is true, files are moved to the system trash (macOS).
 // Returns a CleanResult compatible with the existing rendering system.
 func RemoveInstallers(files []InstallerFile, useTrash bool) (*CleanResult, error) {
 	result := &CleanResult{}
 
 	for _, f := range files {
-		var err error
-		if useTrash {
-			err = moveToTrash(f.Path)
-		} else {
-			err = os.Remove(f.Path)
-		}
-
+		freed, err := cleaner.DeleteFile(f.Path, false, useTrash)
 		if err != nil {
 			result.Errors = append(result.Errors, fmt.Errorf("remove %s: %w", f.Path, err))
 			result.Skipped++
 			continue
 		}
-		result.BytesFreed += f.Size
+		result.BytesFreed += freed
 		result.Cleaned++
 	}
 
