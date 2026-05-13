@@ -44,14 +44,13 @@ var (
 var anubisCmd = &cobra.Command{
 	Use:   "anubis",
 	Short: "𓁢 Anubis — Infrastructure & Digital Hygiene Engine",
-	Long: `Anubis is the root of the Pantheon hygiene engine. Use it to scan for
-infrastructure waste, purge residuals, and fix system drifts.
+	Long: `Anubis — Scan, clean, and manage disk space.
 
-  sirsi anubis weigh          Scan workstation for waste
-  sirsi anubis judge          Reclaim storage (move artifacts to Trash)
-  sirsi anubis ka             Hunt ghost app residuals and spotlight phantoms
-  sirsi anubis mirror         Find duplicate files (Reflection of Truth)
-  sirsi anubis guard          Monitor workstation resources (The Sentry)`,
+  sirsi anubis scan           Find infrastructure waste
+  sirsi anubis ghosts         Find remnants of uninstalled apps
+  sirsi anubis clean          Preview and remove safe items
+  sirsi anubis duplicates     Find duplicate files
+  sirsi anubis monitor        Watch processes and RAM pressure`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if anubisDocs {
 			output.Info("Opening Anubis docs...")
@@ -62,32 +61,37 @@ infrastructure waste, purge residuals, and fix system drifts.
 }
 
 var anubisWeighCmd = &cobra.Command{
-	Use:   "weigh",
-	Short: "𓁢 Scan your workstation for infrastructure waste",
-	RunE:  func(cmd *cobra.Command, args []string) error { return runWeigh(cmd.Context()) },
+	Use:     "scan",
+	Aliases: []string{"weigh"},
+	Short:   "Scan your workstation for infrastructure waste",
+	RunE:    func(cmd *cobra.Command, args []string) error { return runWeigh(cmd.Context()) },
 }
 
 var anubisJudgeCmd = &cobra.Command{
-	Use:   "judge",
-	Short: "𓁢 Clean artifacts and reclaim storage space",
-	RunE:  func(cmd *cobra.Command, args []string) error { return runJudge(cmd.Context()) },
+	Use:     "clean",
+	Aliases: []string{"judge"},
+	Short:   "Clean artifacts and reclaim storage space",
+	RunE:    func(cmd *cobra.Command, args []string) error { return runJudge(cmd.Context()) },
 }
 
 var anubisKaCmd = &cobra.Command{
-	Use:   "ka",
-	Short: "⚠️ Hunt ghost app residuals and spotlight phantoms",
-	RunE:  func(cmd *cobra.Command, args []string) error { return runKa(cmd.Context()) },
+	Use:     "ghosts",
+	Aliases: []string{"ka"},
+	Short:   "Find remnants of uninstalled apps",
+	RunE:    func(cmd *cobra.Command, args []string) error { return runKa(cmd.Context()) },
 }
 
 var anubisMirrorCmd = &cobra.Command{
-	Use:   "mirror [directories...]",
-	Short: "🪞 Find duplicate files with smart recommendations",
-	RunE:  runAnubisMirror,
+	Use:     "duplicates [directories...]",
+	Aliases: []string{"mirror", "dedup"},
+	Short:   "Find duplicate files",
+	RunE:    runAnubisMirror,
 }
 
 var anubisGuardCmd = &cobra.Command{
-	Use:   "guard",
-	Short: "🛡️ Monitor workstation resources and memory pressure",
+	Use:   "monitor",
+	Aliases: []string{"guard"},
+	Short: "Watch processes and RAM pressure",
 	RunE:  runAnubisGuard,
 }
 

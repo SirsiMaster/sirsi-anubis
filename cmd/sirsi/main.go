@@ -82,19 +82,16 @@ var rootCmd = &cobra.Command{
 	Short: "Sirsi Pantheon — Infrastructure Hygiene & Developer Intelligence",
 	Long: `Sirsi Pantheon — Infrastructure Hygiene & Developer Intelligence
 
-  sirsi scan               Find infrastructure waste (81 rules, 7 domains)
-  sirsi ghosts             Detect remnants of uninstalled apps
-  sirsi dedup [dirs...]    Find duplicate files with three-phase hashing
-  sirsi doctor             System health diagnostic
-  sirsi network            Network security audit (DNS, WiFi, TLS, firewall)
+  sirsi                    Launch interactive TUI
+  sirsi scan               Find infrastructure waste (81 rules)
+  sirsi clean              Preview and remove safe items
+  sirsi ghosts             Find remnants of uninstalled apps
+  sirsi diagnose           Full system health check
+  sirsi network            Network security audit
   sirsi hardware           CPU, GPU, RAM, Neural Engine detection
-  sirsi guard              Real-time resource monitoring
   sirsi quality            Code governance audit
-  sirsi thoth init/sync    AI project memory
+  sirsi thoth sync         Sync project memory
   sirsi mcp                MCP server for AI IDEs
-  sirsi seshat ingest      Knowledge ingestion
-  sirsi diagram            Architecture diagrams (Mermaid/HTML)
-  sirsi rtk filter         Output noise reduction for AI context
   sirsi vault store/search Context sandbox with FTS5 search
   sirsi horus outline/scan Structural code graph
   sirsi version            Show version`,
@@ -127,9 +124,11 @@ var ghostsCmd = &cobra.Command{
 }
 
 var judgeCmd = &cobra.Command{
-	Use:   "judge",
-	Short: "Clean artifacts and reclaim storage space",
-	RunE:  func(cmd *cobra.Command, args []string) error { return runJudge(cmd.Context()) },
+	Use:     "judge",
+	Aliases: []string{},
+	Short:   "Clean artifacts and reclaim storage space (alias for anubis clean)",
+	Hidden:  true, // prefer `sirsi clean` or `sirsi anubis clean`
+	RunE:    func(cmd *cobra.Command, args []string) error { return runJudge(cmd.Context()) },
 }
 
 var cleanCmd = &cobra.Command{
@@ -158,9 +157,10 @@ var guardCmd = &cobra.Command{
 }
 
 var doctorCmd = &cobra.Command{
-	Use:   "doctor",
-	Short: "𓁐 One-shot system health diagnostic (Isis)",
-	Long: `𓁐 Isis Doctor — System Health Diagnostic
+	Use:     "diagnose",
+	Aliases: []string{"doctor"},
+	Short:   "Full system health diagnostic",
+	Long: `Isis Diagnose — System Health Diagnostic
 
 Runs a comprehensive one-shot health check covering:
   • RAM pressure and swap usage
@@ -169,8 +169,9 @@ Runs a comprehensive one-shot health check covering:
   • Recent kernel panics and Jetsam events
   • Sirsi background process health
 
-  sirsi doctor              Run full diagnostic
-  sirsi doctor --json       Output as JSON`,
+  sirsi diagnose              Run full diagnostic
+  sirsi isis diagnose         Same, under the Isis module
+  sirsi diagnose --json       Output as JSON`,
 	RunE: runDoctor,
 }
 
@@ -201,15 +202,28 @@ var diagramCmd = &cobra.Command{
 
 var isisCmd = &cobra.Command{
 	Use:   "isis",
-	Short: "𓁐 Health & Remediation — diagnostics, network security, auto-fix",
-	Long: `𓁐 Isis — Health & Remediation
+	Short: "𓁐 Isis — Health, diagnostics, network security",
+	Long: `Isis — Diagnose, fix, and monitor system health.
 
-System health diagnostics, network security auditing, and autonomous remediation.
-
+  sirsi isis diagnose         Full system health check
   sirsi isis network          Network security posture audit
-  sirsi isis network --fix    Audit and auto-fix safe issues
-  sirsi isis heal             Auto-remediate governance failures
-  sirsi doctor                One-shot system health diagnostic`,
+  sirsi isis fix              Auto-fix DNS, firewall, security
+  sirsi isis monitor          Watch processes and RAM pressure`,
+}
+
+var isisDiagnoseCmd = &cobra.Command{
+	Use:   "diagnose",
+	Short: "Full system health diagnostic",
+	RunE:  runDoctor,
+}
+
+var isisFixCmd = &cobra.Command{
+	Use:   "fix",
+	Short: "Auto-fix DNS, firewall, and security issues",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		isisNetworkFix = true
+		return runIsisNetwork(cmd, args)
+	},
 }
 
 var isisNetworkCmd = &cobra.Command{
@@ -469,9 +483,9 @@ func showGateway(cmd *cobra.Command) {
 		fmt.Println()
 		fmt.Println(dim.Render("  Quick start — try any of these right now:"))
 		fmt.Println()
-		fmt.Printf("    %s  %s\n", gold.Render("sirsi scan"), dim.Render("Find waste on your machine"))
-		fmt.Printf("    %s  %s\n", gold.Render("sirsi doctor"), dim.Render("Check system health"))
-		fmt.Printf("    %s  %s\n", gold.Render("sirsi ghosts"), dim.Render("Find remnants of uninstalled apps"))
+		fmt.Printf("    %s  %s\n", gold.Render("sirsi scan"), dim.Render("Find infrastructure waste"))
+		fmt.Printf("    %s  %s\n", gold.Render("sirsi diagnose"), dim.Render("Full system health check"))
+		fmt.Printf("    %s  %s\n", gold.Render("sirsi clean"), dim.Render("Preview and remove safe items"))
 		fmt.Printf("    %s  %s\n", gold.Render("sirsi quickstart"), dim.Render("Guided first scan with recommendations"))
 		fmt.Println()
 		fmt.Println(dim.Render("  Run 'sirsi setup' anytime to configure AI tools and IDEs."))
@@ -563,6 +577,8 @@ func init() {
 	isisNetworkCmd.Flags().BoolVar(&isisNetworkFix, "fix", false, "Auto-apply safe fixes (DNS, firewall)")
 	isisNetworkCmd.Flags().BoolVar(&isisNetworkRollback, "rollback", false, "Restore DNS to pre-fix state")
 	isisCmd.AddCommand(isisNetworkCmd)
+	isisCmd.AddCommand(isisDiagnoseCmd)
+	isisCmd.AddCommand(isisFixCmd)
 	rootCmd.AddCommand(isisCmd)
 
 }
