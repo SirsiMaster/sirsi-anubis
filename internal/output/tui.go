@@ -82,58 +82,58 @@ var tabs = []tabDef{
 	{
 		Name:    "Scan",
 		Glyph:   "𓃣",
-		Tagline: "Weigh what lingers. Purge what wastes.",
+		Tagline: "Find waste. Free space. Stay clean.",
 		Actions: []tabAction{
-			{"Scan", "Find infrastructure waste on this machine", []string{"anubis", "weigh"}, nativeScan},
-			{"Ghosts", "Hunt remnants of uninstalled apps", []string{"anubis", "ka"}, nativeGhosts},
-			{"Clean", "Preview and remove safe items (Trash)", []string{"anubis", "judge", "--dry-run"}, nativeCleanDryRun},
-			{"Duplicates", "Find duplicate files across directories", []string{"anubis", "mirror"}, nativeMirror},
-			{"Purge", "Clean project build artifacts", []string{"purge"}, nativePurge},
-			{"Analyze", "Visual disk space explorer", []string{"analyze"}, nativeAnalyze},
-			{"Installer", "Find and remove installer files", []string{"installer"}, nativeInstaller},
+			{"Scan", "Find infrastructure waste", []string{"anubis", "scan"}, nativeScan},
+			{"Ghosts", "Find remnants of uninstalled apps", []string{"anubis", "ghosts"}, nativeGhosts},
+			{"Clean", "Preview and remove safe items", []string{"anubis", "clean", "--dry-run"}, nativeCleanDryRun},
+			{"Duplicates", "Find duplicate files", []string{"anubis", "duplicates"}, nativeMirror},
+			{"Purge", "Remove project build artifacts", []string{"anubis", "purge"}, nativePurge},
+			{"Analyze", "Visual disk space explorer", []string{"anubis", "analyze"}, nativeAnalyze},
+			{"Installer", "Find and remove installer files", []string{"anubis", "installer"}, nativeInstaller},
 		},
 	},
 	{
 		Name:    "Health",
 		Glyph:   "𓁐",
-		Tagline: "Every system breaks. Not every system heals.",
+		Tagline: "Diagnose. Fix. Monitor.",
 		Actions: []tabAction{
-			{"Doctor", "Full system health diagnostic", []string{"doctor"}, nativeDoctor},
+			{"Diagnose", "Full system health check", []string{"isis", "diagnose"}, nativeDoctor},
 			{"Network", "Network security posture audit", []string{"isis", "network"}, nativeNetworkAudit},
-			{"Fix Network", "Auto-fix DNS, firewall, and security", []string{"isis", "network", "--fix"}, nativeNetworkFix},
-			{"Guard", "Monitor processes and RAM pressure", []string{"guard"}, nil}, // long-running, stays subprocess
+			{"Fix", "Auto-fix DNS, firewall, and security", []string{"isis", "fix"}, nativeNetworkFix},
+			{"Monitor", "Watch processes and RAM pressure", []string{"isis", "monitor"}, nil}, // long-running
 		},
 	},
 	{
 		Name:    "Quality",
 		Glyph:   "𓆄",
-		Tagline: "The feather weighs against the heart.",
+		Tagline: "Audit. Assess. Enforce.",
 		Actions: []tabAction{
-			{"Audit", "Governance and code quality scan", []string{"maat", "audit"}, nativeMaatAudit},
-			{"Risk", "Uncommitted work risk assessment", []string{"osiris", "assess"}, nativeRisk},
-			{"Lint", "Run linters across the codebase", []string{"ra", "lint"}, nil}, // long-running, stays subprocess
-			{"Test", "Run test suites fleet-wide", []string{"ra", "test"}, nil},      // long-running, stays subprocess
+			{"Audit", "Code quality and governance scan", []string{"maat", "audit"}, nativeMaatAudit},
+			{"Risk", "Uncommitted work risk assessment", []string{"osiris", "risk"}, nativeRisk},
+			{"Lint", "Run linters across the codebase", []string{"ra", "lint"}, nil},
+			{"Test", "Run test suites fleet-wide", []string{"ra", "test"}, nil},
 		},
 	},
 	{
 		Name:    "Intel",
 		Glyph:   "𓇽",
-		Tagline: "Map the terrain before you march.",
+		Tagline: "Profile. Map. Learn.",
 		Actions: []tabAction{
 			{"Hardware", "Accelerator and architecture profile", []string{"seba", "hardware"}, nativeHardware},
 			{"Diagram", "Generate architecture diagrams", []string{"seba", "diagram"}, nativeDiagram},
-			{"Knowledge", "Ingest knowledge from sources", []string{"seshat", "ingest"}, nativeSeshatIngest},
+			{"Learn", "Ingest knowledge from sources", []string{"seshat", "learn"}, nativeSeshatIngest},
 			{"Memory", "Sync project memory state", []string{"thoth", "sync"}, nativeThothSync},
 		},
 	},
 	{
 		Name:    "Status",
 		Glyph:   "𓂀",
-		Tagline: "It never closes its eyes. Every heartbeat, in its light.",
+		Tagline: "Live vitals. Fleet health. Code graph.",
 		Actions: []tabAction{
-			{"Refresh", "Refresh system vitals", []string{"doctor"}, nativeDoctor},
-			{"Ra Status", "Fleet orchestrator status", []string{"ra", "status"}, nativeRaStatus},
-			{"Code Graph", "Build code symbol index", []string{"horus", "scan"}, nativeHorusScan},
+			{"Refresh", "Refresh system vitals", []string{"isis", "diagnose"}, nativeDoctor},
+			{"Fleet", "Fleet orchestrator status", []string{"ra", "fleet"}, nativeRaStatus},
+			{"Index", "Build code symbol index", []string{"horus", "index"}, nativeHorusScan},
 		},
 	},
 }
@@ -142,17 +142,22 @@ var tabs = []tabDef{
 // When a post-run suggestion matches one of these, it runs natively
 // instead of shelling out to a subprocess.
 var nativeCommands = map[string]func() ([]string, string, []string, error){
-	"anubis weigh":           nativeScan,
-	"anubis ka":              nativeGhosts,
-	"seba hardware":          nativeHardware,
-	"osiris assess":          nativeRisk,
-	"findings":               nativeFindings,
-	"scan":                   nativeScan,
-	"doctor":                 nativeDoctor,
-	"isis network":           nativeNetworkAudit,
-	"isis network --fix":     nativeNetworkFix,
+	// Anubis — scan & clean
+	"anubis scan":            nativeScan,
+	"anubis ghosts":          nativeGhosts,
+	"anubis clean --dry-run": nativeCleanDryRun,
 	"anubis clean --confirm": nativeCleanConfirm,
-	"anubis judge --dry-run": nativeCleanDryRun,
+	"anubis duplicates":      nativeMirror,
+	// Isis — health
+	"isis diagnose":          nativeDoctor,
+	"isis network":           nativeNetworkAudit,
+	"isis fix":               nativeNetworkFix,
+	// Quality & Intel
+	"seba hardware":          nativeHardware,
+	"osiris risk":            nativeRisk,
+	// Aliases for convenience
+	"scan":                   nativeScan,
+	"findings":               nativeFindings,
 }
 
 // scanProgressCh streams per-rule progress to the TUI during scans.
@@ -204,7 +209,7 @@ func nativeScan() ([]string, string, []string, error) {
 		}
 	}
 	if safeCount > 0 {
-		fixCmds = append(fixCmds, "anubis judge --dry-run")
+		fixCmds = append(fixCmds, "anubis clean --dry-run")
 	}
 	return RenderScanResult(res), "anubis", fixCmds, nil
 }
@@ -266,7 +271,7 @@ func nativeGhosts() ([]string, string, []string, error) {
 			} else {
 				lines = append(lines, "  "+rDim.Render("No ghosts were cleaned."))
 			}
-			return lines, "anubis", []string{"anubis weigh"}, nil
+			return lines, "anubis", []string{"anubis scan"}, nil
 		},
 	}
 	pendingSelectMu.Unlock()
@@ -424,7 +429,7 @@ func nativeCleanDryRun() ([]string, string, []string, error) {
 			if err != nil {
 				return nil, "anubis", nil, err
 			}
-			return RenderCleanResult(result), "anubis", []string{"anubis weigh"}, nil
+			return RenderCleanResult(result), "anubis", []string{"anubis scan"}, nil
 		},
 	}
 	pendingSelectMu.Unlock()
@@ -471,7 +476,7 @@ func nativeCleanConfirm() ([]string, string, []string, error) {
 	}
 
 	lines := RenderCleanResult(result)
-	return lines, "anubis", []string{"anubis weigh"}, nil
+	return lines, "anubis", []string{"anubis scan"}, nil
 }
 
 func nativeRisk() ([]string, string, []string, error) {
@@ -545,7 +550,7 @@ func nativePurge() ([]string, string, []string, error) {
 			if err != nil {
 				return nil, "anubis", nil, err
 			}
-			return RenderCleanResult(result), "anubis", []string{"anubis weigh"}, nil
+			return RenderCleanResult(result), "anubis", []string{"anubis scan"}, nil
 		},
 	}
 	pendingSelectMu.Unlock()
@@ -665,7 +670,7 @@ func nativeInstaller() ([]string, string, []string, error) {
 			if err != nil {
 				return nil, "anubis", nil, err
 			}
-			return RenderCleanResult(result), "anubis", []string{"anubis weigh"}, nil
+			return RenderCleanResult(result), "anubis", []string{"anubis scan"}, nil
 		},
 	}
 	pendingSelectMu.Unlock()
@@ -1263,8 +1268,8 @@ func (m TUIModel) executeAction(action tabAction) (TUIModel, tea.Cmd) {
 		m.postRunCmds = nil
 
 		// Stream per-step progress for scan and doctor
-		isScan := len(action.Args) >= 2 && action.Args[0] == "anubis" && action.Args[1] == "weigh"
-		isDoctor := len(action.Args) >= 1 && action.Args[0] == "doctor"
+		isScan := len(action.Args) >= 2 && action.Args[0] == "anubis" && action.Args[1] == "scan"
+		isDoctor := len(action.Args) >= 2 && action.Args[0] == "isis" && action.Args[1] == "diagnose"
 		if isScan || isDoctor {
 			ch := make(chan string, 100)
 			m.streamCh = ch
@@ -1333,8 +1338,12 @@ func (m TUIModel) executeArgs(args []string) (TUIModel, tea.Cmd) {
 	}
 	// Check CLI aliases
 	aliases := map[string]string{
-		"scan": "anubis", "ghosts": "anubis", "dedup": "anubis",
-		"guard": "isis", "doctor": "isis",
+		"scan": "anubis", "ghosts": "anubis", "clean": "anubis",
+		"duplicates": "anubis", "purge": "anubis", "analyze": "anubis",
+		"diagnose": "isis", "network": "isis", "fix": "isis", "monitor": "isis",
+		"audit": "maat", "risk": "osiris",
+		"hardware": "seba", "diagram": "seba",
+		"learn": "seshat", "fleet": "ra", "index": "horus",
 	}
 	if m.runningDeity == "" && len(args) > 0 {
 		if d, ok := aliases[args[0]]; ok {
@@ -1441,9 +1450,9 @@ func (m TUIModel) handleStreamLine(msg streamLineMsg) (TUIModel, tea.Cmd) {
 							}
 						}
 						if safeCount > 0 {
-							m.postRunCmds = []string{"anubis judge --dry-run"}
+							m.postRunCmds = []string{"anubis clean --dry-run"}
 							m.postRunActions = []suggest.Action{{
-								Command:     "anubis judge --dry-run",
+								Command:     "anubis clean --dry-run",
 								Description: "Preview safe items to clean",
 							}}
 						}
@@ -1559,11 +1568,11 @@ func (m TUIModel) handleNativeResult(msg nativeResultMsg) (TUIModel, tea.Cmd) {
 	// Otherwise fall back to the generic suggest engine.
 	// Known fix descriptions
 	fixDescs := map[string]string{
-		"anubis judge --dry-run": "Preview safe items to clean",
+		"anubis clean --dry-run": "Preview safe items to clean",
 		"anubis clean --confirm": "Clean safe items (move to Trash)",
-		"anubis weigh":           "Run a fresh scan",
-		"isis network --fix":     "Auto-fix DNS, firewall, security",
-		"doctor":                 "Full system health check",
+		"anubis scan":            "Run a fresh scan",
+		"isis fix":               "Auto-fix DNS, firewall, security",
+		"isis diagnose":          "Full system health check",
 	}
 
 	if len(msg.fixCmds) > 0 {
