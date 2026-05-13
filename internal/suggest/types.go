@@ -6,7 +6,7 @@ package suggest
 
 // Action is a single recommended next step.
 type Action struct {
-	// Command is the CLI command string (e.g. "sirsi anubis judge --confirm").
+	// Command is the CLI command string (e.g. "sirsi clean --confirm").
 	Command string
 
 	// Short is a terse label for constrained UIs like menubar items.

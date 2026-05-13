@@ -586,37 +586,56 @@ func init() {
 	networkCmd.Flags().BoolVar(&isisNetworkRollback, "rollback", false, "Restore DNS to pre-fix state")
 	diagramCmd.Flags().StringVar(&diagramType, "type", "all", "Diagram type (hierarchy|dataflow|modules|memory|governance|pipeline|all)")
 	diagramCmd.Flags().BoolVar(&diagramHTML, "html", false, "Generate self-contained HTML")
-	rootCmd.AddCommand(networkCmd)
-	rootCmd.AddCommand(hardwareCmd)
-	rootCmd.AddCommand(qualityCmd)
-	rootCmd.AddCommand(diagramCmd)
+
 
 	// Core commands
 	scanCmd.Flags().BoolVar(&anubisAll, "all", false, "Scan all categories")
 	ghostsCmd.Flags().BoolVar(&anubisSudo, "sudo", false, "Include system directories (requires sudo)")
 	judgeCmd.Flags().BoolVar(&anubisDryRun, "dry-run", true, "Preview mode")
 	judgeCmd.Flags().BoolVar(&anubisConfirm, "confirm", false, "Confirm and apply")
-	rootCmd.AddCommand(scanCmd, ghostsCmd, dedupCmd, guardCmd, doctorCmd, judgeCmd, cleanCmd, mcpCmd)
-	rootCmd.AddCommand(monitorCmd, fixCmd, riskCmd, auditCmd)
-	rootCmd.AddCommand(thothCmd, maatCmd, seshatCmd, raCmd, netCmd)
+	// ── User-facing commands (visible in sirsi --help) ──
+	rootCmd.AddCommand(scanCmd, cleanCmd, ghostsCmd, dedupCmd, doctorCmd)
+	rootCmd.AddCommand(networkCmd, fixCmd, monitorCmd)
+	rootCmd.AddCommand(auditCmd, riskCmd, hardwareCmd, diagramCmd)
+	rootCmd.AddCommand(versionCmd, quickstartCmd, setupCmd)
+
+	// ── Power-user deity modules (hidden from default help, still work) ──
+	anubisCmd.Hidden = true
+	isisCmd.Hidden = true
+	maatCmd.Hidden = true
+	osirisCmd.Hidden = true
+	sebaCmd.Hidden = true
+	seshatCmd.Hidden = true
+	raCmd.Hidden = true
+	netCmd.Hidden = true
+	thothCmd.Hidden = true
+	horusCmd.Hidden = true
 	rootCmd.AddCommand(anubisCmd, sebaCmd, osirisCmd)
-	rootCmd.AddCommand(benchmarkCmd, versionCmd, quickstartCmd)
+	rootCmd.AddCommand(thothCmd, maatCmd, seshatCmd, raCmd, netCmd)
 
-	// Token optimization — RTK, Vault, Horus
+	// ── Internal tools (hidden) ──
+	guardCmd.Hidden = true
+	judgeCmd.Hidden = true
+	qualityCmd.Hidden = true
+	mcpCmd.Hidden = true
+	benchmarkCmd.Hidden = true
+	rtkCmd.Hidden = true
+	vaultCmd.Hidden = true
+	notificationsCmd.Hidden = true
+	dashboardCmd.Hidden = true
+	pantheonTUICmd.Hidden = true
+	rootCmd.AddCommand(guardCmd, judgeCmd, qualityCmd, mcpCmd, benchmarkCmd)
 	rootCmd.AddCommand(rtkCmd, vaultCmd, horusCmd)
-
-	// Notification history + setup + dashboard
-	rootCmd.AddCommand(notificationsCmd, setupCmd, dashboardCmd)
+	rootCmd.AddCommand(notificationsCmd, dashboardCmd)
 
 	// Note: `sirsi dashboard` is branded as Horus (ADR-015).
 	// `sirsi horus` remains the code graph subcommand for backward compat.
 	// When code graph moves under dashboard as a tab, the horus command
 	// will become the dashboard entry point.
 
-	// Workstream manager (sirsi work / sirsi ws / sirsi sw)
+	// Workstream manager and TUI launcher (hidden)
+	workCmd.Hidden = true
 	rootCmd.AddCommand(workCmd)
-
-	// Direct TUI launch (sirsi pantheon / sirsi tui) — bypasses gateway
 	rootCmd.AddCommand(pantheonTUICmd)
 
 	// Isis — Health & Remediation

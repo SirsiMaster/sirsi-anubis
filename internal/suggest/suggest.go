@@ -66,7 +66,7 @@ func OnError(ctx Context) []Action {
 	case "anubis":
 		return []Action{
 			{Command: "sirsi doctor", Short: "Run doctor", Description: "System health diagnostic", Priority: 0},
-			{Command: "sirsi anubis weigh", Short: "Re-scan", Description: "Try a fresh scan", Priority: 1},
+			{Command: "sirsi scan", Short: "Re-scan", Description: "Try a fresh scan", Priority: 1},
 		}
 	case "ra":
 		return []Action{
@@ -161,11 +161,11 @@ func Placeholder(ctx Context) string {
 		case "sync":
 			return "thoth compact · maat audit  (persist state or check quality)"
 		case "compact":
-			return "thoth sync · osiris assess  (sync memory or check risk)"
+			return "sirsi thoth sync · sirsi risk  (sync memory or check risk)"
 		case "init":
-			return "thoth sync  (populate memory from source files)"
+			return "sirsi thoth sync  (populate memory from source files)"
 		default:
-			return "thoth sync · thoth compact"
+			return "sirsi thoth sync · thoth compact"
 		}
 	case "seshat":
 		switch ctx.Subcommand {
@@ -190,9 +190,9 @@ func Placeholder(ctx Context) string {
 	case "osiris":
 		switch ctx.Subcommand {
 		case "assess":
-			return "osiris status · thoth sync  (quick status or sync memory)"
+			return "osiris status · sirsi thoth sync  (quick status or sync memory)"
 		default:
-			return "osiris assess · thoth sync"
+			return "sirsi risk · sirsi thoth sync"
 		}
 	case "horus":
 		switch ctx.Subcommand {
@@ -226,9 +226,9 @@ func afterAnubis(ctx Context) []Action {
 	switch ctx.Subcommand {
 	case "weigh":
 		actions := []Action{
-			{Command: "sirsi anubis judge", Short: "Review & clean", Description: "Review and clean safe items (dry-run by default)", Priority: 0},
-			{Command: "sirsi anubis judge --confirm", Short: "Apply cleanup", Description: "Apply cleanup (moves to Trash)", Priority: 1},
-			{Command: "sirsi anubis ka", Short: "Hunt ghosts", Description: "Hunt ghost app residuals", Priority: 2},
+			{Command: "sirsi clean", Short: "Review & clean", Description: "Review and clean safe items (dry-run by default)", Priority: 0},
+			{Command: "sirsi clean --confirm", Short: "Apply cleanup", Description: "Apply cleanup (moves to Trash)", Priority: 1},
+			{Command: "sirsi ghosts", Short: "Hunt ghosts", Description: "Hunt ghost app residuals", Priority: 2},
 		}
 		if ctx.FindingsCount > 0 {
 			// Prepend findings drill-down when there are results.
@@ -239,26 +239,26 @@ func afterAnubis(ctx Context) []Action {
 		return actions
 	case "judge":
 		return []Action{
-			{Command: "sirsi anubis weigh", Short: "Re-scan", Description: "Run a fresh scan to verify cleanup", Priority: 0},
-			{Command: "sirsi anubis ka", Short: "Hunt ghosts", Description: "Hunt remaining ghost app residuals", Priority: 1},
+			{Command: "sirsi scan", Short: "Re-scan", Description: "Run a fresh scan to verify cleanup", Priority: 0},
+			{Command: "sirsi ghosts", Short: "Hunt ghosts", Description: "Hunt remaining ghost app residuals", Priority: 1},
 		}
 	case "ka":
 		return []Action{
 			{Command: "findings", Short: "View findings", Description: "View all findings including ghosts", Priority: 0},
-			{Command: "sirsi anubis judge", Short: "Clean up", Description: "Remove ghost residuals", Priority: 1},
+			{Command: "sirsi clean", Short: "Clean up", Description: "Remove ghost residuals", Priority: 1},
 		}
 	case "mirror":
 		return []Action{
-			{Command: "sirsi anubis weigh", Short: "Full scan", Description: "Run full waste scan", Priority: 0},
+			{Command: "sirsi scan", Short: "Full scan", Description: "Run full waste scan", Priority: 0},
 		}
 	case "apps":
 		return []Action{
-			{Command: "sirsi anubis ka", Short: "Hunt ghosts", Description: "Deep ghost residual scan", Priority: 0},
-			{Command: "sirsi anubis weigh", Short: "Full scan", Description: "Run full waste scan", Priority: 1},
+			{Command: "sirsi ghosts", Short: "Hunt ghosts", Description: "Deep ghost residual scan", Priority: 0},
+			{Command: "sirsi scan", Short: "Full scan", Description: "Run full waste scan", Priority: 1},
 		}
 	default:
 		return []Action{
-			{Command: "sirsi anubis weigh", Short: "Scan", Description: "Scan for infrastructure waste", Priority: 0},
+			{Command: "sirsi scan", Short: "Scan", Description: "Scan for infrastructure waste", Priority: 0},
 		}
 	}
 }
@@ -268,12 +268,12 @@ func afterIsis(ctx Context) []Action {
 	case "network":
 		return []Action{
 			{Command: "sirsi maat heal", Short: "Auto-heal", Description: "Auto-remediate failed checks", Priority: 0},
-			{Command: "sirsi doctor", Short: "Full diagnostic", Description: "Full system health diagnostic", Priority: 1},
+			{Command: "sirsi diagnose", Short: "Full diagnostic", Description: "Full system health diagnostic", Priority: 1},
 		}
-	case "guard", "doctor":
+	case "guard", "doctor", "isis":
 		return []Action{
 			{Command: "sirsi isis network", Short: "Network audit", Description: "Network security audit", Priority: 0},
-			{Command: "sirsi anubis weigh", Short: "Scan", Description: "Scan for infrastructure waste", Priority: 1},
+			{Command: "sirsi scan", Short: "Scan", Description: "Scan for infrastructure waste", Priority: 1},
 		}
 	default:
 		return []Action{
@@ -371,22 +371,22 @@ func afterThoth(ctx Context) []Action {
 	case "sync":
 		return []Action{
 			{Command: "sirsi thoth compact", Short: "Compact", Description: "Persist state before context compression", Priority: 0},
-			{Command: "sirsi osiris assess", Short: "Risk check", Description: "Check uncommitted work risk", Priority: 1},
+			{Command: "sirsi sirsi risk", Short: "Risk check", Description: "Check uncommitted work risk", Priority: 1},
 			{Command: "sirsi maat audit", Short: "QA check", Description: "Run quality assessment", Priority: 2},
 		}
 	case "compact":
 		return []Action{
-			{Command: "sirsi thoth sync", Short: "Sync memory", Description: "Sync memory from source files", Priority: 0},
-			{Command: "sirsi osiris assess", Short: "Risk check", Description: "Check uncommitted work risk", Priority: 1},
+			{Command: "sirsi sirsi thoth sync", Short: "Sync memory", Description: "Sync memory from source files", Priority: 0},
+			{Command: "sirsi sirsi risk", Short: "Risk check", Description: "Check uncommitted work risk", Priority: 1},
 		}
 	case "init":
 		return []Action{
-			{Command: "sirsi thoth sync", Short: "Sync", Description: "Populate memory from source + git history", Priority: 0},
-			{Command: "sirsi anubis weigh", Short: "Scan", Description: "Scan for infrastructure waste", Priority: 1},
+			{Command: "sirsi sirsi thoth sync", Short: "Sync", Description: "Populate memory from source + git history", Priority: 0},
+			{Command: "sirsi scan", Short: "Scan", Description: "Scan for infrastructure waste", Priority: 1},
 		}
 	default:
 		return []Action{
-			{Command: "sirsi thoth sync", Short: "Sync", Description: "Sync project memory", Priority: 0},
+			{Command: "sirsi sirsi thoth sync", Short: "Sync", Description: "Sync project memory", Priority: 0},
 			{Command: "sirsi thoth compact", Short: "Compact", Description: "Persist state for continuations", Priority: 1},
 		}
 	}
@@ -419,7 +419,7 @@ func afterSeba(ctx Context) []Action {
 		return []Action{
 			{Command: "sirsi seba diagram", Short: "Diagram", Description: "Generate architecture diagram from scan", Priority: 0},
 			{Command: "sirsi seba scan", Short: "Topology", Description: "Full infrastructure topology map", Priority: 1},
-			{Command: "sirsi anubis weigh", Short: "Waste scan", Description: "Scan for infrastructure waste", Priority: 2},
+			{Command: "sirsi scan", Short: "Waste scan", Description: "Scan for infrastructure waste", Priority: 2},
 		}
 	case "diagram":
 		return []Action{
@@ -444,13 +444,13 @@ func afterOsiris(ctx Context) []Action {
 	case "assess":
 		return []Action{
 			{Command: "sirsi osiris status", Short: "Quick status", Description: "One-line risk summary", Priority: 0},
-			{Command: "sirsi thoth sync", Short: "Sync memory", Description: "Sync memory before committing", Priority: 1},
-			{Command: "sirsi anubis weigh", Short: "Scan", Description: "Scan for infrastructure waste", Priority: 2},
+			{Command: "sirsi sirsi thoth sync", Short: "Sync memory", Description: "Sync memory before committing", Priority: 1},
+			{Command: "sirsi scan", Short: "Scan", Description: "Scan for infrastructure waste", Priority: 2},
 		}
 	default:
 		return []Action{
-			{Command: "sirsi osiris assess", Short: "Full assess", Description: "Full checkpoint assessment", Priority: 0},
-			{Command: "sirsi thoth sync", Short: "Sync memory", Description: "Sync project memory", Priority: 1},
+			{Command: "sirsi sirsi risk", Short: "Full assess", Description: "Full checkpoint assessment", Priority: 0},
+			{Command: "sirsi sirsi thoth sync", Short: "Sync memory", Description: "Sync project memory", Priority: 1},
 		}
 	}
 }
