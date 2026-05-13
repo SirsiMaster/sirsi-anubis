@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "active_topics": [
+    "safety-reset",
+    "test-failures",
+    "streaming-error-propagation",
+    "stale-vocabulary",
+    "maat-credibility"
+  ],
+  "last_codex_read": "2026-05-13T00:00:00Z",
+  "last_claude_read": null,
+  "rules": {
+    "no_feature_expansion": true,
+    "safety_first": true,
+    "plain_user_language": true,
+    "deities_are_modules": true
+  }
+}
