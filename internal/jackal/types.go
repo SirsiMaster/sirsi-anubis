@@ -119,6 +119,11 @@ type ScanOptions struct {
 		Glob(pattern string) []string
 		FindDirsNamed(root, name string, maxDepth int) []string
 	}
+
+	// OnProgress is called after each rule completes during scanning.
+	// ruleName is the rule that finished, found is the number of findings,
+	// size is the total bytes found by this rule, done/total track overall progress.
+	OnProgress func(ruleName string, found int, size int64, done, total int)
 }
 
 // CleanOptions controls how cleaning behaves.

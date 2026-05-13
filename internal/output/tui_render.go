@@ -8,6 +8,7 @@ package output
 import (
 	"fmt"
 	"image/color"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -728,6 +729,120 @@ func (m TUIModel) renderSelect() string {
 		summary += " · " + jackal.FormatSize(selectedSize) + " to purge"
 	}
 	b.WriteString("  " + gold.Render(summary) + "\n\n")
+
+	return b.String()
+}
+
+// ── Disk Space Analyzer ─────────────────────────────────────────
+
+func (m TUIModel) renderAnalyze() string {
+	var b strings.Builder
+	gold := lipgloss.NewStyle().Foreground(Gold)
+	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
+	body := lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC"))
+	sizeStyle := lipgloss.NewStyle().Foreground(Gold).Bold(true)
+	pctStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC"))
+	cursor := gold.Render("▸")
+	barFill := lipgloss.NewStyle().Foreground(Gold)
+	barTrack := lipgloss.NewStyle().Foreground(Lapis)
+
+	displayPath := ShortenPath(m.analyzePath)
+	b.WriteString("\n")
+	b.WriteString("  " + gold.Bold(true).Render("Analyze") + "  " +
+		body.Render(displayPath) + "  " +
+		dim.Render("|") + "  " +
+		dim.Render("Total: ") + sizeStyle.Render(jackal.FormatSize(m.analyzeTotal)) + "\n")
+	b.WriteString("\n")
+
+	if len(m.analyzeEntries) == 0 {
+		b.WriteString("  " + dim.Render("Empty directory") + "\n")
+		return b.String()
+	}
+
+	barWidth := 20
+	maxVisible := 15
+
+	startIdx := 0
+	if len(m.analyzeEntries) > maxVisible && m.analyzeCursor >= maxVisible {
+		startIdx = m.analyzeCursor - maxVisible + 1
+	}
+	endIdx := startIdx + maxVisible
+	if endIdx > len(m.analyzeEntries) {
+		endIdx = len(m.analyzeEntries)
+	}
+
+	if startIdx > 0 {
+		b.WriteString("    " + dim.Render(fmt.Sprintf("  ↑ %d more above", startIdx)) + "\n")
+	}
+
+	for i := startIdx; i < endIdx; i++ {
+		entry := m.analyzeEntries[i]
+		pct := float64(0)
+		if m.analyzeTotal > 0 {
+			pct = float64(entry.Size) / float64(m.analyzeTotal) * 100
+		}
+
+		// Proportional bar with sub-block precision
+		filledUnits := int(pct / 100 * float64(barWidth) * 8)
+		fullBlocks := filledUnits / 8
+		remainder := filledUnits % 8
+		var bar string
+		bar += barFill.Render(repeatRune('█', fullBlocks))
+		if fullBlocks < barWidth {
+			bar += barFill.Render(string(subBlocks[remainder]))
+			bar += barTrack.Render(repeatRune('▒', barWidth-fullBlocks-1))
+		}
+
+		name := entry.Name
+		if len(name) > 24 {
+			name = name[:21] + "..."
+		}
+
+		prefix := "    "
+		numStyle := dim
+		nameStyle := body
+		if i == m.analyzeCursor {
+			prefix = "  " + cursor + " "
+			numStyle = gold
+			nameStyle = lipgloss.NewStyle().Foreground(White).Bold(true)
+		}
+
+		line := prefix +
+			numStyle.Render(fmt.Sprintf("%2d.", i+1)) + " " +
+			bar + "  " +
+			pctStyle.Render(fmt.Sprintf("%5.1f%%", pct)) + "  " +
+			dim.Render("|") + "  " +
+			nameStyle.Render(fmt.Sprintf("%-24s", name)) + " " +
+			sizeStyle.Render(fmt.Sprintf("%8s", jackal.FormatSize(entry.Size)))
+		if entry.IsDir {
+			line += "  " + dim.Render(">")
+		}
+		b.WriteString(line + "\n")
+	}
+
+	if endIdx < len(m.analyzeEntries) {
+		b.WriteString("    " + dim.Render(fmt.Sprintf("  ↓ %d more below", len(m.analyzeEntries)-endIdx)) + "\n")
+	}
+	b.WriteString("\n")
+
+	// Breadcrumb trail
+	if len(m.analyzeHistory) > 0 {
+		trail := dim.Render("  Path: ")
+		for i, lvl := range m.analyzeHistory {
+			if i > 0 {
+				trail += dim.Render(" > ")
+			}
+			parts := strings.Split(lvl.path, string(filepath.Separator))
+			if len(parts) > 0 {
+				trail += dim.Render(parts[len(parts)-1])
+			}
+		}
+		parts := strings.Split(m.analyzePath, string(filepath.Separator))
+		if len(parts) > 0 {
+			trail += dim.Render(" > ") + gold.Render(parts[len(parts)-1])
+		}
+		b.WriteString(trail + "\n")
+	}
 
 	return b.String()
 }

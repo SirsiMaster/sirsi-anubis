@@ -87,6 +87,8 @@ var tabs = []tabDef{
 			{"Ghosts", "Hunt remnants of uninstalled apps", []string{"anubis", "ka"}, nativeGhosts},
 			{"Clean", "Preview and remove safe items (Trash)", []string{"anubis", "judge", "--dry-run"}, nativeCleanDryRun},
 			{"Duplicates", "Find duplicate files across directories", []string{"anubis", "mirror"}, nativeMirror},
+			{"Purge", "Clean project build artifacts", []string{"purge"}, nativePurge},
+			{"Analyze", "Visual disk space explorer", []string{"analyze"}, nativeAnalyze},
 		},
 	},
 	{
@@ -151,6 +153,9 @@ var nativeCommands = map[string]func() ([]string, string, []string, error){
 	"anubis judge --dry-run": nativeCleanDryRun,
 }
 
+// scanProgressCh streams per-rule progress to the TUI during scans.
+var scanProgressCh chan string
+
 // ── Native Deity Functions ───────────────────────────────────────────
 
 func nativeScan() ([]string, string, []string, error) {
@@ -158,14 +163,37 @@ func nativeScan() ([]string, string, []string, error) {
 	engine.RegisterAll(rules.AllRules()...)
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	res, err := engine.Scan(ctx, jackal.ScanOptions{})
+	// Grab the progress channel if set — streams per-rule updates to TUI
+	pendingSelectMu.Lock()
+	ch := scanProgressCh
+	scanProgressCh = nil
+	pendingSelectMu.Unlock()
+
+	opts := jackal.ScanOptions{}
+	if ch != nil {
+		opts.OnProgress = func(ruleName string, found int, size int64, done, total int) {
+			line := fmt.Sprintf("  %s %-30s",
+				lipgloss.NewStyle().Foreground(Green).Render("✓"),
+				lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC")).Render(ruleName))
+			if found > 0 {
+				line += fmt.Sprintf("  %8s", jackal.FormatSize(size))
+			}
+			line += lipgloss.NewStyle().Foreground(lipgloss.Color("#444444")).
+				Render(fmt.Sprintf("  [%d/%d]", done, total))
+			ch <- line
+		}
+	}
+
+	res, err := engine.Scan(ctx, opts)
+	if ch != nil {
+		ch <- ""
+	}
 	if err != nil {
 		return nil, "anubis", nil, err
 	}
 	jackal.EnrichAdvisory(res)
 	_ = jackal.Persist(res, 0)
 
-	// Offer cleanup as the primary next action
 	var fixCmds []string
 	safeCount := 0
 	for _, f := range res.Findings {
@@ -174,7 +202,7 @@ func nativeScan() ([]string, string, []string, error) {
 		}
 	}
 	if safeCount > 0 {
-		fixCmds = append(fixCmds, "anubis judge --dry-run") // preview clean
+		fixCmds = append(fixCmds, "anubis judge --dry-run")
 	}
 	return RenderScanResult(res), "anubis", fixCmds, nil
 }
@@ -435,6 +463,64 @@ func nativeMirror() ([]string, string, []string, error) {
 	return RenderMirrorResult(res), "anubis", nil, nil
 }
 
+func nativePurge() ([]string, string, []string, error) {
+	roots := jackal.DefaultPurgeRoots()
+	if len(roots) == 0 {
+		return []string{"", "  No project directories found (~/Development, ~/Projects, ~/Documents)."}, "anubis", nil, nil
+	}
+
+	res, err := jackal.ScanArtifacts(roots)
+	if err != nil {
+		return nil, "anubis", nil, err
+	}
+	if len(res.Artifacts) == 0 {
+		return []string{
+			"",
+			"  " + lipgloss.NewStyle().Foreground(Green).Render("✓") + "  " +
+				lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC")).Render("No build artifacts found. Projects are clean."),
+		}, "anubis", nil, nil
+	}
+
+	var items []selectItem
+	for _, a := range res.Artifacts {
+		detail := string(a.Type)
+		if a.IsRecent {
+			detail += "  | Recent"
+		}
+		items = append(items, selectItem{
+			Label:    a.ProjectName,
+			Detail:   detail,
+			Size:     a.Size,
+			Selected: !a.IsRecent,
+			Data:     a,
+		})
+	}
+
+	pendingSelectMu.Lock()
+	pendingSelectReq = &selectRequest{
+		title: fmt.Sprintf("𓃣 Purge — Select Artifacts to Remove — %s", jackal.FormatSize(res.TotalSize)),
+		items: items,
+		onConfirm: func(selected []selectItem) ([]string, string, []string, error) {
+			var toClean []jackal.ProjectArtifact
+			for _, item := range selected {
+				if a, ok := item.Data.(jackal.ProjectArtifact); ok {
+					toClean = append(toClean, a)
+				}
+			}
+			if len(toClean) == 0 {
+				return []string{"", "  Nothing selected to purge."}, "anubis", nil, nil
+			}
+			result, err := jackal.PurgeArtifacts(toClean, true)
+			if err != nil {
+				return nil, "anubis", nil, err
+			}
+			return RenderCleanResult(result), "anubis", []string{"anubis weigh"}, nil
+		},
+	}
+	pendingSelectMu.Unlock()
+	return nil, "anubis", nil, nil
+}
+
 func nativeMaatAudit() ([]string, string, []string, error) {
 	report, err := maat.Weigh()
 	if err != nil {
@@ -494,6 +580,28 @@ func nativeHorusScan() ([]string, string, []string, error) {
 	return RenderSymbolGraph(graph), "horus", nil, nil
 }
 
+func nativeAnalyze() ([]string, string, []string, error) {
+	home, _ := os.UserHomeDir()
+	res, err := jackal.Analyze(home, 0)
+	if err != nil {
+		return nil, "anubis", nil, err
+	}
+	pendingAnalyzeMu.Lock()
+	pendingAnalyzeRes = res
+	pendingAnalyzeMu.Unlock()
+	return nil, "anubis", nil, nil
+}
+
+var (
+	pendingAnalyzeMu  sync.Mutex
+	pendingAnalyzeRes *jackal.AnalyzeResult
+)
+
+type analyzeResultMsg struct {
+	result *jackal.AnalyzeResult
+	err    error
+}
+
 // ── View Mode ────────────────────────────────────────────────────────
 
 type viewMode int
@@ -504,6 +612,7 @@ const (
 	viewDone                    // Command finished, output + next actions
 	viewPrompt                  // Power-user command prompt (: key)
 	viewSelect                  // Interactive checkbox selection
+	viewAnalyze                 // Disk space analyzer with drill-down
 )
 
 // ── Selection Types ──────────────────────────────────────────────────
@@ -584,6 +693,20 @@ type TUIModel struct {
 	memHistory  []float64 // last 60 samples
 	netDownHist []float64 // last 60 samples
 	netUpHist   []float64 // last 60 samples
+
+	// Disk analyzer state
+	analyzePath    string
+	analyzeEntries []jackal.DirEntry
+	analyzeCursor  int
+	analyzeTotal   int64
+	analyzeHistory []analyzeLevel
+}
+
+type analyzeLevel struct {
+	path    string
+	entries []jackal.DirEntry
+	total   int64
+	cursor  int
 }
 
 type systemVitals = vitals.Snapshot
@@ -694,6 +817,29 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case nativeResultMsg:
 		return m.handleNativeResult(msg)
 
+	case analyzeResultMsg:
+		if msg.err != nil {
+			if len(m.analyzeHistory) > 0 {
+				last := m.analyzeHistory[len(m.analyzeHistory)-1]
+				m.analyzeHistory = m.analyzeHistory[:len(m.analyzeHistory)-1]
+				m.analyzePath = last.path
+				m.analyzeEntries = last.entries
+				m.analyzeTotal = last.total
+				m.analyzeCursor = last.cursor
+			}
+			m.mode = viewAnalyze
+			return m, nil
+		}
+		m.mode = viewAnalyze
+		m.analyzePath = msg.result.Path
+		m.analyzeEntries = msg.result.Entries
+		m.analyzeTotal = msg.result.TotalSize
+		m.analyzeCursor = 0
+		m.runningDeity = ""
+		m.runningCmd = ""
+		m.runningArgs = nil
+		return m, nil
+
 	case streamLineMsg:
 		return m.handleStreamLine(msg)
 
@@ -776,6 +922,8 @@ func (m TUIModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.handlePromptKey(key, msg)
 	case viewSelect:
 		return m.handleSelectKey(key)
+	case viewAnalyze:
+		return m.handleAnalyzeKey(key)
 	}
 
 	return m, nil
@@ -799,7 +947,7 @@ func (m TUIModel) handleTabKey(key string) (tea.Model, tea.Cmd) {
 			return m, liveTick()
 		}
 		return m, nil
-	case "1", "2", "3", "4", "5":
+	case "1", "2", "3", "4", "5", "6":
 		idx := int(key[0]-'0') - 1
 		tab := tabs[m.activeTab]
 		if idx < len(tab.Actions) {
@@ -937,6 +1085,66 @@ func (m TUIModel) handleSelectKey(key string) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m TUIModel) handleAnalyzeKey(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "up", "k":
+		if m.analyzeCursor > 0 {
+			m.analyzeCursor--
+		}
+		return m, nil
+	case "down", "j":
+		if m.analyzeCursor < len(m.analyzeEntries)-1 {
+			m.analyzeCursor++
+		}
+		return m, nil
+	case "enter", "right", "l":
+		if m.analyzeCursor < len(m.analyzeEntries) {
+			entry := m.analyzeEntries[m.analyzeCursor]
+			if entry.IsDir {
+				m.analyzeHistory = append(m.analyzeHistory, analyzeLevel{
+					path: m.analyzePath, entries: m.analyzeEntries,
+					total: m.analyzeTotal, cursor: m.analyzeCursor,
+				})
+				childPath := entry.Path
+				m.mode = viewRunning
+				m.runningCmd = "analyze " + ShortenPath(childPath)
+				m.runningDeity = "anubis"
+				m.cmdStartTime = time.Now()
+				m.outputLines = nil
+				m.postRunCmds = nil
+				return m, tea.Batch(m.spinner.Tick, elapsedTick(), func() tea.Msg {
+					res, err := jackal.Analyze(childPath, 0)
+					if err != nil {
+						return analyzeResultMsg{err: err}
+					}
+					return analyzeResultMsg{result: res}
+				})
+			}
+		}
+		return m, nil
+	case "esc", "left", "h":
+		if len(m.analyzeHistory) > 0 {
+			last := m.analyzeHistory[len(m.analyzeHistory)-1]
+			m.analyzeHistory = m.analyzeHistory[:len(m.analyzeHistory)-1]
+			m.analyzePath = last.path
+			m.analyzeEntries = last.entries
+			m.analyzeTotal = last.total
+			m.analyzeCursor = last.cursor
+		} else {
+			m.mode = viewTabs
+			m.analyzeEntries = nil
+			m.analyzeHistory = nil
+		}
+		return m, nil
+	case "q":
+		m.mode = viewTabs
+		m.analyzeEntries = nil
+		m.analyzeHistory = nil
+		return m, nil
+	}
+	return m, nil
+}
+
 func (m TUIModel) handlePromptKey(key string, msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch key {
 	case "esc":
@@ -973,6 +1181,38 @@ func (m TUIModel) executeAction(action tabAction) (TUIModel, tea.Cmd) {
 		m.cmdStartTime = time.Now()
 		m.outputLines = nil
 		m.postRunCmds = nil
+
+		// For scan, stream per-rule progress lines to the viewport in real time
+		isScan := len(action.Args) >= 2 && action.Args[0] == "anubis" && action.Args[1] == "weigh"
+		if isScan {
+			ch := make(chan string, 100)
+			m.streamCh = ch
+			pendingSelectMu.Lock()
+			scanProgressCh = ch
+			pendingSelectMu.Unlock()
+
+			m.outputLines = []string{
+				"",
+				"  " + lipgloss.NewStyle().Foreground(Gold).Bold(true).Render("Scanning..."),
+				"",
+			}
+			m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
+
+			fn := action.Native
+			return m, tea.Batch(m.spinner.Tick, elapsedTick(), func() tea.Msg {
+				// Run scan in background goroutine — it writes progress to ch
+				go func() {
+					fn() // result discarded — we'll re-render from persisted scan
+					close(ch)
+				}()
+				// Read first progress line
+				line, ok := <-ch
+				if !ok {
+					return streamLineMsg{done: true}
+				}
+				return streamLineMsg{line: line}
+			})
+		}
 
 		fn := action.Native
 		return m, tea.Batch(m.spinner.Tick, elapsedTick(), func() tea.Msg {
@@ -1082,12 +1322,44 @@ func (m TUIModel) handleStreamLine(msg streamLineMsg) (TUIModel, tea.Cmd) {
 				m.deityState[m.runningDeity] = stateFailed
 			}
 		} else {
-			// Don't add "✓ Done" here — renderDone handles it
 			if m.runningDeity != "" {
 				state := stateSucceeded
 				if m.runningDeity == "anubis" {
-					if scan, err := jackal.LoadLatest(); err == nil && len(scan.Findings) > 0 {
+					// Replace streaming progress with final rendered scan result
+					if scan, loadErr := jackal.LoadLatest(); loadErr == nil && len(scan.Findings) > 0 {
 						state = stateHasData
+						res := &jackal.ScanResult{
+							Findings:   make([]jackal.Finding, len(scan.Findings)),
+							TotalSize:  scan.TotalSize,
+							RulesRan:   scan.RulesRan,
+							ByCategory: make(map[jackal.Category]jackal.CategorySummary),
+						}
+						for i, f := range scan.Findings {
+							res.Findings[i] = jackal.Finding{
+								Description: f.Description, Path: f.Path,
+								SizeBytes: f.SizeBytes, Severity: f.Severity,
+								Category: f.Category, Advisory: f.Advisory,
+								CanFix: f.CanFix, Remediation: f.Remediation,
+							}
+						}
+						for cat, s := range scan.ByCategory {
+							res.ByCategory[cat] = s
+						}
+						m.outputLines = RenderScanResult(res)
+						// Offer cleanup
+						safeCount := 0
+						for _, f := range res.Findings {
+							if f.Severity == jackal.SeveritySafe && f.CanFix {
+								safeCount++
+							}
+						}
+						if safeCount > 0 {
+							m.postRunCmds = []string{"anubis judge --dry-run"}
+							m.postRunActions = []suggest.Action{{
+								Command:     "anubis judge --dry-run",
+								Description: "Preview safe items to clean",
+							}}
+						}
 					}
 				}
 				m.deityState[m.runningDeity] = state
@@ -1140,6 +1412,24 @@ func (m TUIModel) handleStreamLine(msg streamLineMsg) (TUIModel, tea.Cmd) {
 
 // handleNativeResult processes results from native deity function calls.
 func (m TUIModel) handleNativeResult(msg nativeResultMsg) (TUIModel, tea.Cmd) {
+	// If the result carries an analyze result, enter analyze mode.
+	pendingAnalyzeMu.Lock()
+	analyzeRes := pendingAnalyzeRes
+	pendingAnalyzeRes = nil
+	pendingAnalyzeMu.Unlock()
+	if analyzeRes != nil && msg.err == nil {
+		m.mode = viewAnalyze
+		m.analyzePath = analyzeRes.Path
+		m.analyzeEntries = analyzeRes.Entries
+		m.analyzeTotal = analyzeRes.TotalSize
+		m.analyzeCursor = 0
+		m.analyzeHistory = nil
+		m.runningDeity = ""
+		m.runningCmd = ""
+		m.runningArgs = nil
+		return m, nil
+	}
+
 	// If the result carries a select request, enter checkbox mode.
 	if msg.selectReq != nil && msg.err == nil {
 		m.mode = viewSelect
@@ -1301,6 +1591,8 @@ func (m TUIModel) View() tea.View {
 		b.WriteString(m.renderTabPage())
 	case viewSelect:
 		b.WriteString(m.renderSelect())
+	case viewAnalyze:
+		b.WriteString(m.renderAnalyze())
 	}
 
 	// ── Bottom bar ──
@@ -1752,6 +2044,8 @@ func (m TUIModel) renderBottomHints() string {
 		}
 	case viewSelect:
 		hints = []string{"↑/↓ move", "space toggle", "a all", "enter confirm", "esc cancel"}
+	case viewAnalyze:
+		hints = []string{"↑/↓ navigate", "enter drill-down", "esc back", "q quit"}
 	}
 
 	return " " + dim.Render(strings.Join(hints, "  ·  "))

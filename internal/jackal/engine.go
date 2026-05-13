@@ -166,21 +166,28 @@ func (e *Engine) Scan(ctx context.Context, opts ScanOptions) (*ScanResult, error
 
 	// Collect results
 	result.RulesRan = len(rules)
+	completed := 0
 	for rr := range ch {
+		completed++
 		if rr.err != nil {
 			result.Errors = append(result.Errors, RuleError{
 				RuleName: rr.ruleName,
 				Err:      rr.err,
 			})
+			if opts.OnProgress != nil {
+				opts.OnProgress(rr.ruleName, 0, 0, completed, len(rules))
+			}
 			continue
 		}
 
+		ruleSize := int64(0)
 		if len(rr.findings) > 0 {
 			result.RulesWithFindings++
 			result.Findings = append(result.Findings, rr.findings...)
 
 			for _, f := range rr.findings {
 				result.TotalSize += f.SizeBytes
+				ruleSize += f.SizeBytes
 
 				cat := result.ByCategory[f.Category]
 				cat.Category = f.Category
@@ -188,6 +195,9 @@ func (e *Engine) Scan(ctx context.Context, opts ScanOptions) (*ScanResult, error
 				cat.TotalSize += f.SizeBytes
 				result.ByCategory[f.Category] = cat
 			}
+		}
+		if opts.OnProgress != nil {
+			opts.OnProgress(rr.ruleName, len(rr.findings), ruleSize, completed, len(rules))
 		}
 	}
 
