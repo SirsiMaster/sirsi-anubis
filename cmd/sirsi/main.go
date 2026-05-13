@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/guard"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/logging"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/mcp"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/notify"
@@ -113,10 +114,13 @@ var rootCmd = &cobra.Command{
   sirsi version            Show version`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
-			showGateway(cmd)
+			// sirsi with no args → launch TUI directly
+			if err := output.LaunchTUI(); err != nil {
+				fmt.Fprintf(os.Stderr, "TUI error: %v\n", err)
+				os.Exit(1)
+			}
 			return
 		}
-		output.Banner()
 		_ = cmd.Help()
 	},
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
@@ -199,6 +203,133 @@ var auditCmd = &cobra.Command{
 	Use:   "audit",
 	Short: "Code quality and governance scan",
 	RunE:  runMaatAudit,
+}
+
+var purgeCmd = &cobra.Command{
+	Use:   "purge",
+	Short: "Remove project build artifacts (node_modules, target, venv, etc.)",
+	Long: `Scan for project build artifacts and remove selected ones.
+
+Searches ~/Development, ~/Projects, ~/Documents for:
+  node_modules, target, build, dist, venv, .build, Pods, DerivedData
+
+Projects modified within 7 days are marked Recent and skipped by default.
+Removed items are moved to Trash.
+
+  sirsi purge          Interactive selection (launches TUI)
+  sirsi purge --json   List artifacts as JSON`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		roots := jackal.DefaultPurgeRoots()
+		if !JsonOutput {
+			output.Banner()
+			output.Header("ANUBIS — Purge")
+		}
+		res, err := jackal.ScanArtifacts(roots)
+		if err != nil {
+			return err
+		}
+		if JsonOutput {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			return enc.Encode(res)
+		}
+		if len(res.Artifacts) == 0 {
+			output.Success("No project artifacts found.")
+			return nil
+		}
+		output.Info("Found %d artifacts totaling %s", len(res.Artifacts), jackal.FormatSize(res.TotalSize))
+		for _, a := range res.Artifacts {
+			tag := ""
+			if a.IsRecent {
+				tag = " (recent)"
+			}
+			fmt.Printf("  %-30s %8s  %s%s\n", a.ProjectName, jackal.FormatSize(a.Size), string(a.Type), tag)
+		}
+		output.NextSteps([][]string{{"sirsi", "Launch TUI for interactive selection"}})
+		return nil
+	},
+}
+
+var analyzeCmd = &cobra.Command{
+	Use:   "analyze [path]",
+	Short: "Visual disk space explorer",
+	Long: `Analyze disk usage with proportional bar display.
+
+  sirsi analyze              Analyze home directory
+  sirsi analyze ~/Documents  Analyze specific path
+  sirsi analyze --json       Output as JSON`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		target, _ := os.UserHomeDir()
+		if len(args) > 0 {
+			target = args[0]
+		}
+		if !JsonOutput {
+			output.Banner()
+			output.Header("ANUBIS — Analyze")
+		}
+		res, err := jackal.Analyze(target, 0)
+		if err != nil {
+			return err
+		}
+		if JsonOutput {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			return enc.Encode(res)
+		}
+		output.Info("Analyzed %s — Total: %s", output.ShortenPath(target), jackal.FormatSize(res.TotalSize))
+		fmt.Println()
+		for i, e := range res.Entries {
+			pct := float64(0)
+			if res.TotalSize > 0 {
+				pct = float64(e.Size) / float64(res.TotalSize) * 100
+			}
+			indicator := " "
+			if e.IsDir {
+				indicator = ">"
+			}
+			fmt.Printf("  %2d. %5.1f%%  %-30s %8s  %s\n", i+1, pct, e.Name, jackal.FormatSize(e.Size), indicator)
+		}
+		fmt.Println()
+		output.NextSteps([][]string{{"sirsi", "Launch TUI for drill-down navigation"}})
+		return nil
+	},
+}
+
+var installerCmd = &cobra.Command{
+	Use:   "installer",
+	Short: "Find and remove installer files (.dmg, .pkg, .zip)",
+	Long: `Scan Downloads, Desktop, Homebrew cache, and iCloud for installer files.
+
+Finds .dmg, .pkg, .iso, .zip, .tar.gz, and .app.zip files > 10MB.
+
+  sirsi installer          Interactive selection (launches TUI)
+  sirsi installer --json   List installers as JSON`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if !JsonOutput {
+			output.Banner()
+			output.Header("ANUBIS — Installer")
+		}
+		res, err := jackal.ScanInstallers()
+		if err != nil {
+			return err
+		}
+		if JsonOutput {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			return enc.Encode(res)
+		}
+		if len(res.Files) == 0 {
+			output.Success("No installer files found.")
+			return nil
+		}
+		output.Info("Found %d installers totaling %s", len(res.Files), jackal.FormatSize(res.TotalSize))
+		for _, f := range res.Files {
+			fmt.Printf("  %-35s %8s  %s\n", f.Name, jackal.FormatSize(f.Size), f.Source)
+		}
+		fmt.Println()
+		output.NextSteps([][]string{{"sirsi", "Launch TUI for interactive removal"}})
+		return nil
+	},
 }
 
 var doctorCmd = &cobra.Command{
@@ -595,6 +726,7 @@ func init() {
 	judgeCmd.Flags().BoolVar(&anubisConfirm, "confirm", false, "Confirm and apply")
 	// ── User-facing commands (visible in sirsi --help) ──
 	rootCmd.AddCommand(scanCmd, cleanCmd, ghostsCmd, dedupCmd, doctorCmd)
+	rootCmd.AddCommand(purgeCmd, analyzeCmd, installerCmd)
 	rootCmd.AddCommand(networkCmd, fixCmd, monitorCmd)
 	rootCmd.AddCommand(auditCmd, riskCmd, hardwareCmd, diagramCmd)
 	rootCmd.AddCommand(versionCmd, quickstartCmd, setupCmd)
