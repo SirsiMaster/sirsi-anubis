@@ -146,11 +146,17 @@ func TestRenderStatusPage(t *testing.T) {
 	m.activeTab = 4 // Status
 
 	page := m.renderTabPage()
-	if !strings.Contains(page, "RAM") {
-		t.Error("status page should contain RAM")
+	if !strings.Contains(page, "CPU") {
+		t.Error("status page should contain CPU section")
 	}
-	if !strings.Contains(page, "DEITIES") {
-		t.Error("status page should contain DEITIES section")
+	if !strings.Contains(page, "Memory") {
+		t.Error("status page should contain Memory section")
+	}
+	if !strings.Contains(page, "Health") {
+		t.Error("status page should contain Health score")
+	}
+	if !strings.Contains(page, "Deities") {
+		t.Error("status page should contain Deities section")
 	}
 }
 

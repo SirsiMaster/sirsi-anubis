@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -50,10 +51,11 @@ import (
 
 // nativeResult is returned by native deity calls.
 type nativeResult struct {
-	lines    []string // rendered output lines
-	deityKey string   // which deity ran
-	fixCmds  []string // actionable fix commands (override suggest engine)
-	err      error
+	lines     []string       // rendered output lines
+	deityKey  string         // which deity ran
+	fixCmds   []string       // actionable fix commands (override suggest engine)
+	err       error
+	selectReq *selectRequest // if non-nil, enter viewSelect mode instead of viewDone
 }
 
 type nativeResultMsg nativeResult
@@ -185,7 +187,60 @@ func nativeGhosts() ([]string, string, []string, error) {
 	if err != nil {
 		return nil, "anubis", nil, err
 	}
-	return RenderGhostResult(ghosts), "anubis", nil, nil
+	if len(ghosts) == 0 {
+		return RenderGhostResult(ghosts), "anubis", nil, nil
+	}
+
+	var items []selectItem
+	for _, g := range ghosts {
+		detail := fmt.Sprintf("%d residual files", g.TotalFiles)
+		if len(g.Residuals) > 0 {
+			detail += " · " + ShortenPath(g.Residuals[0].Path)
+		}
+		items = append(items, selectItem{
+			Label: g.AppName, Detail: detail,
+			Size: g.TotalSize, Selected: true, Data: g,
+		})
+	}
+
+	pendingSelectMu.Lock()
+	pendingSelectReq = &selectRequest{
+		title: "𓃣 Ghosts — Select Hauntings to Exorcise",
+		items: items,
+		onConfirm: func(selected []selectItem) ([]string, string, []string, error) {
+			s := ka.NewScanner()
+			var totalFreed int64
+			var totalCleaned int
+			var names []string
+			for _, item := range selected {
+				if g, ok := item.Data.(ka.Ghost); ok {
+					freed, cleaned, err := s.Clean(g, false, true)
+					if err != nil {
+						continue
+					}
+					totalFreed += freed
+					totalCleaned += cleaned
+					names = append(names, g.AppName)
+				}
+			}
+			var lines []string
+			lines = append(lines, "")
+			if totalCleaned > 0 {
+				bannerText := fmt.Sprintf("𓃣 Exorcised: %s freed", jackal.FormatSize(totalFreed))
+				lines = append(lines, "  "+ResultBanner(bannerText, rGold, 50))
+				lines = append(lines, "  "+rDim.Render(fmt.Sprintf("%d files from %d apps", totalCleaned, len(names))))
+				lines = append(lines, "")
+				for _, name := range names {
+					lines = append(lines, "  "+rGreen.Render("✓")+"  "+rBody.Render(name))
+				}
+			} else {
+				lines = append(lines, "  "+rDim.Render("No ghosts were cleaned."))
+			}
+			return lines, "anubis", []string{"anubis weigh"}, nil
+		},
+	}
+	pendingSelectMu.Unlock()
+	return nil, "anubis", nil, nil
 }
 
 func nativeHardware() ([]string, string, []string, error) {
@@ -278,8 +333,43 @@ func nativeCleanDryRun() ([]string, string, []string, error) {
 		return []string{"", "  No safe items to clean."}, "anubis", nil, nil
 	}
 
-	lines := RenderCleanPreview(safeFindings)
-	return lines, "anubis", []string{"anubis clean --confirm"}, nil
+	var items []selectItem
+	for _, f := range safeFindings {
+		items = append(items, selectItem{
+			Label: f.Description, Detail: ShortenPath(f.Path),
+			Size: f.SizeBytes, Selected: true, Data: f,
+		})
+	}
+
+	pendingSelectMu.Lock()
+	pendingSelectReq = &selectRequest{
+		title: "𓃣 Clean — Select Items to Purge",
+		items: items,
+		onConfirm: func(selected []selectItem) ([]string, string, []string, error) {
+			var findings []jackal.Finding
+			for _, item := range selected {
+				if f, ok := item.Data.(jackal.Finding); ok {
+					findings = append(findings, f)
+				}
+			}
+			if len(findings) == 0 {
+				return []string{"", "  Nothing selected to clean."}, "anubis", nil, nil
+			}
+			engine := jackal.DefaultEngine()
+			engine.RegisterAll(rules.AllRules()...)
+			ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+			defer cancel()
+			result, err := engine.Clean(ctx, findings, jackal.CleanOptions{
+				Confirm: true, UseTrash: true,
+			})
+			if err != nil {
+				return nil, "anubis", nil, err
+			}
+			return RenderCleanResult(result), "anubis", []string{"anubis weigh"}, nil
+		},
+	}
+	pendingSelectMu.Unlock()
+	return nil, "anubis", nil, nil
 }
 
 func nativeCleanConfirm() ([]string, string, []string, error) {
@@ -413,6 +503,28 @@ const (
 	viewRunning                 // Command executing
 	viewDone                    // Command finished, output + next actions
 	viewPrompt                  // Power-user command prompt (: key)
+	viewSelect                  // Interactive checkbox selection
+)
+
+// ── Selection Types ──────────────────────────────────────────────────
+
+type selectItem struct {
+	Label    string
+	Detail   string      // secondary line (path, size, etc.)
+	Size     int64       // for size display
+	Selected bool
+	Data     interface{} // opaque payload for the confirm handler
+}
+
+type selectRequest struct {
+	title     string
+	items     []selectItem
+	onConfirm func(selected []selectItem) ([]string, string, []string, error)
+}
+
+var (
+	pendingSelectMu  sync.Mutex
+	pendingSelectReq *selectRequest
 )
 
 // ── Model ────────────────────────────────────────────────────────────
@@ -423,6 +535,12 @@ type TUIModel struct {
 
 	activeTab int      // 0-4 index into tabs
 	mode      viewMode // current view state
+
+	// Checkbox selection state
+	selectItems     []selectItem
+	selectCursor    int
+	selectTitle     string
+	selectOnConfirm func(selected []selectItem) ([]string, string, []string, error)
 
 	// Command execution
 	input        textinput.Model
@@ -440,6 +558,7 @@ type TUIModel struct {
 	postRunCmds    []string
 	postRunActions []suggest.Action // full actions with descriptions
 	tabIdx         int
+	lastDeity      string // deity key preserved for done view
 
 	// History
 	history    []historyEntry
@@ -459,6 +578,12 @@ type TUIModel struct {
 
 	// System vitals
 	vitals systemVitals
+
+	// Live dashboard history (ring buffers for sparklines)
+	cpuHistory  []float64 // last 60 samples
+	memHistory  []float64 // last 60 samples
+	netDownHist []float64 // last 60 samples
+	netUpHist   []float64 // last 60 samples
 }
 
 type systemVitals = vitals.Snapshot
@@ -480,6 +605,7 @@ type historyEntry struct {
 
 type refreshMsg time.Time
 type elapsedTickMsg time.Time
+type liveTickMsg time.Time
 
 type streamLineMsg struct {
 	line string
@@ -489,6 +615,10 @@ type streamLineMsg struct {
 
 func refreshTick() tea.Cmd {
 	return tea.Tick(10*time.Second, func(t time.Time) tea.Msg { return refreshMsg(t) })
+}
+
+func liveTick() tea.Cmd {
+	return tea.Tick(time.Second, func(t time.Time) tea.Msg { return liveTickMsg(t) })
 }
 
 func elapsedTick() tea.Cmd {
@@ -567,6 +697,14 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case streamLineMsg:
 		return m.handleStreamLine(msg)
 
+	case liveTickMsg:
+		if m.mode == viewTabs && m.activeTab == 4 {
+			m.refreshVitals()
+			m.appendHistory()
+			return m, liveTick()
+		}
+		return m, nil
+
 	case elapsedTickMsg:
 		if m.mode == viewRunning {
 			return m, elapsedTick()
@@ -636,6 +774,8 @@ func (m TUIModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.handleDoneKey(key)
 	case viewPrompt:
 		return m.handlePromptKey(key, msg)
+	case viewSelect:
+		return m.handleSelectKey(key)
 	}
 
 	return m, nil
@@ -647,10 +787,16 @@ func (m TUIModel) handleTabKey(key string) (tea.Model, tea.Cmd) {
 		if m.activeTab > 0 {
 			m.activeTab--
 		}
+		if m.activeTab == 4 {
+			return m, liveTick()
+		}
 		return m, nil
 	case "right", "l":
 		if m.activeTab < len(tabs)-1 {
 			m.activeTab++
+		}
+		if m.activeTab == 4 {
+			return m, liveTick()
 		}
 		return m, nil
 	case "1", "2", "3", "4", "5":
@@ -675,6 +821,9 @@ func (m TUIModel) handleTabKey(key string) (tea.Model, tea.Cmd) {
 	for i, tab := range tabs {
 		if strings.EqualFold(key, tab.Name[:1]) {
 			m.activeTab = i
+			if i == 4 {
+				return m, liveTick()
+			}
 			return m, nil
 		}
 	}
@@ -726,6 +875,68 @@ func (m TUIModel) handleDoneKey(key string) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m TUIModel) handleSelectKey(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "up", "k":
+		if m.selectCursor > 0 {
+			m.selectCursor--
+		}
+		return m, nil
+	case "down", "j":
+		if m.selectCursor < len(m.selectItems)-1 {
+			m.selectCursor++
+		}
+		return m, nil
+	case " ":
+		if m.selectCursor < len(m.selectItems) {
+			m.selectItems[m.selectCursor].Selected = !m.selectItems[m.selectCursor].Selected
+		}
+		return m, nil
+	case "a":
+		allSelected := true
+		for _, item := range m.selectItems {
+			if !item.Selected {
+				allSelected = false
+				break
+			}
+		}
+		for i := range m.selectItems {
+			m.selectItems[i].Selected = !allSelected
+		}
+		return m, nil
+	case "enter":
+		var selected []selectItem
+		for _, item := range m.selectItems {
+			if item.Selected {
+				selected = append(selected, item)
+			}
+		}
+		if len(selected) == 0 {
+			m.mode = viewTabs
+			return m, nil
+		}
+		if m.selectOnConfirm != nil {
+			m.mode = viewRunning
+			m.cmdStartTime = time.Now()
+			m.outputLines = nil
+			m.postRunCmds = nil
+			onConfirm := m.selectOnConfirm
+			return m, tea.Batch(m.spinner.Tick, elapsedTick(), func() tea.Msg {
+				lines, deityKey, fixCmds, err := onConfirm(selected)
+				return nativeResultMsg{lines: lines, deityKey: deityKey, fixCmds: fixCmds, err: err}
+			})
+		}
+		m.mode = viewTabs
+		return m, nil
+	case "esc":
+		m.mode = viewTabs
+		m.selectItems = nil
+		m.selectOnConfirm = nil
+		return m, nil
+	}
+	return m, nil
+}
+
 func (m TUIModel) handlePromptKey(key string, msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch key {
 	case "esc":
@@ -766,7 +977,11 @@ func (m TUIModel) executeAction(action tabAction) (TUIModel, tea.Cmd) {
 		fn := action.Native
 		return m, tea.Batch(m.spinner.Tick, elapsedTick(), func() tea.Msg {
 			lines, deityKey, fixCmds, err := fn()
-			return nativeResultMsg{lines: lines, deityKey: deityKey, fixCmds: fixCmds, err: err}
+			pendingSelectMu.Lock()
+			selReq := pendingSelectReq
+			pendingSelectReq = nil
+			pendingSelectMu.Unlock()
+			return nativeResultMsg{lines: lines, deityKey: deityKey, fixCmds: fixCmds, err: err, selectReq: selReq}
 		})
 	}
 	return m.executeArgs(action.Args)
@@ -849,6 +1064,7 @@ func (m TUIModel) handleStreamLine(msg streamLineMsg) (TUIModel, tea.Cmd) {
 	if msg.done {
 		m.mode = viewDone
 		m.runningProc.Store(nil)
+		m.lastDeity = m.runningDeity
 
 		if m.runningDeity != "" {
 			m.activeDeity[m.runningDeity] = true
@@ -924,7 +1140,21 @@ func (m TUIModel) handleStreamLine(msg streamLineMsg) (TUIModel, tea.Cmd) {
 
 // handleNativeResult processes results from native deity function calls.
 func (m TUIModel) handleNativeResult(msg nativeResultMsg) (TUIModel, tea.Cmd) {
+	// If the result carries a select request, enter checkbox mode.
+	if msg.selectReq != nil && msg.err == nil {
+		m.mode = viewSelect
+		m.selectTitle = msg.selectReq.title
+		m.selectItems = msg.selectReq.items
+		m.selectCursor = 0
+		m.selectOnConfirm = msg.selectReq.onConfirm
+		m.runningDeity = ""
+		m.runningCmd = ""
+		m.runningArgs = nil
+		return m, nil
+	}
+
 	m.mode = viewDone
+	m.lastDeity = msg.deityKey
 	m.runningDeity = msg.deityKey
 
 	if msg.err != nil {
@@ -1045,6 +1275,8 @@ func (m TUIModel) View() tea.View {
 	case viewPrompt:
 		b.WriteString(m.renderTabPage())
 		// Prompt overlay at bottom handled below
+	case viewSelect:
+		b.WriteString(m.renderSelect())
 	}
 
 	// ── Bottom bar ──
@@ -1120,56 +1352,112 @@ func (m TUIModel) renderTabPage() string {
 	return b.String()
 }
 
-// renderStatusPage renders the bento-grid vitals dashboard.
+// renderStatusPage renders the live real-time status dashboard.
 func (m TUIModel) renderStatusPage(gold, dim lipgloss.Style) string {
 	var b strings.Builder
 	body := lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC"))
-	bigNum := lipgloss.NewStyle().Foreground(White).Bold(true)
-	label := lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
+	num := lipgloss.NewStyle().Foreground(Gold).Bold(true)
+
+	maxW := min(m.width-4, 116)
+	colW := maxW/2 - 2
+	barW := colW - 18
+	if barW < 10 {
+		barW = 10
+	}
+	sparkW := colW - 8
+	if sparkW < 10 {
+		sparkW = 10
+	}
+
+	// ── Health score ──
+	healthScore := m.computeHealthScore()
+	healthLabel := "THRIVING"
+	healthColor := Gold
+	switch {
+	case healthScore < 50:
+		healthLabel = "AILING"
+		healthColor = Red
+	case healthScore < 70:
+		healthLabel = "STRAINED"
+		healthColor = lipgloss.Color("#FFAA00")
+	case healthScore < 85:
+		healthLabel = "STABLE"
+		healthColor = Yellow
+	}
+
+	machineInfo := m.vitals.ModelName
+	if m.vitals.Accelerator != "" {
+		machineInfo += " · " + m.vitals.Accelerator
+	}
+	if m.vitals.RAMTotalGB > 0 {
+		machineInfo += fmt.Sprintf(" · %.0fGB", m.vitals.RAMTotalGB)
+	}
+	if m.vitals.OSVersion != "" {
+		machineInfo += " · " + m.vitals.OSVersion
+	}
 
 	b.WriteString("\n")
+	b.WriteString("  " + gold.Render("𓂀 Status") + "  " +
+		lipgloss.NewStyle().Foreground(healthColor).Bold(true).Render(fmt.Sprintf("Health ● %d", healthScore)) +
+		"  " + lipgloss.NewStyle().Foreground(healthColor).Render(healthLabel) +
+		"  " + dim.Render(machineInfo) + "\n")
+	b.WriteString("\n")
 
-	// ── Vitals cards ──
-	colW := (min(m.width, 120) - 8) / 3
-	if colW < 25 {
-		colW = 25
-	}
+	// ── Row 1: CPU | Memory ──
+	leftCol := "  " + gold.Render("𓁐 CPU") + "\n"
+	leftCol += fmt.Sprintf("  Total   %s\n", ProgressBar(m.vitals.CPUPercent, barW))
+	leftCol += fmt.Sprintf("  Load    %.2f / %.2f / %.2f\n",
+		m.vitals.CPULoadAvg[0], m.vitals.CPULoadAvg[1], m.vitals.CPULoadAvg[2])
+	leftCol += "          " + Sparkline(m.cpuHistory, sparkW, Gold) + "\n"
 
-	// Row 1: RAM | Git | Accelerator
-	ramCard := m.renderCard("RAM", fmt.Sprintf("%.0f%%", m.vitals.RAMPercent),
-		m.vitals.RAMPressure, m.vitals.RAMIcon, colW)
-	gitInfo := m.vitals.GitBranch
-	if m.vitals.Uncommitted > 0 {
-		gitInfo += fmt.Sprintf(" +%d", m.vitals.Uncommitted)
-	}
-	gitCard := m.renderCard("GIT", gitInfo, m.vitals.LastCommit, "🌿", colW)
-	accelCard := m.renderCard("ACCEL", m.vitals.Accelerator, "", "⚡", colW)
+	rightCol := "  " + gold.Render("𓊗 Memory") + "\n"
+	rightCol += fmt.Sprintf("  Used    %s\n", ProgressBar(m.vitals.RAMPercent, barW))
+	rightCol += fmt.Sprintf("  Total   %.1f / %.1f GB\n",
+		m.vitals.RAMUsedGB, m.vitals.RAMTotalGB)
+	rightCol += "          " + Sparkline(m.memHistory, sparkW, Gold) + "\n"
 
-	b.WriteString("  " + ramCard + "  " + gitCard + "  " + accelCard + "\n\n")
+	b.WriteString(sideBySide(leftCol, rightCol, colW))
+	b.WriteString("\n")
 
-	// ── Waste summary ──
-	if scan, err := jackal.LoadLatest(); err == nil && scan.TotalSize > 0 {
-		age := time.Since(scan.Timestamp)
-		ageStr := "just now"
-		if age > time.Hour {
-			ageStr = fmt.Sprintf("%.0fh ago", age.Hours())
-		} else if age > time.Minute {
-			ageStr = fmt.Sprintf("%.0fm ago", age.Minutes())
+	// ── Row 2: Disk | Network ──
+	leftCol = "  " + gold.Render("▤ Disk") + "\n"
+	leftCol += fmt.Sprintf("  Used    %s\n", ProgressBar(m.vitals.DiskPercent, barW))
+	leftCol += fmt.Sprintf("  Free    %.1f GB\n", m.vitals.DiskFreeGB)
+
+	downMBs := m.vitals.NetDownBps / (1024 * 1024)
+	upMBs := m.vitals.NetUpBps / (1024 * 1024)
+	rightCol = "  " + gold.Render("⇅ Network") + "\n"
+	rightCol += fmt.Sprintf("  Down    %s  %.2f MB/s\n",
+		Sparkline(m.netDownHist, sparkW, Green), downMBs)
+	rightCol += fmt.Sprintf("  Up      %s  %.2f MB/s\n",
+		Sparkline(m.netUpHist, sparkW, lipgloss.Color("#51A9C8")), upMBs)
+
+	b.WriteString(sideBySide(leftCol, rightCol, colW))
+	b.WriteString("\n")
+
+	// ── Top Processes ──
+	if len(m.vitals.TopProcs) > 0 {
+		b.WriteString("  " + gold.Render("𓃣 Top Processes") + "\n")
+		maxCPU := m.vitals.TopProcs[0].CPUPercent
+		if maxCPU < 1 {
+			maxCPU = 1
 		}
-		wasteIcon := "🟢"
-		if scan.TotalSize > 10*1024*1024*1024 {
-			wasteIcon = "🔴"
-		} else if scan.TotalSize > 5*1024*1024*1024 {
-			wasteIcon = "🟡"
+		for _, p := range m.vitals.TopProcs {
+			pctNorm := int(p.CPUPercent / maxCPU * 100)
+			name := p.Name
+			if len(name) > 12 {
+				name = name[:12]
+			}
+			b.WriteString(fmt.Sprintf("  %-12s %s  %.1f%%\n",
+				body.Render(name),
+				ScoreBar(pctNorm, 5),
+				p.CPUPercent))
 		}
-		b.WriteString("  " + label.Render("WASTE") + "\n")
-		b.WriteString("  " + wasteIcon + " " +
-			bigNum.Render(jackal.FormatSize(scan.TotalSize)) +
-			"  " + dim.Render(fmt.Sprintf("%d findings · scanned %s", len(scan.Findings), ageStr)) + "\n\n")
+		b.WriteString("\n")
 	}
 
-	// ── Deity Status ──
-	b.WriteString("  " + label.Render("DEITIES") + "\n")
+	// ── Row 3: Deities | Recent ──
+	leftCol = "  " + gold.Render("𓊝 Deities") + "\n"
 	for _, d := range deity.Roster {
 		state := m.deityState[d.Key]
 		var indicator, status string
@@ -1187,29 +1475,99 @@ func (m TUIModel) renderStatusPage(gold, dim lipgloss.Style) string {
 			indicator = dim.Render("·")
 			status = dim.Render("—")
 		}
-		b.WriteString("  " + indicator + " " +
-			body.Render(d.Glyph+" "+d.Name) + "  " + status + "\n")
+		leftCol += fmt.Sprintf("  %s %-10s %s\n", indicator, body.Render(d.Name), status)
 	}
-	b.WriteString("\n")
 
-	// ── Recent Activity ──
+	rightCol = "  " + gold.Render("𓏛 Recent") + "\n"
 	if len(m.recentNotify) > 0 {
-		b.WriteString("  " + label.Render("RECENT") + "\n")
 		for i, n := range m.recentNotify {
 			if i >= 5 {
 				break
 			}
 			icon := notify.SeverityIcon(n.Severity)
 			summary := n.Summary
-			if len(summary) > 60 {
-				summary = summary[:57] + "…"
+			if len(summary) > 40 {
+				summary = summary[:37] + "…"
 			}
-			b.WriteString(fmt.Sprintf("  %s %s  %s\n",
-				icon, gold.Render(n.Source), dim.Render(summary)))
+			rightCol += fmt.Sprintf("  %s %s\n", icon, dim.Render(summary))
 		}
+	} else {
+		rightCol += "  " + dim.Render("No recent activity") + "\n"
+	}
+
+	b.WriteString(sideBySide(leftCol, rightCol, colW))
+	b.WriteString("\n")
+
+	// ── Numbered actions (still available) ──
+	tab := tabs[m.activeTab]
+	for i, action := range tab.Actions {
+		b.WriteString("  " + num.Render(fmt.Sprintf(" %d ", i+1)) +
+			"  " + body.Render(action.Label) +
+			"  " + dim.Render(action.Desc) + "\n")
 	}
 
 	return b.String()
+}
+
+// sideBySide places two multi-line strings side by side.
+func sideBySide(left, right string, colWidth int) string {
+	leftLines := strings.Split(strings.TrimRight(left, "\n"), "\n")
+	rightLines := strings.Split(strings.TrimRight(right, "\n"), "\n")
+
+	maxLines := len(leftLines)
+	if len(rightLines) > maxLines {
+		maxLines = len(rightLines)
+	}
+
+	var b strings.Builder
+	for i := 0; i < maxLines; i++ {
+		l := ""
+		if i < len(leftLines) {
+			l = leftLines[i]
+		}
+		r := ""
+		if i < len(rightLines) {
+			r = rightLines[i]
+		}
+		padded := l + strings.Repeat(" ", max(0, colWidth-visibleLen(l)))
+		b.WriteString(padded + r + "\n")
+	}
+	return b.String()
+}
+
+// visibleLen estimates the visible length of a string, stripping ANSI escapes.
+func visibleLen(s string) int {
+	n := 0
+	inEscape := false
+	for _, r := range s {
+		if r == '\x1b' {
+			inEscape = true
+			continue
+		}
+		if inEscape {
+			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') {
+				inEscape = false
+			}
+			continue
+		}
+		n++
+	}
+	return n
+}
+
+// computeHealthScore returns a 0-100 weighted health score.
+func (m TUIModel) computeHealthScore() int {
+	cpuScore := 100 - m.vitals.CPUPercent
+	ramScore := 100 - m.vitals.RAMPercent
+	diskScore := 100 - m.vitals.DiskPercent
+	score := cpuScore*0.30 + ramScore*0.40 + diskScore*0.30
+	if score < 0 {
+		score = 0
+	}
+	if score > 100 {
+		score = 100
+	}
+	return int(score)
 }
 
 // renderCard renders a small bento card with a label, big value, and subtitle.
@@ -1265,9 +1623,14 @@ func (m TUIModel) renderDone() string {
 	b.WriteString("\n")
 	b.WriteString(m.viewport.View() + "\n")
 
-	// ── Completion ──
+	// ── Completion banner — decree from the deity that ran ──
+	bannerMsg := "Judgment Complete"
+	if m.lastDeity != "" {
+		glyph, name := deity.Display(m.lastDeity)
+		bannerMsg = glyph + " " + name + " — Complete"
+	}
 	b.WriteString("\n")
-	b.WriteString("  " + green.Render("✓ Done") + "\n")
+	b.WriteString("  " + ResultBanner(bannerMsg, green, 50) + "\n")
 	b.WriteString("\n")
 
 	// ── Numbered next actions ──
@@ -1314,6 +1677,8 @@ func (m TUIModel) renderBottomHints() string {
 		} else {
 			hints = []string{"↑/↓ scroll", ": command", "esc back"}
 		}
+	case viewSelect:
+		hints = []string{"↑/↓ move", "space toggle", "a all", "enter confirm", "esc cancel"}
 	}
 
 	return " " + dim.Render(strings.Join(hints, "  ·  "))
@@ -1379,6 +1744,25 @@ func (m *TUIModel) refreshActive() {
 
 func (m *TUIModel) refreshVitals() {
 	m.vitals = vitals.Collect()
+}
+
+const maxHistory = 60
+
+func (m *TUIModel) appendHistory() {
+	m.cpuHistory = appendCapped(m.cpuHistory, m.vitals.CPUPercent)
+	m.memHistory = appendCapped(m.memHistory, m.vitals.RAMPercent)
+	downNorm := m.vitals.NetDownBps / (10 * 1024 * 1024) * 100
+	upNorm := m.vitals.NetUpBps / (10 * 1024 * 1024) * 100
+	m.netDownHist = appendCapped(m.netDownHist, downNorm)
+	m.netUpHist = appendCapped(m.netUpHist, upNorm)
+}
+
+func appendCapped(buf []float64, val float64) []float64 {
+	buf = append(buf, val)
+	if len(buf) > maxHistory {
+		buf = buf[len(buf)-maxHistory:]
+	}
+	return buf
 }
 
 func (m *TUIModel) refreshNotifications() {

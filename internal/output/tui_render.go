@@ -7,6 +7,9 @@ package output
 
 import (
 	"fmt"
+	"image/color"
+	"strings"
+	"syscall"
 
 	"charm.land/lipgloss/v2"
 
@@ -39,9 +42,16 @@ var (
 func RenderScanResult(res *jackal.ScanResult) []string {
 	var lines []string
 
-	// Big number hero
+	// Hero banner — Anubis weighs
 	lines = append(lines, "")
-	lines = append(lines, "  "+rBig.Render(jackal.FormatSize(res.TotalSize))+"  "+rDim.Render("reclaimable"))
+	bannerText := fmt.Sprintf("𓃣 Weighed: %s reclaimable", jackal.FormatSize(res.TotalSize))
+	bannerStyle := rGold
+	if res.TotalSize > 10*1024*1024*1024 {
+		bannerStyle = rRed
+	} else if res.TotalSize > 5*1024*1024*1024 {
+		bannerStyle = rWarn
+	}
+	lines = append(lines, "  "+ResultBanner(bannerText, bannerStyle, 50))
 	lines = append(lines, "  "+rDim.Render(fmt.Sprintf("%d findings across %d rules", len(res.Findings), res.RulesRan)))
 	lines = append(lines, "")
 
@@ -262,9 +272,19 @@ func RenderCleanResult(result *jackal.CleanResult) []string {
 
 	lines = append(lines, "")
 	if result.BytesFreed > 0 {
-		lines = append(lines, "  "+rGreen.Render("✓")+"  "+rLabel.Render("SPACE FREED"))
-		lines = append(lines, "  "+rBig.Render(jackal.FormatSize(result.BytesFreed)))
-		lines = append(lines, "  "+rDim.Render(fmt.Sprintf("%d items cleaned, %d skipped", result.Cleaned, result.Skipped)))
+		bannerText := fmt.Sprintf("𓃣 Purged: %s freed", jackal.FormatSize(result.BytesFreed))
+		lines = append(lines, "")
+		lines = append(lines, "  "+ResultBanner(bannerText, rGold, 50))
+		lines = append(lines, "")
+		// Show current free space — the payoff line
+		var stat syscall.Statfs_t
+		if err := syscall.Statfs("/", &stat); err == nil {
+			freeBytes := int64(stat.Bavail) * int64(stat.Bsize)
+			lines = append(lines, "  "+rBody.Render(fmt.Sprintf("%d items cleaned, %d skipped", result.Cleaned, result.Skipped))+
+				"  "+rGold.Render("·")+"  "+rBig.Render(jackal.FormatSize(freeBytes))+" "+rDim.Render("free now"))
+		} else {
+			lines = append(lines, "  "+rDim.Render(fmt.Sprintf("%d items cleaned, %d skipped", result.Cleaned, result.Skipped)))
+		}
 	} else {
 		lines = append(lines, "  "+rDim.Render("No space freed."))
 		if result.Skipped > 0 {
@@ -291,21 +311,22 @@ func RenderNetworkAudit(report *guard.NetworkReport) ([]string, []string) {
 	var lines []string
 	var fixCmds []string
 
-	// Score hero
-	scoreStyle := rGreen
-	scoreLabel := "HEALTHY"
+	// Score hero — Isis guards the network
+	scoreStyle := rGold
+	scoreLabel := "FORTIFIED"
 	switch {
 	case report.Score < 50:
 		scoreStyle = rRed
-		scoreLabel = "AT RISK"
+		scoreLabel = "EXPOSED"
 	case report.Score < 75:
 		scoreStyle = rWarn
-		scoreLabel = "NEEDS ATTENTION"
+		scoreLabel = "VULNERABLE"
 	}
 
 	lines = append(lines, "")
-	lines = append(lines, "  "+rLabel.Render("SECURITY SCORE"))
+	lines = append(lines, "  "+rLabel.Render("𓁐 SECURITY POSTURE"))
 	lines = append(lines, "  "+scoreStyle.Bold(true).Render(fmt.Sprintf("%d/100", report.Score))+"  "+scoreStyle.Render(scoreLabel))
+	lines = append(lines, "  "+ScoreBar(report.Score, 20))
 	lines = append(lines, "")
 
 	// Findings with per-item status
@@ -360,24 +381,25 @@ func RenderDoctorReport(report *guard.DoctorReport) ([]string, []string) {
 	var lines []string
 	var fixCmds []string
 
-	// Score hero
-	scoreStyle := rGreen
-	scoreLabel := "EXCELLENT"
+	// Score hero — the system's vital force
+	scoreStyle := rGold
+	scoreLabel := "THRIVING"
 	switch {
 	case report.Score < 50:
 		scoreStyle = rRed
-		scoreLabel = "POOR"
+		scoreLabel = "AILING"
 	case report.Score < 75:
 		scoreStyle = rWarn
-		scoreLabel = "FAIR"
+		scoreLabel = "STRAINED"
 	case report.Score < 90:
 		scoreStyle = rBody
-		scoreLabel = "GOOD"
+		scoreLabel = "STABLE"
 	}
 
 	lines = append(lines, "")
-	lines = append(lines, "  "+rLabel.Render("HEALTH SCORE"))
+	lines = append(lines, "  "+rLabel.Render("𓁐 VITALS"))
 	lines = append(lines, "  "+scoreStyle.Bold(true).Render(fmt.Sprintf("%d/100", report.Score))+"  "+scoreStyle.Render(scoreLabel))
+	lines = append(lines, "  "+ScoreBar(report.Score, 20))
 	lines = append(lines, "")
 
 	lines = append(lines, "  "+rLabel.Render("CHECKS"))
@@ -440,20 +462,21 @@ func RenderMaatReport(report *maat.Report) ([]string, []string) {
 	var lines []string
 	var fixCmds []string
 
-	verdictStyle := rGreen
-	verdictLabel := "PASS"
+	verdictStyle := rGold
+	verdictLabel := "WORTHY"
 	switch report.OverallVerdict {
 	case maat.VerdictWarning:
 		verdictStyle = rWarn
-		verdictLabel = "WARNING"
+		verdictLabel = "WANTING"
 	case maat.VerdictFail:
 		verdictStyle = rRed
-		verdictLabel = "FAIL"
+		verdictLabel = "UNWORTHY"
 	}
 
 	lines = append(lines, "")
-	lines = append(lines, "  "+rLabel.Render("QUALITY SCORE"))
+	lines = append(lines, "  "+rLabel.Render("𓆄 FEATHER WEIGHT"))
 	lines = append(lines, "  "+verdictStyle.Bold(true).Render(fmt.Sprintf("%d/100", report.OverallWeight))+"  "+verdictStyle.Render(verdictLabel))
+	lines = append(lines, "  "+ScoreBar(report.OverallWeight, 20))
 	lines = append(lines, "  "+rDim.Render(fmt.Sprintf("%d passed  %d warnings  %d failures", report.Passes, report.Warnings, report.Failures)))
 	lines = append(lines, "")
 
@@ -606,6 +629,91 @@ func RenderSymbolGraph(graph *horus.SymbolGraph) []string {
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
+// ── Checkbox Selection ──────────────────────────────────────────
+
+func (m TUIModel) renderSelect() string {
+	var b strings.Builder
+	gold := lipgloss.NewStyle().Foreground(Gold)
+	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
+	body := lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC"))
+	sizeStyle := lipgloss.NewStyle().Foreground(Gold)
+	selectedBox := gold.Render("☑")
+	unselectedBox := dim.Render("☐")
+	cursor := gold.Render("▸")
+	sep := dim.Render(strings.Repeat("━", min(m.width-6, 60)))
+
+	b.WriteString("\n")
+	b.WriteString("  " + gold.Render(m.selectTitle) + "\n\n")
+
+	maxVisible := m.height - 14
+	if maxVisible < 5 {
+		maxVisible = 5
+	}
+	startIdx := 0
+	if len(m.selectItems) > maxVisible && m.selectCursor >= maxVisible {
+		startIdx = m.selectCursor - maxVisible + 1
+	}
+	endIdx := startIdx + maxVisible
+	if endIdx > len(m.selectItems) {
+		endIdx = len(m.selectItems)
+	}
+
+	for i := startIdx; i < endIdx; i++ {
+		item := m.selectItems[i]
+		prefix := "    "
+		if i == m.selectCursor {
+			prefix = "  " + cursor + " "
+		}
+		box := unselectedBox
+		if item.Selected {
+			box = selectedBox
+		}
+		sizeStr := ""
+		if item.Size > 0 {
+			sizeStr = sizeStyle.Render(fmt.Sprintf("%8s", jackal.FormatSize(item.Size)))
+		}
+		labelStyle := body
+		if i == m.selectCursor {
+			labelStyle = lipgloss.NewStyle().Foreground(White).Bold(true)
+		}
+		line := prefix + box + " " + labelStyle.Render(item.Label)
+		if sizeStr != "" {
+			line += "  " + sizeStr
+		}
+		b.WriteString(line + "\n")
+		if item.Detail != "" {
+			b.WriteString("       " + dim.Render(item.Detail) + "\n")
+		}
+	}
+
+	if len(m.selectItems) > maxVisible {
+		if startIdx > 0 {
+			b.WriteString("    " + dim.Render(fmt.Sprintf("↑ %d more above", startIdx)) + "\n")
+		}
+		if endIdx < len(m.selectItems) {
+			b.WriteString("    " + dim.Render(fmt.Sprintf("↓ %d more below", len(m.selectItems)-endIdx)) + "\n")
+		}
+	}
+
+	b.WriteString("\n  " + sep + "\n")
+
+	selectedCount := 0
+	var selectedSize int64
+	for _, item := range m.selectItems {
+		if item.Selected {
+			selectedCount++
+			selectedSize += item.Size
+		}
+	}
+	summary := fmt.Sprintf("%d selected", selectedCount)
+	if selectedSize > 0 {
+		summary += " · " + jackal.FormatSize(selectedSize) + " to purge"
+	}
+	b.WriteString("  " + gold.Render(summary) + "\n\n")
+
+	return b.String()
+}
+
 func splitLines(s string) []string {
 	result := []string{}
 	start := 0
@@ -621,31 +729,174 @@ func splitLines(s string) []string {
 	return result
 }
 
+// ── Pantheon Gauge ───────────────────────────────────────────────
+// Gold-filled fractional bars with Lapis empty track. 8 sub-blocks
+// per character = 160-step resolution on a 20-char bar. Color
+// escalation uses the Pantheon palette: Gold → Red at pressure.
+
+var subBlocks = []rune{' ', '▏', '▎', '▍', '▌', '▋', '▊', '▉'}
+
+// ProgressBar renders a Pantheon-branded gauge: ████████▒▒▒ 72%
+// Gold fill below 60%, warm amber 60-85%, Red above 85%.
+// Empty track uses Deep Lapis — not generic gray.
+func ProgressBar(percent float64, width int) string {
+	if percent < 0 {
+		percent = 0
+	}
+	if percent > 100 {
+		percent = 100
+	}
+
+	// Pantheon color escalation
+	barColor := Gold // brand gold is the default healthy state
+	switch {
+	case percent >= 85:
+		barColor = Red
+	case percent >= 60:
+		barColor = Yellow // warm escalation before danger
+	}
+	filled := lipgloss.NewStyle().Foreground(barColor)
+	track := lipgloss.NewStyle().Foreground(Lapis) // deep lapis empty track
+
+	totalUnits := float64(width) * 8
+	filledUnits := int(percent / 100 * totalUnits)
+	fullBlocks := filledUnits / 8
+	remainder := filledUnits % 8
+
+	var bar string
+	bar += filled.Render(repeatRune('█', fullBlocks))
+	if fullBlocks < width {
+		bar += filled.Render(string(subBlocks[remainder]))
+		bar += track.Render(repeatRune('▒', width-fullBlocks-1))
+	}
+
+	pctLabel := lipgloss.NewStyle().Foreground(Gold).Bold(true)
+	return bar + pctLabel.Render(fmt.Sprintf(" %3.0f%%", percent))
+}
+
+// ScoreBar renders a Pantheon gauge for 0-100 scores.
+// Gold at top, Red at bottom — the Feather weighs favorably.
+func ScoreBar(score int, width int) string {
+	barColor := Red
+	switch {
+	case score >= 75:
+		barColor = Gold
+	case score >= 50:
+		barColor = Yellow
+	}
+	filled := lipgloss.NewStyle().Foreground(barColor)
+	track := lipgloss.NewStyle().Foreground(Lapis)
+
+	pct := float64(score) / 100
+	totalUnits := float64(width) * 8
+	filledUnits := int(pct * totalUnits)
+	fullBlocks := filledUnits / 8
+	remainder := filledUnits % 8
+
+	var bar string
+	bar += filled.Render(repeatRune('█', fullBlocks))
+	if fullBlocks < width {
+		bar += filled.Render(string(subBlocks[remainder]))
+		bar += track.Render(repeatRune('▒', width-fullBlocks-1))
+	}
+	return bar
+}
+
+// ── Sparkline ───────────────────────────────────────────────────
+// Mini history chart using vertical block characters. 8 levels
+// from ▁ (floor) to █ (ceiling). Gold-tinted by default.
+
+var sparkChars = []rune{'▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'}
+
+// Sparkline renders a mini history chart. vals are 0-100, width is char count.
+func Sparkline(vals []float64, width int, c color.Color) string {
+	if len(vals) == 0 {
+		return lipgloss.NewStyle().Foreground(Lapis).
+			Render(strings.Repeat(string(sparkChars[0]), width))
+	}
+
+	// Take last `width` values
+	start := 0
+	if len(vals) > width {
+		start = len(vals) - width
+	}
+	visible := vals[start:]
+
+	var buf strings.Builder
+	for _, v := range visible {
+		if v < 0 {
+			v = 0
+		}
+		if v > 100 {
+			v = 100
+		}
+		idx := int(v / 100 * 7)
+		if idx > 7 {
+			idx = 7
+		}
+		buf.WriteRune(sparkChars[idx])
+	}
+	// Pad with floor sparks if not enough data
+	for i := len(visible); i < width; i++ {
+		buf.WriteRune(sparkChars[0])
+	}
+
+	return lipgloss.NewStyle().Foreground(c).Render(buf.String())
+}
+
+func repeatRune(r rune, n int) string {
+	if n <= 0 {
+		return ""
+	}
+	out := make([]rune, n)
+	for i := range out {
+		out[i] = r
+	}
+	return string(out)
+}
+
+// ── Pantheon Banner ─────────────────────────────────────────────
+// Cartouche-style decree banner. Gold borders with hieroglyphic
+// markers — every result is a judgment from the scales.
+
+// ResultBanner renders 𓊝━━━┫ message ┣━━━𓊝 in the given style.
+func ResultBanner(message string, style lipgloss.Style, width int) string {
+	msgLen := len(message) + 6 // ┫ + spaces + message + spaces + ┣
+	if width < msgLen+8 {
+		width = msgLen + 8
+	}
+	sideLen := (width - msgLen) / 2
+	border := lipgloss.NewStyle().Foreground(Gold)
+	left := border.Render("𓊝" + repeatRune('━', sideLen) + "┫ ")
+	right := border.Render(" ┣" + repeatRune('━', sideLen) + "𓊝")
+	return left + style.Render(message) + right
+}
+
 func categoryIcon(cat string) string {
 	switch cat {
 	case "cache":
-		return "🗑"
+		return "𓊗" // vessel — things poured out
 	case "logs":
-		return "📋"
+		return "𓏛" // papyrus scroll
 	case "build":
-		return "🔨"
+		return "𓍹" // chisel
 	case "containers":
-		return "🐳"
+		return "𓊖" // enclosure
 	case "dev-tools", "dev":
-		return "🔧"
+		return "𓌙" // tool
 	case "packages":
-		return "📦"
+		return "𓎟" // bundle
 	case "ai":
-		return "🤖"
+		return "𓂀" // eye of Horus
 	case "ides":
-		return "💻"
+		return "𓉔" // house/workshop
 	case "cloud":
-		return "☁️"
+		return "𓇼" // star (sky)
 	case "storage":
-		return "💾"
+		return "𓋹" // ankh (life/data)
 	case "vms":
-		return "🖥"
+		return "𓊝" // cartouche
 	default:
-		return "📁"
+		return "𓃀" // foot (path)
 	}
 }

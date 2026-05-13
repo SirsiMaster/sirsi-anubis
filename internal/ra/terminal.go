@@ -319,9 +319,8 @@ chmod +x %s && claude %s --print < %s 2>/dev/null | %s`,
 func buildTerminalScript(shellCmd, title string) string {
 	return fmt.Sprintf(`tell application "Terminal"
 	activate
-	set newTab to do script "%s; exit"
-	set newWin to window of newTab
-	set custom title of newWin to "%s"
+	do script "%s; exit"
+	set custom title of front window to "%s"
 end tell`, escapeAppleScript(shellCmd), escapeAppleScript(title))
 }
 
