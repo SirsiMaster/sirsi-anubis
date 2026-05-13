@@ -47,7 +47,7 @@ func runQuickstart(cmd *cobra.Command, args []string) error {
 		fmt.Println(green.Render("  Your machine is clean. No waste found."))
 		fmt.Println()
 		fmt.Println(dim.Render("  Other things to try:"))
-		fmt.Printf("    %s  %s\n", gold.Render("sirsi doctor"), dim.Render("System health diagnostic"))
+		fmt.Printf("    %s  %s\n", gold.Render("sirsi diagnose"), dim.Render("System health diagnostic"))
 		fmt.Printf("    %s  %s\n", gold.Render("sirsi ghosts"), dim.Render("Find remnants of uninstalled apps"))
 		fmt.Printf("    %s  %s\n", gold.Render("sirsi network"), dim.Render("Network security audit"))
 		fmt.Println()
@@ -117,7 +117,7 @@ func runQuickstart(cmd *cobra.Command, args []string) error {
 
 	fmt.Println()
 	fmt.Println(dim.Render("  More commands:"))
-	fmt.Printf("    %s  %s\n", gold.Render("sirsi doctor"), dim.Render("System health diagnostic"))
+	fmt.Printf("    %s  %s\n", gold.Render("sirsi diagnose"), dim.Render("System health diagnostic"))
 	fmt.Printf("    %s  %s\n", gold.Render("sirsi ghosts"), dim.Render("Find remnants of uninstalled apps"))
 	fmt.Printf("    %s  %s\n", gold.Render("sirsi network"), dim.Render("Network security audit"))
 	fmt.Println()

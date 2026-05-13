@@ -94,8 +94,8 @@ func TestVersion(t *testing.T) {
 	}
 
 	combined := stdout
-	if !strings.Contains(combined, "0.19.0") {
-		t.Errorf("version output missing '0.19.0', got:\n%s", combined)
+	if !strings.Contains(combined, "0.21.0") {
+		t.Errorf("version output missing '0.21.0', got:\n%s", combined)
 	}
 	if !strings.Contains(combined, "Pantheon") {
 		t.Errorf("version output missing 'Pantheon', got:\n%s", combined)
@@ -320,7 +320,7 @@ func TestDeityCommands(t *testing.T) {
 			args:           []string{"version"},
 			timeout:        10 * time.Second,
 			wantExit0:      true,
-			outputContains: []string{"0.19.0", "Pantheon"},
+			outputContains: []string{"0.21.0", "Pantheon"},
 		},
 		{
 			name:           "help",

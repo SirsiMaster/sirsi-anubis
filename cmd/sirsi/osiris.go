@@ -21,7 +21,7 @@ var osirisCmd = &cobra.Command{
 Detects uncommitted work, measures session drift, and warns before data loss.
 5-level risk assessment with time-based escalation.
 
-  sirsi osiris assess        Show current checkpoint status
+  sirsi osiris risk           Risk assessment of uncommitted work
   sirsi osiris status        One-line risk summary`,
 	Run: func(cmd *cobra.Command, args []string) {
 		_ = cmd.Help()
@@ -29,8 +29,9 @@ Detects uncommitted work, measures session drift, and warns before data loss.
 }
 
 var osirisAssessCmd = &cobra.Command{
-	Use:   "assess [path]",
-	Short: "Full checkpoint assessment of uncommitted work",
+	Use:     "risk [path]",
+	Aliases: []string{"assess"},
+	Short:   "Risk assessment of uncommitted work",
 	Long: `𓁹 Osiris Assess — Checkpoint Assessment
 
 Evaluates the current Git repository state:
@@ -44,9 +45,9 @@ Risk escalates automatically:
   • 2+ hours since last commit → Critical
   • 16-30 files → High
 
-  sirsi osiris assess             Assess current directory
-  sirsi osiris assess /path/to    Assess a specific repo
-  sirsi osiris assess --json      Output as JSON`,
+  sirsi risk                      Assess current directory
+  sirsi osiris risk /path/to      Assess a specific repo
+  sirsi risk --json               Output as JSON`,
 	RunE: runOsirisAssess,
 }
 

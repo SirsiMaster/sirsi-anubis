@@ -107,13 +107,13 @@ func Placeholder(ctx Context) string {
 	switch ctx.Deity {
 	case "anubis":
 		switch ctx.Subcommand {
-		case "weigh":
+		case "weigh", "scan":
 			return "findings · clean · judge  (or type a category like dev, ai, cloud)"
-		case "judge":
+		case "judge", "clean":
 			return "findings · scan  (verify cleanup with a fresh scan)"
-		case "ka":
+		case "ka", "ghosts":
 			return "findings · clean  (remove ghost residuals)"
-		case "mirror":
+		case "mirror", "duplicates":
 			return "scan · clean  (full scan or reclaim space)"
 		case "apps":
 			return "ghosts · scan · clean  (check residuals or scan waste)"
@@ -189,7 +189,7 @@ func Placeholder(ctx Context) string {
 		}
 	case "osiris":
 		switch ctx.Subcommand {
-		case "assess":
+		case "assess", "risk":
 			return "osiris status · sirsi thoth sync  (quick status or sync memory)"
 		default:
 			return "sirsi risk · sirsi thoth sync"
@@ -224,7 +224,7 @@ func Commands(ctx Context) []string {
 
 func afterAnubis(ctx Context) []Action {
 	switch ctx.Subcommand {
-	case "weigh":
+	case "weigh", "scan":
 		actions := []Action{
 			{Command: "sirsi clean", Short: "Review & clean", Description: "Review and clean safe items (dry-run by default)", Priority: 0},
 			{Command: "sirsi clean --confirm", Short: "Apply cleanup", Description: "Apply cleanup (moves to Trash)", Priority: 1},
@@ -237,17 +237,17 @@ func afterAnubis(ctx Context) []Action {
 			}, actions...)
 		}
 		return actions
-	case "judge":
+	case "judge", "clean":
 		return []Action{
 			{Command: "sirsi scan", Short: "Re-scan", Description: "Run a fresh scan to verify cleanup", Priority: 0},
 			{Command: "sirsi ghosts", Short: "Hunt ghosts", Description: "Hunt remaining ghost app residuals", Priority: 1},
 		}
-	case "ka":
+	case "ka", "ghosts":
 		return []Action{
 			{Command: "findings", Short: "View findings", Description: "View all findings including ghosts", Priority: 0},
 			{Command: "sirsi clean", Short: "Clean up", Description: "Remove ghost residuals", Priority: 1},
 		}
-	case "mirror":
+	case "mirror", "duplicates":
 		return []Action{
 			{Command: "sirsi scan", Short: "Full scan", Description: "Run full waste scan", Priority: 0},
 		}
@@ -441,7 +441,7 @@ func afterSeba(ctx Context) []Action {
 
 func afterOsiris(ctx Context) []Action {
 	switch ctx.Subcommand {
-	case "assess":
+	case "assess", "risk":
 		return []Action{
 			{Command: "sirsi osiris status", Short: "Quick status", Description: "One-line risk summary", Priority: 0},
 			{Command: "sirsi sirsi thoth sync", Short: "Sync memory", Description: "Sync memory before committing", Priority: 1},

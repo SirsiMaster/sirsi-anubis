@@ -22,7 +22,7 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/workstream"
 )
 
-var version = "v0.19.0"
+var version = "v0.21.0"
 
 // versionCmd prints the version and optionally checks for updates.
 var versionCmd = &cobra.Command{
@@ -99,6 +99,7 @@ var rootCmd = &cobra.Command{
   sirsi network            Network security audit
   sirsi fix                Auto-fix DNS, firewall, security
   sirsi monitor            Watch processes and RAM pressure
+  sirsi status             Live system dashboard
 
   Quality & Intel
   sirsi audit              Code quality and governance scan
@@ -203,6 +204,21 @@ var auditCmd = &cobra.Command{
 	Use:   "audit",
 	Short: "Code quality and governance scan",
 	RunE:  runMaatAudit,
+}
+
+var statusCmd = &cobra.Command{
+	Use:   "status",
+	Short: "Live system status dashboard",
+	Long: `Launch the live status dashboard showing CPU, memory, disk, network,
+top processes, and health score with real-time updates.
+
+  sirsi status    Live dashboard (press q to quit)`,
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := output.LaunchTUIOnTab(4); err != nil {
+			fmt.Fprintf(os.Stderr, "TUI error: %v\n", err)
+			os.Exit(1)
+		}
+	},
 }
 
 var purgeCmd = &cobra.Command{
@@ -728,7 +744,7 @@ func init() {
 	rootCmd.AddCommand(scanCmd, cleanCmd, ghostsCmd, dedupCmd, doctorCmd)
 	rootCmd.AddCommand(purgeCmd, analyzeCmd, installerCmd)
 	rootCmd.AddCommand(networkCmd, fixCmd, monitorCmd)
-	rootCmd.AddCommand(auditCmd, riskCmd, hardwareCmd, diagramCmd)
+	rootCmd.AddCommand(auditCmd, riskCmd, hardwareCmd, diagramCmd, statusCmd)
 	rootCmd.AddCommand(versionCmd, quickstartCmd, setupCmd)
 
 	// ── Power-user deity modules (hidden from default help, still work) ──

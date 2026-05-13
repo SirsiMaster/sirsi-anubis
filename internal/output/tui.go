@@ -2288,6 +2288,18 @@ func LaunchTUI() error {
 	return LaunchTUIWithNotify(nil)
 }
 
+// LaunchTUIOnTab opens the TUI directly on a specific tab (0-indexed).
+func LaunchTUIOnTab(tab int) error {
+	m := NewTUIModel()
+	if tab >= 0 && tab < len(tabs) {
+		m.activeTab = tab
+	}
+	m.loadPersistedState()
+	p := tea.NewProgram(m)
+	_, err := p.Run()
+	return err
+}
+
 func LaunchTUIWithNotify(store *notify.Store) error {
 	m := NewTUIModel()
 	m.notifyStore = store

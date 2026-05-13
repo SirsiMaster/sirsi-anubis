@@ -889,6 +889,6 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		"Checks Run":   fmt.Sprintf("%d", len(report.Findings)),
 	})
 	output.Footer(time.Since(start))
-	output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "isis", Subcommand: "doctor"}))
+	output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "isis", Subcommand: "diagnose"}))
 	return nil
 }
