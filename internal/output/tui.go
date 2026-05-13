@@ -26,14 +26,20 @@ import (
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/deity"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/guard"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/horus"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal/rules"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/ka"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/maat"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/mirror"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/notify"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/osiris"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/ra"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/seba"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/seshat"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/stele"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/suggest"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/thoth"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/vitals"
 )
 
@@ -78,7 +84,7 @@ var tabs = []tabDef{
 			{"Scan", "Find infrastructure waste on this machine", []string{"anubis", "weigh"}, nativeScan},
 			{"Ghosts", "Hunt remnants of uninstalled apps", []string{"anubis", "ka"}, nativeGhosts},
 			{"Clean", "Preview and remove safe items (Trash)", []string{"anubis", "judge", "--dry-run"}, nativeCleanDryRun},
-			{"Duplicates", "Find duplicate files across directories", []string{"anubis", "mirror"}, nil},
+			{"Duplicates", "Find duplicate files across directories", []string{"anubis", "mirror"}, nativeMirror},
 		},
 	},
 	{
@@ -89,7 +95,7 @@ var tabs = []tabDef{
 			{"Doctor", "Full system health diagnostic", []string{"doctor"}, nativeDoctor},
 			{"Network", "Network security posture audit", []string{"isis", "network"}, nativeNetworkAudit},
 			{"Fix Network", "Auto-fix DNS, firewall, and security", []string{"isis", "network", "--fix"}, nativeNetworkFix},
-			{"Guard", "Monitor processes and RAM pressure", []string{"guard"}, nil},
+			{"Guard", "Monitor processes and RAM pressure", []string{"guard"}, nil}, // long-running, stays subprocess
 		},
 	},
 	{
@@ -97,10 +103,10 @@ var tabs = []tabDef{
 		Glyph:   "𓆄",
 		Tagline: "The feather weighs against the heart.",
 		Actions: []tabAction{
-			{"Audit", "Governance and code quality scan", []string{"maat", "audit"}, nil},
+			{"Audit", "Governance and code quality scan", []string{"maat", "audit"}, nativeMaatAudit},
 			{"Risk", "Uncommitted work risk assessment", []string{"osiris", "assess"}, nativeRisk},
-			{"Lint", "Run linters across the codebase", []string{"ra", "lint"}, nil},
-			{"Test", "Run test suites fleet-wide", []string{"ra", "test"}, nil},
+			{"Lint", "Run linters across the codebase", []string{"ra", "lint"}, nil}, // long-running, stays subprocess
+			{"Test", "Run test suites fleet-wide", []string{"ra", "test"}, nil},      // long-running, stays subprocess
 		},
 	},
 	{
@@ -109,9 +115,9 @@ var tabs = []tabDef{
 		Tagline: "Map the terrain before you march.",
 		Actions: []tabAction{
 			{"Hardware", "Accelerator and architecture profile", []string{"seba", "hardware"}, nativeHardware},
-			{"Diagram", "Generate architecture diagrams", []string{"seba", "diagram"}, nil},
-			{"Knowledge", "Ingest knowledge from sources", []string{"seshat", "ingest"}, nil},
-			{"Memory", "Sync project memory state", []string{"thoth", "sync"}, nil},
+			{"Diagram", "Generate architecture diagrams", []string{"seba", "diagram"}, nativeDiagram},
+			{"Knowledge", "Ingest knowledge from sources", []string{"seshat", "ingest"}, nativeSeshatIngest},
+			{"Memory", "Sync project memory state", []string{"thoth", "sync"}, nativeThothSync},
 		},
 	},
 	{
@@ -119,9 +125,9 @@ var tabs = []tabDef{
 		Glyph:   "𓂀",
 		Tagline: "It never closes its eyes. Every heartbeat, in its light.",
 		Actions: []tabAction{
-			{"Refresh", "Refresh system vitals", []string{"doctor"}, nil},
-			{"Ra Status", "Fleet orchestrator status", []string{"ra", "status"}, nil},
-			{"Code Graph", "Build code symbol index", []string{"horus", "scan"}, nil},
+			{"Refresh", "Refresh system vitals", []string{"doctor"}, nativeDoctor},
+			{"Ra Status", "Fleet orchestrator status", []string{"ra", "status"}, nativeRaStatus},
+			{"Code Graph", "Build code symbol index", []string{"horus", "scan"}, nativeHorusScan},
 		},
 	},
 }
@@ -325,6 +331,77 @@ func nativeRisk() ([]string, string, []string, error) {
 		return nil, "osiris", nil, err
 	}
 	return RenderRiskAssessment(cp), "osiris", nil, nil
+}
+
+func nativeMirror() ([]string, string, []string, error) {
+	home, _ := os.UserHomeDir()
+	res, err := mirror.Scan(mirror.ScanOptions{
+		Paths:   []string{filepath.Join(home, "Development"), filepath.Join(home, "Documents")},
+		MinSize: 1024 * 100, // 100KB minimum
+	})
+	if err != nil {
+		return nil, "anubis", nil, err
+	}
+	return RenderMirrorResult(res), "anubis", nil, nil
+}
+
+func nativeMaatAudit() ([]string, string, []string, error) {
+	report, err := maat.Weigh()
+	if err != nil {
+		return nil, "maat", nil, err
+	}
+	lines, fixCmds := RenderMaatReport(report)
+	return lines, "maat", fixCmds, nil
+}
+
+func nativeDiagram() ([]string, string, []string, error) {
+	res, err := seba.GenerateDiagram(".", seba.DiagramHierarchy)
+	if err != nil {
+		return nil, "seba", nil, err
+	}
+	return RenderDiagram(res), "seba", nil, nil
+}
+
+func nativeSeshatIngest() ([]string, string, []string, error) {
+	reg := seshat.DefaultRegistry()
+	items, err := reg.IngestAll(time.Now().Add(-24 * time.Hour))
+	if err != nil {
+		return nil, "seshat", nil, err
+	}
+	return RenderKnowledgeItems(items), "seshat", nil, nil
+}
+
+func nativeThothSync() ([]string, string, []string, error) {
+	err := thoth.Sync(thoth.SyncOptions{RepoRoot: ".", UpdateDate: true})
+	if err != nil {
+		return nil, "thoth", nil, err
+	}
+	return []string{
+		"",
+		"  " + lipgloss.NewStyle().Foreground(Green).Render("✓") + "  " +
+			lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC")).Render("Memory synced"),
+		"",
+		"  " + lipgloss.NewStyle().Foreground(lipgloss.Color("#666666")).Render("Updated .thoth/memory.yaml with current project state"),
+	}, "thoth", nil, nil
+}
+
+func nativeRaStatus() ([]string, string, []string, error) {
+	home, _ := os.UserHomeDir()
+	raDir := filepath.Join(home, ".config", "ra")
+	status, err := ra.Monitor(raDir)
+	if err != nil {
+		return nil, "ra", nil, err
+	}
+	return RenderRaStatus(status), "ra", nil, nil
+}
+
+func nativeHorusScan() ([]string, string, []string, error) {
+	p := horus.NewGoParser()
+	graph, err := p.ParseDir(".")
+	if err != nil {
+		return nil, "horus", nil, err
+	}
+	return RenderSymbolGraph(graph), "horus", nil, nil
 }
 
 // ── View Mode ────────────────────────────────────────────────────────
