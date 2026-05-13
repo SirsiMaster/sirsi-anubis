@@ -1454,41 +1454,48 @@ func (m TUIModel) renderStatusPage(gold, dim lipgloss.Style) string {
 		"  " + dim.Render(machineInfo) + "\n")
 	b.WriteString("\n")
 
-	// ── Row 1: CPU | Memory ──
-	leftCol := "  " + gold.Render("𓁐 CPU") + "\n"
-	leftCol += fmt.Sprintf("  Total   %s\n", ProgressBar(m.vitals.CPUPercent, barW))
-	leftCol += fmt.Sprintf("  Load    %.2f / %.2f / %.2f\n",
-		m.vitals.CPULoadAvg[0], m.vitals.CPULoadAvg[1], m.vitals.CPULoadAvg[2])
-	leftCol += "          " + Sparkline(m.cpuHistory, sparkW, Gold) + "\n"
+	// All labels are 8 chars: "Total   ", "Load    ", "Used    ", "Free    "
+	// This creates a strict grid like Mole's mo status.
+	lbl := func(s string) string { return fmt.Sprintf("%-8s", s) }
 
-	rightCol := "  " + gold.Render("𓊗 Memory") + "\n"
-	rightCol += fmt.Sprintf("  Used    %s\n", ProgressBar(m.vitals.RAMPercent, barW))
-	rightCol += fmt.Sprintf("  Total   %.1f / %.1f GB\n",
-		m.vitals.RAMUsedGB, m.vitals.RAMTotalGB)
-	rightCol += "          " + Sparkline(m.memHistory, sparkW, Gold) + "\n"
+	// ── Row 1: CPU | Memory ──
+	leftCol := "  " + gold.Render("CPU") + "\n"
+	leftCol += fmt.Sprintf("  %s%s\n", dim.Render(lbl("Total")), ProgressBar(m.vitals.CPUPercent, barW))
+	leftCol += fmt.Sprintf("  %s%s\n", dim.Render(lbl("Load")),
+		body.Render(fmt.Sprintf("%.2f / %.2f / %.2f", m.vitals.CPULoadAvg[0], m.vitals.CPULoadAvg[1], m.vitals.CPULoadAvg[2])))
+	leftCol += fmt.Sprintf("  %s%s\n", lbl(""), Sparkline(m.cpuHistory, sparkW, Gold))
+
+	rightCol := "  " + gold.Render("Memory") + "\n"
+	rightCol += fmt.Sprintf("  %s%s\n", dim.Render(lbl("Used")), ProgressBar(m.vitals.RAMPercent, barW))
+	rightCol += fmt.Sprintf("  %s%s\n", dim.Render(lbl("Total")),
+		body.Render(fmt.Sprintf("%.1f / %.1f GB", m.vitals.RAMUsedGB, m.vitals.RAMTotalGB)))
+	rightCol += fmt.Sprintf("  %s%s\n", lbl(""), Sparkline(m.memHistory, sparkW, Gold))
 
 	b.WriteString(sideBySide(leftCol, rightCol, colW))
 	b.WriteString("\n")
 
 	// ── Row 2: Disk | Network ──
-	leftCol = "  " + gold.Render("▤ Disk") + "\n"
-	leftCol += fmt.Sprintf("  Used    %s\n", ProgressBar(m.vitals.DiskPercent, barW))
-	leftCol += fmt.Sprintf("  Free    %.1f GB\n", m.vitals.DiskFreeGB)
+	leftCol = "  " + gold.Render("Disk") + "\n"
+	leftCol += fmt.Sprintf("  %s%s\n", dim.Render(lbl("Used")), ProgressBar(m.vitals.DiskPercent, barW))
+	leftCol += fmt.Sprintf("  %s%s\n", dim.Render(lbl("Free")),
+		body.Render(fmt.Sprintf("%.1f GB", m.vitals.DiskFreeGB)))
 
 	downMBs := m.vitals.NetDownBps / (1024 * 1024)
 	upMBs := m.vitals.NetUpBps / (1024 * 1024)
-	rightCol = "  " + gold.Render("⇅ Network") + "\n"
-	rightCol += fmt.Sprintf("  Down    %s  %.2f MB/s\n",
-		Sparkline(m.netDownHist, sparkW, Green), downMBs)
-	rightCol += fmt.Sprintf("  Up      %s  %.2f MB/s\n",
-		Sparkline(m.netUpHist, sparkW, lipgloss.Color("#51A9C8")), upMBs)
+	rightCol = "  " + gold.Render("Network") + "\n"
+	rightCol += fmt.Sprintf("  %s%s  %s\n", dim.Render(lbl("Down")),
+		Sparkline(m.netDownHist, sparkW, Green),
+		body.Render(fmt.Sprintf("%.2f MB/s", downMBs)))
+	rightCol += fmt.Sprintf("  %s%s  %s\n", dim.Render(lbl("Up")),
+		Sparkline(m.netUpHist, sparkW, lipgloss.Color("#51A9C8")),
+		body.Render(fmt.Sprintf("%.2f MB/s", upMBs)))
 
 	b.WriteString(sideBySide(leftCol, rightCol, colW))
 	b.WriteString("\n")
 
 	// ── Top Processes ──
 	if len(m.vitals.TopProcs) > 0 {
-		b.WriteString("  " + gold.Render("𓃣 Top Processes") + "\n")
+		b.WriteString("  " + gold.Render("Processes") + "\n")
 		maxCPU := m.vitals.TopProcs[0].CPUPercent
 		if maxCPU < 1 {
 			maxCPU = 1
@@ -1496,10 +1503,10 @@ func (m TUIModel) renderStatusPage(gold, dim lipgloss.Style) string {
 		for _, p := range m.vitals.TopProcs {
 			pctNorm := int(p.CPUPercent / maxCPU * 100)
 			name := p.Name
-			if len(name) > 12 {
-				name = name[:12]
+			if len(name) > 14 {
+				name = name[:14]
 			}
-			b.WriteString(fmt.Sprintf("  %-12s %s  %.1f%%\n",
+			b.WriteString(fmt.Sprintf("  %-14s %s  %5.1f%%\n",
 				body.Render(name),
 				ScoreBar(pctNorm, 5),
 				p.CPUPercent))
@@ -1508,7 +1515,7 @@ func (m TUIModel) renderStatusPage(gold, dim lipgloss.Style) string {
 	}
 
 	// ── Row 3: Deities | Recent ──
-	leftCol = "  " + gold.Render("𓊝 Deities") + "\n"
+	leftCol = "  " + gold.Render("Deities") + "\n"
 	for _, d := range deity.Roster {
 		state := m.deityState[d.Key]
 		var indicator, status string

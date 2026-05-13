@@ -55,16 +55,20 @@ func RenderScanResult(res *jackal.ScanResult) []string {
 	lines = append(lines, "  "+rDim.Render(fmt.Sprintf("%d findings across %d rules", len(res.Findings), res.RulesRan)))
 	lines = append(lines, "")
 
-	// Category breakdown
+	// Category breakdown — checkmark + name + right-aligned size
 	if len(res.ByCategory) > 0 {
-		lines = append(lines, "  "+rLabel.Render("CATEGORIES"))
 		for cat, summary := range res.ByCategory {
-			icon := categoryIcon(string(cat))
-			lines = append(lines, fmt.Sprintf("  %s %-14s %8s  %s",
-				icon,
-				rBody.Render(string(cat)),
-				rGold.Render(jackal.FormatSize(summary.TotalSize)),
-				rDim.Render(fmt.Sprintf("%d items", summary.Findings))))
+			name := string(cat)
+			// Pad name to 40 chars, right-align size at col 50
+			padLen := 40 - len(name)
+			if padLen < 2 {
+				padLen = 2
+			}
+			lines = append(lines, fmt.Sprintf("  %s %s%s%s",
+				rGreen.Render("✓"),
+				rBody.Render(name),
+				strings.Repeat(" ", padLen),
+				rGold.Render(fmt.Sprintf("%8s", jackal.FormatSize(summary.TotalSize)))))
 		}
 		lines = append(lines, "")
 	}
@@ -72,19 +76,23 @@ func RenderScanResult(res *jackal.ScanResult) []string {
 	// Top findings (max 10)
 	limit := min(len(res.Findings), 10)
 	if limit > 0 {
-		lines = append(lines, "  "+rLabel.Render("TOP FINDINGS"))
+		lines = append(lines, "  "+rLabel.Render("FINDINGS"))
 		for _, f := range res.Findings[:limit] {
-			severity := rGreen.Render("safe")
+			severity := rGreen.Render("safe   ")
 			switch f.Severity {
 			case jackal.SeverityCaution:
 				severity = rWarn.Render("caution")
 			case jackal.SeverityWarning:
 				severity = rRed.Render("warning")
 			}
-			lines = append(lines, fmt.Sprintf("  %-9s %8s  %s",
+			desc := f.Description
+			if len(desc) > 36 {
+				desc = desc[:33] + "..."
+			}
+			lines = append(lines, fmt.Sprintf("  %s  %-36s  %8s",
 				severity,
-				jackal.FormatSize(f.SizeBytes),
-				rBody.Render(f.Description)))
+				rBody.Render(desc),
+				jackal.FormatSize(f.SizeBytes)))
 			lines = append(lines, "     "+rDim.Render(ShortenPath(f.Path)))
 		}
 		if len(res.Findings) > limit {
@@ -120,12 +128,21 @@ func RenderGhostResult(ghosts []ka.Ghost) []string {
 	lines = append(lines, "  "+rGold.Render(jackal.FormatSize(totalSize))+"  "+rDim.Render(fmt.Sprintf("across %d residual files", totalFiles)))
 	lines = append(lines, "")
 
-	// Ghost list
-	lines = append(lines, "  "+rLabel.Render("GHOSTS"))
+	// Ghost list — name + right-aligned size
 	for _, g := range ghosts {
-		lines = append(lines, fmt.Sprintf("  %-20s %8s  %s",
-			rBody.Render(g.AppName),
-			rGold.Render(jackal.FormatSize(g.TotalSize)),
+		name := g.AppName
+		if len(name) > 30 {
+			name = name[:27] + "..."
+		}
+		padLen := 40 - len(name)
+		if padLen < 2 {
+			padLen = 2
+		}
+		lines = append(lines, fmt.Sprintf("  %s %s%s%s  %s",
+			rWarn.Render("◆"),
+			rBody.Render(name),
+			strings.Repeat(" ", padLen),
+			rGold.Render(fmt.Sprintf("%8s", jackal.FormatSize(g.TotalSize))),
 			rDim.Render(fmt.Sprintf("%d files", g.TotalFiles))))
 		shown := 0
 		for _, r := range g.Residuals {
