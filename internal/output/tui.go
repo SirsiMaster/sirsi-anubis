@@ -1258,13 +1258,38 @@ func (m TUIModel) View() tea.View {
 	var b strings.Builder
 	maxW := min(m.width-2, 120)
 	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#333333"))
-	divider := dim.Render(strings.Repeat("─", maxW))
+	dimText := lipgloss.NewStyle().Foreground(lipgloss.Color("#444444"))
+	gold := lipgloss.NewStyle().Foreground(Gold)
+	heavyDiv := dim.Render(strings.Repeat("━", maxW))
+	lightDiv := dim.Render(strings.Repeat("─", maxW))
 
-	// ── Tab bar (always visible) ──
+	// ── Persistent Header — "This is Pantheon" ──
+	ver := readVersionFile()
+	titleLine := "  " + gold.Bold(true).Render("𓉴 PANTHEON")
+	if ver != "" {
+		pad := maxW - visibleLen(titleLine) - len(ver) - 2
+		if pad < 1 {
+			pad = 1
+		}
+		titleLine += strings.Repeat(" ", pad) + dimText.Render(ver)
+	}
+	tagline := "  " + dimText.Render("Unified DevOps Intelligence")
+	urlPad := maxW - visibleLen(tagline) - len("sirsi.ai") - 2
+	if urlPad < 1 {
+		urlPad = 1
+	}
+	tagline += strings.Repeat(" ", urlPad) + dimText.Render("sirsi.ai")
+
 	b.WriteString("\n")
-	b.WriteString(m.renderTabBar())
-	b.WriteString(" " + divider + "\n")
+	b.WriteString(titleLine + "\n")
+	b.WriteString(tagline + "\n")
+	b.WriteString(" " + heavyDiv + "\n")
 
+	// ── Tab bar ──
+	b.WriteString(m.renderTabBar())
+	b.WriteString(" " + lightDiv + "\n")
+
+	// ── Content ──
 	switch m.mode {
 	case viewTabs:
 		b.WriteString(m.renderTabPage())
@@ -1274,13 +1299,12 @@ func (m TUIModel) View() tea.View {
 		b.WriteString(m.renderDone())
 	case viewPrompt:
 		b.WriteString(m.renderTabPage())
-		// Prompt overlay at bottom handled below
 	case viewSelect:
 		b.WriteString(m.renderSelect())
 	}
 
 	// ── Bottom bar ──
-	b.WriteString(" " + divider + "\n")
+	b.WriteString(" " + lightDiv + "\n")
 	if m.mode == viewPrompt {
 		b.WriteString(" " + m.input.View() + "\n")
 	} else {
@@ -1294,31 +1318,54 @@ func (m TUIModel) View() tea.View {
 	if remaining > 0 {
 		content += strings.Repeat("\n", remaining)
 	}
-	content += lipgloss.NewStyle().Foreground(lipgloss.Color("#333333")).
-		Render(" sirsi.ai")
+	// Footer: faint brand + uptime if available
+	footerRight := ""
+	if m.vitals.UptimeStr != "" {
+		footerRight = dimText.Render("up " + m.vitals.UptimeStr)
+	}
+	footerLeft := dimText.Render(" 𓉴 sirsi-pantheon")
+	footPad := maxW - visibleLen(footerLeft) - visibleLen(footerRight)
+	if footPad < 1 {
+		footPad = 1
+	}
+	content += footerLeft + strings.Repeat(" ", footPad) + footerRight
 
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
 }
 
-// renderTabBar draws the horizontal tab switcher, Mole-style.
+// readVersionFile reads the VERSION file from the repo root or ~/.config.
+func readVersionFile() string {
+	for _, p := range []string{"VERSION", filepath.Join(os.Getenv("HOME"), ".config", "sirsi", "VERSION")} {
+		if data, err := os.ReadFile(p); err == nil {
+			v := strings.TrimSpace(string(data))
+			if v != "" {
+				return "v" + v
+			}
+		}
+	}
+	return ""
+}
+
+// renderTabBar draws the horizontal tab switcher.
+// Tab names only — no hieroglyphs here (inconsistent terminal widths).
+// Glyphs live in the tab landing pages where alignment doesn't matter.
 func (m TUIModel) renderTabBar() string {
+	active := lipgloss.NewStyle().Foreground(Gold).Bold(true)
+	inactive := lipgloss.NewStyle().Foreground(lipgloss.Color("#555555"))
+	dot := lipgloss.NewStyle().Foreground(lipgloss.Color("#333333")).Render("·")
+
 	var parts []string
 	for i, tab := range tabs {
-		style := lipgloss.NewStyle().Foreground(lipgloss.Color("#555555"))
 		if i == m.activeTab {
-			style = lipgloss.NewStyle().
-				Foreground(Gold).
-				Bold(true).
-				Underline(true)
+			parts = append(parts, active.Render("▸ "+tab.Name))
+		} else {
+			parts = append(parts, inactive.Render("  "+tab.Name))
 		}
-		parts = append(parts, style.Render(tab.Glyph+" "+tab.Name))
 	}
 
-	bar := "  " + lipgloss.NewStyle().Foreground(Gold).Bold(true).Render("𓉴") +
-		"    " + strings.Join(parts, "    ")
-	return bar + "\n"
+	return "  " + strings.Join(parts, "  "+dot+"  ") + "\n"
 }
 
 // renderTabPage draws the landing page for the active tab.
@@ -1327,25 +1374,29 @@ func (m TUIModel) renderTabPage() string {
 	gold := lipgloss.NewStyle().Foreground(Gold)
 	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
 	body := lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC"))
-	num := lipgloss.NewStyle().Foreground(Gold).Bold(true)
+
 
 	var b strings.Builder
 
 	if tab.Name == "Status" {
-		// Status tab: bento grid
 		b.WriteString(m.renderStatusPage(gold, dim))
 	} else {
-		// Deity tab: tagline + numbered actions
 		b.WriteString("\n")
-		b.WriteString("  " + gold.Render(tab.Glyph+"  "+tab.Name) + "\n")
-		b.WriteString("  " + lipgloss.NewStyle().Italic(true).Foreground(lipgloss.Color("#888888")).
+		b.WriteString("  " + gold.Bold(true).Render(tab.Glyph+"  "+tab.Name) + "\n")
+		b.WriteString("  " + lipgloss.NewStyle().Italic(true).Foreground(lipgloss.Color("#555555")).
 			Render(tab.Tagline) + "\n")
-		b.WriteString("\n\n")
+		b.WriteString("\n")
 
 		for i, action := range tab.Actions {
-			b.WriteString("  " + num.Render(fmt.Sprintf(" %d ", i+1)) +
-				"  " + body.Render(action.Label) + "\n")
-			b.WriteString("     " + dim.Render(action.Desc) + "\n\n")
+			keyBadge := lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#0F0F0F")).
+				Background(Gold).
+				Bold(true).
+				Padding(0, 1).
+				Render(fmt.Sprintf("%d", i+1))
+			b.WriteString("  " + keyBadge +
+				"  " + body.Bold(true).Render(action.Label) + "\n")
+			b.WriteString("       " + dim.Render(action.Desc) + "\n\n")
 		}
 	}
 
@@ -1356,7 +1407,7 @@ func (m TUIModel) renderTabPage() string {
 func (m TUIModel) renderStatusPage(gold, dim lipgloss.Style) string {
 	var b strings.Builder
 	body := lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC"))
-	num := lipgloss.NewStyle().Foreground(Gold).Bold(true)
+
 
 	maxW := min(m.width-4, 116)
 	colW := maxW/2 - 2
@@ -1498,10 +1549,16 @@ func (m TUIModel) renderStatusPage(gold, dim lipgloss.Style) string {
 	b.WriteString(sideBySide(leftCol, rightCol, colW))
 	b.WriteString("\n")
 
-	// ── Numbered actions (still available) ──
+	// ── Numbered actions ──
 	tab := tabs[m.activeTab]
 	for i, action := range tab.Actions {
-		b.WriteString("  " + num.Render(fmt.Sprintf(" %d ", i+1)) +
+		keyBadge := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#0F0F0F")).
+			Background(Gold).
+			Bold(true).
+			Padding(0, 1).
+			Render(fmt.Sprintf("%d", i+1))
+		b.WriteString("  " + keyBadge +
 			"  " + body.Render(action.Label) +
 			"  " + dim.Render(action.Desc) + "\n")
 	}
@@ -1618,7 +1675,7 @@ func (m TUIModel) renderDone() string {
 	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
 	green := lipgloss.NewStyle().Foreground(Green)
 	body := lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC"))
-	num := lipgloss.NewStyle().Foreground(Gold).Bold(true)
+
 
 	b.WriteString("\n")
 	b.WriteString(m.viewport.View() + "\n")
@@ -1634,6 +1691,9 @@ func (m TUIModel) renderDone() string {
 	b.WriteString("\n")
 
 	// ── Numbered next actions ──
+	if len(m.postRunCmds) > 0 {
+		b.WriteString("  " + dim.Render("What's next?") + "\n\n")
+	}
 	shown := 0
 	for i, cmd := range m.postRunCmds {
 		if i >= 3 {
@@ -1643,7 +1703,13 @@ func (m TUIModel) renderDone() string {
 		if i < len(m.postRunActions) {
 			desc = m.postRunActions[i].Description
 		}
-		line := "   " + num.Render(fmt.Sprintf("%d", i+1)) + "  " + body.Render(cmd)
+		keyBadge := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#0F0F0F")).
+			Background(Gold).
+			Bold(true).
+			Padding(0, 1).
+			Render(fmt.Sprintf("%d", i+1))
+		line := "   " + keyBadge + "  " + body.Render(cmd)
 		if desc != "" {
 			line += "  " + dim.Render(desc)
 		}

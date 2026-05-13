@@ -61,15 +61,15 @@ func TestRenderTabBar(t *testing.T) {
 	m.width = 120
 	bar := m.renderTabBar()
 
-	// Tab bar contains glyphs (ANSI-styled, so check glyphs not names)
+	// Tab bar contains tab names
 	for _, tab := range tabs {
-		if !strings.Contains(bar, tab.Glyph) {
-			t.Errorf("tab bar should contain glyph %q for %q", tab.Glyph, tab.Name)
+		if !strings.Contains(bar, tab.Name) {
+			t.Errorf("tab bar should contain name %q", tab.Name)
 		}
 	}
-	// Pantheon glyph should be present
-	if !strings.Contains(bar, "𓉴") {
-		t.Error("tab bar should contain Pantheon glyph")
+	// Active tab should have indicator
+	if !strings.Contains(bar, "▸") {
+		t.Error("tab bar should contain active indicator")
 	}
 }
 
