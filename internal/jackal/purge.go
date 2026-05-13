@@ -15,6 +15,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/SirsiMaster/sirsi-pantheon/internal/oplog"
 )
 
 // execCommand is an injectable for exec.Command (Rule A16: side effect injection).
@@ -339,6 +341,7 @@ func PurgeArtifacts(artifacts []ProjectArtifact, useTrash bool) (*CleanResult, e
 		}
 		result.BytesFreed += a.Size
 		result.Cleaned++
+		oplog.Log("purge", a.ArtifactDir, a.Size)
 	}
 
 	return result, nil

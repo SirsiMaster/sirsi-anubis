@@ -34,6 +34,7 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/maat"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/mirror"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/notify"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/osiris"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/ra"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/seba"
@@ -89,6 +90,7 @@ var tabs = []tabDef{
 			{"Duplicates", "Find duplicate files across directories", []string{"anubis", "mirror"}, nativeMirror},
 			{"Purge", "Clean project build artifacts", []string{"purge"}, nativePurge},
 			{"Analyze", "Visual disk space explorer", []string{"analyze"}, nativeAnalyze},
+			{"Installer", "Find and remove installer files", []string{"installer"}, nativeInstaller},
 		},
 	},
 	{
@@ -326,8 +328,37 @@ func nativeNetworkFix() ([]string, string, []string, error) {
 	return lines, "isis", nil, nil
 }
 
+// doctorProgressCh streams per-check progress to the TUI.
+var doctorProgressCh chan string
+
 func nativeDoctor() ([]string, string, []string, error) {
-	report, err := guard.Doctor()
+	pendingSelectMu.Lock()
+	ch := doctorProgressCh
+	doctorProgressCh = nil
+	pendingSelectMu.Unlock()
+
+	opts := guard.DoctorOpts{}
+	if ch != nil {
+		opts.OnCheck = func(name string, sev guard.DiagnosticSeverity, msg string, done, total int) {
+			icon := lipgloss.NewStyle().Foreground(Green).Render("✓")
+			switch sev {
+			case guard.SeverityWarn:
+				icon = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFAA00")).Render("!")
+			case guard.SeverityCritical:
+				icon = lipgloss.NewStyle().Foreground(Red).Render("✗")
+			}
+			line := fmt.Sprintf("  %s %-20s %s",
+				icon,
+				lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC")).Render(name),
+				lipgloss.NewStyle().Foreground(lipgloss.Color("#444444")).Render(fmt.Sprintf("[%d/%d]", done, total)))
+			ch <- line
+		}
+	}
+
+	report, err := guard.DoctorWithOpts(platform.Current(), opts)
+	if ch != nil {
+		ch <- ""
+	}
 	if err != nil {
 		return nil, "isis", nil, err
 	}
@@ -589,6 +620,55 @@ func nativeAnalyze() ([]string, string, []string, error) {
 	pendingAnalyzeMu.Lock()
 	pendingAnalyzeRes = res
 	pendingAnalyzeMu.Unlock()
+	return nil, "anubis", nil, nil
+}
+
+func nativeInstaller() ([]string, string, []string, error) {
+	res, err := jackal.ScanInstallers()
+	if err != nil {
+		return nil, "anubis", nil, err
+	}
+	if len(res.Files) == 0 {
+		return []string{
+			"",
+			"  " + lipgloss.NewStyle().Foreground(Green).Render("✓") + "  " +
+				lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC")).Render("No installer files found. Clean machine."),
+		}, "anubis", nil, nil
+	}
+
+	var items []selectItem
+	for _, f := range res.Files {
+		items = append(items, selectItem{
+			Label:    f.Name,
+			Detail:   f.Source,
+			Size:     f.Size,
+			Selected: true,
+			Data:     f,
+		})
+	}
+
+	pendingSelectMu.Lock()
+	pendingSelectReq = &selectRequest{
+		title: fmt.Sprintf("𓃣 Installers — Select Files to Remove — %s", jackal.FormatSize(res.TotalSize)),
+		items: items,
+		onConfirm: func(selected []selectItem) ([]string, string, []string, error) {
+			var toRemove []jackal.InstallerFile
+			for _, item := range selected {
+				if f, ok := item.Data.(jackal.InstallerFile); ok {
+					toRemove = append(toRemove, f)
+				}
+			}
+			if len(toRemove) == 0 {
+				return []string{"", "  Nothing selected to remove."}, "anubis", nil, nil
+			}
+			result, err := jackal.RemoveInstallers(toRemove, true)
+			if err != nil {
+				return nil, "anubis", nil, err
+			}
+			return RenderCleanResult(result), "anubis", []string{"anubis weigh"}, nil
+		},
+	}
+	pendingSelectMu.Unlock()
 	return nil, "anubis", nil, nil
 }
 
@@ -947,7 +1027,7 @@ func (m TUIModel) handleTabKey(key string) (tea.Model, tea.Cmd) {
 			return m, liveTick()
 		}
 		return m, nil
-	case "1", "2", "3", "4", "5", "6":
+	case "1", "2", "3", "4", "5", "6", "7":
 		idx := int(key[0]-'0') - 1
 		tab := tabs[m.activeTab]
 		if idx < len(tab.Actions) {
@@ -1182,30 +1262,37 @@ func (m TUIModel) executeAction(action tabAction) (TUIModel, tea.Cmd) {
 		m.outputLines = nil
 		m.postRunCmds = nil
 
-		// For scan, stream per-rule progress lines to the viewport in real time
+		// Stream per-step progress for scan and doctor
 		isScan := len(action.Args) >= 2 && action.Args[0] == "anubis" && action.Args[1] == "weigh"
-		if isScan {
+		isDoctor := len(action.Args) >= 1 && action.Args[0] == "doctor"
+		if isScan || isDoctor {
 			ch := make(chan string, 100)
 			m.streamCh = ch
 			pendingSelectMu.Lock()
-			scanProgressCh = ch
+			if isScan {
+				scanProgressCh = ch
+			} else {
+				doctorProgressCh = ch
+			}
 			pendingSelectMu.Unlock()
 
+			label := "Scanning..."
+			if isDoctor {
+				label = "Diagnosing..."
+			}
 			m.outputLines = []string{
 				"",
-				"  " + lipgloss.NewStyle().Foreground(Gold).Bold(true).Render("Scanning..."),
+				"  " + lipgloss.NewStyle().Foreground(Gold).Bold(true).Render(label),
 				"",
 			}
 			m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
 
 			fn := action.Native
 			return m, tea.Batch(m.spinner.Tick, elapsedTick(), func() tea.Msg {
-				// Run scan in background goroutine — it writes progress to ch
 				go func() {
-					fn() // result discarded — we'll re-render from persisted scan
+					fn()
 					close(ch)
 				}()
-				// Read first progress line
 				line, ok := <-ch
 				if !ok {
 					return streamLineMsg{done: true}
@@ -2033,7 +2120,8 @@ func (m TUIModel) renderBottomHints() string {
 
 	switch m.mode {
 	case viewTabs:
-		hints = []string{"←/→ switch tabs", "1-5 act", ": command", "q quit"}
+		n := len(tabs[m.activeTab].Actions)
+		hints = []string{"←/→ switch tabs", fmt.Sprintf("1-%d act", n), ": command", "q quit"}
 	case viewRunning:
 		hints = []string{"↑/↓ scroll", "ctrl+c cancel"}
 	case viewDone:

@@ -6,6 +6,8 @@ import (
 	"runtime"
 	"sort"
 	"sync"
+
+	"github.com/SirsiMaster/sirsi-pantheon/internal/oplog"
 )
 
 // Engine is the Jackal scan engine. It manages a registry of scan rules
@@ -248,6 +250,13 @@ func (e *Engine) Clean(ctx context.Context, findings []Finding, opts CleanOption
 		total.BytesFreed += result.BytesFreed
 		total.Skipped += result.Skipped
 		total.Errors = append(total.Errors, result.Errors...)
+
+		// Log each cleaned item
+		if !opts.DryRun && result.Cleaned > 0 {
+			for _, f := range ruleFindings {
+				oplog.Log("clean", f.Path, f.SizeBytes)
+			}
+		}
 	}
 
 	return total, nil

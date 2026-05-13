@@ -75,27 +75,57 @@ type DoctorReport struct {
 	Score     int                 `json:"score"` // 0-100, higher is healthier
 }
 
+// DoctorOpts configures the health diagnostic.
+type DoctorOpts struct {
+	// OnCheck is called after each health check completes.
+	OnCheck func(checkName string, severity DiagnosticSeverity, message string, done, total int)
+}
+
 // Doctor runs a one-shot system health diagnostic.
 func Doctor() (*DoctorReport, error) {
-	return DoctorWith(platform.Current())
+	return DoctorWithOpts(platform.Current(), DoctorOpts{})
 }
 
 // DoctorWith runs the diagnostic using the provided platform (Rule A16).
 func DoctorWith(p platform.Platform) (*DoctorReport, error) {
+	return DoctorWithOpts(p, DoctorOpts{})
+}
+
+// DoctorWithOpts runs the diagnostic with progress reporting.
+func DoctorWithOpts(p platform.Platform, opts DoctorOpts) (*DoctorReport, error) {
 	start := time.Now()
 	report := &DoctorReport{
 		Timestamp: start,
 	}
 
-	// Run all checks
-	checkRAMPressure(p, report)
-	checkSwapUsage(p, report)
-	checkDiskSpace(p, report)
-	checkTopMemoryProcesses(p, report)
-	checkRecentCrashLogs(report)
-	checkSirsiProcesses(p, report)
+	type checkFunc struct {
+		name string
+		fn   func()
+	}
+	checks := []checkFunc{
+		{"RAM Pressure", func() { checkRAMPressure(p, report) }},
+		{"Swap Usage", func() { checkSwapUsage(p, report) }},
+		{"Disk Space", func() { checkDiskSpace(p, report) }},
+		{"Memory Processes", func() { checkTopMemoryProcesses(p, report) }},
+		{"Crash Logs", func() { checkRecentCrashLogs(report) }},
+		{"Sirsi Processes", func() { checkSirsiProcesses(p, report) }},
+	}
 
-	// Calculate health score
+	for i, c := range checks {
+		prevCount := len(report.Findings)
+		c.fn()
+		if opts.OnCheck != nil {
+			sev := SeverityOK
+			msg := "healthy"
+			if len(report.Findings) > prevCount {
+				last := report.Findings[len(report.Findings)-1]
+				sev = last.Severity
+				msg = last.Message
+			}
+			opts.OnCheck(c.name, sev, msg, i+1, len(checks))
+		}
+	}
+
 	report.Score = calculateScore(report.Findings)
 	report.Duration = time.Since(start).Round(time.Millisecond).String()
 
