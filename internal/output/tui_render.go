@@ -60,7 +60,7 @@ func RenderScanResult(res *jackal.ScanResult) []string {
 		lines = append(lines, "  "+rLabel.Render("CATEGORIES"))
 		for cat, summary := range res.ByCategory {
 			icon := categoryIcon(string(cat))
-			lines = append(lines, fmt.Sprintf("  %s %-14s %s  %s",
+			lines = append(lines, fmt.Sprintf("  %s %-14s %8s  %s",
 				icon,
 				rBody.Render(string(cat)),
 				rGold.Render(jackal.FormatSize(summary.TotalSize)),
@@ -85,10 +85,10 @@ func RenderScanResult(res *jackal.ScanResult) []string {
 				severity,
 				jackal.FormatSize(f.SizeBytes),
 				rBody.Render(f.Description)))
-			lines = append(lines, "  "+rDim.Render("         "+ShortenPath(f.Path)))
+			lines = append(lines, "     "+rDim.Render(ShortenPath(f.Path)))
 		}
 		if len(res.Findings) > limit {
-			lines = append(lines, "  "+rDim.Render(fmt.Sprintf("         ... and %d more", len(res.Findings)-limit)))
+			lines = append(lines, "     "+rDim.Render(fmt.Sprintf("... and %d more", len(res.Findings)-limit)))
 		}
 	}
 
@@ -123,11 +123,10 @@ func RenderGhostResult(ghosts []ka.Ghost) []string {
 	// Ghost list
 	lines = append(lines, "  "+rLabel.Render("GHOSTS"))
 	for _, g := range ghosts {
-		lines = append(lines, fmt.Sprintf("  %s  %s  %s",
+		lines = append(lines, fmt.Sprintf("  %-20s %8s  %s",
 			rBody.Render(g.AppName),
 			rGold.Render(jackal.FormatSize(g.TotalSize)),
 			rDim.Render(fmt.Sprintf("%d files", g.TotalFiles))))
-		// Show top residual paths (max 2)
 		shown := 0
 		for _, r := range g.Residuals {
 			if shown >= 2 {
@@ -139,6 +138,7 @@ func RenderGhostResult(ghosts []ka.Ghost) []string {
 		if len(g.Residuals) > 2 {
 			lines = append(lines, "     "+rDim.Render(fmt.Sprintf("... +%d more", len(g.Residuals)-2)))
 		}
+		lines = append(lines, "")
 	}
 
 	return lines
@@ -215,9 +215,9 @@ func RenderRiskAssessment(cp *osiris.Checkpoint) []string {
 
 	lines = append(lines, "  "+rLabel.Render("CHANGES"))
 	lines = append(lines, fmt.Sprintf("  %s uncommitted  %s staged  %s untracked",
-		rBig.Render(fmt.Sprintf("%d", cp.UncommittedFiles)),
-		rBody.Render(fmt.Sprintf("%d", cp.StagedFiles)),
-		rDim.Render(fmt.Sprintf("%d", cp.UntrackedFiles))))
+		rBig.Render(fmt.Sprintf("%3d", cp.UncommittedFiles)),
+		rBody.Render(fmt.Sprintf("%3d", cp.StagedFiles)),
+		rDim.Render(fmt.Sprintf("%3d", cp.UntrackedFiles))))
 	if cp.LinesAdded > 0 || cp.LinesDeleted > 0 {
 		lines = append(lines, fmt.Sprintf("  %s  %s",
 			rGreen.Render(fmt.Sprintf("+%d", cp.LinesAdded)),
@@ -257,7 +257,7 @@ func RenderCleanPreview(findings []jackal.Finding) []string {
 		lines = append(lines, "     "+rDim.Render(ShortenPath(f.Path)))
 	}
 	if len(findings) > limit {
-		lines = append(lines, "  "+rDim.Render(fmt.Sprintf("  ... and %d more", len(findings)-limit)))
+		lines = append(lines, "     "+rDim.Render(fmt.Sprintf("... and %d more", len(findings)-limit)))
 	}
 
 	lines = append(lines, "")
@@ -443,7 +443,8 @@ func RenderMirrorResult(res *mirror.MirrorResult) []string {
 
 	limit := min(len(res.Groups), 10)
 	for _, g := range res.Groups[:limit] {
-		lines = append(lines, "  "+rBody.Render(fmt.Sprintf("%d copies  %s wasted", len(g.Files), jackal.FormatSize(g.WasteBytes))))
+		lines = append(lines, fmt.Sprintf("  %2d copies  %8s wasted",
+			len(g.Files), jackal.FormatSize(g.WasteBytes)))
 		for j, f := range g.Files {
 			if j >= 3 {
 				lines = append(lines, "     "+rDim.Render(fmt.Sprintf("... +%d more", len(g.Files)-3)))
@@ -601,16 +602,16 @@ func RenderSymbolGraph(graph *horus.SymbolGraph) []string {
 
 	s := graph.Stats
 	lines = append(lines, fmt.Sprintf("  %s files   %s packages   %s lines",
-		rBig.Render(fmt.Sprintf("%d", s.Files)),
-		rBody.Render(fmt.Sprintf("%d", s.Packages)),
-		rDim.Render(fmt.Sprintf("%d", s.TotalLines))))
+		rBig.Render(fmt.Sprintf("%5d", s.Files)),
+		rBody.Render(fmt.Sprintf("%4d", s.Packages)),
+		rDim.Render(fmt.Sprintf("%6d", s.TotalLines))))
 	lines = append(lines, "")
 
 	lines = append(lines, fmt.Sprintf("  %s types   %s functions   %s methods   %s interfaces",
-		rGold.Render(fmt.Sprintf("%d", s.Types)),
-		rBody.Render(fmt.Sprintf("%d", s.Functions)),
-		rBody.Render(fmt.Sprintf("%d", s.Methods)),
-		rDim.Render(fmt.Sprintf("%d", s.Interfaces))))
+		rGold.Render(fmt.Sprintf("%4d", s.Types)),
+		rBody.Render(fmt.Sprintf("%4d", s.Functions)),
+		rBody.Render(fmt.Sprintf("%4d", s.Methods)),
+		rDim.Render(fmt.Sprintf("%4d", s.Interfaces))))
 	lines = append(lines, "")
 
 	// Show top packages
@@ -682,7 +683,7 @@ func (m TUIModel) renderSelect() string {
 		}
 		b.WriteString(line + "\n")
 		if item.Detail != "" {
-			b.WriteString("       " + dim.Render(item.Detail) + "\n")
+			b.WriteString("     " + dim.Render(item.Detail) + "\n")
 		}
 	}
 
