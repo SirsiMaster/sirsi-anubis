@@ -4,7 +4,7 @@
     "maat-coverage-raise",
     "remaining-test-gaps",
     "tui-controller-refactor",
-    "reversible-delete-wiring"
+    "enterprise-embedding-boundary"
   ],
   "completed_topics": [
     "safety-reset",
@@ -13,7 +13,10 @@
     "stale-vocabulary",
     "maat-credibility",
     "race-detection-pass",
-    "router-security-hardening"
+    "router-security-hardening",
+    "reversible-delete-wiring",
+    "first-run-vocabulary",
+    "stale-docs-cleanup"
   ],
   "last_codex_read": "2026-05-14T00:00:00Z",
   "last_claude_read": "2026-05-14T12:00:00Z",

@@ -7,7 +7,7 @@
 
 ## 0. Identity
 This is the **sirsi-pantheon** repository — Sirsi Technologies' infrastructure hygiene platform.
-An open-source CLI tool that scans, judges, and purges infrastructure waste across workstations, containers, VMs, networks, and storage backends.
+An open-source CLI tool that scans, cleans, and optimizes infrastructure across workstations, containers, VMs, networks, and storage backends.
 
 - **GitHub**: `https://github.com/SirsiMaster/sirsi-pantheon`
 - **Local Path**: `/Users/thekryptodragon/Development/sirsi-pantheon`
@@ -81,7 +81,7 @@ Receives reports from all Horus instances. Orchestrates across all endpoints.
 ### 2.1 Safety Protocol (PARAMOUNT)
 > **These rules are PARAMOUNT. They override ALL other directives when in conflict.**
 
-*   **Safety First (Rule A1)**: NEVER delete a file without dry-run verification available. Every destructive operation (`judge`, `guard --slay`, `hapi --kill-orphans`) MUST have a `--dry-run` flag. Protected system paths are hardcoded in `internal/cleaner/safety.go` and CANNOT be overridden by configuration, flags, or user input. A deletion that bypasses dry-run is a **critical security bug**.
+*   **Safety First (Rule A1)**: NEVER delete a file without dry-run verification available. Every destructive operation (`clean`, `purge`, `guard --slay`, `hapi --kill-orphans`) MUST have a `--dry-run` flag. Protected system paths are hardcoded in `internal/cleaner/safety.go` and CANNOT be overridden by configuration, flags, or user input. A deletion that bypasses dry-run is a **critical security bug**.
 
 *   **Scan Rule Isolation (Rule A2)**: Each scan rule is a self-contained Go file implementing the `ScanRule` interface. Rules MUST NOT have side effects during the `Scan()` phase — they may only read the filesystem and report findings. Side effects (deletion, modification) happen ONLY during the `Clean()` phase, which requires explicit user confirmation.
 

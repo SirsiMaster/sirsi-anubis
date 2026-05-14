@@ -13,13 +13,13 @@ var (
 )
 
 var helpCmd = &cobra.Command{
-	Use:   "help [deity]",
-	Short: "Show rich guides for Pantheon deities",
-	Long: `Show a styled terminal guide for any Pantheon deity, or open the
+	Use:   "help [module]",
+	Short: "Show rich guides for Pantheon modules",
+	Long: `Show a styled terminal guide for any Pantheon module, or open the
 web documentation in your browser.
 
-  sirsi help thoth          Show terminal guide for Thoth
-  sirsi help seshat --docs  Open Seshat web docs in browser
+  sirsi help memory         Show terminal guide for the Memory module
+  sirsi help knowledge --docs  Open Knowledge web docs in browser
   sirsi help --list         List all available guides`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -41,7 +41,7 @@ web documentation in your browser.
 
 func init() {
 	helpCmd.Flags().BoolVar(&helpDocs, "docs", false, "Open web documentation in browser")
-	helpCmd.Flags().BoolVar(&helpList, "list", false, "List all available deity guides")
+	helpCmd.Flags().BoolVar(&helpList, "list", false, "List all available module guides")
 
 	// Register as a named subcommand (not overriding cobra's built-in help)
 	rootCmd.AddCommand(helpCmd)

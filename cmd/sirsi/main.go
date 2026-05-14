@@ -34,15 +34,15 @@ var versionCmd = &cobra.Command{
 			key     string
 		}
 		layout := []entry{
-			{"Ra", "ra"},
-			{"Net", "net"},
-			{"Thoth", "thoth"},
-			{"Ma'at", "maat"},
-			{"Isis", "isis"},
-			{"Seshat", "seshat"},
-			{"Anubis", "anubis"},
-			{"Seba", "seba"},
-			{"Osiris", "osiris"},
+			{"Fleet", "ra"},
+			{"Alignment", "net"},
+			{"Memory", "thoth"},
+			{"Quality", "maat"},
+			{"Health", "isis"},
+			{"Knowledge", "seshat"},
+			{"Cleanup", "anubis"},
+			{"Hardware", "seba"},
+			{"Recovery", "osiris"},
 		}
 
 		if JsonOutput {
@@ -62,7 +62,7 @@ var versionCmd = &cobra.Command{
 
 		fmt.Printf("𓉴 Sirsi Pantheon %s\n", version)
 		fmt.Println("  Unified DevOps Intelligence Platform")
-		fmt.Println("  \"One Install. All Deities.\"")
+		fmt.Println("  \"One Install. Everything Clean.\"")
 		fmt.Println()
 		fmt.Println("  Module Versions:")
 		for i := 0; i < len(layout); i += 2 {
@@ -107,11 +107,11 @@ var rootCmd = &cobra.Command{
   sirsi hardware           CPU, GPU, RAM, Neural Engine detection
   sirsi diagram            Architecture diagrams
 
-  Module Access
-  sirsi anubis <verb>      Storage & cleanup        (Handled by Anubis)
-  sirsi isis <verb>        Health & networking       (Handled by Isis)
-  sirsi maat <verb>        Quality & governance      (Handled by Ma'at)
-  sirsi ra <verb>          Fleet orchestration       (Handled by Ra)
+  Advanced (by module)
+  sirsi anubis <verb>      Storage & cleanup module
+  sirsi isis <verb>        Health & networking module
+  sirsi maat <verb>        Quality & governance module
+  sirsi ra <verb>          Fleet orchestration module
   sirsi version            Show version`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
@@ -130,8 +130,8 @@ var rootCmd = &cobra.Command{
 }
 
 // Top-level aliases for the core user-facing commands.
-// These delegate to the internal deity commands so users don't need to
-// know the mythology to use the tool.
+// These delegate to the internal module commands so users don't need to
+// know the module names to use the tool.
 var scanCmd = &cobra.Command{
 	Use:   "scan",
 	Short: "Scan for infrastructure waste",

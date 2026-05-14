@@ -6,7 +6,7 @@ Anubis finds junk on your machine that cleaning apps miss. 58 scan rules across 
 
 ### Scan for waste
 ```bash
-sirsi scan                    # Quick scan (or: sirsi anubis weigh)
+sirsi scan                    # Quick scan (or: sirsi anubis scan)
 sirsi scan --all              # Scan all categories
 ```
 
@@ -14,8 +14,8 @@ Scans for: stale caches, orphaned build artifacts, unused dependencies, crash re
 
 ### Reclaim storage
 ```bash
-sirsi anubis judge            # Dry-run by default — shows what would be cleaned
-sirsi anubis judge --confirm  # Actually move artifacts to Trash
+sirsi clean                   # Dry-run by default — shows what would be cleaned
+sirsi clean --confirm         # Actually move artifacts to Trash
 ```
 
 Always runs in `--dry-run` mode unless you explicitly confirm. Safe by design.
@@ -31,7 +31,7 @@ Detects: Launch Services ghosts, orphaned plists, leftover caches, and Spotlight
 ### Find duplicate files
 ```bash
 sirsi dedup ~/Downloads ~/Documents   # Compare two directories
-sirsi anubis mirror ~/Photos          # Same thing, deity syntax
+sirsi duplicates ~/Photos             # Same thing, top-level alias
 ```
 
 Opens a web UI with smart recommendations for which copy to keep.

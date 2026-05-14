@@ -6,8 +6,8 @@ Isis diagnoses system health, audits network security, and auto-remediates issue
 
 ### System health diagnostic
 ```bash
-sirsi doctor                  # One-shot health check
-sirsi doctor --json           # JSON output
+sirsi diagnose                # One-shot health check (alias: sirsi doctor)
+sirsi diagnose --json         # JSON output
 ```
 
 Checks: RAM pressure, swap usage, disk space, top memory consumers, kernel panics, Jetsam events, and Pantheon background process health.

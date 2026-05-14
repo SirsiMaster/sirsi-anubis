@@ -32,13 +32,13 @@ Or download from [GitHub Releases](https://github.com/SirsiMaster/sirsi-pantheon
 sirsi                           # Opens interactive TUI
 ```
 
-Type `scan` in the TUI to run a waste scan. After completion, you'll see gold-highlighted "What's Next" suggestions — contextual follow-up commands like `findings`, `clean`, `judge`. Press Tab to cycle through them.
+Type `scan` in the TUI to run a waste scan. After completion, you'll see gold-highlighted "What's Next" suggestions — contextual follow-up commands like `findings`, `clean`, `purge`. Press Tab to cycle through them.
 
 Or use standalone commands directly:
 
 ```bash
 sirsi scan       # Find waste — caches, build artifacts, orphaned files (81 rules)
-sirsi doctor     # System health — RAM pressure, disk space, kernel panics
+sirsi diagnose   # System health — RAM pressure, disk space, kernel panics
 sirsi ghosts     # Find remnants of apps you already uninstalled
 ```
 
@@ -71,7 +71,7 @@ Pantheon has three interfaces that work together:
 | `sirsi scan` | Find infrastructure waste (81 rules, 7 domains) |
 | `sirsi ghosts` | Detect remnants of uninstalled apps |
 | `sirsi dedup [dirs]` | Find duplicate files with three-phase hashing |
-| `sirsi doctor` | One-shot system health diagnostic |
+| `sirsi diagnose` | One-shot system health diagnostic |
 | `sirsi network` | Network security audit (DNS, WiFi, TLS, firewall, VPN) |
 | `sirsi network --fix` | Auto-apply encrypted DNS + firewall with safety rollback |
 | `sirsi hardware` | CPU, GPU, RAM, Neural Engine detection |

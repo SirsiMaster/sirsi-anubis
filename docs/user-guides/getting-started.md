@@ -34,7 +34,7 @@ Every command also works directly from your shell:
 sirsi scan
 
 # Check system health
-sirsi doctor
+sirsi diagnose
 
 # Audit network security
 sirsi isis network
@@ -48,31 +48,31 @@ sirsi osiris assess
 
 ## The 12 Modules
 
-| Command | Deity | What It Does |
-|---------|-------|--------------|
-| `sirsi anubis` | Anubis | Scans waste, cleans artifacts, hunts ghosts, deduplicates files |
-| `sirsi isis` | Isis | System health, network security, auto-remediation |
-| `sirsi seba` | Seba | Hardware profiling, architecture mapping, fleet discovery |
-| `sirsi thoth` | Thoth | Persistent AI memory for coding sessions |
-| `sirsi maat` | Ma'at | Code quality governance, coverage audits |
-| `sirsi seshat` | Seshat | Knowledge ingestion from Chrome, Gemini, Claude, Notes |
-| `sirsi ra` | Ra | Cross-repo orchestration (requires claude-code-sdk) |
-| `sirsi net` | Net | Scope definition and plan alignment |
-| `sirsi osiris` | Osiris | Checkpoint assessment and risk scoring |
-| `sirsi rtk` | RTK | Output filtering — strip ANSI, dedup, truncate for AI context |
+| Command | Module | What It Does |
+|---------|--------|--------------|
+| `sirsi anubis` | Cleanup | Scans waste, cleans artifacts, hunts ghosts, deduplicates files |
+| `sirsi isis` | Health | System health, network security, auto-remediation |
+| `sirsi seba` | Hardware | Hardware profiling, architecture mapping, fleet discovery |
+| `sirsi thoth` | Memory | Persistent AI memory for coding sessions |
+| `sirsi maat` | Quality | Code quality governance, coverage audits |
+| `sirsi seshat` | Knowledge | Knowledge ingestion from Chrome, Gemini, Claude, Notes |
+| `sirsi ra` | Fleet | Cross-repo orchestration (requires claude-code-sdk) |
+| `sirsi net` | Alignment | Scope definition and plan alignment |
+| `sirsi osiris` | Recovery | Checkpoint assessment and risk scoring |
+| `sirsi rtk` | Filter | Output filtering — strip ANSI, dedup, truncate for AI context |
 | `sirsi vault` | Vault | Context sandbox — store large output in SQLite FTS5, search later |
-| `sirsi horus` | Horus | Structural code graph — AST outlines, symbol extraction, context queries |
+| `sirsi horus` | Code Graph | Structural code graph — AST outlines, symbol extraction, context queries |
 
 ## Common Shortcuts
 
-These top-level aliases skip the deity prefix:
+These top-level aliases skip the module prefix:
 
 ```bash
-sirsi scan       # → anubis weigh
-sirsi ghosts     # → anubis ka
-sirsi dedup      # → anubis mirror
-sirsi guard      # → anubis guard (resource monitor)
-sirsi doctor     # → isis doctor (health diagnostic)
+sirsi scan       # → anubis scan (find waste)
+sirsi ghosts     # → anubis ghosts (find app remnants)
+sirsi duplicates # → anubis dedup (find duplicate files)
+sirsi monitor    # → anubis guard (resource monitor)
+sirsi diagnose   # → isis diagnose (health diagnostic)
 ```
 
 ## Output Modes
