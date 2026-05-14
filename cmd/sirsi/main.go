@@ -85,7 +85,7 @@ var rootCmd = &cobra.Command{
 
   sirsi                    Launch interactive TUI
 
-  Scan & Clean
+  Clean My Machine
   sirsi scan               Find infrastructure waste
   sirsi clean              Remove safe items (caches, logs, temp)
   sirsi ghosts             Find remnants of uninstalled apps
@@ -94,24 +94,24 @@ var rootCmd = &cobra.Command{
   sirsi analyze            Visual disk space explorer
   sirsi installer          Find and remove installer files
 
-  Health & Network
+  Fix My Environment
   sirsi diagnose           Full system health check
-  sirsi network            Network security audit
   sirsi fix                Auto-fix DNS, firewall, security
+  sirsi network            Network security audit
   sirsi monitor            Watch processes and RAM pressure
   sirsi status             Live system dashboard
 
-  Quality & Intel
+  Keep Shipping
   sirsi audit              Code quality and governance scan
   sirsi risk               Uncommitted work risk assessment
   sirsi hardware           CPU, GPU, RAM, Neural Engine detection
   sirsi diagram            Architecture diagrams
 
-  Power User
-  sirsi anubis <verb>      Full Anubis module
-  sirsi isis <verb>        Full Isis module
-  sirsi maat <verb>        Full Ma'at module
-  sirsi ra <verb>          Fleet orchestration
+  Module Access
+  sirsi anubis <verb>      Storage & cleanup        (Handled by Anubis)
+  sirsi isis <verb>        Health & networking       (Handled by Isis)
+  sirsi maat <verb>        Quality & governance      (Handled by Ma'at)
+  sirsi ra <verb>          Fleet orchestration       (Handled by Ra)
   sirsi version            Show version`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
