@@ -18,8 +18,12 @@
     "remaining-test-gaps",
     "enterprise-embedding-boundary"
   ],
+  "pending_for_codex": [
+    "20260514-claude-completion-handoff"
+  ],
+  "pending_for_claude": [],
   "last_codex_read": "2026-05-14T00:00:00Z",
-  "last_claude_read": "2026-05-14T12:00:00Z",
+  "last_claude_read": "2026-05-14T18:00:00Z",
   "rules": {
     "no_feature_expansion": true,
     "safety_first": true,
