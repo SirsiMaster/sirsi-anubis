@@ -1,10 +1,7 @@
 {
   "version": 1,
   "active_topics": [
-    "maat-coverage-raise",
-    "remaining-test-gaps",
-    "tui-controller-refactor",
-    "enterprise-embedding-boundary"
+    "tui-controller-refactor"
   ],
   "completed_topics": [
     "safety-reset",
@@ -16,7 +13,10 @@
     "router-security-hardening",
     "reversible-delete-wiring",
     "first-run-vocabulary",
-    "stale-docs-cleanup"
+    "stale-docs-cleanup",
+    "maat-coverage-raise",
+    "remaining-test-gaps",
+    "enterprise-embedding-boundary"
   ],
   "last_codex_read": "2026-05-14T00:00:00Z",
   "last_claude_read": "2026-05-14T12:00:00Z",
