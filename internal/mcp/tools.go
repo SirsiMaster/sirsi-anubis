@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/brain"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/router"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/horus"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal/rules"
@@ -304,6 +305,81 @@ func registerTools(s *Server) {
 			},
 		},
 	}, handleNotificationHistory)
+
+	// ── Router: Cross-Agent Collaboration ──────────────────────────
+
+	s.RegisterTool(Tool{
+		Name:        "router_submit",
+		Description: "Write a proposal, review, or decision to the idea-router and optionally notify the other agent (Codex or Claude) to review it.",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]SchemaField{
+				"type": {
+					Type:        "string",
+					Description: "Document type: proposal, review, or decision.",
+				},
+				"author": {
+					Type:        "string",
+					Description: "Who is submitting: codex or claude.",
+				},
+				"title": {
+					Type:        "string",
+					Description: "Title of the document.",
+				},
+				"content": {
+					Type:        "string",
+					Description: "Full markdown content of the document.",
+				},
+				"notify": {
+					Type:        "string",
+					Description: "Agent to notify: codex, claude, or empty for no notification.",
+				},
+			},
+			Required: []string{"type", "author", "title", "content"},
+		},
+	}, handleRouterSubmit)
+
+	s.RegisterTool(Tool{
+		Name:        "router_poll",
+		Description: "Check for new proposals, reviews, or decisions since a given time. Use this to see if the other agent has responded.",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]SchemaField{
+				"since": {
+					Type:        "string",
+					Description: "ISO 8601 timestamp. Returns documents modified after this time. Default: last 24 hours.",
+				},
+				"limit": {
+					Type:        "number",
+					Description: "Maximum number of results (default 10).",
+				},
+			},
+		},
+	}, handleRouterPoll)
+
+	s.RegisterTool(Tool{
+		Name:        "router_list",
+		Description: "List all idea-router topics, their status, and recent documents.",
+		InputSchema: InputSchema{
+			Type:       "object",
+			Properties: map[string]SchemaField{},
+		},
+	}, handleRouterList)
+
+	s.RegisterTool(Tool{
+		Name:        "router_get",
+		Description: "Read a specific proposal, review, or decision by its ID.",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]SchemaField{
+				"id": {
+					Type:        "string",
+					Description: "Document ID (filename without .md extension).",
+				},
+			},
+			Required: []string{"id"},
+		},
+	}, handleRouterGet)
 }
 
 // handleScanWorkspace runs the Jackal scan engine on a workspace.
@@ -1072,6 +1148,164 @@ func handleNotificationHistory(args map[string]interface{}) (*ToolResult, error)
 		}
 		sb.WriteString("\n")
 	}
+
+	return textResult(sb.String(), false), nil
+}
+
+// ── Router Handlers ──────────────────────────────────────────────
+
+func handleRouterSubmit(args map[string]interface{}) (*ToolResult, error) {
+	docType, _ := args["type"].(string)
+	author, _ := args["author"].(string)
+	title, _ := args["title"].(string)
+	content, _ := args["content"].(string)
+	notifyTarget, _ := args["notify"].(string)
+
+	if docType == "" || author == "" || title == "" || content == "" {
+		return textResult("Error: type, author, title, and content are all required.", true), nil
+	}
+
+	repoRoot, err := router.FindRepoRoot()
+	if err != nil {
+		return textResult(fmt.Sprintf("Error: %v", err), true), nil
+	}
+
+	r, err := router.New(repoRoot)
+	if err != nil {
+		return textResult(fmt.Sprintf("Error: %v", err), true), nil
+	}
+
+	id, err := r.Submit(router.DocType(docType), author, title, content)
+	if err != nil {
+		return textResult(fmt.Sprintf("Error writing document: %v", err), true), nil
+	}
+
+	result := fmt.Sprintf("Submitted %s %q (ID: %s)", docType, title, id)
+
+	if notifyTarget != "" {
+		if err := router.NotifyAgent(notifyTarget, docType, id, repoRoot); err != nil {
+			result += fmt.Sprintf("\nNotification to %s failed: %v", notifyTarget, err)
+		} else {
+			result += fmt.Sprintf("\nNotified %s to review.", notifyTarget)
+		}
+	}
+
+	return textResult(result, false), nil
+}
+
+func handleRouterPoll(args map[string]interface{}) (*ToolResult, error) {
+	sinceStr, _ := args["since"].(string)
+	limit := 10
+	if l, ok := args["limit"].(float64); ok && l > 0 {
+		limit = int(l)
+	}
+
+	since := time.Now().Add(-24 * time.Hour)
+	if sinceStr != "" {
+		if parsed, err := time.Parse(time.RFC3339, sinceStr); err == nil {
+			since = parsed
+		}
+	}
+
+	repoRoot, err := router.FindRepoRoot()
+	if err != nil {
+		return textResult(fmt.Sprintf("Error: %v", err), true), nil
+	}
+
+	r, err := router.New(repoRoot)
+	if err != nil {
+		return textResult(fmt.Sprintf("Error: %v", err), true), nil
+	}
+
+	docs, err := r.PollSince(since, limit)
+	if err != nil {
+		return textResult(fmt.Sprintf("Error: %v", err), true), nil
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Documents since %s: %d\n\n", since.Format(time.RFC3339), len(docs)))
+	for _, d := range docs {
+		sb.WriteString(fmt.Sprintf("  [%s] %s — %s (by %s, %s)\n",
+			d.Type, d.ID, d.Title, d.Author, d.ModTime.Format("Jan 02 15:04")))
+	}
+	if len(docs) == 0 {
+		sb.WriteString("  No new documents.\n")
+	}
+
+	return textResult(sb.String(), false), nil
+}
+
+func handleRouterList(args map[string]interface{}) (*ToolResult, error) {
+	repoRoot, err := router.FindRepoRoot()
+	if err != nil {
+		return textResult(fmt.Sprintf("Error: %v", err), true), nil
+	}
+
+	r, err := router.New(repoRoot)
+	if err != nil {
+		return textResult(fmt.Sprintf("Error: %v", err), true), nil
+	}
+
+	state, err := r.ReadState()
+	if err != nil {
+		return textResult(fmt.Sprintf("Error: %v", err), true), nil
+	}
+
+	docs, err := r.List()
+	if err != nil {
+		return textResult(fmt.Sprintf("Error: %v", err), true), nil
+	}
+
+	var sb strings.Builder
+	sb.WriteString("Idea Router Status\n\n")
+	sb.WriteString("Active Topics:\n")
+	for _, t := range state.ActiveTopics {
+		sb.WriteString(fmt.Sprintf("  • %s\n", t))
+	}
+	if len(state.CompletedTopics) > 0 {
+		sb.WriteString("\nCompleted Topics:\n")
+		for _, t := range state.CompletedTopics {
+			sb.WriteString(fmt.Sprintf("  ✓ %s\n", t))
+		}
+	}
+	sb.WriteString(fmt.Sprintf("\nLast Codex read: %s\n", state.LastCodexRead))
+	sb.WriteString(fmt.Sprintf("Last Claude read: %s\n", state.LastClaudeRead))
+	sb.WriteString(fmt.Sprintf("\nAll Documents (%d):\n", len(docs)))
+	for _, d := range docs {
+		sb.WriteString(fmt.Sprintf("  [%s] %s — %s (%s)\n",
+			d.Type, d.ID, d.Title, d.ModTime.Format("Jan 02 15:04")))
+	}
+
+	return textResult(sb.String(), false), nil
+}
+
+func handleRouterGet(args map[string]interface{}) (*ToolResult, error) {
+	id, _ := args["id"].(string)
+	if id == "" {
+		return textResult("Error: id is required.", true), nil
+	}
+
+	repoRoot, err := router.FindRepoRoot()
+	if err != nil {
+		return textResult(fmt.Sprintf("Error: %v", err), true), nil
+	}
+
+	r, err := router.New(repoRoot)
+	if err != nil {
+		return textResult(fmt.Sprintf("Error: %v", err), true), nil
+	}
+
+	doc, err := r.Get(id)
+	if err != nil {
+		return textResult(fmt.Sprintf("Error: %v", err), true), nil
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Type: %s\n", doc.Type))
+	sb.WriteString(fmt.Sprintf("Author: %s\n", doc.Author))
+	sb.WriteString(fmt.Sprintf("Modified: %s\n", doc.ModTime.Format(time.RFC3339)))
+	sb.WriteString(fmt.Sprintf("Path: %s\n\n", doc.Path))
+	sb.WriteString(doc.Content)
 
 	return textResult(sb.String(), false), nil
 }
