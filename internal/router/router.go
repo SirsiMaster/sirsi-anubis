@@ -44,6 +44,51 @@ type State struct {
 	LastCodexRead   string   `json:"last_codex_read"`
 	LastClaudeRead  string   `json:"last_claude_read"`
 	Rules           map[string]bool `json:"rules"`
+
+	// Inbox: per-agent pending work tracking
+	PendingForCodex []string `json:"pending_for_codex,omitempty"`
+	PendingForClaude []string `json:"pending_for_claude,omitempty"`
+}
+
+// InboxFor returns the list of unread document IDs addressed to the given agent.
+func (s *State) InboxFor(agent string) []string {
+	switch agent {
+	case "codex":
+		return s.PendingForCodex
+	case "claude":
+		return s.PendingForClaude
+	default:
+		return nil
+	}
+}
+
+// AddToInbox marks a document as pending for the target agent.
+func (s *State) AddToInbox(target, docID string) {
+	switch target {
+	case "codex":
+		s.PendingForCodex = append(s.PendingForCodex, docID)
+	case "claude":
+		s.PendingForClaude = append(s.PendingForClaude, docID)
+	}
+}
+
+// ClearInbox removes a document from the target agent's inbox.
+func (s *State) ClearInbox(agent, docID string) {
+	remove := func(ids []string, id string) []string {
+		var result []string
+		for _, v := range ids {
+			if v != id {
+				result = append(result, v)
+			}
+		}
+		return result
+	}
+	switch agent {
+	case "codex":
+		s.PendingForCodex = remove(s.PendingForCodex, docID)
+	case "claude":
+		s.PendingForClaude = remove(s.PendingForClaude, docID)
+	}
 }
 
 // Router provides access to the idea-router filesystem.
@@ -175,6 +220,62 @@ func (r *Router) Submit(docType DocType, author, title, content string) (string,
 	_ = r.WriteState(state)
 
 	return id, nil
+}
+
+// SubmitAddressed writes a document and marks it as pending for the target agent.
+// The target agent will see it when calling PollInbox.
+func (r *Router) SubmitAddressed(docType DocType, author, title, content, addressedTo string) (string, error) {
+	id, err := r.Submit(docType, author, title, content)
+	if err != nil {
+		return "", err
+	}
+
+	if addressedTo != "" {
+		if err := ValidateAuthor(addressedTo); err != nil {
+			return id, nil // file written, inbox update skipped
+		}
+		state, err := r.ReadState()
+		if err != nil {
+			return id, nil
+		}
+		state.AddToInbox(addressedTo, id)
+		_ = r.WriteState(state)
+	}
+
+	return id, nil
+}
+
+// PollInbox returns the unread document IDs for the given agent and
+// clears them from the inbox.
+func (r *Router) PollInbox(agent string) ([]string, error) {
+	if err := ValidateAuthor(agent); err != nil {
+		return nil, err
+	}
+
+	state, err := r.ReadState()
+	if err != nil {
+		return nil, err
+	}
+
+	pending := state.InboxFor(agent)
+	if len(pending) == 0 {
+		return nil, nil
+	}
+
+	// Clear the inbox and update last-read time
+	for _, id := range pending {
+		state.ClearInbox(agent, id)
+	}
+	now := time.Now().Format(time.RFC3339)
+	switch agent {
+	case "claude":
+		state.LastClaudeRead = now
+	case "codex":
+		state.LastCodexRead = now
+	}
+	_ = r.WriteState(state)
+
+	return pending, nil
 }
 
 // List returns all documents across proposals, reviews, and decisions.

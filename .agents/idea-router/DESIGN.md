@@ -76,6 +76,21 @@ verdict: approve|request-changes|reject
 ## Suggested Revisions
 
 ## Residual Risk
+
+## UX Workflow Review
+
+For every implementation review, include this checklist:
+
+- Entry point: [how does the user discover/start this?]
+- Progress feedback: [spinner, streaming output, progress bar?]
+- Completion state: [clear result printed?]
+- Error/empty state: [what happens when nothing found or operation fails?]
+- Cancellation/back navigation: [Ctrl+C, Esc, back work?]
+- Output visible on screen: [does it print something the user can read?]
+- Next action clear: [does it tell the user what to do next?]
+- Plain-language outcome: [no deity/module jargon in user output?]
+- Internal names hidden or justified: [module names only in advanced mode?]
+- User left dangling? [yes/no — does the flow end cleanly?]
 ```
 
 ### Decision

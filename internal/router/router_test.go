@@ -249,6 +249,58 @@ func TestNotifyAgent_DisabledByDefault(t *testing.T) {
 	}
 }
 
+func TestSubmitAddressed_AddsToInbox(t *testing.T) {
+	r, _ := setupTestRouter(t)
+	id, err := r.SubmitAddressed(DocReview, "claude", "Review for Codex", "# Review\n\nauthor: claude\ncontent", "codex")
+	if err != nil {
+		t.Fatalf("SubmitAddressed() error: %v", err)
+	}
+
+	state, _ := r.ReadState()
+	if len(state.PendingForCodex) != 1 || state.PendingForCodex[0] != id {
+		t.Errorf("PendingForCodex = %v, want [%s]", state.PendingForCodex, id)
+	}
+}
+
+func TestPollInbox_ReturnsAndClears(t *testing.T) {
+	r, _ := setupTestRouter(t)
+	r.SubmitAddressed(DocReview, "claude", "Review 1", "content", "codex")
+	r.SubmitAddressed(DocProposal, "claude", "Proposal 1", "content", "codex")
+
+	pending, err := r.PollInbox("codex")
+	if err != nil {
+		t.Fatalf("PollInbox() error: %v", err)
+	}
+	if len(pending) != 2 {
+		t.Errorf("expected 2 pending items, got %d", len(pending))
+	}
+
+	// Second poll should be empty (cleared)
+	pending2, _ := r.PollInbox("codex")
+	if len(pending2) != 0 {
+		t.Errorf("expected 0 pending after clear, got %d", len(pending2))
+	}
+}
+
+func TestPollInbox_EmptyInbox(t *testing.T) {
+	r, _ := setupTestRouter(t)
+	pending, err := r.PollInbox("claude")
+	if err != nil {
+		t.Fatalf("PollInbox() error: %v", err)
+	}
+	if len(pending) != 0 {
+		t.Errorf("expected empty inbox, got %d items", len(pending))
+	}
+}
+
+func TestInboxFor_InvalidAgent(t *testing.T) {
+	r, _ := setupTestRouter(t)
+	_, err := r.PollInbox("mallory")
+	if err == nil {
+		t.Error("expected error for invalid agent")
+	}
+}
+
 func TestSlugify(t *testing.T) {
 	tests := []struct {
 		input string

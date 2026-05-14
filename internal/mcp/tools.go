@@ -310,7 +310,7 @@ func registerTools(s *Server) {
 
 	s.RegisterTool(Tool{
 		Name:        "router_submit",
-		Description: "Write a proposal, review, or decision to the idea-router. Filesystem-only — does not spawn processes. Use router_notify separately to ping the other agent.",
+		Description: "Write a proposal, review, or decision to the idea-router. Optionally address it to the other agent so they see it in their inbox via router_poll.",
 		InputSchema: InputSchema{
 			Type: "object",
 			Properties: map[string]SchemaField{
@@ -329,6 +329,10 @@ func registerTools(s *Server) {
 				"content": {
 					Type:        "string",
 					Description: "Full markdown content of the document.",
+				},
+				"addressed_to": {
+					Type:        "string",
+					Description: "Agent who should see this in their inbox: codex or claude. Optional.",
 				},
 			},
 			Required: []string{"type", "author", "title", "content"},
@@ -360,13 +364,17 @@ func registerTools(s *Server) {
 
 	s.RegisterTool(Tool{
 		Name:        "router_poll",
-		Description: "Check for new proposals, reviews, or decisions since a given time. Use this to see if the other agent has responded.",
+		Description: "Check the inbox for pending work addressed to you, or browse recent documents. If 'agent' is set, returns unread inbox items for that agent and clears them.",
 		InputSchema: InputSchema{
 			Type: "object",
 			Properties: map[string]SchemaField{
+				"agent": {
+					Type:        "string",
+					Description: "Your agent name (codex or claude). Returns and clears your inbox. If omitted, returns recent documents by time.",
+				},
 				"since": {
 					Type:        "string",
-					Description: "ISO 8601 timestamp. Returns documents modified after this time. Default: last 24 hours.",
+					Description: "ISO 8601 timestamp. Returns documents modified after this time. Default: last 24 hours. Ignored if agent is set.",
 				},
 				"limit": {
 					Type:        "number",
@@ -1193,12 +1201,23 @@ func handleRouterSubmit(args map[string]interface{}) (*ToolResult, error) {
 		return textResult(fmt.Sprintf("Error: %v", err), true), nil
 	}
 
-	id, err := r.Submit(router.DocType(docType), author, title, content)
+	addressedTo, _ := args["addressed_to"].(string)
+
+	var id string
+	if addressedTo != "" {
+		id, err = r.SubmitAddressed(router.DocType(docType), author, title, content, addressedTo)
+	} else {
+		id, err = r.Submit(router.DocType(docType), author, title, content)
+	}
 	if err != nil {
 		return textResult(fmt.Sprintf("Error writing document: %v", err), true), nil
 	}
 
-	return textResult(fmt.Sprintf("Submitted %s %q (ID: %s)\nUse router_notify to ping the other agent.", docType, title, id), false), nil
+	result := fmt.Sprintf("Submitted %s %q (ID: %s)", docType, title, id)
+	if addressedTo != "" {
+		result += fmt.Sprintf("\nAdded to %s's inbox. They will see it via router_poll.", addressedTo)
+	}
+	return textResult(result, false), nil
 }
 
 func handleRouterNotify(args map[string]interface{}) (*ToolResult, error) {
@@ -1227,6 +1246,44 @@ func handleRouterNotify(args map[string]interface{}) (*ToolResult, error) {
 }
 
 func handleRouterPoll(args map[string]interface{}) (*ToolResult, error) {
+	agent, _ := args["agent"].(string)
+
+	repoRoot, err := router.FindRepoRoot()
+	if err != nil {
+		return textResult(fmt.Sprintf("Error: %v", err), true), nil
+	}
+
+	r, err := router.New(repoRoot)
+	if err != nil {
+		return textResult(fmt.Sprintf("Error: %v", err), true), nil
+	}
+
+	// If agent is set, use inbox semantics
+	if agent != "" {
+		pending, err := r.PollInbox(agent)
+		if err != nil {
+			return textResult(fmt.Sprintf("Error: %v", err), true), nil
+		}
+
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("Inbox for %s: %d pending\n\n", agent, len(pending)))
+		for _, id := range pending {
+			doc, err := r.Get(id)
+			if err != nil {
+				sb.WriteString(fmt.Sprintf("  [?] %s (could not load: %v)\n", id, err))
+				continue
+			}
+			sb.WriteString(fmt.Sprintf("  [%s] %s — %s (by %s)\n", doc.Type, doc.ID, doc.Title, doc.Author))
+		}
+		if len(pending) == 0 {
+			sb.WriteString("  No pending work. Inbox is clear.\n")
+		} else {
+			sb.WriteString(fmt.Sprintf("\nCleared %d items from inbox. Use router_get to read details.\n", len(pending)))
+		}
+		return textResult(sb.String(), false), nil
+	}
+
+	// Fallback: time-based polling
 	sinceStr, _ := args["since"].(string)
 	limit := 10
 	if l, ok := args["limit"].(float64); ok && l > 0 {
@@ -1238,16 +1295,6 @@ func handleRouterPoll(args map[string]interface{}) (*ToolResult, error) {
 		if parsed, err := time.Parse(time.RFC3339, sinceStr); err == nil {
 			since = parsed
 		}
-	}
-
-	repoRoot, err := router.FindRepoRoot()
-	if err != nil {
-		return textResult(fmt.Sprintf("Error: %v", err), true), nil
-	}
-
-	r, err := router.New(repoRoot)
-	if err != nil {
-		return textResult(fmt.Sprintf("Error: %v", err), true), nil
 	}
 
 	docs, err := r.PollSince(since, limit)
