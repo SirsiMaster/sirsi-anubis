@@ -21,6 +21,9 @@ type Mock struct {
 	PickFolderPath  string
 	PickFolderError error
 
+	// NoTrash simulates a platform without trash support (Linux, Android, iOS).
+	NoTrash bool
+
 	// Command output mapping: "cmd args..." -> output
 	CommandResults map[string]string
 	CommandError   error
@@ -78,7 +81,12 @@ func (m *Mock) Name() string {
 	return "mock"
 }
 
-func (m *Mock) SupportsTrash() bool { return true }
+func (m *Mock) SupportsTrash() bool {
+	if m.NoTrash {
+		return false
+	}
+	return true
+}
 
 func (m *Mock) MoveToTrash(path string) error {
 	m.TrashCalls = append(m.TrashCalls, path)

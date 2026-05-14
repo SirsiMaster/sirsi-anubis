@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
 )
 
 func TestIsInstallerFile(t *testing.T) {
@@ -227,4 +229,35 @@ func createLargeFile(path string, size int64) error {
 		return err
 	}
 	return nil
+}
+
+func TestRemoveInstallers_NoTrashPlatformSkips(t *testing.T) {
+	old := platform.Current()
+	platform.Set(&platform.Mock{NoTrash: true})
+	defer platform.Set(old)
+
+	tmp := t.TempDir()
+	file := filepath.Join(tmp, "installer.dmg")
+	os.WriteFile(file, make([]byte, 500), 0o644)
+
+	files := []InstallerFile{
+		{Name: "installer.dmg", Path: file, Size: 500},
+	}
+
+	result, err := RemoveInstallers(files, true)
+	if err != nil {
+		t.Fatalf("RemoveInstallers() error = %v", err)
+	}
+
+	if result.Cleaned != 0 {
+		t.Errorf("Cleaned = %d, want 0 (no trash platform should skip)", result.Cleaned)
+	}
+	if result.Skipped != 1 {
+		t.Errorf("Skipped = %d, want 1", result.Skipped)
+	}
+
+	// File should still exist
+	if _, err := os.Stat(file); os.IsNotExist(err) {
+		t.Error("installer was permanently deleted on no-trash platform — SAFETY VIOLATION")
+	}
 }

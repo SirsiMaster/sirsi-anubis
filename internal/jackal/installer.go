@@ -195,13 +195,21 @@ func isInstallerFile(name string) bool {
 
 // RemoveInstallers deletes the given installer files via the cleaner safety
 // layer. Every path is validated against protected-path rules before deletion.
-// If useTrash is true, files are moved to the system trash (macOS).
+// If useTrash is true, uses DeleteFileReversible which refuses to permanently
+// delete when the platform has no trash support. Pass useTrash=false only for
+// explicit permanent deletion with user confirmation.
 // Returns a CleanResult compatible with the existing rendering system.
 func RemoveInstallers(files []InstallerFile, useTrash bool) (*CleanResult, error) {
 	result := &CleanResult{}
 
 	for _, f := range files {
-		freed, err := cleaner.DeleteFile(f.Path, false, useTrash)
+		var freed int64
+		var err error
+		if useTrash {
+			freed, err = cleaner.DeleteFileReversible(f.Path, false)
+		} else {
+			freed, err = cleaner.DeleteFile(f.Path, false, false)
+		}
 		if err != nil {
 			result.Errors = append(result.Errors, fmt.Errorf("remove %s: %w", f.Path, err))
 			result.Skipped++

@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
 )
 
 func TestScanArtifacts_FindsNodeModules(t *testing.T) {
@@ -177,5 +179,70 @@ func TestDeduplicateArtifacts(t *testing.T) {
 		if a.ArtifactDir == "/a/b/node_modules/pkg/node_modules" {
 			t.Error("nested artifact should have been removed")
 		}
+	}
+}
+
+func TestPurgeArtifacts_NoTrashPlatformSkips(t *testing.T) {
+	// Simulate a platform without trash support (Linux, Android, iOS).
+	// PurgeArtifacts with useTrash=true should skip/error, NOT permanently delete.
+	old := platform.Current()
+	platform.Set(&platform.Mock{NoTrash: true})
+	defer platform.Set(old)
+
+	tmp := t.TempDir()
+	dir := filepath.Join(tmp, "node_modules")
+	os.MkdirAll(dir, 0o755)
+	os.WriteFile(filepath.Join(dir, "pkg.js"), make([]byte, 100), 0o644)
+
+	artifacts := []ProjectArtifact{
+		{ArtifactDir: dir, Size: 100, ProjectName: "test"},
+	}
+
+	result, err := PurgeArtifacts(artifacts, true)
+	if err != nil {
+		t.Fatalf("PurgeArtifacts() error = %v", err)
+	}
+
+	// Should skip, not delete — platform has no trash
+	if result.Cleaned != 0 {
+		t.Errorf("Cleaned = %d, want 0 (no trash platform should skip)", result.Cleaned)
+	}
+	if result.Skipped != 1 {
+		t.Errorf("Skipped = %d, want 1", result.Skipped)
+	}
+
+	// Directory should still exist — NOT deleted
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		t.Error("artifact directory was permanently deleted on no-trash platform — SAFETY VIOLATION")
+	}
+}
+
+func TestPurgeArtifacts_WithTrashPlatformDeletes(t *testing.T) {
+	// Simulate a platform WITH trash support — should succeed.
+	old := platform.Current()
+	mock := &platform.Mock{}
+	platform.Set(mock)
+	defer platform.Set(old)
+
+	tmp := t.TempDir()
+	dir := filepath.Join(tmp, "node_modules")
+	os.MkdirAll(dir, 0o755)
+	os.WriteFile(filepath.Join(dir, "pkg.js"), make([]byte, 100), 0o644)
+
+	artifacts := []ProjectArtifact{
+		{ArtifactDir: dir, Size: 100, ProjectName: "test"},
+	}
+
+	result, err := PurgeArtifacts(artifacts, true)
+	if err != nil {
+		t.Fatalf("PurgeArtifacts() error = %v", err)
+	}
+
+	if result.Cleaned != 1 {
+		t.Errorf("Cleaned = %d, want 1", result.Cleaned)
+	}
+	// Mock records trash calls
+	if len(mock.TrashCalls) != 1 {
+		t.Errorf("TrashCalls = %d, want 1", len(mock.TrashCalls))
 	}
 }

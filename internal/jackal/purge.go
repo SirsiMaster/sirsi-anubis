@@ -319,13 +319,21 @@ func deduplicateArtifacts(artifacts []ProjectArtifact) []ProjectArtifact {
 
 // PurgeArtifacts deletes the given artifact directories via the cleaner safety
 // layer. Every path is validated against protected-path rules before deletion.
-// If useTrash is true, directories are moved to the system trash (macOS).
+// If useTrash is true, uses DeleteFileReversible which refuses to permanently
+// delete when the platform has no trash support. Pass useTrash=false only for
+// explicit permanent deletion with user confirmation.
 // Returns a CleanResult compatible with the existing rendering system.
 func PurgeArtifacts(artifacts []ProjectArtifact, useTrash bool) (*CleanResult, error) {
 	result := &CleanResult{}
 
 	for _, a := range artifacts {
-		freed, err := cleaner.DeleteFile(a.ArtifactDir, false, useTrash)
+		var freed int64
+		var err error
+		if useTrash {
+			freed, err = cleaner.DeleteFileReversible(a.ArtifactDir, false)
+		} else {
+			freed, err = cleaner.DeleteFile(a.ArtifactDir, false, false)
+		}
 		if err != nil {
 			result.Errors = append(result.Errors, fmt.Errorf("purge %s: %w", a.ArtifactDir, err))
 			result.Skipped++

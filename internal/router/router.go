@@ -108,16 +108,12 @@ var validAuthors = map[string]bool{
 	"claude": true,
 }
 
-// ValidateAuthor checks that author is an allowed value with no path traversal.
+// ValidateAuthor checks that author is an allowed value.
+// The whitelist is the sole defense against path traversal — only "codex"
+// and "claude" are accepted, so no path separators or ".." can appear.
 func ValidateAuthor(author string) error {
-	if author == "" {
-		return fmt.Errorf("author is required")
-	}
 	if !validAuthors[author] {
 		return fmt.Errorf("author %q is not allowed (must be 'codex' or 'claude')", author)
-	}
-	if strings.ContainsAny(author, "/\\..") {
-		return fmt.Errorf("author %q contains invalid characters", author)
 	}
 	return nil
 }
