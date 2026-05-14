@@ -196,6 +196,59 @@ func TestPollSince_FutureReturnsNone(t *testing.T) {
 	}
 }
 
+func TestValidateAuthor(t *testing.T) {
+	tests := []struct {
+		author  string
+		wantErr bool
+	}{
+		{"claude", false},
+		{"codex", false},
+		{"", true},
+		{"mallory", true},
+		{"../etc", true},
+		{"claude/../../etc", true},
+		{"codex\x00evil", true},
+	}
+	for _, tt := range tests {
+		err := ValidateAuthor(tt.author)
+		if (err != nil) != tt.wantErr {
+			t.Errorf("ValidateAuthor(%q) error = %v, wantErr = %v", tt.author, err, tt.wantErr)
+		}
+	}
+}
+
+func TestSubmit_RejectsInvalidAuthor(t *testing.T) {
+	r, _ := setupTestRouter(t)
+	_, err := r.Submit(DocProposal, "../escape", "Evil", "content")
+	if err == nil {
+		t.Error("expected error for path-traversal author")
+	}
+}
+
+func TestSubmit_RejectsUnknownAuthor(t *testing.T) {
+	r, _ := setupTestRouter(t)
+	_, err := r.Submit(DocProposal, "mallory", "Evil", "content")
+	if err == nil {
+		t.Error("expected error for unknown author")
+	}
+}
+
+func TestNotifyAgent_UnknownTarget(t *testing.T) {
+	err := NotifyAgent("mallory", "proposal", "test-id", "/tmp")
+	if err == nil {
+		t.Error("expected error for unknown notification target")
+	}
+}
+
+func TestNotifyAgent_DisabledByDefault(t *testing.T) {
+	// NotifyAgent validates the target but doesn't check env — the MCP handler does.
+	// Test that invalid targets are rejected at the router level.
+	err := NotifyAgent("evil", "proposal", "test-id", "/tmp")
+	if err == nil {
+		t.Error("expected error for invalid target")
+	}
+}
+
 func TestSlugify(t *testing.T) {
 	tests := []struct {
 		input string

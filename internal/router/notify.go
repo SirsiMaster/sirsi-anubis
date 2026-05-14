@@ -5,20 +5,45 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 )
 
+// CommandRunner abstracts exec.Command for testability (Rule A16).
+type CommandRunner func(name string, args ...string) *exec.Cmd
+
+var (
+	runnerMu sync.RWMutex
+	runner   CommandRunner = exec.Command
+)
+
+// SetRunner replaces the command runner (for tests).
+func SetRunner(fn CommandRunner) {
+	runnerMu.Lock()
+	defer runnerMu.Unlock()
+	runner = fn
+}
+
+func getRunner() CommandRunner {
+	runnerMu.RLock()
+	defer runnerMu.RUnlock()
+	return runner
+}
+
 // NotifyAgent attempts to notify the other agent about a new router document.
-// For Codex: spawns `codex --message` with a review prompt.
-// For Claude: spawns `claude --message` with a review prompt.
-// Returns nil if notification succeeds or the target agent CLI is not installed.
+// Target must be "codex" or "claude". Returns an error if the target CLI
+// is not installed or cannot be started.
 func NotifyAgent(target, docType, docID, repoRoot string) error {
+	if err := ValidateAuthor(target); err != nil {
+		return fmt.Errorf("invalid notification target: %w", err)
+	}
+
 	switch target {
 	case "codex":
 		return notifyCodex(docType, docID, repoRoot)
 	case "claude":
 		return notifyClaude(docType, docID, repoRoot)
 	default:
-		return fmt.Errorf("unknown agent: %s (expected 'codex' or 'claude')", target)
+		return fmt.Errorf("unknown agent: %s", target)
 	}
 }
 
@@ -28,8 +53,9 @@ func notifyCodex(docType, docID, repoRoot string) error {
 	}
 
 	prompt := buildReviewPrompt("codex", docType, docID)
+	run := getRunner()
 
-	cmd := exec.Command("codex",
+	cmd := run("codex",
 		"--approval-mode", "suggest",
 		"--message", prompt,
 	)
@@ -37,7 +63,7 @@ func notifyCodex(docType, docID, repoRoot string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	return cmd.Start() // non-blocking — let Codex run in background
+	return cmd.Start()
 }
 
 func notifyClaude(docType, docID, repoRoot string) error {
@@ -46,8 +72,9 @@ func notifyClaude(docType, docID, repoRoot string) error {
 	}
 
 	prompt := buildReviewPrompt("claude", docType, docID)
+	run := getRunner()
 
-	cmd := exec.Command("claude",
+	cmd := run("claude",
 		"--print",
 		"--message", prompt,
 	)
@@ -55,7 +82,7 @@ func notifyClaude(docType, docID, repoRoot string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	return cmd.Start() // non-blocking
+	return cmd.Start()
 }
 
 func buildReviewPrompt(reviewer, docType, docID string) string {

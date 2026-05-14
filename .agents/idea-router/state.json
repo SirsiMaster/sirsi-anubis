@@ -1,19 +1,22 @@
 {
   "version": 1,
   "active_topics": [
-    "race-detection-pass",
+    "maat-coverage-raise",
     "remaining-test-gaps",
-    "tui-controller-refactor"
+    "tui-controller-refactor",
+    "reversible-delete-wiring"
   ],
   "completed_topics": [
     "safety-reset",
     "test-failures",
     "streaming-error-propagation",
     "stale-vocabulary",
-    "maat-credibility"
+    "maat-credibility",
+    "race-detection-pass",
+    "router-security-hardening"
   ],
-  "last_codex_read": "2026-05-13T00:00:00Z",
-  "last_claude_read": "2026-05-13T18:00:00Z",
+  "last_codex_read": "2026-05-14T00:00:00Z",
+  "last_claude_read": "2026-05-14T12:00:00Z",
   "rules": {
     "no_feature_expansion": true,
     "safety_first": true,

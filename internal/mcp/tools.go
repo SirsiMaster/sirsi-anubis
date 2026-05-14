@@ -310,7 +310,7 @@ func registerTools(s *Server) {
 
 	s.RegisterTool(Tool{
 		Name:        "router_submit",
-		Description: "Write a proposal, review, or decision to the idea-router and optionally notify the other agent (Codex or Claude) to review it.",
+		Description: "Write a proposal, review, or decision to the idea-router. Filesystem-only — does not spawn processes. Use router_notify separately to ping the other agent.",
 		InputSchema: InputSchema{
 			Type: "object",
 			Properties: map[string]SchemaField{
@@ -330,14 +330,33 @@ func registerTools(s *Server) {
 					Type:        "string",
 					Description: "Full markdown content of the document.",
 				},
-				"notify": {
-					Type:        "string",
-					Description: "Agent to notify: codex, claude, or empty for no notification.",
-				},
 			},
 			Required: []string{"type", "author", "title", "content"},
 		},
 	}, handleRouterSubmit)
+
+	s.RegisterTool(Tool{
+		Name:        "router_notify",
+		Description: "Notify another agent (Codex or Claude) to review a router document. Requires SIRSI_ROUTER_NOTIFY=1 environment variable. Spawns the target agent CLI in background.",
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]SchemaField{
+				"target": {
+					Type:        "string",
+					Description: "Agent to notify: codex or claude.",
+				},
+				"doc_type": {
+					Type:        "string",
+					Description: "Document type that was submitted: proposal, review, or decision.",
+				},
+				"doc_id": {
+					Type:        "string",
+					Description: "Document ID returned by router_submit.",
+				},
+			},
+			Required: []string{"target", "doc_type", "doc_id"},
+		},
+	}, handleRouterNotify)
 
 	s.RegisterTool(Tool{
 		Name:        "router_poll",
@@ -1159,7 +1178,6 @@ func handleRouterSubmit(args map[string]interface{}) (*ToolResult, error) {
 	author, _ := args["author"].(string)
 	title, _ := args["title"].(string)
 	content, _ := args["content"].(string)
-	notifyTarget, _ := args["notify"].(string)
 
 	if docType == "" || author == "" || title == "" || content == "" {
 		return textResult("Error: type, author, title, and content are all required.", true), nil
@@ -1180,17 +1198,32 @@ func handleRouterSubmit(args map[string]interface{}) (*ToolResult, error) {
 		return textResult(fmt.Sprintf("Error writing document: %v", err), true), nil
 	}
 
-	result := fmt.Sprintf("Submitted %s %q (ID: %s)", docType, title, id)
+	return textResult(fmt.Sprintf("Submitted %s %q (ID: %s)\nUse router_notify to ping the other agent.", docType, title, id), false), nil
+}
 
-	if notifyTarget != "" {
-		if err := router.NotifyAgent(notifyTarget, docType, id, repoRoot); err != nil {
-			result += fmt.Sprintf("\nNotification to %s failed: %v", notifyTarget, err)
-		} else {
-			result += fmt.Sprintf("\nNotified %s to review.", notifyTarget)
-		}
+func handleRouterNotify(args map[string]interface{}) (*ToolResult, error) {
+	if os.Getenv("SIRSI_ROUTER_NOTIFY") != "1" {
+		return textResult("Notification disabled. Set SIRSI_ROUTER_NOTIFY=1 to enable agent spawning.", true), nil
 	}
 
-	return textResult(result, false), nil
+	target, _ := args["target"].(string)
+	docType, _ := args["doc_type"].(string)
+	docID, _ := args["doc_id"].(string)
+
+	if target == "" || docType == "" || docID == "" {
+		return textResult("Error: target, doc_type, and doc_id are all required.", true), nil
+	}
+
+	repoRoot, err := router.FindRepoRoot()
+	if err != nil {
+		return textResult(fmt.Sprintf("Error: %v", err), true), nil
+	}
+
+	if err := router.NotifyAgent(target, docType, docID, repoRoot); err != nil {
+		return textResult(fmt.Sprintf("Notification to %s failed: %v", target, err), true), nil
+	}
+
+	return textResult(fmt.Sprintf("Notified %s to review %s %s.", target, docType, docID), false), nil
 }
 
 func handleRouterPoll(args map[string]interface{}) (*ToolResult, error) {

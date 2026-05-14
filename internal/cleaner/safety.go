@@ -156,6 +156,39 @@ func DeleteFile(path string, dryRun bool, useTrash bool) (int64, error) {
 	return size, os.Remove(path)
 }
 
+// DeleteFileReversible removes a file only if the platform supports trash.
+// On platforms without trash support, returns an error instead of permanently
+// deleting. Use this for user-facing cleanup flows where reversibility is required.
+func DeleteFileReversible(path string, dryRun bool) (int64, error) {
+	if err := ValidatePath(path); err != nil {
+		return 0, err
+	}
+
+	info, err := os.Lstat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("cannot stat %q: %w", path, err)
+	}
+
+	size := info.Size()
+	if info.IsDir() {
+		size = DirSize(path)
+	}
+
+	if dryRun {
+		logging.Debug("Dry-run: would trash", "path", path, "size", size)
+		return size, nil
+	}
+
+	if !platform.Current().SupportsTrash() {
+		return 0, fmt.Errorf("cannot safely delete %q: platform does not support trash — use DeleteFile with useTrash=false for permanent deletion", path)
+	}
+
+	return size, platform.Current().MoveToTrash(path)
+}
+
 // CleanFile removes a file with full decision logging.
 // Policy:
 //   - Always requires human-confirmed decision (no auto-delete)

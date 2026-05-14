@@ -102,9 +102,33 @@ func (r *Router) WriteState(state *State) error {
 	return os.WriteFile(filepath.Join(r.root, "state.json"), data, 0o644)
 }
 
+// validAuthors is the whitelist of allowed author values.
+var validAuthors = map[string]bool{
+	"codex": true,
+	"claude": true,
+}
+
+// ValidateAuthor checks that author is an allowed value with no path traversal.
+func ValidateAuthor(author string) error {
+	if author == "" {
+		return fmt.Errorf("author is required")
+	}
+	if !validAuthors[author] {
+		return fmt.Errorf("author %q is not allowed (must be 'codex' or 'claude')", author)
+	}
+	if strings.ContainsAny(author, "/\\..") {
+		return fmt.Errorf("author %q contains invalid characters", author)
+	}
+	return nil
+}
+
 // Submit writes a new document to the router and updates the state.
 // Returns the document ID (filename stem).
 func (r *Router) Submit(docType DocType, author, title, content string) (string, error) {
+	if err := ValidateAuthor(author); err != nil {
+		return "", err
+	}
+
 	ts := time.Now().Format("20060102-1504")
 	slug := slugify(title)
 	id := fmt.Sprintf("%s-%s-%s", ts, author, slug)
@@ -122,6 +146,20 @@ func (r *Router) Submit(docType DocType, author, title, content string) (string,
 	}
 
 	path := filepath.Join(r.root, dir, id+".md")
+
+	// Path containment: verify the resolved path stays under the expected directory
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("resolve path: %w", err)
+	}
+	absDir, err := filepath.Abs(filepath.Join(r.root, dir))
+	if err != nil {
+		return "", fmt.Errorf("resolve dir: %w", err)
+	}
+	if !strings.HasPrefix(absPath, absDir+string(os.PathSeparator)) {
+		return "", fmt.Errorf("path traversal blocked: %q escapes %q", absPath, absDir)
+	}
+
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		return "", fmt.Errorf("write %s: %w", path, err)
 	}
