@@ -40,7 +40,7 @@ func runInitiate(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	output.Header("𓎿 Initiate — The Ritual of Access")
+	output.Header("Access Setup")
 	fmt.Println()
 
 	// Check current permissions

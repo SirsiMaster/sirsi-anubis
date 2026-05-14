@@ -104,7 +104,7 @@ func runOrchestrator(subcmd string, extraArgs ...string) error {
 		return err
 	}
 
-	output.Header(fmt.Sprintf("\u2600\uFE0F Ra \u2014 %s", subcmd))
+	output.Header(fmt.Sprintf("Fleet — %s", subcmd))
 	output.Info("Orchestrator: %s", scriptPath)
 	fmt.Println()
 
@@ -279,7 +279,7 @@ var raStatusCmd = &cobra.Command{
 			return enc.Encode(result)
 		}
 
-		output.Header("\u2600\uFE0F Ra \u2014 Orchestrator Status")
+		output.Header("Fleet Orchestrator Status")
 
 		// Prerequisites
 		output.Section("Prerequisites")
@@ -327,7 +327,7 @@ var raPipelineCmd = &cobra.Command{
 			repoRoot, _ = os.Getwd()
 		}
 
-		output.Header("\u2600\uFE0F Ra Pipeline Status")
+		output.Header("Fleet Pipeline Status")
 
 		pipeline := ra.NewPipeline(repoRoot)
 		status, err := pipeline.ReadStatus()
@@ -407,7 +407,7 @@ Ra then spawns a macOS terminal window for each scope.
 			}
 		}
 
-		output.Header("𓇶 Ra — Deploy")
+		output.Header("Fleet Deploy")
 		if raDeployDryRun {
 			output.Info("Dry run — Neith will weave prompts but Ra will not spawn windows")
 		}
@@ -439,7 +439,7 @@ var raKillCmd = &cobra.Command{
 	Short: "Terminate all deployed Ra windows",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		start := time.Now()
-		output.Header("𓇶 Ra — Kill All Windows")
+		output.Header("Fleet — Kill All Windows")
 		if err := ra.KillAll(ra.RADir()); err != nil {
 			return err
 		}
@@ -453,7 +453,7 @@ var raCollectCmd = &cobra.Command{
 	Use:   "collect",
 	Short: "Collect results from completed windows and run pipeline",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		output.Header("𓇶 Ra — Collect Results")
+		output.Header("Fleet — Collect Results")
 
 		results, err := ra.CollectResults(ra.RADir())
 		if err != nil {

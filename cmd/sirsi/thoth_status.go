@@ -28,7 +28,7 @@ func runThothStatus(cmd *cobra.Command, args []string) error {
 	start := time.Now()
 
 	output.Banner()
-	output.Header("THOTH — Memory Status")
+	output.Header("Memory Status")
 
 	cwd, err := os.Getwd()
 	if err != nil {

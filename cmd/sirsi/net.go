@@ -89,7 +89,7 @@ func runNetStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	output.Banner()
-	output.Header("NET — Plan Alignment")
+	output.Header("Plan Alignment")
 
 	if logContent != "" {
 		output.Info("Loaded BUILD_LOG.md")
@@ -111,7 +111,7 @@ func runNetStatus(cmd *cobra.Command, args []string) error {
 func runNetAlign(cmd *cobra.Command, args []string) error {
 	start := time.Now()
 	output.Banner()
-	output.Header("NET — Module Consistency Check")
+	output.Header("Module Consistency Check")
 
 	// Real checks against the current project state
 	tap := &neith.Tapestry{}

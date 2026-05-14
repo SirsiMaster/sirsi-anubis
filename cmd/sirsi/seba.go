@@ -179,7 +179,7 @@ func runSebaDiagram(cmd *cobra.Command, args []string) error {
 	}
 
 	output.Banner()
-	output.Header("SEBA — Diagram Engine")
+	output.Header("Architecture Diagrams")
 
 	if diagramType == "all" {
 		output.Success("Generated %d diagrams", len(diagrams))
@@ -255,7 +255,7 @@ func runSebaScan(cmd *cobra.Command, args []string) error {
 	}
 
 	output.Banner()
-	output.Header("SEBA — Infrastructure Map")
+	output.Header("Infrastructure Map")
 
 	output.Dashboard(map[string]string{
 		"Hostname": graph.Hostname,
@@ -284,7 +284,7 @@ func runSebaBook(cmd *cobra.Command, args []string) error {
 	start := time.Now()
 
 	output.Banner()
-	output.Header("SEBA — Project Registry")
+	output.Header("Project Registry")
 
 	// Find git repos under current directory (1 level deep)
 	cwd, _ := os.Getwd()
@@ -343,7 +343,7 @@ func runSebaHardware(cmd *cobra.Command, args []string) error {
 	}
 
 	output.Banner()
-	output.Header("SEBA — Hardware Architecture")
+	output.Header("Hardware Architecture")
 
 	aneStatus := "Not detected"
 	if profile.NeuralEngine {
@@ -434,7 +434,7 @@ func runSebaProfile(cmd *cobra.Command, args []string) error {
 	}
 
 	output.Banner()
-	output.Header("SEBA — System Profile")
+	output.Header("System Profile")
 	output.Success("Profile saved to %s", profilePath)
 
 	output.Dashboard(map[string]string{
@@ -454,7 +454,7 @@ func runSebaCompute(cmd *cobra.Command, args []string) error {
 
 	if !JsonOutput {
 		output.Banner()
-		output.Header("SEBA — Accelerated Compute")
+		output.Header("Accelerated Compute")
 	}
 
 	if computeText == "" {
@@ -491,14 +491,14 @@ func runSebaFleet(cmd *cobra.Command, args []string) error {
 	output.Banner()
 
 	if fleetContainers {
-		output.Header("SEBA — Container Architecture")
+		output.Header("Container Architecture")
 		audit, _ := scarab.AuditContainers()
 		output.Dashboard(map[string]string{
 			"Containers": fmt.Sprintf("%d", len(audit.Containers)),
 			"Running":    fmt.Sprintf("%d", audit.RunningCount),
 		})
 	} else {
-		output.Header("SEBA — Fleet Discovery")
+		output.Header("Fleet Discovery")
 		result, _ := scarab.Discover()
 		output.Dashboard(map[string]string{
 			"Subnet": result.Subnet,

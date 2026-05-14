@@ -238,7 +238,7 @@ Removed items are moved to Trash.
 		roots := jackal.DefaultPurgeRoots()
 		if !JsonOutput {
 			output.Banner()
-			output.Header("ANUBIS — Purge")
+			output.Header("Build Artifact Purge")
 		}
 		res, err := jackal.ScanArtifacts(roots)
 		if err != nil {
@@ -281,7 +281,7 @@ var analyzeCmd = &cobra.Command{
 		}
 		if !JsonOutput {
 			output.Banner()
-			output.Header("ANUBIS — Analyze")
+			output.Header("Disk Analyzer")
 		}
 		res, err := jackal.Analyze(target, 0)
 		if err != nil {
@@ -323,7 +323,7 @@ Finds .dmg, .pkg, .iso, .zip, .tar.gz, and .app.zip files > 10MB.
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if !JsonOutput {
 			output.Banner()
-			output.Header("ANUBIS — Installer")
+			output.Header("Installer Cleanup")
 		}
 		res, err := jackal.ScanInstallers()
 		if err != nil {
@@ -447,7 +447,7 @@ func runIsisNetwork(cmd *cobra.Command, args []string) error {
 	if isisNetworkRollback {
 		if !JsonOutput {
 			output.Banner()
-			output.Header("ISIS — Network Rollback")
+			output.Header("Network Rollback")
 		}
 		msg, err := guard.RollbackNetwork(platform.Current())
 		if err != nil {
@@ -464,7 +464,7 @@ func runIsisNetwork(cmd *cobra.Command, args []string) error {
 
 	if !JsonOutput {
 		output.Banner()
-		output.Header("ISIS — Network Security Audit")
+		output.Header("Network Security Audit")
 	}
 
 	var report *guard.NetworkReport

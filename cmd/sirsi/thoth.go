@@ -192,7 +192,7 @@ func runThothSync(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	output.Header(fmt.Sprintf("𓁟 Thoth Sync — %s", repoRoot))
+	output.Header(fmt.Sprintf("Memory Sync — %s", repoRoot))
 
 	syncOpts := thoth.SyncOptions{RepoRoot: repoRoot, UpdateDate: true}
 

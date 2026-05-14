@@ -111,7 +111,7 @@ func init() {
 func runMaatAudit(cmd *cobra.Command, args []string) error {
 	start := time.Now()
 	output.Banner()
-	output.Header("MA'AT — Governance Audit")
+	output.Header("Quality & Governance Audit")
 
 	if auditSkipTests {
 		output.Info("Skipping tests — using cached coverage only")
@@ -179,7 +179,7 @@ func runMaatAudit(cmd *cobra.Command, args []string) error {
 func runMaatScales(cmd *cobra.Command, args []string) error {
 	start := time.Now()
 	output.Banner()
-	output.Header("MA'AT — The Scales of Balance")
+	output.Header("Quality Assessment")
 	output.Footer(time.Since(start))
 	output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "maat", Subcommand: "scales"}))
 	return nil
@@ -188,7 +188,7 @@ func runMaatScales(cmd *cobra.Command, args []string) error {
 func runMaatHeal(cmd *cobra.Command, args []string) error {
 	start := time.Now()
 	output.Banner()
-	output.Header("MA'AT — The Healing Pulse (Isis)")
+	output.Header("Auto-Remediation")
 
 	// Step 1: Weigh
 	report, _ := maat.Weigh(&maat.CoverageAssessor{Thresholds: maat.DefaultThresholds(), DiffOnly: !healFull})
@@ -220,7 +220,7 @@ func runMaatPulse(cmd *cobra.Command, args []string) error {
 	wantJSON := pulseJSON || JsonOutput
 	if !wantJSON {
 		output.Banner()
-		output.Header("MA'AT — The Pulse of Truth")
+		output.Header("Coverage Pulse")
 		output.Info("Measuring all vital signs...")
 	}
 

@@ -56,7 +56,7 @@ var seshatIngestCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		start := time.Now()
 		output.Banner()
-		output.Header("SESHAT — Knowledge Ingestion")
+		output.Header("Knowledge Ingestion")
 
 		sourceName, _ := cmd.Flags().GetString("source")
 		sinceStr, _ := cmd.Flags().GetString("since")
@@ -204,7 +204,7 @@ var seshatExportCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		start := time.Now()
 		output.Banner()
-		output.Header("SESHAT — Knowledge Export")
+		output.Header("Knowledge Export")
 
 		targetName := args[0]
 		reg := seshat.DefaultRegistry()
@@ -248,7 +248,7 @@ var seshatListCmd = &cobra.Command{
 				})
 			}
 			output.Banner()
-			output.Header("SESHAT — Knowledge Library")
+			output.Header("Knowledge Library")
 			// Fall back to legacy Antigravity KIs
 			paths := seshat.DefaultPaths()
 			legacyItems, _ := seshat.ListKnowledgeItems(paths)
@@ -274,7 +274,7 @@ var seshatListCmd = &cobra.Command{
 		}
 
 		output.Banner()
-		output.Header("SESHAT — Knowledge Library")
+		output.Header("Knowledge Library")
 
 		for i, ki := range items {
 			source := "unknown"
@@ -301,7 +301,7 @@ var seshatAdaptersCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
 		output.Banner()
-		output.Header("SESHAT — Adapter Registry")
+		output.Header("Adapter Registry")
 
 		reg := seshat.DefaultRegistry()
 
@@ -327,7 +327,7 @@ var seshatSyncCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		start := time.Now()
 		output.Banner()
-		output.Header("SESHAT — Knowledge Sync")
+		output.Header("Knowledge Sync")
 
 		paths := seshat.DefaultPaths()
 		kiName, _ := cmd.Flags().GetString("ki")
@@ -356,7 +356,7 @@ var seshatMcpCmd = &cobra.Command{
 		}
 		defer unlock()
 
-		output.Header("SESHAT — Scribe's Voice (MCP Server)")
+		output.Header("MCP Server")
 
 		server := mcp.NewServer()
 		if err := server.Run(); err != nil {
@@ -382,7 +382,7 @@ var seshatAuthCmd = &cobra.Command{
 }
 
 func seshatAuthGoogle() error {
-	output.Header("SESHAT — Google Workspace Authentication")
+	output.Header("Google Workspace Authentication")
 
 	home, _ := os.UserHomeDir()
 	configDir := filepath.Join(home, ".config", "seshat")
@@ -441,7 +441,7 @@ var seshatProfilesChromeCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		start := time.Now()
 		output.Banner()
-		output.Header("SESHAT — Chrome Profiles")
+		output.Header("Chrome Profiles")
 
 		profiles, err := seshat.ListChromeProfiles()
 		if err != nil {
@@ -491,7 +491,7 @@ Examples:
   sirsi seshat open chrome --profile Default --url https://notebooklm.google.com`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		output.Banner()
-		output.Header("SESHAT — Chrome Launcher")
+		output.Header("Chrome Launcher")
 
 		profileName, _ := cmd.Flags().GetString("profile")
 		url, _ := cmd.Flags().GetString("url")
@@ -540,7 +540,7 @@ Examples:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		start := time.Now()
 		output.Banner()
-		output.Header("SESHAT — NotebookLM Export + Launch")
+		output.Header("NotebookLM Export")
 
 		profileName, _ := cmd.Flags().GetString("profile")
 		if profileName == "" {

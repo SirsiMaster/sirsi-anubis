@@ -82,7 +82,7 @@ func runOsirisAssess(cmd *cobra.Command, args []string) error {
 	}
 
 	output.Banner()
-	output.Header("OSIRIS — Checkpoint Assessment")
+	output.Header("Checkpoint Assessment")
 
 	// Main report
 	fmt.Print(cp.FormatReport())
@@ -140,7 +140,7 @@ func runOsirisStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	output.Banner()
-	output.Header("OSIRIS — State Summary")
+	output.Header("Recovery Status")
 
 	dashboard := map[string]string{
 		"Uncommitted": fmt.Sprintf("%d files", cp.TotalChanges),

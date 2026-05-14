@@ -37,7 +37,7 @@ func init() {
 }
 
 func runDashboard(cmd *cobra.Command, args []string) {
-	output.Header("𓂀 Horus — Local Workstation Monitor")
+	output.Header("Workstation Monitor")
 
 	nStore, err := notify.Open(notify.DefaultPath())
 	if err != nil {

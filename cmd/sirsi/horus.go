@@ -209,7 +209,7 @@ func runHorusStats(_ *cobra.Command, args []string) error {
 	}
 
 	output.Banner()
-	output.Header("HORUS — Graph Statistics")
+	output.Header("Code Graph Statistics")
 	output.Dashboard(map[string]string{
 		"Files":     fmt.Sprintf("%d", graph.Stats.Files),
 		"Functions": fmt.Sprintf("%d", graph.Stats.Functions),
