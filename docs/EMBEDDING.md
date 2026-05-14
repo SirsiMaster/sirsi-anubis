@@ -17,9 +17,15 @@ The `mobile/` package already demonstrates the extraction pattern: internal APIs
 
 ## Embedding Tiers
 
-### Tier 1 — Stable for Direct Import
+### Tier 1 — Stable APIs (Same-Module or Vendored Access)
 
-These packages have clean exported APIs, no TUI coupling, and stable type signatures. Import directly via Go `import`.
+These packages have clean exported APIs, no TUI coupling, and stable type signatures. Since they live under `internal/`, they cannot be directly imported by external Go modules. Access options:
+
+1. **Same-module adapter** (recommended): Create a `nexus/` package inside this repo that wraps internal APIs, following the `mobile/` pattern
+2. **Vendoring**: Copy into Nexus's vendor tree until public packages are extracted
+3. **Public extraction** (post v1.0): Move stable APIs to `pkg/scan`, `pkg/clean`, etc.
+
+The `mobile/` package already demonstrates option 1 — wrapping internal APIs with JSON envelopes for cross-boundary consumption.
 
 | Package | Key Exports | Use Case |
 |---------|-------------|----------|
@@ -31,7 +37,7 @@ These packages have clean exported APIs, no TUI coupling, and stable type signat
 | `internal/horus` | `NewGraph()`, `ParseDir()`, `Symbol`, `SymbolGraph` | Structural code graph (AST symbols) |
 | `internal/rtk` | `New()`, `Filter.Apply()` | Output filtering (ANSI strip, dedup, truncate) |
 
-**Stability guarantee:** Type signatures will not break within a minor version. New fields may be added to result structs.
+**Stability guarantee:** Type signatures will not break within a minor version. New fields may be added to result structs. These packages are `internal/` — use the adapter or vendoring pattern above until public extraction.
 
 ### Tier 2 — Stable with Adapters
 
@@ -85,7 +91,7 @@ func AnubisScan(rootPath string) string {
 }
 ```
 
-**For Nexus:** Create a `nexus/` package following the same pattern, but using native Go types instead of JSON (no serialization overhead for same-language embedding).
+**For Nexus:** Create a `nexus/` package inside this repo following the same pattern, but using native Go types instead of JSON (no serialization overhead for same-module access). This is the recommended extraction path until v1.0 public packages are ready.
 
 ---
 
@@ -104,8 +110,10 @@ When embedding any Tier 1/2 package, these safety guarantees carry over:
 ## Non-Goals
 
 - Pantheon will not provide a stable Go module versioning guarantee (e.g., `go get`) until v1.0.0
-- Internal package paths (`internal/`) enforce Go's access restriction by design
-- Embedding requires vendoring or forking until the module is published
+- Internal package paths (`internal/`) enforce Go's access restriction — external modules cannot import them directly
+- **Nexus embedding path**: Create `nexus/` adapter package inside this repo (same-module access bypasses `internal/` restriction)
+- **Alternative**: Consume via CLI subprocess (`sirsi scan --json`) or MCP tools for cross-repo integration
+- Public packages (`pkg/`) will be extracted after v1.0 stabilization
 
 ---
 
@@ -113,6 +121,7 @@ When embedding any Tier 1/2 package, these safety guarantees carry over:
 
 | Question | Options | Decision |
 |----------|---------|----------|
-| How should Nexus consume scan results? | (a) Direct import, (b) CLI subprocess, (c) gRPC | (a) Direct import for Tier 1; (b) CLI for Tier 3 |
+| How should Nexus consume scan results? | (a) Same-module adapter, (b) CLI subprocess, (c) gRPC | (a) `nexus/` adapter for Tier 1; (b) CLI for Tier 3 |
 | Should we publish internal packages as public modules? | (a) Yes, (b) No, (c) After v1.0 | (c) After v1.0 — too early to commit to API stability |
-| How should Nexus handle deletion safety? | (a) Own implementation, (b) Import cleaner | (b) Import cleaner — safety rules must be canonical |
+| How should Nexus handle deletion safety? | (a) Own implementation, (b) Same-module adapter | (b) `nexus/` adapter wrapping cleaner — safety rules must be canonical |
+| How do external products (non-Nexus) integrate? | (a) Fork, (b) CLI/JSON, (c) MCP | (b) CLI subprocess with `--json` or (c) MCP tools |

@@ -137,10 +137,8 @@ func Banner() {
 	banner := TitleStyle.Render(`
    P A N T H E O N
    ───────────────────────────────
-   Unified DevOps Intel Platform
-   "One Install. All Deities."
-
-   𓁢 Anubis  𓁟 Thoth  𓁆 Seshat
+   Infrastructure Hygiene Platform
+   "One Install. Everything Clean."
 `)
 	fmt.Fprintln(os.Stderr, banner)
 }

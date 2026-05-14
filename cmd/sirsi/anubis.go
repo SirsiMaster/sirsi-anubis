@@ -144,20 +144,26 @@ func runWeigh(ctx context.Context) error {
 
 	if !JsonOutput {
 		output.Banner()
-		output.Header("ANUBIS — Scan")
+		output.Header("Infrastructure Scan")
 	}
 
 	engine := jackal.DefaultEngine()
 	engine.RegisterAll(rules.AllRules()...)
 
-	res, _ := engine.Scan(ctx, jackal.ScanOptions{})
+	res, scanErr := engine.Scan(ctx, jackal.ScanOptions{})
+	if scanErr != nil {
+		output.Warn("Scan error (partial results may follow): %v", scanErr)
+	}
 
 	// Ghost scan is part of a full scan — dead app remnants are waste too.
 	if !JsonOutput {
 		output.Info("Scanning for ghost app remnants...")
 	}
 	ghostScanner := ka.NewScanner()
-	ghosts, _ := ghostScanner.Scan(ctx, false)
+	ghosts, ghostErr := ghostScanner.Scan(ctx, false)
+	if ghostErr != nil {
+		output.Warn("Ghost scan error: %v", ghostErr)
+	}
 	var ghostWaste int64
 	for _, g := range ghosts {
 		ghostWaste += g.TotalSize
@@ -284,7 +290,7 @@ func runWeigh(ctx context.Context) error {
 func runJudge(ctx context.Context) error {
 	start := time.Now()
 	output.Banner()
-	output.Header("ANUBIS — The Divine Judgment")
+	output.Header("Cleanup")
 
 	// Load latest scan results.
 	persisted, err := jackal.LoadLatest()
@@ -431,7 +437,7 @@ func runClean(cmd *cobra.Command, args []string) error {
 	}
 
 	output.Banner()
-	output.Header("ANUBIS — Automated Cleanup")
+	output.Header("Automated Cleanup")
 
 	persisted, err := jackal.LoadLatest()
 	if err != nil {
@@ -530,10 +536,13 @@ func runClean(cmd *cobra.Command, args []string) error {
 func runKa(ctx context.Context) error {
 	start := time.Now()
 	output.Banner()
-	output.Header("ANUBIS — The Sight (KA)")
+	output.Header("Ghost App Detection")
 
 	scanner := ka.NewScanner()
-	ghosts, _ := scanner.Scan(ctx, anubisSudo)
+	ghosts, err := scanner.Scan(ctx, anubisSudo)
+	if err != nil {
+		output.Warn("Ghost scan error: %v", err)
+	}
 
 	var totalWaste int64
 	for _, g := range ghosts {
@@ -552,7 +561,7 @@ func runKa(ctx context.Context) error {
 func runAnubisMirror(cmd *cobra.Command, args []string) error {
 	start := time.Now()
 	output.Banner()
-	output.Header("ANUBIS — The Mirror of Truth")
+	output.Header("Duplicate File Detection")
 	opts := mirror.ScanOptions{Paths: args, DryRun: true}
 	res, _ := mirror.Scan(opts)
 	output.Dashboard(map[string]string{
@@ -567,7 +576,7 @@ func runAnubisMirror(cmd *cobra.Command, args []string) error {
 func runAnubisGuard(cmd *cobra.Command, args []string) error {
 	start := time.Now()
 	output.Banner()
-	output.Header("ANUBIS — The Guard Sentry")
+	output.Header("Resource Monitor")
 	stats, _ := guard.GetStats()
 	output.Dashboard(map[string]string{
 		"RAM Usage": stats.UsedMemory,
@@ -629,7 +638,7 @@ func runAnubisApps(cmd *cobra.Command, args []string) error {
 
 	if !JsonOutput {
 		output.Banner()
-		output.Header("Anubis \u2014 Application Registry")
+		output.Header("Application Registry")
 	}
 
 	apps, err := ka.EnumerateApps(ctx)
@@ -744,7 +753,7 @@ func runAnubisApps(cmd *cobra.Command, args []string) error {
 
 func runAnubisUninstall(ctx context.Context, appName string, complete bool) error {
 	output.Banner()
-	output.Header("Anubis \u2014 Application Removal")
+	output.Header("Application Removal")
 
 	// First, enumerate to find the app
 	apps, err := ka.EnumerateApps(ctx)
@@ -841,7 +850,7 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 
 	if !JsonOutput {
 		output.Banner()
-		output.Header("SEKHMET — System Health Diagnostic")
+		output.Header("System Health Diagnostic")
 	}
 
 	report, err := guard.Doctor()

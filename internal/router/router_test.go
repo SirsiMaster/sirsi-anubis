@@ -262,7 +262,7 @@ func TestSubmitAddressed_AddsToInbox(t *testing.T) {
 	}
 }
 
-func TestPollInbox_ReturnsAndClears(t *testing.T) {
+func TestPollInbox_PeeksWithoutClearing(t *testing.T) {
 	r, _ := setupTestRouter(t)
 	r.SubmitAddressed(DocReview, "claude", "Review 1", "content", "codex")
 	r.SubmitAddressed(DocProposal, "claude", "Proposal 1", "content", "codex")
@@ -275,10 +275,36 @@ func TestPollInbox_ReturnsAndClears(t *testing.T) {
 		t.Errorf("expected 2 pending items, got %d", len(pending))
 	}
 
-	// Second poll should be empty (cleared)
+	// Second poll should still return the same items (peek doesn't clear)
 	pending2, _ := r.PollInbox("codex")
-	if len(pending2) != 0 {
-		t.Errorf("expected 0 pending after clear, got %d", len(pending2))
+	if len(pending2) != 2 {
+		t.Errorf("expected 2 pending after peek (no ack), got %d", len(pending2))
+	}
+}
+
+func TestAckInbox_ClearsItems(t *testing.T) {
+	r, _ := setupTestRouter(t)
+	id1, _ := r.SubmitAddressed(DocReview, "claude", "Review 1", "content", "codex")
+	r.SubmitAddressed(DocProposal, "claude", "Proposal 1", "content", "codex")
+
+	// Ack only the first item
+	err := r.AckInbox("codex", []string{id1})
+	if err != nil {
+		t.Fatalf("AckInbox() error: %v", err)
+	}
+
+	// Poll should show only the unacknowledged item
+	pending, _ := r.PollInbox("codex")
+	if len(pending) != 1 {
+		t.Errorf("expected 1 pending after partial ack, got %d", len(pending))
+	}
+}
+
+func TestSubmitAddressed_InvalidTarget(t *testing.T) {
+	r, _ := setupTestRouter(t)
+	_, err := r.SubmitAddressed(DocReview, "claude", "Bad Target", "content", "mallory")
+	if err == nil {
+		t.Error("expected error for invalid addressed_to")
 	}
 }
 

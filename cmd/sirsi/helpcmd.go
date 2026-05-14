@@ -13,14 +13,14 @@ var (
 )
 
 var helpCmd = &cobra.Command{
-	Use:   "help [module]",
+	Use:   "guides [module]",
 	Short: "Show rich guides for Pantheon modules",
 	Long: `Show a styled terminal guide for any Pantheon module, or open the
 web documentation in your browser.
 
-  sirsi help memory         Show terminal guide for the Memory module
-  sirsi help knowledge --docs  Open Knowledge web docs in browser
-  sirsi help --list         List all available guides`,
+  sirsi guides memory         Show terminal guide for the Memory module
+  sirsi guides knowledge --docs  Open Knowledge web docs in browser
+  sirsi guides --list         List all available guides`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if helpList || len(args) == 0 {

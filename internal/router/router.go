@@ -224,29 +224,36 @@ func (r *Router) Submit(docType DocType, author, title, content string) (string,
 
 // SubmitAddressed writes a document and marks it as pending for the target agent.
 // The target agent will see it when calling PollInbox.
+// Returns an error if addressedTo is invalid — validates before writing the file.
 func (r *Router) SubmitAddressed(docType DocType, author, title, content, addressedTo string) (string, error) {
+	// Validate addressed_to BEFORE writing the file to avoid false-success
+	if addressedTo != "" {
+		if err := ValidateAuthor(addressedTo); err != nil {
+			return "", fmt.Errorf("invalid addressed_to: %w", err)
+		}
+	}
+
 	id, err := r.Submit(docType, author, title, content)
 	if err != nil {
 		return "", err
 	}
 
 	if addressedTo != "" {
-		if err := ValidateAuthor(addressedTo); err != nil {
-			return id, nil // file written, inbox update skipped
-		}
 		state, err := r.ReadState()
 		if err != nil {
-			return id, nil
+			return id, fmt.Errorf("document written (ID: %s) but inbox update failed: %w", id, err)
 		}
 		state.AddToInbox(addressedTo, id)
-		_ = r.WriteState(state)
+		if err := r.WriteState(state); err != nil {
+			return id, fmt.Errorf("document written (ID: %s) but inbox update failed: %w", id, err)
+		}
 	}
 
 	return id, nil
 }
 
-// PollInbox returns the unread document IDs for the given agent and
-// clears them from the inbox.
+// PollInbox returns the unread document IDs for the given agent WITHOUT
+// clearing them. Call AckInbox to acknowledge and clear specific items.
 func (r *Router) PollInbox(agent string) ([]string, error) {
 	if err := ValidateAuthor(agent); err != nil {
 		return nil, err
@@ -257,13 +264,22 @@ func (r *Router) PollInbox(agent string) ([]string, error) {
 		return nil, err
 	}
 
-	pending := state.InboxFor(agent)
-	if len(pending) == 0 {
-		return nil, nil
+	return state.InboxFor(agent), nil
+}
+
+// AckInbox acknowledges and removes specific document IDs from the agent's inbox.
+// Only acknowledged items are cleared — unacknowledged items remain pending.
+func (r *Router) AckInbox(agent string, ids []string) error {
+	if err := ValidateAuthor(agent); err != nil {
+		return err
 	}
 
-	// Clear the inbox and update last-read time
-	for _, id := range pending {
+	state, err := r.ReadState()
+	if err != nil {
+		return err
+	}
+
+	for _, id := range ids {
 		state.ClearInbox(agent, id)
 	}
 	now := time.Now().Format(time.RFC3339)
@@ -273,9 +289,7 @@ func (r *Router) PollInbox(agent string) ([]string, error) {
 	case "codex":
 		state.LastCodexRead = now
 	}
-	_ = r.WriteState(state)
-
-	return pending, nil
+	return r.WriteState(state)
 }
 
 // List returns all documents across proposals, reviews, and decisions.

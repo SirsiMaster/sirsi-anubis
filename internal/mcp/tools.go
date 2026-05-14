@@ -364,13 +364,17 @@ func registerTools(s *Server) {
 
 	s.RegisterTool(Tool{
 		Name:        "router_poll",
-		Description: "Check the inbox for pending work addressed to you, or browse recent documents. If 'agent' is set, returns unread inbox items for that agent and clears them.",
+		Description: "Check the inbox for pending work addressed to you, or browse recent documents. If 'agent' is set, lists unread inbox items without clearing them. Set ack=true to acknowledge and clear.",
 		InputSchema: InputSchema{
 			Type: "object",
 			Properties: map[string]SchemaField{
 				"agent": {
 					Type:        "string",
-					Description: "Your agent name (codex or claude). Returns and clears your inbox. If omitted, returns recent documents by time.",
+					Description: "Your agent name (codex or claude). Lists pending inbox items. If omitted, returns recent documents by time.",
+				},
+				"ack": {
+					Type:        "boolean",
+					Description: "Set to true to acknowledge and clear inbox items after listing. Default: false (peek only).",
 				},
 				"since": {
 					Type:        "string",
@@ -1258,8 +1262,10 @@ func handleRouterPoll(args map[string]interface{}) (*ToolResult, error) {
 		return textResult(fmt.Sprintf("Error: %v", err), true), nil
 	}
 
-	// If agent is set, use inbox semantics
+	// If agent is set, use inbox semantics (peek without clearing)
 	if agent != "" {
+		ack, _ := args["ack"].(bool)
+
 		pending, err := r.PollInbox(agent)
 		if err != nil {
 			return textResult(fmt.Sprintf("Error: %v", err), true), nil
@@ -1277,8 +1283,14 @@ func handleRouterPoll(args map[string]interface{}) (*ToolResult, error) {
 		}
 		if len(pending) == 0 {
 			sb.WriteString("  No pending work. Inbox is clear.\n")
+		} else if ack {
+			if err := r.AckInbox(agent, pending); err != nil {
+				sb.WriteString(fmt.Sprintf("\nFailed to acknowledge: %v\n", err))
+			} else {
+				sb.WriteString(fmt.Sprintf("\nAcknowledged %d items. Use router_get to read details.\n", len(pending)))
+			}
 		} else {
-			sb.WriteString(fmt.Sprintf("\nCleared %d items from inbox. Use router_get to read details.\n", len(pending)))
+			sb.WriteString("\nItems remain pending. Call with ack=true to clear, or use router_get to read first.\n")
 		}
 		return textResult(sb.String(), false), nil
 	}
