@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/suggest"
 )
@@ -204,4 +205,31 @@ func TestSuggestSteps(t *testing.T) {
 			t.Errorf("each step should have 2 elements, got %d", len(s))
 		}
 	}
+}
+
+// ── NextSteps ───────────────────────────────────────────────────────
+
+func TestNextSteps(t *testing.T) {
+	// Should not panic with valid steps (output goes to stderr)
+	NextSteps([][]string{
+		{"sirsi scan", "Find infrastructure waste"},
+		{"sirsi clean", "Remove safe items"},
+	})
+}
+
+func TestNextSteps_Empty(t *testing.T) {
+	// Should not panic with empty steps
+	NextSteps(nil)
+}
+
+// ── FooterWithSuggestions ───────────────────────────────────────────
+
+func TestFooterWithSuggestions(t *testing.T) {
+	FooterWithSuggestions(500*time.Millisecond, [][]string{
+		{"sirsi scan", "Scan for waste"},
+	})
+}
+
+func TestFooterWithSuggestions_NoActions(t *testing.T) {
+	FooterWithSuggestions(1*time.Second, nil)
 }
