@@ -126,6 +126,7 @@ var rootCmd = &cobra.Command{
 	},
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		logging.Init(verboseMode, quietMode, JsonOutput)
+		output.SetOutputMode(JsonOutput, quietMode)
 	},
 }
 
@@ -739,7 +740,6 @@ func init() {
 	networkCmd.Flags().BoolVar(&isisNetworkRollback, "rollback", false, "Restore DNS to pre-fix state")
 	diagramCmd.Flags().StringVar(&diagramType, "type", "all", "Diagram type (hierarchy|dataflow|modules|memory|governance|pipeline|all)")
 	diagramCmd.Flags().BoolVar(&diagramHTML, "html", false, "Generate self-contained HTML")
-
 
 	// Core commands
 	scanCmd.Flags().BoolVar(&anubisAll, "all", false, "Scan all categories")

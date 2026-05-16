@@ -329,10 +329,10 @@ func TestSplitLines(t *testing.T) {
 func TestRenderHardwareProfile(t *testing.T) {
 	hw := &seba.HardwareProfile{
 		CPUModel: "Apple M4 Max", CPUCores: 16, CPUArch: "arm64",
-		TotalRAM: 128 * 1024 * 1024 * 1024,
-		GPU:      seba.GPUInfo{Name: "Apple M4 Max GPU", MetalFamily: "Metal 3"},
+		TotalRAM:     128 * 1024 * 1024 * 1024,
+		GPU:          seba.GPUInfo{Name: "Apple M4 Max GPU", MetalFamily: "Metal 3"},
 		NeuralEngine: true,
-		OS: "macOS", Kernel: "25.4.0",
+		OS:           "macOS", Kernel: "25.4.0",
 	}
 	lines := RenderHardwareProfile(hw)
 	if len(lines) < 8 {
@@ -345,7 +345,7 @@ func TestRenderHardwareProfile_NoNeuralEngine(t *testing.T) {
 		CPUModel: "Intel i9", CPUCores: 8, CPUArch: "x86_64",
 		TotalRAM: 32 * 1024 * 1024 * 1024,
 		GPU:      seba.GPUInfo{Name: "NVIDIA RTX 4090"},
-		OS: "Linux", Kernel: "6.1.0",
+		OS:       "Linux", Kernel: "6.1.0",
 	}
 	lines := RenderHardwareProfile(hw)
 	for _, l := range lines {

@@ -80,8 +80,8 @@ var routerStatusCmd = &cobra.Command{
 }
 
 var (
-	watchOnce     bool
-	inboxAck      bool
+	watchOnce bool
+	inboxAck  bool
 )
 
 var routerWatchCmd = &cobra.Command{

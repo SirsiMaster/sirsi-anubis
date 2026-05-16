@@ -89,10 +89,10 @@ var anubisMirrorCmd = &cobra.Command{
 }
 
 var anubisGuardCmd = &cobra.Command{
-	Use:   "monitor",
+	Use:     "monitor",
 	Aliases: []string{"guard"},
-	Short: "Watch processes and RAM pressure",
-	RunE:  runAnubisGuard,
+	Short:   "Watch processes and RAM pressure",
+	RunE:    runAnubisGuard,
 }
 
 var anubisAppsCmd = &cobra.Command{

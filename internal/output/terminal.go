@@ -133,11 +133,20 @@ func inTUI() bool {
 // spinnerFrames are the animation frames for the CLI spinner.
 var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 
+// spinnerSuppressed tracks whether spinners should be suppressed (JSON/quiet mode).
+var spinnerSuppressed bool
+
+// SetOutputMode configures spinner suppression based on CLI flags.
+// Call this from root PersistentPreRun before any command runs.
+func SetOutputMode(jsonMode, quietMode bool) {
+	spinnerSuppressed = jsonMode || quietMode
+}
+
 // Spinner starts a CLI progress spinner with the given label.
 // Returns a stop function that clears the spinner line.
 // Suppressed in TUI, JSON, and quiet modes — returns a no-op stop.
 func Spinner(label string) func() {
-	if inTUI() || os.Getenv("SIRSI_JSON") == "1" {
+	if inTUI() || spinnerSuppressed {
 		return func() {}
 	}
 
