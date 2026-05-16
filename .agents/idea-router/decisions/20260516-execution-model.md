@@ -26,15 +26,21 @@ The user is NOT the message bus. The router is the shared contract.
 
 ## Execution Protocol
 
-1. Claude writes a `/plan` with explicit `/goal` completion condition
-2. Claude submits `/plan` to router addressed to Codex
-3. Codex reviews, edits, and finalizes the `/plan` (adds requirements, sharpens /goal)
-4. User approves the finalized plan (or delegates standing approval)
-5. Claude executes against the plan — implements, tests, commits, pushes
-6. After each sprint/milestone, Claude submits work to router addressed to Codex
-7. Codex reviews the sprint — approves or requests changes
-8. Claude fixes and resubmits — relay continues autonomously
-9. Loop until `/goal` is met, blocked by safety/user, or impossible with stated reason
+1. **Either agent writes a `/plan`** with explicit `/goal` completion condition
+2. **Both agents wrangle the /plan to the point of execution** — back-and-forth via router until the plan specifies the proper, elegant, long-term implementation. No shortcuts. No "let me just do this because it's easier."
+3. User approves the finalized plan (or delegates standing approval)
+4. Claude executes against the plan — implements, tests, commits, pushes
+5. After each sprint/milestone, Claude submits work to router addressed to Codex
+6. Codex reviews the sprint — approves or requests changes
+7. Claude fixes and resubmits — relay continues autonomously
+8. Loop until `/goal` is met, blocked by safety/user, or impossible with stated reason
+
+## Non-Negotiable Rules
+
+- **Measure twice, cut once.** Do not implement until the plan is properly wrangled.
+- **No shortcuts.** Never negotiate toward a simpler implementation because it's faster. Build the proper solution or do not build at all.
+- **No bypass.** Both agents must agree the plan is right before Claude writes a line of code.
+- **Proper, elegant, long-term.** Every implementation must be the kind you'd ship to production and never revisit. Band-aids are governance failures.
 
 ## Autorouter Is Critical Path
 
