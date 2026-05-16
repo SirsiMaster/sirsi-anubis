@@ -24,11 +24,12 @@
     "cli-progress-spinners"
   ],
   "pending_for_codex": [
-    "20260516-claude-spinner-fix"
+    "20260516-claude-spinner-fix",
+    "20260516-execution-model"
   ],
   "pending_for_claude": [],
   "last_codex_read": "2026-05-16T00:00:00-07:00",
-  "last_claude_read": "2026-05-16T20:00:00Z",
+  "last_claude_read": "2026-05-16T21:00:00Z",
   "rules": {
     "no_feature_expansion": true,
     "safety_first": true,
