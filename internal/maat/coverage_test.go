@@ -248,3 +248,125 @@ func TestClampWeight(t *testing.T) {
 		}
 	}
 }
+
+// ── Tier System Tests ───────────────────────────────────────────────
+
+func TestTierThreshold(t *testing.T) {
+	tests := []struct {
+		tier CoverageTier
+		want float64
+	}{
+		{TierA, 80},
+		{TierB, 50},
+		{TierC, 30},
+	}
+	for _, tt := range tests {
+		got := TierThreshold(tt.tier)
+		if got != tt.want {
+			t.Errorf("TierThreshold(%s) = %.0f, want %.0f", tt.tier, got, tt.want)
+		}
+	}
+}
+
+func TestModuleTier_SafetyCriticalAlwaysTierA(t *testing.T) {
+	// Safety-critical modules must always be Tier A
+	for mod := range safetyCriticalModules {
+		tier := ModuleTier(mod)
+		if tier != TierA {
+			t.Errorf("ModuleTier(%q) = %s, want A (safety-critical)", mod, tier)
+		}
+	}
+}
+
+func TestModuleTier_ExplicitAssignments(t *testing.T) {
+	tests := []struct {
+		module string
+		want   CoverageTier
+	}{
+		{"cleaner", TierA},
+		{"guard", TierA},
+		{"scales", TierA},
+		{"ka", TierA},
+		{"mirror", TierA},
+		{"jackal", TierB},
+		{"mcp", TierB},
+		{"maat", TierB},
+		{"ra", TierB},
+		{"output", TierC},
+		{"dashboard", TierC},
+	}
+	for _, tt := range tests {
+		got := ModuleTier(tt.module)
+		if got != tt.want {
+			t.Errorf("ModuleTier(%q) = %s, want %s", tt.module, got, tt.want)
+		}
+	}
+}
+
+func TestModuleTier_UnknownDefaultsTierB(t *testing.T) {
+	tier := ModuleTier("unknown_new_module")
+	if tier != TierB {
+		t.Errorf("ModuleTier(unknown) = %s, want B (default)", tier)
+	}
+}
+
+func TestDefaultThresholds_TierAware(t *testing.T) {
+	thresholds := DefaultThresholds()
+	if len(thresholds) == 0 {
+		t.Fatal("DefaultThresholds() returned empty")
+	}
+
+	for _, th := range thresholds {
+		tier := ModuleTier(th.Module)
+		expected := TierThreshold(tier)
+		if th.MinCoverage != expected {
+			t.Errorf("module %q: threshold=%.0f%%, expected=%.0f%% (Tier %s)",
+				th.Module, th.MinCoverage, expected, tier)
+		}
+	}
+}
+
+func TestDefaultThresholds_OutputIsTierC(t *testing.T) {
+	thresholds := DefaultThresholds()
+	for _, th := range thresholds {
+		if th.Module == "output" {
+			if th.MinCoverage != 30 {
+				t.Errorf("output threshold = %.0f, want 30 (Tier C)", th.MinCoverage)
+			}
+			return
+		}
+	}
+	t.Error("output module not found in thresholds")
+}
+
+func TestDefaultThresholds_CleanerIsTierA(t *testing.T) {
+	thresholds := DefaultThresholds()
+	for _, th := range thresholds {
+		if th.Module == "cleaner" {
+			if th.MinCoverage != 80 {
+				t.Errorf("cleaner threshold = %.0f, want 80 (Tier A, safety-critical)", th.MinCoverage)
+			}
+			if !th.SafetyCritical {
+				t.Error("cleaner should be marked safety-critical")
+			}
+			return
+		}
+	}
+	t.Error("cleaner module not found in thresholds")
+}
+
+func TestEvaluate_TierInfoInStandard(t *testing.T) {
+	ca := &CoverageAssessor{
+		Thresholds: []CoverageThreshold{
+			{Module: "output", MinCoverage: 30},
+		},
+	}
+	results := []CoverageResult{{Package: "output", Coverage: 30.5}}
+	assessments := ca.evaluate(results)
+	if len(assessments) != 1 {
+		t.Fatalf("expected 1 assessment, got %d", len(assessments))
+	}
+	if !strings.Contains(assessments[0].Standard, "Tier C") {
+		t.Errorf("standard should mention Tier C: %q", assessments[0].Standard)
+	}
+}

@@ -81,11 +81,88 @@ var safetyCriticalModules = map[string]bool{
 	"guard":   true,
 }
 
-// elevatedThresholds are modules with higher-than-default coverage requirements.
+// CoverageTier classifies a module's testability for threshold assignment.
+type CoverageTier string
+
+const (
+	// TierA: Pure or safety-critical logic. Target 80%.
+	TierA CoverageTier = "A"
+	// TierB: Mixed I/O with testable core. Target 50%.
+	TierB CoverageTier = "B"
+	// TierC: Interactive/OS-heavy shells. Target 30%.
+	TierC CoverageTier = "C"
+)
+
+// TierThreshold returns the coverage threshold for a given tier.
+func TierThreshold(tier CoverageTier) float64 {
+	switch tier {
+	case TierA:
+		return 80
+	case TierC:
+		return 30
+	default:
+		return 50
+	}
+}
+
+// ModuleTier returns the assigned tier for a module.
+// Safety-critical modules are always Tier A regardless of other assignments.
+// Unknown modules default to Tier B (50%).
+func ModuleTier(module string) CoverageTier {
+	if safetyCriticalModules[module] {
+		return TierA
+	}
+	if tier, ok := tierAssignments[module]; ok {
+		return tier
+	}
+	return TierB
+}
+
+// tierAssignments maps modules to their testability tier.
+// Tier A (80%): safety-critical or pure logic
+// Tier B (50%): mixed I/O, default for unknown modules
+// Tier C (30%): heavy interactive/OS coupling (bubbletea TUI, dashboards)
+var tierAssignments = map[string]CoverageTier{
+	// Tier A — pure or safety-critical
+	"cleaner": TierA,
+	"guard":   TierA,
+	"scales":  TierA,
+	"ka":      TierA,
+	"mirror":  TierA,
+	"ignore":  TierA,
+
+	// Tier B — mixed I/O (default, but explicit for documentation)
+	"jackal":    TierB,
+	"mcp":       TierB,
+	"maat":      TierB,
+	"ra":        TierB,
+	"seshat":    TierB,
+	"router":    TierB,
+	"horus":     TierB,
+	"vault":     TierB,
+	"rtk":       TierB,
+	"scarab":    TierB,
+	"seba":      TierB,
+	"osiris":    TierB,
+	"isis":      TierB,
+	"thoth":     TierB,
+	"brain":     TierB,
+	"workstream": TierB,
+
+	// Tier C — interactive/OS shells
+	"output":    TierC,
+	"dashboard": TierC,
+	"stealth":   TierC,
+}
+
+// elevatedThresholds is retained for backwards compatibility but now derived from tiers.
 var elevatedThresholds = map[string]float64{
 	"cleaner": 80,
 	"guard":   80,
 	"scales":  80,
+	"ka":      80,
+	"mirror":  80,
+	"ignore":  80,
 }
 
 // DefaultThresholds dynamically discovers all internal/* packages and returns
@@ -111,13 +188,10 @@ func DefaultThresholdsFromDir(root string) []CoverageThreshold {
 			continue
 		}
 		name := entry.Name()
-		minCov := 50.0 // default threshold
-		if elevated, ok := elevatedThresholds[name]; ok {
-			minCov = elevated
-		}
+		tier := ModuleTier(name)
 		thresholds = append(thresholds, CoverageThreshold{
 			Module:         name,
-			MinCoverage:    minCov,
+			MinCoverage:    TierThreshold(tier),
 			SafetyCritical: safetyCriticalModules[name],
 		})
 	}
@@ -129,15 +203,19 @@ func DefaultThresholdsFromDir(root string) []CoverageThreshold {
 }
 
 // fallbackThresholds returns a hardcoded minimum set for when directory scanning fails.
+// Uses the tier system for consistent threshold assignment.
 func fallbackThresholds() []CoverageThreshold {
-	return []CoverageThreshold{
-		{Module: "cleaner", MinCoverage: 80, SafetyCritical: true},
-		{Module: "guard", MinCoverage: 80, SafetyCritical: true},
-		{Module: "jackal", MinCoverage: 50},
-		{Module: "ka", MinCoverage: 50},
-		{Module: "mirror", MinCoverage: 50},
-		{Module: "scales", MinCoverage: 80},
+	modules := []string{"cleaner", "guard", "jackal", "ka", "mirror", "scales", "output", "dashboard"}
+	var thresholds []CoverageThreshold
+	for _, m := range modules {
+		tier := ModuleTier(m)
+		thresholds = append(thresholds, CoverageThreshold{
+			Module:         m,
+			MinCoverage:    TierThreshold(tier),
+			SafetyCritical: safetyCriticalModules[m],
+		})
 	}
+	return thresholds
 }
 
 // Domain returns the quality domain for this assessor.
@@ -535,11 +613,12 @@ func (c *CoverageAssessor) evaluate(results []CoverageResult) []Assessment {
 		a.Domain = DomainCoverage
 		a.Subject = t.Module
 
-		critLabel := ""
+		tier := ModuleTier(t.Module)
+		tierLabel := fmt.Sprintf(" [Tier %s]", tier)
 		if t.SafetyCritical {
-			critLabel = " [safety-critical]"
+			tierLabel = " [Tier A, safety-critical]"
 		}
-		a.Standard = fmt.Sprintf("%.0f%% minimum%s", t.MinCoverage, critLabel)
+		a.Standard = fmt.Sprintf("%.0f%% minimum%s", t.MinCoverage, tierLabel)
 
 		switch {
 		case hasNoTests:

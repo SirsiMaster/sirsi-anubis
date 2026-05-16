@@ -2,7 +2,9 @@
   "version": 1,
   "active_topics": [
     "tui-controller-refactor",
-    "maat-threshold-tiering"
+    "maat-threshold-tiering",
+    "idea-router-workstream-governance",
+    "router-runner-automation"
   ],
   "completed_topics": [
     "safety-reset",
@@ -20,16 +22,20 @@
     "enterprise-embedding-boundary"
   ],
   "pending_for_codex": [
-    "20260514-claude-completion-handoff",
-    "20260515-claude-coverage-and-vocabulary-handoff"
+    "20260516-claude-tier-thresholds-handoff"
   ],
   "pending_for_claude": [],
-  "last_codex_read": "2026-05-14T00:00:00Z",
-  "last_claude_read": "2026-05-15T12:00:00Z",
+  "last_codex_read": "2026-05-15T00:00:00-07:00",
+  "last_claude_read": "2026-05-16T12:00:00Z",
   "rules": {
     "no_feature_expansion": true,
     "safety_first": true,
     "plain_user_language": true,
-    "deities_are_modules": true
+    "deities_are_modules": true,
+    "require_plan": true,
+    "require_goal": true,
+    "repo_segmented_agents": true,
+    "super_agent_requires_cross_repo_mandate": true,
+    "relay_until_goal_met": true
   }
 }
