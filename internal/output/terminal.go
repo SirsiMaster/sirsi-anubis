@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"charm.land/lipgloss/v2"
@@ -127,6 +128,43 @@ var (
 // can provide its own consistent presentation.
 func inTUI() bool {
 	return os.Getenv("SIRSI_TUI") == "1"
+}
+
+// spinnerFrames are the animation frames for the CLI spinner.
+var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+
+// Spinner starts a CLI progress spinner with the given label.
+// Returns a stop function that clears the spinner line.
+// Suppressed in TUI, JSON, and quiet modes — returns a no-op stop.
+func Spinner(label string) func() {
+	if inTUI() || os.Getenv("SIRSI_JSON") == "1" {
+		return func() {}
+	}
+
+	var once sync.Once
+	done := make(chan struct{})
+	gold := lipgloss.NewStyle().Foreground(Gold)
+
+	go func() {
+		i := 0
+		for {
+			select {
+			case <-done:
+				fmt.Fprintf(os.Stderr, "\r\033[K") // clear line
+				return
+			default:
+				frame := gold.Render(spinnerFrames[i%len(spinnerFrames)])
+				fmt.Fprintf(os.Stderr, "\r  %s %s", frame, DimStyle.Render(label))
+				i++
+				time.Sleep(80 * time.Millisecond)
+			}
+		}
+	}()
+
+	return func() {
+		once.Do(func() { close(done) })
+		time.Sleep(100 * time.Millisecond) // let goroutine clear the line
+	}
 }
 
 // Banner prints the Pantheon banner. Suppressed inside TUI.

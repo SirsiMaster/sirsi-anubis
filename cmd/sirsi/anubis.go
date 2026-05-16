@@ -150,17 +150,18 @@ func runWeigh(ctx context.Context) error {
 	engine := jackal.DefaultEngine()
 	engine.RegisterAll(rules.AllRules()...)
 
+	stopSpin := output.Spinner("Scanning for infrastructure waste...")
 	res, scanErr := engine.Scan(ctx, jackal.ScanOptions{})
+	stopSpin()
 	if scanErr != nil {
 		output.Warn("Scan error (partial results may follow): %v", scanErr)
 	}
 
 	// Ghost scan is part of a full scan — dead app remnants are waste too.
-	if !JsonOutput {
-		output.Info("Scanning for ghost app remnants...")
-	}
+	stopSpin = output.Spinner("Scanning for ghost app remnants...")
 	ghostScanner := ka.NewScanner()
 	ghosts, ghostErr := ghostScanner.Scan(ctx, false)
+	stopSpin()
 	if ghostErr != nil {
 		output.Warn("Ghost scan error: %v", ghostErr)
 	}
@@ -538,8 +539,10 @@ func runKa(ctx context.Context) error {
 	output.Banner()
 	output.Header("Ghost App Detection")
 
+	stopSpin := output.Spinner("Detecting ghost app remnants...")
 	scanner := ka.NewScanner()
 	ghosts, err := scanner.Scan(ctx, anubisSudo)
+	stopSpin()
 	if err != nil {
 		output.Warn("Ghost scan error: %v", err)
 	}

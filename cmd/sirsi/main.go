@@ -240,7 +240,9 @@ Removed items are moved to Trash.
 			output.Banner()
 			output.Header("Build Artifact Purge")
 		}
+		stopSpin := output.Spinner("Scanning for build artifacts...")
 		res, err := jackal.ScanArtifacts(roots)
+		stopSpin()
 		if err != nil {
 			return err
 		}
@@ -283,7 +285,9 @@ var analyzeCmd = &cobra.Command{
 			output.Banner()
 			output.Header("Disk Analyzer")
 		}
+		stopSpin := output.Spinner("Analyzing disk usage...")
 		res, err := jackal.Analyze(target, 0)
+		stopSpin()
 		if err != nil {
 			return err
 		}
@@ -325,7 +329,9 @@ Finds .dmg, .pkg, .iso, .zip, .tar.gz, and .app.zip files > 10MB.
 			output.Banner()
 			output.Header("Installer Cleanup")
 		}
+		stopSpin := output.Spinner("Scanning for installer files...")
 		res, err := jackal.ScanInstallers()
+		stopSpin()
 		if err != nil {
 			return err
 		}
@@ -745,7 +751,7 @@ func init() {
 	rootCmd.AddCommand(purgeCmd, analyzeCmd, installerCmd)
 	rootCmd.AddCommand(networkCmd, fixCmd, monitorCmd)
 	rootCmd.AddCommand(auditCmd, riskCmd, hardwareCmd, diagramCmd, statusCmd)
-	rootCmd.AddCommand(versionCmd, quickstartCmd, setupCmd)
+	rootCmd.AddCommand(versionCmd, quickstartCmd, setupCmd, routerCmd)
 
 	// ── Power-user deity modules (hidden from default help, still work) ──
 	anubisCmd.Hidden = true
