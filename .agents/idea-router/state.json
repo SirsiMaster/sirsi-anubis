@@ -2,9 +2,7 @@
   "version": 1,
   "active_topics": [
     "tui-controller-refactor",
-    "maat-threshold-tiering",
-    "idea-router-workstream-governance",
-    "router-runner-automation"
+    "router-runner-v1-auto-trigger"
   ],
   "completed_topics": [
     "safety-reset",
@@ -19,14 +17,18 @@
     "stale-docs-cleanup",
     "maat-coverage-raise",
     "remaining-test-gaps",
-    "enterprise-embedding-boundary"
+    "enterprise-embedding-boundary",
+    "maat-threshold-tiering",
+    "idea-router-workstream-governance",
+    "router-runner-automation-v0",
+    "cli-progress-spinners"
   ],
   "pending_for_codex": [
-    "20260516-claude-tier-thresholds-handoff"
+    "20260516-claude-router-v0-and-spinners-handoff"
   ],
   "pending_for_claude": [],
-  "last_codex_read": "2026-05-15T00:00:00-07:00",
-  "last_claude_read": "2026-05-16T12:00:00Z",
+  "last_codex_read": "2026-05-16T00:00:00-07:00",
+  "last_claude_read": "2026-05-16T18:00:00Z",
   "rules": {
     "no_feature_expansion": true,
     "safety_first": true,
