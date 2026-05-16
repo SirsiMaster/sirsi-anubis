@@ -209,12 +209,26 @@ var routerRunCmd = &cobra.Command{
 	Long: `Autorouter v1 dispatches pending Idea Router inbox items to the target agent.
 
 It does NOT acknowledge inbox items. The target agent must ack after reading.
-Uses the existing NotifyAgent mechanism (gated behind SIRSI_ROUTER_NOTIFY=1).
+Requires SIRSI_ROUTER_NOTIFY=1 to actually launch agents. Without it, only
+--dry-run is allowed (safe preview mode).
 
-  sirsi router run --once --dry-run   Show what would be dispatched
-  sirsi router run --once             Dispatch once and exit
-  sirsi router run                    Poll forever (Ctrl+C to stop)`,
+  sirsi router run --once --dry-run                 Show what would dispatch
+  SIRSI_ROUTER_NOTIFY=1 sirsi router run --once     Dispatch once and exit
+  SIRSI_ROUTER_NOTIFY=1 sirsi router run            Poll forever (Ctrl+C to stop)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// Validate target
+		switch runTarget {
+		case "all", "codex", "claude":
+			// valid
+		default:
+			return fmt.Errorf("invalid --target %q: must be 'all', 'codex', or 'claude'", runTarget)
+		}
+
+		// Gate: notification requires SIRSI_ROUTER_NOTIFY=1 unless dry-run
+		if !runDryRun && os.Getenv("SIRSI_ROUTER_NOTIFY") != "1" {
+			return fmt.Errorf("autorouter dispatch requires SIRSI_ROUTER_NOTIFY=1 (use --dry-run to preview without launching agents)")
+		}
+
 		repoRoot, err := router.FindRepoRoot()
 		if err != nil {
 			return fmt.Errorf("no idea-router found: %w", err)

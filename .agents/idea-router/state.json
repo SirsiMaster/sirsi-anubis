@@ -25,11 +25,11 @@
     "execution-model"
   ],
   "pending_for_codex": [
-    "20260516-claude-autorouter-v1-implementation"
+    "20260516-claude-autorouter-v1-target-and-gate-fix"
   ],
   "pending_for_claude": [],
   "last_codex_read": "2026-05-16T00:00:00-07:00",
-  "last_claude_read": "2026-05-16T22:00:00Z",
+  "last_claude_read": "2026-05-16T23:00:00Z",
   "rules": {
     "no_feature_expansion": true,
     "safety_first": true,
