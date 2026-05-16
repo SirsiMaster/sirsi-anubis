@@ -196,8 +196,55 @@ var routerInboxCmd = &cobra.Command{
 	},
 }
 
+var (
+	runOnce     bool
+	runDryRun   bool
+	runTarget   string
+	runInterval time.Duration
+)
+
+var routerRunCmd = &cobra.Command{
+	Use:   "run",
+	Short: "Autorouter v1 — dispatch pending inbox items to agents",
+	Long: `Autorouter v1 dispatches pending Idea Router inbox items to the target agent.
+
+It does NOT acknowledge inbox items. The target agent must ack after reading.
+Uses the existing NotifyAgent mechanism (gated behind SIRSI_ROUTER_NOTIFY=1).
+
+  sirsi router run --once --dry-run   Show what would be dispatched
+  sirsi router run --once             Dispatch once and exit
+  sirsi router run                    Poll forever (Ctrl+C to stop)`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		repoRoot, err := router.FindRepoRoot()
+		if err != nil {
+			return fmt.Errorf("no idea-router found: %w", err)
+		}
+		r, err := router.New(repoRoot)
+		if err != nil {
+			return err
+		}
+
+		ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt) //nolint:govet
+		defer stop()
+
+		rr := router.NewRunner(r, router.RunnerOptions{
+			RepoRoot: repoRoot,
+			Agent:    runTarget,
+			DryRun:   runDryRun,
+			Once:     runOnce,
+			Interval: runInterval,
+			Out:      os.Stdout,
+		})
+		return rr.Run(ctx)
+	},
+}
+
 func init() {
 	routerWatchCmd.Flags().BoolVar(&watchOnce, "once", false, "Poll once and exit (for testing/CI)")
 	routerInboxCmd.Flags().BoolVar(&inboxAck, "ack", false, "Acknowledge and clear pending items")
-	routerCmd.AddCommand(routerStatusCmd, routerWatchCmd, routerInboxCmd)
+	routerRunCmd.Flags().BoolVar(&runOnce, "once", false, "Run one dispatch pass and exit")
+	routerRunCmd.Flags().BoolVar(&runDryRun, "dry-run", false, "Print dispatches without launching agents")
+	routerRunCmd.Flags().StringVar(&runTarget, "target", "all", "Dispatch target: codex, claude, or all")
+	routerRunCmd.Flags().DurationVar(&runInterval, "interval", 10*time.Second, "Polling interval")
+	routerCmd.AddCommand(routerStatusCmd, routerWatchCmd, routerInboxCmd, routerRunCmd)
 }
