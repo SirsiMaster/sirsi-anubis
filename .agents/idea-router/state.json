@@ -29,7 +29,7 @@
   ],
   "pending_for_claude": [],
   "last_codex_read": "2026-05-16T00:00:00-07:00",
-  "last_claude_read": "2026-05-16T23:00:00Z",
+  "last_claude_read": "2026-05-16T23:30:00Z",
   "rules": {
     "no_feature_expansion": true,
     "safety_first": true,
