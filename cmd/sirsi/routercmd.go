@@ -261,6 +261,8 @@ var (
 	installRepo    string
 	installLoad    bool
 	serviceRepo    string
+	smokeDryRun    bool
+	smokeAgentPair bool
 )
 
 var routerDaemonCmd = &cobra.Command{
@@ -413,6 +415,60 @@ var routerServiceStatusCmd = &cobra.Command{
 	},
 }
 
+var routerSmokeCmd = &cobra.Command{
+	Use:   "smoke",
+	Short: "Verify both agents can launch and write to the router directory",
+	Long: `Smoke test for the autorouter relay. Launches each agent (Claude and Codex)
+with a minimal prompt that writes a token file into .agents/idea-router/smoke-test/.
+Verifies write access succeeds, then cleans up.
+
+  sirsi router smoke --dry-run       Check CLIs exist without launching
+  sirsi router smoke                 Full probe (launches agents, verifies writes)
+  sirsi router smoke --agent-pair    Full relay: seed → Claude → Codex → verify`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		repoRoot, err := router.FindRepoRoot()
+		if err != nil {
+			return fmt.Errorf("no idea-router found: %w", err)
+		}
+
+		results, err := router.RunSmoke(cmd.Context(), router.SmokeOptions{
+			RepoRoot:  repoRoot,
+			DryRun:    smokeDryRun,
+			AgentPair: smokeAgentPair,
+			Out:       os.Stdout,
+		})
+		if err != nil {
+			return err
+		}
+
+		allPassed := true
+		fmt.Println()
+		output.Header("Router Smoke Test")
+		fmt.Println()
+		for _, r := range results {
+			status := "PASS"
+			if !r.Passed {
+				status = "FAIL"
+				allPassed = false
+			}
+			fmt.Printf("  %-8s [%s] %s (%s)\n", r.Agent, status, r.Detail, r.Elapsed.Round(time.Millisecond))
+		}
+		fmt.Println()
+		if !allPassed {
+			return fmt.Errorf("smoke test failed — one or more agents cannot write to the router")
+		}
+		if smokeDryRun {
+			fmt.Println("  Dry-run complete. Agent CLIs found. Live writeback was NOT tested.")
+			fmt.Println("  Run without --dry-run from your terminal to verify live relay.")
+		} else {
+			fmt.Println("  Live smoke passed. Agents launched and wrote to the router.")
+			fmt.Println("  Note: full relay proof requires both agents to read, act, and advance the queue.")
+			fmt.Println("  Run 'sirsi router status' to verify pending items cleared after relay.")
+		}
+		return nil
+	},
+}
+
 func launchctlUserDomain() (string, error) {
 	u, err := user.Current()
 	if err != nil {
@@ -435,5 +491,7 @@ func init() {
 	routerInstallAgentCmd.Flags().BoolVar(&installLoad, "load", false, "Load/start the launch agent after writing it")
 	routerUninstallAgentCmd.Flags().StringVar(&serviceRepo, "repo", "", "Repository root (defaults to current repo)")
 	routerServiceStatusCmd.Flags().StringVar(&serviceRepo, "repo", "", "Repository root (defaults to current repo)")
-	routerCmd.AddCommand(routerStatusCmd, routerWatchCmd, routerInboxCmd, routerRunCmd, routerDaemonCmd, routerInstallAgentCmd, routerUninstallAgentCmd, routerServiceStatusCmd)
+	routerSmokeCmd.Flags().BoolVar(&smokeDryRun, "dry-run", false, "Check CLIs exist without launching agents")
+	routerSmokeCmd.Flags().BoolVar(&smokeAgentPair, "agent-pair", false, "Full relay test: seed router item, launch both agents, verify writeback")
+	routerCmd.AddCommand(routerStatusCmd, routerWatchCmd, routerInboxCmd, routerRunCmd, routerDaemonCmd, routerInstallAgentCmd, routerUninstallAgentCmd, routerServiceStatusCmd, routerSmokeCmd)
 }

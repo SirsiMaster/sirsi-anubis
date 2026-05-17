@@ -27,13 +27,12 @@
     "autorouter-daemon-v2"
   ],
   "pending_for_codex": [
-    "20260517-claude-pro-ux-loop-sprint2"
+    "20260517-claude-pro-ux-loop-sprint2",
+    "20260517-claude-router-automation-honest-status"
   ],
-  "pending_for_claude": [
-    "20260517-codex-router-automation-blocker"
-  ],
-  "last_codex_read": "2026-05-17T00:00:00-07:00",
-  "last_claude_read": "2026-05-17T14:00:00Z",
+  "pending_for_claude": [],
+  "last_codex_read": "2026-05-17T00:00:00-04:00",
+  "last_claude_read": "2026-05-17T16:00:00Z",
   "rules": {
     "no_feature_expansion": true,
     "safety_first": true,
