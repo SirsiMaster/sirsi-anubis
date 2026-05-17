@@ -17,7 +17,6 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/notify"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
-	"github.com/SirsiMaster/sirsi-pantheon/internal/suggest"
 	modversion "github.com/SirsiMaster/sirsi-pantheon/internal/version"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/workstream"
 )
@@ -209,17 +208,78 @@ var auditCmd = &cobra.Command{
 
 var statusCmd = &cobra.Command{
 	Use:   "status",
-	Short: "Live system status dashboard",
-	Long: `Launch the live status dashboard showing CPU, memory, disk, network,
-top processes, and health score with real-time updates.
+	Short: "System status summary (or live dashboard with --live)",
+	Long: `Show a quick system status summary with health score.
 
-  sirsi status    Live dashboard (press q to quit)`,
-	Run: func(cmd *cobra.Command, args []string) {
+  sirsi status          One-shot status summary with next actions
+  sirsi status --live   Launch live TUI dashboard (press q to quit)
+  sirsi status --json   Output status as JSON`,
+	RunE: runStatus,
+}
+
+var statusLive bool
+
+func runStatus(cmd *cobra.Command, args []string) error {
+	// --live: launch TUI dashboard (original behavior)
+	if statusLive {
 		if err := output.LaunchTUIOnTab(4); err != nil {
-			fmt.Fprintf(os.Stderr, "TUI error: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("TUI error: %w", err)
 		}
-	},
+		return nil
+	}
+
+	start := time.Now()
+
+	if !JsonOutput {
+		output.Banner()
+		output.Header("System Status")
+	}
+
+	report, err := guard.Doctor()
+	if err != nil {
+		return fmt.Errorf("status check failed: %w", err)
+	}
+
+	if JsonOutput {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(report)
+	}
+
+	scoreIcon := "🟢"
+	switch {
+	case report.Score < 50:
+		scoreIcon = "🔴"
+	case report.Score < 75:
+		scoreIcon = "🟡"
+	}
+
+	elapsed := time.Since(start)
+
+	cr := &output.CommandResult{
+		Command:  "sirsi status",
+		Summary:  fmt.Sprintf("System health: %s %d/100 (%d checks)", scoreIcon, report.Score, len(report.Findings)),
+		Duration: elapsed,
+	}
+	cr.AddEvidence("Health score", fmt.Sprintf("%d/100", report.Score))
+
+	warnCount := 0
+	for _, f := range report.Findings {
+		if f.Severity >= guard.SeverityWarn {
+			warnCount++
+		}
+	}
+	if warnCount > 0 {
+		cr.AddEvidence("Warnings", fmt.Sprintf("%d", warnCount))
+	} else {
+		cr.AddEvidence("Status", "All checks passing")
+	}
+
+	cr.AddNextAction("sirsi status --live", "Launch live dashboard for real-time monitoring")
+	cr.AddNextAction("sirsi diagnose", "Detailed health diagnostic with per-check breakdown")
+	cr.AddNextAction("sirsi scan", "Scan for infrastructure waste")
+	cr.Render()
+	return nil
 }
 
 var purgeCmd = &cobra.Command{
@@ -236,6 +296,7 @@ Removed items are moved to Trash.
   sirsi purge          Interactive selection (launches TUI)
   sirsi purge --json   List artifacts as JSON`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		start := time.Now()
 		roots := jackal.DefaultPurgeRoots()
 		if !JsonOutput {
 			output.Banner()
@@ -252,19 +313,28 @@ Removed items are moved to Trash.
 			enc.SetIndent("", "  ")
 			return enc.Encode(res)
 		}
+		cr := &output.CommandResult{
+			Command:  "sirsi purge",
+			Duration: time.Since(start),
+		}
 		if len(res.Artifacts) == 0 {
-			output.Success("No project artifacts found.")
-			return nil
-		}
-		output.Info("Found %d artifacts totaling %s", len(res.Artifacts), jackal.FormatSize(res.TotalSize))
-		for _, a := range res.Artifacts {
-			tag := ""
-			if a.IsRecent {
-				tag = " (recent)"
+			cr.Summary = "No project build artifacts found"
+		} else {
+			cr.Summary = fmt.Sprintf("Found %d build artifacts totaling %s", len(res.Artifacts), jackal.FormatSize(res.TotalSize))
+			cr.AddEvidence("Artifacts", fmt.Sprintf("%d", len(res.Artifacts)))
+			cr.AddEvidence("Total size", jackal.FormatSize(res.TotalSize))
+			for _, a := range res.Artifacts {
+				tag := ""
+				if a.IsRecent {
+					tag = " (recent)"
+				}
+				cr.AddEvidence(a.ProjectName, fmt.Sprintf("%s %s%s", jackal.FormatSize(a.Size), string(a.Type), tag))
 			}
-			fmt.Printf("  %-30s %8s  %s%s\n", a.ProjectName, jackal.FormatSize(a.Size), string(a.Type), tag)
+			cr.AddNextAction("sirsi", "Launch TUI to select and purge artifacts")
 		}
-		output.NextSteps([][]string{{"sirsi", "Launch TUI for interactive selection"}})
+		cr.AddNextAction("sirsi scan", "Full infrastructure waste scan")
+		cr.AddNextAction("sirsi analyze", "Disk usage explorer")
+		cr.Render()
 		return nil
 	},
 }
@@ -297,21 +367,33 @@ var analyzeCmd = &cobra.Command{
 			enc.SetIndent("", "  ")
 			return enc.Encode(res)
 		}
-		output.Info("Analyzed %s — Total: %s", output.ShortenPath(target), jackal.FormatSize(res.TotalSize))
-		fmt.Println()
-		for i, e := range res.Entries {
+		cr := &output.CommandResult{
+			Command:  "sirsi analyze",
+			Summary:  fmt.Sprintf("Analyzed %s — %s total", output.ShortenPath(target), jackal.FormatSize(res.TotalSize)),
+			Duration: res.ScanTime,
+		}
+		cr.AddEvidence("Path", output.ShortenPath(target))
+		cr.AddEvidence("Total size", jackal.FormatSize(res.TotalSize))
+		cr.AddEvidence("Entries", fmt.Sprintf("%d", len(res.Entries)))
+		// Show top 5 entries as evidence
+		limit := 5
+		if len(res.Entries) < limit {
+			limit = len(res.Entries)
+		}
+		for _, e := range res.Entries[:limit] {
 			pct := float64(0)
 			if res.TotalSize > 0 {
 				pct = float64(e.Size) / float64(res.TotalSize) * 100
 			}
-			indicator := " "
-			if e.IsDir {
-				indicator = ">"
-			}
-			fmt.Printf("  %2d. %5.1f%%  %-30s %8s  %s\n", i+1, pct, e.Name, jackal.FormatSize(e.Size), indicator)
+			cr.AddEvidence(e.Name, fmt.Sprintf("%s (%.1f%%)", jackal.FormatSize(e.Size), pct))
 		}
-		fmt.Println()
-		output.NextSteps([][]string{{"sirsi", "Launch TUI for drill-down navigation"}})
+		if len(res.Entries) > limit {
+			cr.AddEvidence("...", fmt.Sprintf("+%d more entries", len(res.Entries)-limit))
+		}
+		cr.AddNextAction("sirsi", "Launch TUI for drill-down navigation")
+		cr.AddNextAction("sirsi purge", "Remove stale build artifacts")
+		cr.AddNextAction("sirsi scan", "Full infrastructure waste scan")
+		cr.Render()
 		return nil
 	},
 }
@@ -326,6 +408,7 @@ Finds .dmg, .pkg, .iso, .zip, .tar.gz, and .app.zip files > 10MB.
   sirsi installer          Interactive selection (launches TUI)
   sirsi installer --json   List installers as JSON`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		start := time.Now()
 		if !JsonOutput {
 			output.Banner()
 			output.Header("Installer Cleanup")
@@ -341,16 +424,31 @@ Finds .dmg, .pkg, .iso, .zip, .tar.gz, and .app.zip files > 10MB.
 			enc.SetIndent("", "  ")
 			return enc.Encode(res)
 		}
+		cr := &output.CommandResult{
+			Command:  "sirsi installer",
+			Duration: time.Since(start),
+		}
 		if len(res.Files) == 0 {
-			output.Success("No installer files found.")
-			return nil
+			cr.Summary = "No installer files found"
+		} else {
+			cr.Summary = fmt.Sprintf("Found %d installer files totaling %s", len(res.Files), jackal.FormatSize(res.TotalSize))
+			cr.AddEvidence("Installers", fmt.Sprintf("%d", len(res.Files)))
+			cr.AddEvidence("Total size", jackal.FormatSize(res.TotalSize))
+			limit := 5
+			if len(res.Files) < limit {
+				limit = len(res.Files)
+			}
+			for _, f := range res.Files[:limit] {
+				cr.AddEvidence(f.Name, fmt.Sprintf("%s (%s)", jackal.FormatSize(f.Size), f.Source))
+			}
+			if len(res.Files) > limit {
+				cr.AddEvidence("...", fmt.Sprintf("+%d more files", len(res.Files)-limit))
+			}
+			cr.AddNextAction("sirsi", "Launch TUI to select and remove installers")
 		}
-		output.Info("Found %d installers totaling %s", len(res.Files), jackal.FormatSize(res.TotalSize))
-		for _, f := range res.Files {
-			fmt.Printf("  %-35s %8s  %s\n", f.Name, jackal.FormatSize(f.Size), f.Source)
-		}
-		fmt.Println()
-		output.NextSteps([][]string{{"sirsi", "Launch TUI for interactive removal"}})
+		cr.AddNextAction("sirsi scan", "Full infrastructure waste scan")
+		cr.AddNextAction("sirsi purge", "Remove build artifacts")
+		cr.Render()
 		return nil
 	},
 }
@@ -517,12 +615,28 @@ func runIsisNetwork(cmd *cobra.Command, args []string) error {
 		scoreIcon = "🟡"
 	}
 
-	output.Dashboard(map[string]string{
-		"Security Score": fmt.Sprintf("%s %d/100", scoreIcon, report.Score),
-		"Checks Run":     fmt.Sprintf("%d", len(report.Findings)),
-	})
-	output.Footer(time.Since(start))
-	output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "isis", Subcommand: "network"}))
+	elapsed := time.Since(start)
+
+	cr := &output.CommandResult{
+		Command:  "sirsi network",
+		Summary:  fmt.Sprintf("Network security score: %s %d/100 (%d checks)", scoreIcon, report.Score, len(report.Findings)),
+		Duration: elapsed,
+	}
+	cr.AddEvidence("Security score", fmt.Sprintf("%d/100", report.Score))
+	cr.AddEvidence("Checks run", fmt.Sprintf("%d", len(report.Findings)))
+
+	for _, f := range report.Findings {
+		if f.Severity >= guard.SeverityWarn {
+			cr.AddWarning("%s: %s", f.Check, f.Message)
+		}
+	}
+
+	if report.Score < 75 {
+		cr.AddNextAction("sirsi fix", "Auto-fix DNS, firewall, and security issues")
+	}
+	cr.AddNextAction("sirsi diagnose", "Full system health diagnostic")
+	cr.AddNextAction("sirsi scan", "Scan for infrastructure waste")
+	cr.Render()
 	return nil
 }
 
@@ -740,6 +854,8 @@ func init() {
 	networkCmd.Flags().BoolVar(&isisNetworkRollback, "rollback", false, "Restore DNS to pre-fix state")
 	diagramCmd.Flags().StringVar(&diagramType, "type", "all", "Diagram type (hierarchy|dataflow|modules|memory|governance|pipeline|all)")
 	diagramCmd.Flags().BoolVar(&diagramHTML, "html", false, "Generate self-contained HTML")
+
+	statusCmd.Flags().BoolVar(&statusLive, "live", false, "Launch live TUI dashboard")
 
 	// Core commands
 	scanCmd.Flags().BoolVar(&anubisAll, "all", false, "Scan all categories")
