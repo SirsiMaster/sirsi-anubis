@@ -278,13 +278,39 @@ func runWeigh(ctx context.Context) error {
 		}
 	}
 
-	output.Footer(elapsed)
-	actions := suggest.After(suggest.Context{Deity: "anubis", Subcommand: "weigh"})
-	var steps [][]string
-	for _, a := range actions {
-		steps = append(steps, []string{a.Command, a.Description})
+	// Structured result contract
+	result := &output.CommandResult{
+		Command:  "sirsi scan",
+		Summary:  fmt.Sprintf("Found %s of reclaimable waste across %d findings", jackal.FormatSize(res.TotalSize), len(res.Findings)),
+		Duration: elapsed,
 	}
-	output.NextSteps(steps)
+	result.AddEvidence("Waste found", jackal.FormatSize(res.TotalSize))
+	result.AddEvidence("Rules ran", fmt.Sprintf("%d", res.RulesRan))
+	result.AddEvidence("Findings", fmt.Sprintf("%d", len(res.Findings)))
+	if len(ghosts) > 0 {
+		result.AddEvidence("Ghost apps", fmt.Sprintf("%d (%s)", len(ghosts), jackal.FormatSize(ghostWaste)))
+	}
+	if scanErr != nil {
+		result.AddWarning("Scan completed with errors: %v", scanErr)
+	}
+	if ghostErr != nil {
+		result.AddWarning("Ghost scan completed with errors: %v", ghostErr)
+	}
+	safeCount := 0
+	for _, f := range res.Findings {
+		if f.Severity == jackal.SeveritySafe && f.CanFix {
+			safeCount++
+		}
+	}
+	if safeCount > 0 {
+		result.AddNextAction("sirsi clean", fmt.Sprintf("Remove %d safe items (moved to Trash)", safeCount))
+	}
+	if len(ghosts) > 0 {
+		result.AddNextAction("sirsi ghosts", "Review and exorcise ghost app remnants")
+	}
+	result.AddNextAction("sirsi purge", "Remove stale build artifacts (node_modules, target, etc.)")
+	result.AddNextAction("sirsi diagnose", "Check system health (RAM, disk, kernel panics)")
+	result.Render()
 	return nil
 }
 
@@ -371,15 +397,16 @@ func runJudge(ctx context.Context) error {
 
 	// Dry-run mode (default) — just show the plan.
 	if anubisDryRun && !anubisConfirm {
-		output.Info("")
-		output.Info("Dry run — no changes made. Run with --confirm to apply.")
-		output.Footer(time.Since(start))
-		actions := suggest.After(suggest.Context{Deity: "anubis", Subcommand: "judge", Err: nil})
-		var steps [][]string
-		for _, a := range actions {
-			steps = append(steps, []string{a.Command, a.Description})
+		cr := &output.CommandResult{
+			Command:  "sirsi clean",
+			Summary:  fmt.Sprintf("Dry run: %d items (%s) would be cleaned", len(target), jackal.FormatSize(totalCleanable)),
+			Duration: time.Since(start),
 		}
-		output.NextSteps(steps)
+		cr.AddEvidence("Cleanable items", fmt.Sprintf("%d", len(target)))
+		cr.AddEvidence("Reclaimable space", jackal.FormatSize(totalCleanable))
+		cr.AddNextAction("sirsi clean --confirm", "Apply cleanup (items moved to Trash)")
+		cr.AddNextAction("sirsi scan", "Run a fresh scan to update findings")
+		cr.Render()
 		return nil
 	}
 
@@ -397,7 +424,7 @@ func runJudge(ctx context.Context) error {
 	engine := jackal.DefaultEngine()
 	engine.RegisterAll(rules.AllRules()...)
 
-	result, err := engine.Clean(ctx, target, jackal.CleanOptions{
+	cleanResult, err := engine.Clean(ctx, target, jackal.CleanOptions{
 		DryRun:   false,
 		Confirm:  true,
 		UseTrash: true,
@@ -406,25 +433,27 @@ func runJudge(ctx context.Context) error {
 		return fmt.Errorf("clean failed: %w", err)
 	}
 
-	output.Success("Cleaned %d items. Reclaimed %s.", result.Cleaned, jackal.FormatSize(result.BytesFreed))
-	if result.Skipped > 0 {
-		output.Warn("Skipped %d items (protected or errors)", result.Skipped)
-	}
-
 	// Inscribe judgment to Stele.
 	stele.Inscribe("anubis", stele.TypeAnubisJudge, "", map[string]string{
-		"cleaned":     fmt.Sprintf("%d", result.Cleaned),
-		"bytes_freed": fmt.Sprintf("%d", result.BytesFreed),
-		"skipped":     fmt.Sprintf("%d", result.Skipped),
+		"cleaned":     fmt.Sprintf("%d", cleanResult.Cleaned),
+		"bytes_freed": fmt.Sprintf("%d", cleanResult.BytesFreed),
+		"skipped":     fmt.Sprintf("%d", cleanResult.Skipped),
 	})
 
-	output.Footer(time.Since(start))
-	actions := suggest.After(suggest.Context{Deity: "anubis", Subcommand: "judge"})
-	var steps [][]string
-	for _, a := range actions {
-		steps = append(steps, []string{a.Command, a.Description})
+	cr := &output.CommandResult{
+		Command:  "sirsi clean",
+		Summary:  fmt.Sprintf("Cleaned %d items. Reclaimed %s.", cleanResult.Cleaned, jackal.FormatSize(cleanResult.BytesFreed)),
+		Duration: time.Since(start),
 	}
-	output.NextSteps(steps)
+	cr.AddEvidence("Items cleaned", fmt.Sprintf("%d", cleanResult.Cleaned))
+	cr.AddEvidence("Space reclaimed", jackal.FormatSize(cleanResult.BytesFreed))
+	if cleanResult.Skipped > 0 {
+		cr.AddWarning("Skipped %d items (protected or errors)", cleanResult.Skipped)
+	}
+	cr.AddNextAction("sirsi scan", "Verify cleanup with a fresh scan")
+	cr.AddNextAction("sirsi ghosts", "Hunt remaining ghost app residuals")
+	cr.AddNextAction("sirsi diagnose", "Check overall system health")
+	cr.Render()
 	return nil
 }
 
@@ -509,7 +538,7 @@ func runClean(cmd *cobra.Command, args []string) error {
 	engine := jackal.DefaultEngine()
 	engine.RegisterAll(rules.AllRules()...)
 
-	result, err := engine.Clean(ctx, findings, jackal.CleanOptions{
+	cleanResult, err := engine.Clean(ctx, findings, jackal.CleanOptions{
 		DryRun:   false,
 		Confirm:  true,
 		UseTrash: true,
@@ -518,19 +547,26 @@ func runClean(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("clean failed: %w", err)
 	}
 
-	output.Success("Cleaned %d items. Reclaimed %s.", result.Cleaned, jackal.FormatSize(result.BytesFreed))
-	if result.Skipped > 0 {
-		output.Warn("Skipped %d items (protected or errors)", result.Skipped)
-	}
-
 	stele.Inscribe("anubis", stele.TypeAnubisClean, "", map[string]string{
-		"cleaned":     fmt.Sprintf("%d", result.Cleaned),
-		"bytes_freed": fmt.Sprintf("%d", result.BytesFreed),
+		"cleaned":     fmt.Sprintf("%d", cleanResult.Cleaned),
+		"bytes_freed": fmt.Sprintf("%d", cleanResult.BytesFreed),
 		"mode":        mode,
 	})
 
-	output.Footer(time.Since(start))
-	output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "anubis", Subcommand: "judge"}))
+	cr := &output.CommandResult{
+		Command:  "sirsi clean",
+		Summary:  fmt.Sprintf("Cleaned %d items. Reclaimed %s.", cleanResult.Cleaned, jackal.FormatSize(cleanResult.BytesFreed)),
+		Duration: time.Since(start),
+	}
+	cr.AddEvidence("Items cleaned", fmt.Sprintf("%d", cleanResult.Cleaned))
+	cr.AddEvidence("Space reclaimed", jackal.FormatSize(cleanResult.BytesFreed))
+	if cleanResult.Skipped > 0 {
+		cr.AddWarning("Skipped %d items (protected or errors)", cleanResult.Skipped)
+	}
+	cr.AddNextAction("sirsi scan", "Verify cleanup with a fresh scan")
+	cr.AddNextAction("sirsi ghosts", "Hunt remaining ghost app residuals")
+	cr.AddNextAction("sirsi diagnose", "Check overall system health")
+	cr.Render()
 	return nil
 }
 
@@ -552,12 +588,31 @@ func runKa(ctx context.Context) error {
 		totalWaste += g.TotalSize
 	}
 
-	output.Dashboard(map[string]string{
-		"Ghosts": fmt.Sprintf("%d", len(ghosts)),
-		"Waste":  jackal.FormatSize(totalWaste),
-	})
-	output.Footer(time.Since(start))
-	output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "anubis", Subcommand: "ka"}))
+	elapsed := time.Since(start)
+
+	result := &output.CommandResult{
+		Command:  "sirsi ghosts",
+		Duration: elapsed,
+	}
+	if len(ghosts) == 0 {
+		result.Summary = "No ghost app remnants detected"
+	} else {
+		result.Summary = fmt.Sprintf("Found %d ghost apps with %s of reclaimable waste", len(ghosts), jackal.FormatSize(totalWaste))
+	}
+	result.AddEvidence("Ghost apps", fmt.Sprintf("%d", len(ghosts)))
+	result.AddEvidence("Waste", jackal.FormatSize(totalWaste))
+	if err != nil {
+		result.AddWarning("Scan completed with errors: %v", err)
+	}
+	for _, g := range ghosts {
+		result.AddEvidence(g.AppName, fmt.Sprintf("%d residuals, %s", len(g.Residuals), jackal.FormatSize(g.TotalSize)))
+	}
+	if len(ghosts) > 0 {
+		result.AddNextAction("sirsi", "Launch TUI to select and exorcise ghosts")
+	}
+	result.AddNextAction("sirsi scan", "Full infrastructure waste scan")
+	result.AddNextAction("sirsi diagnose", "Check system health")
+	result.Render()
 	return nil
 }
 
@@ -565,14 +620,31 @@ func runAnubisMirror(cmd *cobra.Command, args []string) error {
 	start := time.Now()
 	output.Banner()
 	output.Header("Duplicate File Detection")
+
+	stopSpin := output.Spinner("Scanning for duplicate files...")
 	opts := mirror.ScanOptions{Paths: args, DryRun: true}
 	res, _ := mirror.Scan(opts)
-	output.Dashboard(map[string]string{
-		"Duplicates": fmt.Sprintf("%d", res.TotalDuplicates),
-		"Waste":      mirror.FormatBytes(res.TotalWasteBytes),
-	})
-	output.Footer(time.Since(start))
-	output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "anubis", Subcommand: "mirror"}))
+	stopSpin()
+
+	elapsed := time.Since(start)
+
+	cr := &output.CommandResult{
+		Command:  "sirsi duplicates",
+		Duration: elapsed,
+	}
+	if res.TotalDuplicates == 0 {
+		cr.Summary = "No duplicate files found"
+	} else {
+		cr.Summary = fmt.Sprintf("Found %d duplicate files wasting %s", res.TotalDuplicates, mirror.FormatBytes(res.TotalWasteBytes))
+	}
+	cr.AddEvidence("Duplicates", fmt.Sprintf("%d", res.TotalDuplicates))
+	cr.AddEvidence("Wasted space", mirror.FormatBytes(res.TotalWasteBytes))
+	if res.TotalDuplicates > 0 {
+		cr.AddNextAction("sirsi", "Launch TUI to review and remove duplicates")
+	}
+	cr.AddNextAction("sirsi scan", "Full infrastructure waste scan")
+	cr.AddNextAction("sirsi clean", "Clean safe items from last scan")
+	cr.Render()
 	return nil
 }
 
@@ -581,13 +653,21 @@ func runAnubisGuard(cmd *cobra.Command, args []string) error {
 	output.Banner()
 	output.Header("Resource Monitor")
 	stats, _ := guard.GetStats()
-	output.Dashboard(map[string]string{
-		"RAM Usage": stats.UsedMemory,
-		"Total":     stats.TotalMemory,
-		"Status":    stats.PressureLevel,
-	})
-	output.Footer(time.Since(start))
-	output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "isis", Subcommand: "guard"}))
+
+	elapsed := time.Since(start)
+
+	cr := &output.CommandResult{
+		Command:  "sirsi monitor",
+		Summary:  fmt.Sprintf("RAM: %s / %s — Pressure: %s", stats.UsedMemory, stats.TotalMemory, stats.PressureLevel),
+		Duration: elapsed,
+	}
+	cr.AddEvidence("RAM usage", stats.UsedMemory)
+	cr.AddEvidence("Total RAM", stats.TotalMemory)
+	cr.AddEvidence("Pressure", stats.PressureLevel)
+	cr.AddNextAction("sirsi status", "Live system dashboard with real-time updates")
+	cr.AddNextAction("sirsi diagnose", "Full system health diagnostic")
+	cr.AddNextAction("sirsi scan", "Scan for infrastructure waste")
+	cr.Render()
 	return nil
 }
 
@@ -896,11 +976,33 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		scoreIcon = "🟡"
 	}
 
-	output.Dashboard(map[string]string{
-		"Health Score": fmt.Sprintf("%s %d/100", scoreIcon, report.Score),
-		"Checks Run":   fmt.Sprintf("%d", len(report.Findings)),
-	})
-	output.Footer(time.Since(start))
-	output.NextSteps(output.SuggestSteps(suggest.Context{Deity: "isis", Subcommand: "diagnose"}))
+	elapsed := time.Since(start)
+
+	result := &output.CommandResult{
+		Command:  "sirsi diagnose",
+		Summary:  fmt.Sprintf("Health score: %s %d/100 (%d checks run)", scoreIcon, report.Score, len(report.Findings)),
+		Duration: elapsed,
+	}
+	result.AddEvidence("Health score", fmt.Sprintf("%d/100", report.Score))
+	result.AddEvidence("Checks run", fmt.Sprintf("%d", len(report.Findings)))
+
+	warnCount := 0
+	for _, f := range report.Findings {
+		if f.Severity >= guard.SeverityWarn {
+			warnCount++
+			result.AddWarning("%s: %s", f.Check, f.Message)
+		}
+	}
+	if warnCount == 0 {
+		result.AddEvidence("Status", "All checks passing")
+	}
+
+	if report.Score < 75 {
+		result.AddNextAction("sirsi fix", "Auto-fix DNS, firewall, and security issues")
+	}
+	result.AddNextAction("sirsi monitor", "Watch processes and RAM pressure in real time")
+	result.AddNextAction("sirsi network", "Network security audit")
+	result.AddNextAction("sirsi scan", "Scan for infrastructure waste")
+	result.Render()
 	return nil
 }
