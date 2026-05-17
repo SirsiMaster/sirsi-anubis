@@ -23,6 +23,21 @@ type dependency struct {
 	CheckCmd    string // command to verify installation (empty = just check PATH)
 }
 
+// checkFullDiskAccess tests whether the current process has FDA by attempting
+// to read a TCC-protected directory. Returns true if access is granted.
+func checkFullDiskAccess() bool {
+	if runtime.GOOS != "darwin" {
+		return true // not applicable
+	}
+	// ~/Library/Mail is TCC-protected — if we can list it, we have FDA
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return false
+	}
+	_, err = os.ReadDir(home + "/Library/Mail")
+	return err == nil
+}
+
 // macOS dependencies.
 var macDeps = []dependency{
 	{Name: "git", Description: "Version control (used by Thoth, Ma'at, Ra)", Required: true, InstallCmd: "xcode-select --install"},
@@ -129,8 +144,30 @@ func runSetup(_ *cobra.Command, _ []string) error {
 	}
 	output.Table([]string{"", "Tool", "Purpose", "Status"}, rows)
 
-	if missing == 0 {
-		fmt.Println("\n  All dependencies satisfied.")
+	// ── Permissions Check ──
+	fmt.Println()
+	fmt.Println("  Permissions")
+	fmt.Println()
+	fdaOK := checkFullDiskAccess()
+	if fdaOK {
+		fmt.Println("  ✅ Full Disk Access: granted")
+	} else {
+		fmt.Println("  ❌ Full Disk Access: not granted")
+		fmt.Println("     Scanning will hit permission prompts without FDA.")
+		fmt.Println("     Run 'sirsi permissions' to grant, or add the sirsi binary to:")
+		fmt.Println("     System Settings → Privacy & Security → Full Disk Access")
+		if terminal := os.Getenv("TERM_PROGRAM"); terminal != "" {
+			fmt.Printf("     Also add your terminal: %s\n", terminal)
+		}
+	}
+
+	if missing == 0 && fdaOK {
+		fmt.Println("\n  All dependencies and permissions satisfied. Ready to scan.")
+		return nil
+	}
+
+	if missing == 0 && !fdaOK {
+		fmt.Println("\n  Dependencies OK. Grant Full Disk Access to enable scanning without prompts.")
 		return nil
 	}
 
