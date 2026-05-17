@@ -126,6 +126,13 @@ var rootCmd = &cobra.Command{
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		logging.Init(verboseMode, quietMode, JsonOutput)
 		output.SetOutputMode(JsonOutput, quietMode)
+
+		// First-run FDA check for scan-related commands on macOS.
+		// Warns once if Full Disk Access is not granted.
+		if !JsonOutput && !quietMode && needsFDA(cmd.Name()) && !checkFullDiskAccess() {
+			fmt.Fprintf(os.Stderr, "\n  ⚠ Full Disk Access not granted — some directories may be inaccessible.\n")
+			fmt.Fprintf(os.Stderr, "    Run 'sirsi permissions' to fix this once.\n\n")
+		}
 	},
 }
 

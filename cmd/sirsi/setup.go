@@ -23,6 +23,16 @@ type dependency struct {
 	CheckCmd    string // command to verify installation (empty = just check PATH)
 }
 
+// needsFDA returns true if the command accesses user directories that require FDA.
+func needsFDA(cmdName string) bool {
+	switch cmdName {
+	case "scan", "ghosts", "duplicates", "purge", "installer", "analyze", "clean":
+		return true
+	default:
+		return false
+	}
+}
+
 // checkFullDiskAccess tests whether the current process has FDA by attempting
 // to read a TCC-protected directory. Returns true if access is granted.
 func checkFullDiskAccess() bool {
