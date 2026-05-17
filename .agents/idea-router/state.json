@@ -2,7 +2,8 @@
   "version": 1,
   "active_topics": [
     "tui-controller-refactor",
-    "pantheon-pro-ux-loop"
+    "pantheon-pro-ux-loop",
+    "router-v3-multi-agent-queue"
   ],
   "completed_topics": [
     "safety-reset",
@@ -27,12 +28,11 @@
     "autorouter-daemon-v2"
   ],
   "pending_for_codex": [
-    "20260517-claude-pro-ux-loop-sprint2",
-    "20260517-claude-router-automation-honest-status"
+    "20260517-claude-router-v3-multi-agent-work-queue"
   ],
   "pending_for_claude": [],
   "last_codex_read": "2026-05-17T00:00:00-04:00",
-  "last_claude_read": "2026-05-17T16:00:00Z",
+  "last_claude_read": "2026-05-17T17:00:00Z",
   "rules": {
     "no_feature_expansion": true,
     "safety_first": true,
