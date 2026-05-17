@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestRunnerDryRunDoesNotAck(t *testing.T) {
@@ -138,5 +141,99 @@ func TestRunnerNotifyFailureDoesNotMarkDispatched(t *testing.T) {
 
 	if calls != 2 {
 		t.Fatalf("notify calls = %d, want 2 (retry after failure)", calls)
+	}
+}
+
+func TestRunnerLedgerSuppressesDuplicateAfterRestart(t *testing.T) {
+	r, tmp := setupTestRouter(t)
+	id, err := r.SubmitAddressed(DocReview, "claude", "Needs Codex", "# Review: Needs Codex\n\nreviewer: claude", "codex")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ledgerPath := filepath.Join(tmp, ".agents", "idea-router", "dispatch-ledger.json")
+
+	calls := 0
+	notify := func(target, docType, docID, repoRoot string) error {
+		calls++
+		if target != "codex" || docID != id {
+			t.Fatalf("bad notify: %s %s", target, docID)
+		}
+		return nil
+	}
+
+	rr := NewRunner(r, RunnerOptions{RepoRoot: tmp, Agent: "all", Out: io.Discard, Notify: notify, LedgerPath: ledgerPath})
+	if err := rr.Tick(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	restarted := NewRunner(r, RunnerOptions{RepoRoot: tmp, Agent: "all", Out: io.Discard, Notify: notify, LedgerPath: ledgerPath})
+	if err := restarted.Tick(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if calls != 1 {
+		t.Fatalf("notify calls = %d, want 1 across restart", calls)
+	}
+	if _, err := os.Stat(ledgerPath); err != nil {
+		t.Fatalf("ledger not written: %v", err)
+	}
+}
+
+func TestRunnerLedgerRedispatchesEditedDocument(t *testing.T) {
+	r, tmp := setupTestRouter(t)
+	id, err := r.SubmitAddressed(DocReview, "claude", "Needs Codex", "# Review: Needs Codex\n\nreviewer: claude", "codex")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ledgerPath := filepath.Join(tmp, ".agents", "idea-router", "dispatch-ledger.json")
+
+	calls := 0
+	notify := func(target, docType, docID, repoRoot string) error {
+		calls++
+		return nil
+	}
+
+	rr := NewRunner(r, RunnerOptions{RepoRoot: tmp, Agent: "all", Out: io.Discard, Notify: notify, LedgerPath: ledgerPath})
+	if err := rr.Tick(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	doc, err := r.Get(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(time.Millisecond)
+	if err := os.WriteFile(doc.Path, []byte("# Review: Needs Codex\n\nreviewer: claude\n\nedited"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	restarted := NewRunner(r, RunnerOptions{RepoRoot: tmp, Agent: "all", Out: io.Discard, Notify: notify, LedgerPath: ledgerPath})
+	if err := restarted.Tick(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if calls != 2 {
+		t.Fatalf("notify calls = %d, want 2 after document edit", calls)
+	}
+}
+
+func TestRunnerClearedInboxStopsDispatch(t *testing.T) {
+	r, tmp := setupTestRouter(t)
+	id, err := r.SubmitAddressed(DocReview, "claude", "Needs Codex", "content", "codex")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := r.AckInbox("codex", []string{id}); err != nil {
+		t.Fatal(err)
+	}
+
+	calls := 0
+	notify := func(target, docType, docID, repoRoot string) error {
+		calls++
+		return nil
+	}
+	rr := NewRunner(r, RunnerOptions{RepoRoot: tmp, Agent: "all", Out: io.Discard, Notify: notify})
+	if err := rr.Tick(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if calls != 0 {
+		t.Fatalf("notify calls = %d, want 0 after inbox clear", calls)
 	}
 }

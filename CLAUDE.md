@@ -347,6 +347,20 @@ Anubis scans filesystems and processes. Scan results may contain sensitive infor
 *   **No Repo-Specific Aliases**: A deity is never renamed for a repo. Correct: `𓆄 Ma'at pre-push gate... [FinalWishes]`. Wrong: `𓁹 Osiris (FinalWishes) pre-push gate...`.
 *   **Evidence**: FinalWishes used `𓂀 Osiris` for its pre-push gate (wrong deity, wrong glyph, wrong function). Assiduous used `𓇼 Seba` (wrong deity for quality gates). Both corrected to `𓆄 Ma'at`.
 
+### 2.23 Idea Router Workstream Protocol (Rule A26)
+> Established May 15, 2026. Codex and Claude must collaborate through the Idea Router for multi-agent and cross-agent workstreams.
+
+*   **Rule**: All non-trivial Sirsi workstreams MUST begin with `/plan`. Codex and Claude MUST collaborate through `.agents/idea-router/` to create or review the plan before implementation when both agents are involved.
+*   **Goal Flag**: Every workstream MUST define a `/goal` flag in the plan. The `/goal` is the explicit completion condition, including required verification, tests, review, and handoff artifacts. Agents continue working until the `/goal` is met, blocked by safety/user approval, or impossible with a stated reason.
+*   **Repo Segmentation**: Work on repositories MUST be segmented. Each repository requires its own agent/workstream. A single agent MUST NOT modify multiple repositories unless it is explicitly designated as a **super agent** with a written cross-repo mandate in the `/plan`.
+*   **Super Agent Mandate**: A super agent may coordinate multiple repo agents, compare evidence across repos, and write cross-repo decisions, but MUST avoid direct code edits across repos unless the mandate explicitly permits those paths.
+*   **Parallel Agents**: When enough context and token budget exist, spawn multiple repo-scoped agents rather than serializing unrelated repo work. Each agent owns one repo and one bounded task set.
+*   **Idea Router Handoff**: Proposals, reviews, decisions, and completion notes MUST be written to `.agents/idea-router/`. A submission by Codex should create a pending item for Claude; a submission by Claude should create a pending item for Codex.
+*   **Completion Relay**: Agents MUST continue the relay until the `/goal` is met. If the current environment cannot automatically wake the other agent, the submitting agent MUST leave an explicit pending router item and a concise next-action instruction.
+*   **No Silent Cross-Repo Drift**: Any claim about repo state, completion, test status, or deployment status must name the repo and cite evidence gathered in that repo.
+*   **Enforcement**: Ma'at treats unmandated cross-repo edits, missing `/plan`, missing `/goal`, or unclosed router handoffs as governance failures.
+*   **Automation Boundary**: Full automatic triggering between Codex and Claude is provided by the autorouter daemon: `sirsi router daemon` for foreground operation and `sirsi router install-agent --load` for the resident macOS launch agent. The filesystem router remains the source of truth; the daemon dispatches pending inbox items but never acknowledges them for an agent.
+
 ---
 
 ## 3. Technology Stack

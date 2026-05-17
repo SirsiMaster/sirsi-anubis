@@ -190,3 +190,34 @@ The MCP server should still persist to `.agents/idea-router/` so the collaborati
 4. Thoth as "remember" product surface.
 5. Ma'at as CI/CD and PR triage product surface.
 
+## Mandatory Workstream Protocol
+
+Every non-trivial Codex/Claude workstream MUST use:
+
+- `/plan` before implementation.
+- `/goal` as the explicit completion flag.
+- One repo-scoped agent per repository.
+- A written super-agent mandate before any one agent coordinates or edits across repos.
+- Router handoff files that keep the other agent queued until the `/goal` is met.
+
+### Repo Segmentation
+
+Work on repositories is segmented by default. A normal agent owns exactly one repository. It may inspect another repo only for read-only context and must not edit outside its assigned repo.
+
+A super agent is allowed only when the `/plan` says:
+
+1. Which repositories are in scope.
+2. Whether the super agent may edit files or only coordinate.
+3. Which repo-scoped agents own implementation.
+4. What evidence is required before the `/goal` is complete.
+
+### Goal Relay
+
+Submissions by one agent should trigger the other:
+
+1. Codex writes proposal/review/decision and adds a pending item for Claude.
+2. Claude reads the pending item, works or reviews, then writes its own router artifact.
+3. Claude adds a pending item for Codex.
+4. The relay continues until the `/goal` completion condition is met.
+
+If no automation runner is active, the pending item is the trigger. Agents must check `state.json` and the latest router files at session start.

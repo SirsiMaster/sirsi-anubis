@@ -1,8 +1,7 @@
 {
   "version": 1,
   "active_topics": [
-    "tui-controller-refactor",
-    "router-runner-v1-auto-trigger"
+    "tui-controller-refactor"
   ],
   "completed_topics": [
     "safety-reset",
@@ -22,14 +21,14 @@
     "idea-router-workstream-governance",
     "router-runner-automation-v0",
     "cli-progress-spinners",
-    "execution-model"
+    "execution-model",
+    "router-runner-v1-auto-trigger",
+    "autorouter-daemon-v2"
   ],
-  "pending_for_codex": [
-    "20260516-claude-autorouter-v1-target-and-gate-fix"
-  ],
+  "pending_for_codex": [],
   "pending_for_claude": [],
   "last_codex_read": "2026-05-16T00:00:00-07:00",
-  "last_claude_read": "2026-05-16T23:30:00Z",
+  "last_claude_read": "2026-05-17T01:00:00Z",
   "rules": {
     "no_feature_expansion": true,
     "safety_first": true,
