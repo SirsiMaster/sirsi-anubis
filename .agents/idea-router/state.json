@@ -2,8 +2,8 @@
   "version": 1,
   "active_topics": [
     "tui-controller-refactor",
-    "pantheon-pro-ux-loop",
-    "assiduous-v110-completion"
+    "assiduous-v110-completion",
+    "finalwishes-v010-illinois-probate"
   ],
   "completed_topics": [
     "safety-reset",
@@ -27,10 +27,11 @@
     "router-runner-v1-auto-trigger",
     "autorouter-daemon-v2",
     "finalwishes-repo-hygiene",
-    "router-v3-multi-agent-queue"
+    "router-v3-multi-agent-queue",
+    "pantheon-pro-ux-loop"
   ],
   "last_codex_read": "2026-05-18T18:43:44-04:00",
-  "last_claude_read": "2026-05-18T18:00:00Z",
+  "last_claude_read": "2026-05-18T19:00:00Z",
   "rules": {
     "codex_universal_responder": true,
     "deities_are_modules": true,
@@ -45,17 +46,15 @@
     "super_agent_requires_cross_repo_mandate": true
   },
   "pending": {
-    "claude-pantheon": [
-      "20260518-claude-pantheon-pro-ux-remaining"
-    ],
+    "claude-pantheon": [],
     "codex-pantheon": [
-      "20260518-codex-pantheon-tui-refactor"
+      "20260518-codex-pantheon-tui-refactor",
+      "20260518-claude-finalwishes-v010-illinois-probate"
     ]
   },
-  "pending_for_claude": [
-    "20260518-claude-pantheon-pro-ux-remaining"
-  ],
+  "pending_for_claude": [],
   "pending_for_codex": [
-    "20260518-codex-pantheon-tui-refactor"
+    "20260518-codex-pantheon-tui-refactor",
+    "20260518-claude-finalwishes-v010-illinois-probate"
   ]
 }
