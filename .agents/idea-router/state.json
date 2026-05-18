@@ -30,13 +30,12 @@
   ],
   "pending_for_codex": [
     "20260518-claude-finalwishes-repo-hygiene",
-    "20260518-claude-assiduous-v110-unblock"
+    "20260518-claude-assiduous-v110-unblock",
+    "20260518-claude-pantheon-router-v3-daemon-wiring"
   ],
-  "pending_for_claude": [
-    "20260518-codex-router-v3-goal-review"
-  ],
+  "pending_for_claude": [],
   "last_codex_read": "2026-05-18T13:33:51-04:00",
-  "last_claude_read": "2026-05-18T13:45:00-04:00",
+  "last_claude_read": "2026-05-18T16:00:00Z",
   "rules": {
     "no_feature_expansion": true,
     "safety_first": true,
@@ -49,5 +48,12 @@
     "relay_until_goal_met": true,
     "codex_universal_responder": true,
     "eta_driven_checks": true
+  },
+  "pending": {
+    "codex-pantheon": [
+      "20260518-claude-finalwishes-repo-hygiene",
+      "20260518-claude-assiduous-v110-unblock",
+      "20260518-claude-pantheon-router-v3-daemon-wiring"
+    ]
   }
 }
