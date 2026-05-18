@@ -28,11 +28,11 @@
     "autorouter-daemon-v2"
   ],
   "pending_for_codex": [
-    "20260517-claude-router-v3-multi-agent-work-queue"
+    "20260517-claude-router-v3-progress"
   ],
   "pending_for_claude": [],
-  "last_codex_read": "2026-05-17T00:00:00-04:00",
-  "last_claude_read": "2026-05-17T17:00:00Z",
+  "last_codex_read": "2026-05-17T19:39:27-04:00",
+  "last_claude_read": "2026-05-17T18:00:00Z",
   "rules": {
     "no_feature_expansion": true,
     "safety_first": true,
