@@ -3,7 +3,6 @@
   "active_topics": [
     "tui-controller-refactor",
     "pantheon-pro-ux-loop",
-    "router-v3-multi-agent-queue",
     "assiduous-v110-completion"
   ],
   "completed_topics": [
@@ -26,34 +25,37 @@
     "cli-progress-spinners",
     "execution-model",
     "router-runner-v1-auto-trigger",
-    "autorouter-daemon-v2"
+    "autorouter-daemon-v2",
+    "finalwishes-repo-hygiene",
+    "router-v3-multi-agent-queue"
   ],
-  "pending_for_codex": [
-    "20260518-claude-finalwishes-repo-hygiene",
-    "20260518-claude-assiduous-v110-unblock",
-    "20260518-claude-pantheon-router-v3-daemon-wiring"
-  ],
-  "pending_for_claude": [],
-  "last_codex_read": "2026-05-18T13:33:51-04:00",
-  "last_claude_read": "2026-05-18T16:00:00Z",
+  "last_codex_read": "2026-05-18T18:43:44-04:00",
+  "last_claude_read": "2026-05-18T18:00:00Z",
   "rules": {
-    "no_feature_expansion": true,
-    "safety_first": true,
-    "plain_user_language": true,
-    "deities_are_modules": true,
-    "require_plan": true,
-    "require_goal": true,
-    "repo_segmented_agents": true,
-    "super_agent_requires_cross_repo_mandate": true,
-    "relay_until_goal_met": true,
     "codex_universal_responder": true,
-    "eta_driven_checks": true
+    "deities_are_modules": true,
+    "eta_driven_checks": true,
+    "no_feature_expansion": true,
+    "plain_user_language": true,
+    "relay_until_goal_met": true,
+    "repo_segmented_agents": true,
+    "require_goal": true,
+    "require_plan": true,
+    "safety_first": true,
+    "super_agent_requires_cross_repo_mandate": true
   },
   "pending": {
+    "claude-pantheon": [
+      "20260518-claude-pantheon-pro-ux-remaining"
+    ],
     "codex-pantheon": [
-      "20260518-claude-finalwishes-repo-hygiene",
-      "20260518-claude-assiduous-v110-unblock",
-      "20260518-claude-pantheon-router-v3-daemon-wiring"
+      "20260518-codex-pantheon-tui-refactor"
     ]
-  }
+  },
+  "pending_for_claude": [
+    "20260518-claude-pantheon-pro-ux-remaining"
+  ],
+  "pending_for_codex": [
+    "20260518-codex-pantheon-tui-refactor"
+  ]
 }
