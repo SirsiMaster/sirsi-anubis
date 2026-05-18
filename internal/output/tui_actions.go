@@ -1,24 +1,18 @@
 package output
 
-import (
-	"sync"
-
-	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal"
-)
-
 // ── Tab Definitions ──────────────────────────────────────────────────
 // Five tabs, like Mole's five planets. Each has a purpose, a voice,
 // and numbered actions. The user never types a command — they press
 // a number.
 
-// tabAction defines one action on a tab. Native functions return
-// (rendered lines, deityKey, fixCmds, error). fixCmds override
-// the suggest engine — these become the numbered "What's Next" items.
+// tabAction defines one action on a tab. Native functions return a
+// nativeResult carrying rendered lines, deity key, fix cmds, and
+// optional select/analyze state. fixCmds override the suggest engine.
 type tabAction struct {
 	Label  string
 	Desc   string
-	Args   []string                                   // CLI args (fallback if Native is nil)
-	Native func() ([]string, string, []string, error) // (lines, deityKey, fixCmds, err)
+	Args   []string              // CLI args (fallback if Native is nil)
+	Native func() nativeResult   // returns rendered lines, deity key, fix cmds, select/analyze state
 }
 
 type tabDef struct {
@@ -91,7 +85,7 @@ var tabs = []tabDef{
 // nativeCommands maps suggest command strings to native functions.
 // When a post-run suggestion matches one of these, it runs natively
 // instead of shelling out to a subprocess.
-var nativeCommands = map[string]func() ([]string, string, []string, error){
+var nativeCommands = map[string]func() nativeResult{
 	// Anubis — scan & clean
 	"anubis scan":            nativeScan,
 	"anubis ghosts":          nativeGhosts,
@@ -110,19 +104,10 @@ var nativeCommands = map[string]func() ([]string, string, []string, error){
 	"findings": nativeFindings,
 }
 
-// scanProgressCh streams per-rule progress to the TUI during scans.
+// TODO: scanProgressCh and doctorProgressCh remain package-level globals because
+// they are streaming channels set before the native function runs and consumed
+// during execution. Moving them to TUIModel fields requires passing the model
+// (or channel) into the native function closure, which is a larger change.
 var scanProgressCh chan string
-
-// doctorProgressCh streams per-check progress to the TUI.
 var doctorProgressCh chan string
-
-var (
-	pendingAnalyzeMu  sync.Mutex
-	pendingAnalyzeRes *jackal.AnalyzeResult
-)
-
-var (
-	pendingSelectMu  sync.Mutex
-	pendingSelectReq *selectRequest
-)
 

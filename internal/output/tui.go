@@ -48,7 +48,7 @@ type TUIModel struct {
 	selectItems     []selectItem
 	selectCursor    int
 	selectTitle     string
-	selectOnConfirm func(selected []selectItem) ([]string, string, []string, error)
+	selectOnConfirm func(selected []selectItem) nativeResult
 
 	// Command execution
 	input        textinput.Model

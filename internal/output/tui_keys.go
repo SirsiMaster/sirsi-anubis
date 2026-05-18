@@ -205,8 +205,7 @@ func (m TUIModel) handleSelectKey(key string) (tea.Model, tea.Cmd) {
 			m.postRunCmds = nil
 			onConfirm := m.selectOnConfirm
 			return m, tea.Batch(m.spinner.Tick, elapsedTick(), func() tea.Msg {
-				lines, deityKey, fixCmds, err := onConfirm(selected)
-				return nativeResultMsg{lines: lines, deityKey: deityKey, fixCmds: fixCmds, err: err}
+				return nativeResultMsg(onConfirm(selected))
 			})
 		}
 		m.mode = viewTabs

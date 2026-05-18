@@ -12,11 +12,12 @@ import (
 
 // nativeResult is returned by native deity calls.
 type nativeResult struct {
-	lines     []string // rendered output lines
-	deityKey  string   // which deity ran
-	fixCmds   []string // actionable fix commands (override suggest engine)
-	err       error
-	selectReq *selectRequest // if non-nil, enter viewSelect mode instead of viewDone
+	lines      []string             // rendered output lines
+	deityKey   string               // which deity ran
+	fixCmds    []string             // actionable fix commands (override suggest engine)
+	err        error
+	selectReq  *selectRequest       // if non-nil, enter viewSelect mode instead of viewDone
+	analyzeRes *jackal.AnalyzeResult // if non-nil, enter viewAnalyze mode
 }
 
 type nativeResultMsg nativeResult
@@ -52,7 +53,7 @@ type selectItem struct {
 type selectRequest struct {
 	title     string
 	items     []selectItem
-	onConfirm func(selected []selectItem) ([]string, string, []string, error)
+	onConfirm func(selected []selectItem) nativeResult
 }
 
 type analyzeLevel struct {

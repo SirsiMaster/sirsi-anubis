@@ -39,13 +39,11 @@ func (m TUIModel) executeAction(action tabAction) (TUIModel, tea.Cmd) {
 		if isScan || isDoctor {
 			ch := make(chan string, 100)
 			m.streamCh = ch
-			pendingSelectMu.Lock()
 			if isScan {
 				scanProgressCh = ch
 			} else {
 				doctorProgressCh = ch
 			}
-			pendingSelectMu.Unlock()
 
 			label := "Scanning..."
 			if isDoctor {
@@ -62,8 +60,8 @@ func (m TUIModel) executeAction(action tabAction) (TUIModel, tea.Cmd) {
 			var streamErr error
 			return m, tea.Batch(m.spinner.Tick, elapsedTick(), func() tea.Msg {
 				go func() {
-					_, _, _, err := fn()
-					streamErr = err
+					res := fn()
+					streamErr = res.err
 					close(ch)
 				}()
 				line, ok := <-ch
@@ -76,12 +74,8 @@ func (m TUIModel) executeAction(action tabAction) (TUIModel, tea.Cmd) {
 
 		fn := action.Native
 		return m, tea.Batch(m.spinner.Tick, elapsedTick(), func() tea.Msg {
-			lines, deityKey, fixCmds, err := fn()
-			pendingSelectMu.Lock()
-			selReq := pendingSelectReq
-			pendingSelectReq = nil
-			pendingSelectMu.Unlock()
-			return nativeResultMsg{lines: lines, deityKey: deityKey, fixCmds: fixCmds, err: err, selectReq: selReq}
+			res := fn()
+			return nativeResultMsg(res)
 		})
 	}
 	return m.executeArgs(action.Args)
@@ -281,15 +275,11 @@ func (m TUIModel) handleStreamLine(msg streamLineMsg) (TUIModel, tea.Cmd) {
 // handleNativeResult processes results from native deity function calls.
 func (m TUIModel) handleNativeResult(msg nativeResultMsg) (TUIModel, tea.Cmd) {
 	// If the result carries an analyze result, enter analyze mode.
-	pendingAnalyzeMu.Lock()
-	analyzeRes := pendingAnalyzeRes
-	pendingAnalyzeRes = nil
-	pendingAnalyzeMu.Unlock()
-	if analyzeRes != nil && msg.err == nil {
+	if msg.analyzeRes != nil && msg.err == nil {
 		m.mode = viewAnalyze
-		m.analyzePath = analyzeRes.Path
-		m.analyzeEntries = analyzeRes.Entries
-		m.analyzeTotal = analyzeRes.TotalSize
+		m.analyzePath = msg.analyzeRes.Path
+		m.analyzeEntries = msg.analyzeRes.Entries
+		m.analyzeTotal = msg.analyzeRes.TotalSize
 		m.analyzeCursor = 0
 		m.analyzeHistory = nil
 		m.runningDeity = ""

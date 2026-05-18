@@ -26,16 +26,14 @@ import (
 
 // ── Native Deity Functions ───────────────────────────────────────────
 
-func nativeScan() ([]string, string, []string, error) {
+func nativeScan() nativeResult {
 	engine := jackal.DefaultEngine()
 	engine.RegisterAll(rules.AllRules()...)
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	// Grab the progress channel if set — streams per-rule updates to TUI
-	pendingSelectMu.Lock()
 	ch := scanProgressCh
 	scanProgressCh = nil
-	pendingSelectMu.Unlock()
 
 	opts := jackal.ScanOptions{}
 	if ch != nil {
@@ -57,7 +55,7 @@ func nativeScan() ([]string, string, []string, error) {
 		ch <- ""
 	}
 	if err != nil {
-		return nil, "anubis", nil, err
+		return nativeResult{deityKey: "anubis", err: err}
 	}
 	jackal.EnrichAdvisory(res)
 	_ = jackal.Persist(res, 0)
@@ -72,19 +70,19 @@ func nativeScan() ([]string, string, []string, error) {
 	if safeCount > 0 {
 		fixCmds = append(fixCmds, "anubis clean --dry-run")
 	}
-	return RenderScanResult(res), "anubis", fixCmds, nil
+	return nativeResult{lines: RenderScanResult(res), deityKey: "anubis", fixCmds: fixCmds}
 }
 
-func nativeGhosts() ([]string, string, []string, error) {
+func nativeGhosts() nativeResult {
 	scanner := ka.NewScanner()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	ghosts, err := scanner.Scan(ctx, false)
 	if err != nil {
-		return nil, "anubis", nil, err
+		return nativeResult{deityKey: "anubis", err: err}
 	}
 	if len(ghosts) == 0 {
-		return RenderGhostResult(ghosts), "anubis", nil, nil
+		return nativeResult{lines: RenderGhostResult(ghosts), deityKey: "anubis"}
 	}
 
 	var items []selectItem
@@ -99,67 +97,67 @@ func nativeGhosts() ([]string, string, []string, error) {
 		})
 	}
 
-	pendingSelectMu.Lock()
-	pendingSelectReq = &selectRequest{
-		title: "𓃣 Ghosts — Select Hauntings to Exorcise",
-		items: items,
-		onConfirm: func(selected []selectItem) ([]string, string, []string, error) {
-			s := ka.NewScanner()
-			var totalFreed int64
-			var totalCleaned int
-			var names []string
-			var cleanErrors []error
-			for _, item := range selected {
-				if g, ok := item.Data.(ka.Ghost); ok {
-					freed, cleaned, err := s.Clean(g, false, true)
-					if err != nil {
-						cleanErrors = append(cleanErrors, fmt.Errorf("%s: %w", g.AppName, err))
-						continue
+	return nativeResult{
+		deityKey: "anubis",
+		selectReq: &selectRequest{
+			title: "𓃣 Ghosts — Select Hauntings to Exorcise",
+			items: items,
+			onConfirm: func(selected []selectItem) nativeResult {
+				s := ka.NewScanner()
+				var totalFreed int64
+				var totalCleaned int
+				var names []string
+				var cleanErrors []error
+				for _, item := range selected {
+					if g, ok := item.Data.(ka.Ghost); ok {
+						freed, cleaned, err := s.Clean(g, false, true)
+						if err != nil {
+							cleanErrors = append(cleanErrors, fmt.Errorf("%s: %w", g.AppName, err))
+							continue
+						}
+						totalFreed += freed
+						totalCleaned += cleaned
+						names = append(names, g.AppName)
 					}
-					totalFreed += freed
-					totalCleaned += cleaned
-					names = append(names, g.AppName)
 				}
-			}
-			var lines []string
-			lines = append(lines, "")
-			if totalCleaned > 0 {
-				bannerText := fmt.Sprintf("𓃣 Exorcised: %s freed", jackal.FormatSize(totalFreed))
-				lines = append(lines, "  "+ResultBanner(bannerText, rGold, 50))
-				lines = append(lines, "  "+rDim.Render(fmt.Sprintf("%d files from %d apps", totalCleaned, len(names))))
+				var lines []string
 				lines = append(lines, "")
-				for _, name := range names {
-					lines = append(lines, "  "+rGreen.Render("✓")+"  "+rBody.Render(name))
+				if totalCleaned > 0 {
+					bannerText := fmt.Sprintf("𓃣 Exorcised: %s freed", jackal.FormatSize(totalFreed))
+					lines = append(lines, "  "+ResultBanner(bannerText, rGold, 50))
+					lines = append(lines, "  "+rDim.Render(fmt.Sprintf("%d files from %d apps", totalCleaned, len(names))))
+					lines = append(lines, "")
+					for _, name := range names {
+						lines = append(lines, "  "+rGreen.Render("✓")+"  "+rBody.Render(name))
+					}
+				} else {
+					lines = append(lines, "  "+rDim.Render("No ghosts were cleaned."))
 				}
-			} else {
-				lines = append(lines, "  "+rDim.Render("No ghosts were cleaned."))
-			}
-			if len(cleanErrors) > 0 {
-				lines = append(lines, "")
-				for _, e := range cleanErrors {
-					lines = append(lines, "  "+lipgloss.NewStyle().Foreground(Red).Render("✗ "+e.Error()))
+				if len(cleanErrors) > 0 {
+					lines = append(lines, "")
+					for _, e := range cleanErrors {
+						lines = append(lines, "  "+lipgloss.NewStyle().Foreground(Red).Render("✗ "+e.Error()))
+					}
+					return nativeResult{lines: lines, deityKey: "anubis", fixCmds: []string{"anubis scan"}, err: fmt.Errorf("%d ghost(s) failed to clean", len(cleanErrors))}
 				}
-				return lines, "anubis", []string{"anubis scan"}, fmt.Errorf("%d ghost(s) failed to clean", len(cleanErrors))
-			}
-			return lines, "anubis", []string{"anubis scan"}, nil
+				return nativeResult{lines: lines, deityKey: "anubis", fixCmds: []string{"anubis scan"}}
+			},
 		},
 	}
-	pendingSelectMu.Unlock()
-	return nil, "anubis", nil, nil
 }
 
-func nativeHardware() ([]string, string, []string, error) {
+func nativeHardware() nativeResult {
 	hw, err := seba.DetectHardware()
 	if err != nil {
-		return nil, "seba", nil, err
+		return nativeResult{deityKey: "seba", err: err}
 	}
-	return RenderHardwareProfile(hw), "seba", nil, nil
+	return nativeResult{lines: RenderHardwareProfile(hw), deityKey: "seba"}
 }
 
-func nativeFindings() ([]string, string, []string, error) {
+func nativeFindings() nativeResult {
 	scan, err := jackal.LoadLatest()
 	if err != nil {
-		return []string{"", "  No scan results found. Press esc and run Scan first."}, "anubis", nil, nil
+		return nativeResult{lines: []string{"", "  No scan results found. Press esc and run Scan first."}, deityKey: "anubis"}
 	}
 	res := &jackal.ScanResult{
 		Findings:   make([]jackal.Finding, len(scan.Findings)),
@@ -183,32 +181,30 @@ func nativeFindings() ([]string, string, []string, error) {
 	for cat, s := range scan.ByCategory {
 		res.ByCategory[cat] = s
 	}
-	return RenderScanResult(res), "anubis", nil, nil
+	return nativeResult{lines: RenderScanResult(res), deityKey: "anubis"}
 }
 
-func nativeNetworkAudit() ([]string, string, []string, error) {
+func nativeNetworkAudit() nativeResult {
 	report, err := guard.NetworkAudit()
 	if err != nil {
-		return nil, "isis", nil, err
+		return nativeResult{deityKey: "isis", err: err}
 	}
 	lines, fixCmds := RenderNetworkAudit(report)
-	return lines, "isis", fixCmds, nil
+	return nativeResult{lines: lines, deityKey: "isis", fixCmds: fixCmds}
 }
 
-func nativeNetworkFix() ([]string, string, []string, error) {
+func nativeNetworkFix() nativeResult {
 	report, err := guard.NetworkAuditFix()
 	if err != nil {
-		return nil, "isis", nil, err
+		return nativeResult{deityKey: "isis", err: err}
 	}
 	lines, _ := RenderNetworkAudit(report)
-	return lines, "isis", nil, nil
+	return nativeResult{lines: lines, deityKey: "isis"}
 }
 
-func nativeDoctor() ([]string, string, []string, error) {
-	pendingSelectMu.Lock()
+func nativeDoctor() nativeResult {
 	ch := doctorProgressCh
 	doctorProgressCh = nil
-	pendingSelectMu.Unlock()
 
 	opts := guard.DoctorOpts{}
 	if ch != nil {
@@ -233,16 +229,16 @@ func nativeDoctor() ([]string, string, []string, error) {
 		ch <- ""
 	}
 	if err != nil {
-		return nil, "isis", nil, err
+		return nativeResult{deityKey: "isis", err: err}
 	}
 	lines, fixCmds := RenderDoctorReport(report)
-	return lines, "isis", fixCmds, nil
+	return nativeResult{lines: lines, deityKey: "isis", fixCmds: fixCmds}
 }
 
-func nativeCleanDryRun() ([]string, string, []string, error) {
+func nativeCleanDryRun() nativeResult {
 	scan, err := jackal.LoadLatest()
 	if err != nil {
-		return []string{"", "  No scan results. Run Scan first."}, "anubis", nil, nil
+		return nativeResult{lines: []string{"", "  No scan results. Run Scan first."}, deityKey: "anubis"}
 	}
 
 	// Filter to safe findings only
@@ -262,7 +258,7 @@ func nativeCleanDryRun() ([]string, string, []string, error) {
 	}
 
 	if len(safeFindings) == 0 {
-		return []string{"", "  No safe items to clean."}, "anubis", nil, nil
+		return nativeResult{lines: []string{"", "  No safe items to clean."}, deityKey: "anubis"}
 	}
 
 	var items []selectItem
@@ -273,41 +269,41 @@ func nativeCleanDryRun() ([]string, string, []string, error) {
 		})
 	}
 
-	pendingSelectMu.Lock()
-	pendingSelectReq = &selectRequest{
-		title: "𓃣 Clean — Select Items to Purge",
-		items: items,
-		onConfirm: func(selected []selectItem) ([]string, string, []string, error) {
-			var findings []jackal.Finding
-			for _, item := range selected {
-				if f, ok := item.Data.(jackal.Finding); ok {
-					findings = append(findings, f)
+	return nativeResult{
+		deityKey: "anubis",
+		selectReq: &selectRequest{
+			title: "𓃣 Clean — Select Items to Purge",
+			items: items,
+			onConfirm: func(selected []selectItem) nativeResult {
+				var findings []jackal.Finding
+				for _, item := range selected {
+					if f, ok := item.Data.(jackal.Finding); ok {
+						findings = append(findings, f)
+					}
 				}
-			}
-			if len(findings) == 0 {
-				return []string{"", "  Nothing selected to clean."}, "anubis", nil, nil
-			}
-			engine := jackal.DefaultEngine()
-			engine.RegisterAll(rules.AllRules()...)
-			ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-			defer cancel()
-			result, err := engine.Clean(ctx, findings, jackal.CleanOptions{
-				Confirm: true, UseTrash: true,
-			})
-			if err != nil {
-				return nil, "anubis", nil, err
-			}
-			return RenderCleanResult(result), "anubis", []string{"anubis scan"}, nil
+				if len(findings) == 0 {
+					return nativeResult{lines: []string{"", "  Nothing selected to clean."}, deityKey: "anubis"}
+				}
+				engine := jackal.DefaultEngine()
+				engine.RegisterAll(rules.AllRules()...)
+				ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+				defer cancel()
+				result, err := engine.Clean(ctx, findings, jackal.CleanOptions{
+					Confirm: true, UseTrash: true,
+				})
+				if err != nil {
+					return nativeResult{deityKey: "anubis", err: err}
+				}
+				return nativeResult{lines: RenderCleanResult(result), deityKey: "anubis", fixCmds: []string{"anubis scan"}}
+			},
 		},
 	}
-	pendingSelectMu.Unlock()
-	return nil, "anubis", nil, nil
 }
 
-func nativeCleanConfirm() ([]string, string, []string, error) {
+func nativeCleanConfirm() nativeResult {
 	scan, err := jackal.LoadLatest()
 	if err != nil {
-		return []string{"", "  No scan results. Run Scan first."}, "anubis", nil, nil
+		return nativeResult{lines: []string{"", "  No scan results. Run Scan first."}, deityKey: "anubis"}
 	}
 
 	var safeFindings []jackal.Finding
@@ -327,7 +323,7 @@ func nativeCleanConfirm() ([]string, string, []string, error) {
 	}
 
 	if len(safeFindings) == 0 {
-		return []string{"", "  Nothing to clean."}, "anubis", nil, nil
+		return nativeResult{lines: []string{"", "  Nothing to clean."}, deityKey: "anubis"}
 	}
 
 	engine := jackal.DefaultEngine()
@@ -340,49 +336,48 @@ func nativeCleanConfirm() ([]string, string, []string, error) {
 		UseTrash: true,
 	})
 	if err != nil {
-		return nil, "anubis", nil, err
+		return nativeResult{deityKey: "anubis", err: err}
 	}
 
-	lines := RenderCleanResult(result)
-	return lines, "anubis", []string{"anubis scan"}, nil
+	return nativeResult{lines: RenderCleanResult(result), deityKey: "anubis", fixCmds: []string{"anubis scan"}}
 }
 
-func nativeRisk() ([]string, string, []string, error) {
+func nativeRisk() nativeResult {
 	cp, err := osiris.Assess(".")
 	if err != nil {
-		return nil, "osiris", nil, err
+		return nativeResult{deityKey: "osiris", err: err}
 	}
-	return RenderRiskAssessment(cp), "osiris", nil, nil
+	return nativeResult{lines: RenderRiskAssessment(cp), deityKey: "osiris"}
 }
 
-func nativeMirror() ([]string, string, []string, error) {
+func nativeMirror() nativeResult {
 	home, _ := os.UserHomeDir()
 	res, err := mirror.Scan(mirror.ScanOptions{
 		Paths:   []string{filepath.Join(home, "Development"), filepath.Join(home, "Documents")},
 		MinSize: 1024 * 100, // 100KB minimum
 	})
 	if err != nil {
-		return nil, "anubis", nil, err
+		return nativeResult{deityKey: "anubis", err: err}
 	}
-	return RenderMirrorResult(res), "anubis", nil, nil
+	return nativeResult{lines: RenderMirrorResult(res), deityKey: "anubis"}
 }
 
-func nativePurge() ([]string, string, []string, error) {
+func nativePurge() nativeResult {
 	roots := jackal.DefaultPurgeRoots()
 	if len(roots) == 0 {
-		return []string{"", "  No project directories found (~/Development, ~/Projects, ~/Documents)."}, "anubis", nil, nil
+		return nativeResult{lines: []string{"", "  No project directories found (~/Development, ~/Projects, ~/Documents)."}, deityKey: "anubis"}
 	}
 
 	res, err := jackal.ScanArtifacts(roots)
 	if err != nil {
-		return nil, "anubis", nil, err
+		return nativeResult{deityKey: "anubis", err: err}
 	}
 	if len(res.Artifacts) == 0 {
-		return []string{
+		return nativeResult{lines: []string{
 			"",
 			"  " + lipgloss.NewStyle().Foreground(Green).Render("✓") + "  " +
 				lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC")).Render("No build artifacts found. Projects are clean."),
-		}, "anubis", nil, nil
+		}, deityKey: "anubis"}
 	}
 
 	var items []selectItem
@@ -400,113 +395,110 @@ func nativePurge() ([]string, string, []string, error) {
 		})
 	}
 
-	pendingSelectMu.Lock()
-	pendingSelectReq = &selectRequest{
-		title: fmt.Sprintf("𓃣 Purge — Select Artifacts to Remove — %s", jackal.FormatSize(res.TotalSize)),
-		items: items,
-		onConfirm: func(selected []selectItem) ([]string, string, []string, error) {
-			var toClean []jackal.ProjectArtifact
-			for _, item := range selected {
-				if a, ok := item.Data.(jackal.ProjectArtifact); ok {
-					toClean = append(toClean, a)
+	return nativeResult{
+		deityKey: "anubis",
+		selectReq: &selectRequest{
+			title: fmt.Sprintf("𓃣 Purge — Select Artifacts to Remove — %s", jackal.FormatSize(res.TotalSize)),
+			items: items,
+			onConfirm: func(selected []selectItem) nativeResult {
+				var toClean []jackal.ProjectArtifact
+				for _, item := range selected {
+					if a, ok := item.Data.(jackal.ProjectArtifact); ok {
+						toClean = append(toClean, a)
+					}
 				}
-			}
-			if len(toClean) == 0 {
-				return []string{"", "  Nothing selected to purge."}, "anubis", nil, nil
-			}
-			result, err := jackal.PurgeArtifacts(toClean, true)
-			if err != nil {
-				return nil, "anubis", nil, err
-			}
-			return RenderCleanResult(result), "anubis", []string{"anubis scan"}, nil
+				if len(toClean) == 0 {
+					return nativeResult{lines: []string{"", "  Nothing selected to purge."}, deityKey: "anubis"}
+				}
+				result, err := jackal.PurgeArtifacts(toClean, true)
+				if err != nil {
+					return nativeResult{deityKey: "anubis", err: err}
+				}
+				return nativeResult{lines: RenderCleanResult(result), deityKey: "anubis", fixCmds: []string{"anubis scan"}}
+			},
 		},
 	}
-	pendingSelectMu.Unlock()
-	return nil, "anubis", nil, nil
 }
 
-func nativeMaatAudit() ([]string, string, []string, error) {
+func nativeMaatAudit() nativeResult {
 	report, err := maat.Weigh()
 	if err != nil {
-		return nil, "maat", nil, err
+		return nativeResult{deityKey: "maat", err: err}
 	}
 	lines, fixCmds := RenderMaatReport(report)
-	return lines, "maat", fixCmds, nil
+	return nativeResult{lines: lines, deityKey: "maat", fixCmds: fixCmds}
 }
 
-func nativeDiagram() ([]string, string, []string, error) {
+func nativeDiagram() nativeResult {
 	res, err := seba.GenerateDiagram(".", seba.DiagramHierarchy)
 	if err != nil {
-		return nil, "seba", nil, err
+		return nativeResult{deityKey: "seba", err: err}
 	}
-	return RenderDiagram(res), "seba", nil, nil
+	return nativeResult{lines: RenderDiagram(res), deityKey: "seba"}
 }
 
-func nativeSeshatIngest() ([]string, string, []string, error) {
+func nativeSeshatIngest() nativeResult {
 	reg := seshat.DefaultRegistry()
 	items, err := reg.IngestAll(time.Now().Add(-24 * time.Hour))
 	if err != nil {
-		return nil, "seshat", nil, err
+		return nativeResult{deityKey: "seshat", err: err}
 	}
-	return RenderKnowledgeItems(items), "seshat", nil, nil
+	return nativeResult{lines: RenderKnowledgeItems(items), deityKey: "seshat"}
 }
 
-func nativeThothSync() ([]string, string, []string, error) {
+func nativeThothSync() nativeResult {
 	err := thoth.Sync(thoth.SyncOptions{RepoRoot: ".", UpdateDate: true})
 	if err != nil {
-		return nil, "thoth", nil, err
+		return nativeResult{deityKey: "thoth", err: err}
 	}
-	return []string{
+	return nativeResult{lines: []string{
 		"",
 		"  " + lipgloss.NewStyle().Foreground(Green).Render("✓") + "  " +
 			lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC")).Render("Memory synced"),
 		"",
 		"  " + lipgloss.NewStyle().Foreground(lipgloss.Color("#666666")).Render("Updated .thoth/memory.yaml with current project state"),
-	}, "thoth", nil, nil
+	}, deityKey: "thoth"}
 }
 
-func nativeRaStatus() ([]string, string, []string, error) {
+func nativeRaStatus() nativeResult {
 	home, _ := os.UserHomeDir()
 	raDir := filepath.Join(home, ".config", "ra")
 	status, err := ra.Monitor(raDir)
 	if err != nil {
-		return nil, "ra", nil, err
+		return nativeResult{deityKey: "ra", err: err}
 	}
-	return RenderRaStatus(status), "ra", nil, nil
+	return nativeResult{lines: RenderRaStatus(status), deityKey: "ra"}
 }
 
-func nativeHorusScan() ([]string, string, []string, error) {
+func nativeHorusScan() nativeResult {
 	p := horus.NewGoParser()
 	graph, err := p.ParseDir(".")
 	if err != nil {
-		return nil, "horus", nil, err
+		return nativeResult{deityKey: "horus", err: err}
 	}
-	return RenderSymbolGraph(graph), "horus", nil, nil
+	return nativeResult{lines: RenderSymbolGraph(graph), deityKey: "horus"}
 }
 
-func nativeAnalyze() ([]string, string, []string, error) {
+func nativeAnalyze() nativeResult {
 	home, _ := os.UserHomeDir()
 	res, err := jackal.Analyze(home, 0)
 	if err != nil {
-		return nil, "anubis", nil, err
+		return nativeResult{deityKey: "anubis", err: err}
 	}
-	pendingAnalyzeMu.Lock()
-	pendingAnalyzeRes = res
-	pendingAnalyzeMu.Unlock()
-	return nil, "anubis", nil, nil
+	return nativeResult{deityKey: "anubis", analyzeRes: res}
 }
 
-func nativeInstaller() ([]string, string, []string, error) {
+func nativeInstaller() nativeResult {
 	res, err := jackal.ScanInstallers()
 	if err != nil {
-		return nil, "anubis", nil, err
+		return nativeResult{deityKey: "anubis", err: err}
 	}
 	if len(res.Files) == 0 {
-		return []string{
+		return nativeResult{lines: []string{
 			"",
 			"  " + lipgloss.NewStyle().Foreground(Green).Render("✓") + "  " +
 				lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC")).Render("No installer files found. Clean machine."),
-		}, "anubis", nil, nil
+		}, deityKey: "anubis"}
 	}
 
 	var items []selectItem
@@ -520,27 +512,27 @@ func nativeInstaller() ([]string, string, []string, error) {
 		})
 	}
 
-	pendingSelectMu.Lock()
-	pendingSelectReq = &selectRequest{
-		title: fmt.Sprintf("𓃣 Installers — Select Files to Remove — %s", jackal.FormatSize(res.TotalSize)),
-		items: items,
-		onConfirm: func(selected []selectItem) ([]string, string, []string, error) {
-			var toRemove []jackal.InstallerFile
-			for _, item := range selected {
-				if f, ok := item.Data.(jackal.InstallerFile); ok {
-					toRemove = append(toRemove, f)
+	return nativeResult{
+		deityKey: "anubis",
+		selectReq: &selectRequest{
+			title: fmt.Sprintf("𓃣 Installers — Select Files to Remove — %s", jackal.FormatSize(res.TotalSize)),
+			items: items,
+			onConfirm: func(selected []selectItem) nativeResult {
+				var toRemove []jackal.InstallerFile
+				for _, item := range selected {
+					if f, ok := item.Data.(jackal.InstallerFile); ok {
+						toRemove = append(toRemove, f)
+					}
 				}
-			}
-			if len(toRemove) == 0 {
-				return []string{"", "  Nothing selected to remove."}, "anubis", nil, nil
-			}
-			result, err := jackal.RemoveInstallers(toRemove, true)
-			if err != nil {
-				return nil, "anubis", nil, err
-			}
-			return RenderCleanResult(result), "anubis", []string{"anubis scan"}, nil
+				if len(toRemove) == 0 {
+					return nativeResult{lines: []string{"", "  Nothing selected to remove."}, deityKey: "anubis"}
+				}
+				result, err := jackal.RemoveInstallers(toRemove, true)
+				if err != nil {
+					return nativeResult{deityKey: "anubis", err: err}
+				}
+				return nativeResult{lines: RenderCleanResult(result), deityKey: "anubis", fixCmds: []string{"anubis scan"}}
+			},
 		},
 	}
-	pendingSelectMu.Unlock()
-	return nil, "anubis", nil, nil
 }
