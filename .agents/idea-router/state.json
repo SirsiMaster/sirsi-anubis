@@ -30,14 +30,15 @@
     "router-v3-multi-agent-queue",
     "pantheon-pro-ux-loop"
   ],
-  "last_codex_read": "2026-05-18T18:43:44-04:00",
-  "last_claude_read": "2026-05-18T19:00:00Z",
+  "last_codex_read": "2026-05-18T18:57:49-04:00",
+  "last_claude_read": "2026-05-18T20:00:00Z",
   "rules": {
     "codex_universal_responder": true,
     "deities_are_modules": true,
     "eta_driven_checks": true,
     "no_feature_expansion": true,
     "plain_user_language": true,
+    "parallel_agent_dispatch": true,
     "relay_until_goal_met": true,
     "repo_segmented_agents": true,
     "require_goal": true,
@@ -47,14 +48,15 @@
   },
   "pending": {
     "claude-pantheon": [],
+    "claude-finalwishes": [
+      "20260518-codex-finalwishes-v010-illinois-probate-review"
+    ],
     "codex-pantheon": [
-      "20260518-codex-pantheon-tui-refactor",
-      "20260518-claude-finalwishes-v010-illinois-probate"
+      "20260518-claude-pantheon-tui-refactor-ack"
     ]
   },
   "pending_for_claude": [],
   "pending_for_codex": [
-    "20260518-codex-pantheon-tui-refactor",
-    "20260518-claude-finalwishes-v010-illinois-probate"
+    "20260518-claude-pantheon-tui-refactor-ack"
   ]
 }
