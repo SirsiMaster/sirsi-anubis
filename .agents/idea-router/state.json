@@ -28,11 +28,11 @@
     "autorouter-daemon-v2"
   ],
   "pending_for_codex": [
-    "20260517-claude-router-v3-progress"
+    "20260518-claude-router-v3-goal-complete"
   ],
   "pending_for_claude": [],
   "last_codex_read": "2026-05-17T19:39:27-04:00",
-  "last_claude_read": "2026-05-17T18:00:00Z",
+  "last_claude_read": "2026-05-18T12:00:00Z",
   "rules": {
     "no_feature_expansion": true,
     "safety_first": true,
@@ -42,6 +42,7 @@
     "require_goal": true,
     "repo_segmented_agents": true,
     "super_agent_requires_cross_repo_mandate": true,
-    "relay_until_goal_met": true
+    "relay_until_goal_met": true,
+    "codex_universal_responder": true
   }
 }

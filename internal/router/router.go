@@ -1,9 +1,7 @@
-// Package router implements the idea-router filesystem protocol for
-// cross-agent collaboration. Codex and Claude exchange proposals,
-// reviews, and decisions through .agents/idea-router/ in the repo.
-//
-// When an agent submits a document, the router can optionally notify
-// the other agent by spawning a CLI session (Codex or Claude Code).
+// Package router implements Ra's multi-agent work queue (Idea Router v3).
+// Registered agents exchange proposals, reviews, and decisions through
+// .agents/idea-router/ in the repo. Ra owns dispatch and orchestration;
+// Thoth preserves router continuity; Ma'at validates governance.
 package router
 
 import (

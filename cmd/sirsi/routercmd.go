@@ -14,8 +14,12 @@ import (
 
 var routerCmd = &cobra.Command{
 	Use:   "router",
-	Short: "Cross-agent collaboration router",
-	Long:  `Manage the idea-router for Codex ↔ Claude collaboration.`,
+	Short: "Ra — multi-agent work queue and dispatch",
+	Long: `Ra's Idea Router: multi-agent work queue for autonomous collaboration.
+
+Routes work to registered agents (Claude, Codex, Gemini, Qwen, etc.),
+launches them with context, and verifies writeback. Thoth preserves
+router continuity; Ma'at validates governance.`,
 }
 
 var routerStatusCmd = &cobra.Command{
@@ -36,7 +40,7 @@ var routerStatusCmd = &cobra.Command{
 			return err
 		}
 
-		output.Header("Router Status")
+		output.Header("Ra — Router Status")
 		fmt.Println()
 
 		// Inbox
@@ -443,7 +447,7 @@ Verifies write access succeeds, then cleans up.
 
 		allPassed := true
 		fmt.Println()
-		output.Header("Router Smoke Test")
+		output.Header("Ra — Router Smoke Test")
 		fmt.Println()
 		for _, r := range results {
 			status := "PASS"
