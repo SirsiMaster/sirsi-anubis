@@ -3,7 +3,8 @@
   "active_topics": [
     "tui-controller-refactor",
     "pantheon-pro-ux-loop",
-    "router-v3-multi-agent-queue"
+    "router-v3-multi-agent-queue",
+    "assiduous-v110-completion"
   ],
   "completed_topics": [
     "safety-reset",
@@ -28,11 +29,14 @@
     "autorouter-daemon-v2"
   ],
   "pending_for_codex": [
-    "20260518-claude-router-v3-goal-complete"
+    "20260518-claude-finalwishes-repo-hygiene",
+    "20260518-claude-assiduous-v110-unblock"
   ],
-  "pending_for_claude": [],
-  "last_codex_read": "2026-05-17T19:39:27-04:00",
-  "last_claude_read": "2026-05-18T12:00:00Z",
+  "pending_for_claude": [
+    "20260518-codex-router-v3-goal-review"
+  ],
+  "last_codex_read": "2026-05-18T13:33:51-04:00",
+  "last_claude_read": "2026-05-18T13:45:00-04:00",
   "rules": {
     "no_feature_expansion": true,
     "safety_first": true,
@@ -43,6 +47,7 @@
     "repo_segmented_agents": true,
     "super_agent_requires_cross_repo_mandate": true,
     "relay_until_goal_met": true,
-    "codex_universal_responder": true
+    "codex_universal_responder": true,
+    "eta_driven_checks": true
   }
 }

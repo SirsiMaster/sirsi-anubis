@@ -195,14 +195,31 @@ var validAuthors = map[string]bool{
 	"claude": true,
 }
 
-// ValidateAuthor checks that author is an allowed value.
-// The whitelist is the sole defense against path traversal — only "codex"
-// and "claude" are accepted, so no path separators or ".." can appear.
+// ValidateAuthor checks that author is a legacy whitelist value (codex/claude).
+// For v3 registered agent IDs, use ValidateAgent instead.
 func ValidateAuthor(author string) error {
 	if !validAuthors[author] {
 		return fmt.Errorf("author %q is not allowed (must be 'codex' or 'claude')", author)
 	}
 	return nil
+}
+
+// ValidateAgent checks that an agent ID is either a legacy author or a
+// registered agent in agents.json. This is the v3 validation path.
+func (r *Router) ValidateAgent(agentID string) error {
+	// Legacy whitelist
+	if validAuthors[agentID] {
+		return nil
+	}
+	// Check registry
+	reg, err := LoadRegistry(r.root)
+	if err != nil {
+		return fmt.Errorf("cannot load agent registry: %w", err)
+	}
+	if reg.IsRegistered(agentID) {
+		return nil
+	}
+	return fmt.Errorf("agent %q not registered — add to .agents/idea-router/agents.json or use 'codex'/'claude'", agentID)
 }
 
 // Submit writes a new document to the router and updates the state.
@@ -297,7 +314,7 @@ func (r *Router) SubmitAddressed(docType DocType, author, title, content, addres
 // PollInbox returns the unread document IDs for the given agent WITHOUT
 // clearing them. Call AckInbox to acknowledge and clear specific items.
 func (r *Router) PollInbox(agent string) ([]string, error) {
-	if err := ValidateAuthor(agent); err != nil {
+	if err := r.ValidateAgent(agent); err != nil {
 		return nil, err
 	}
 
@@ -312,7 +329,7 @@ func (r *Router) PollInbox(agent string) ([]string, error) {
 // AckInbox acknowledges and removes specific document IDs from the agent's inbox.
 // Only acknowledged items are cleared — unacknowledged items remain pending.
 func (r *Router) AckInbox(agent string, ids []string) error {
-	if err := ValidateAuthor(agent); err != nil {
+	if err := r.ValidateAgent(agent); err != nil {
 		return err
 	}
 

@@ -19,7 +19,8 @@ type DaemonOptions struct {
 	Interval    time.Duration
 	Debounce    time.Duration
 	Out         io.Writer
-	Notify      NotifyFunc
+	Notify      NotifyFunc // legacy dispatch
+	Executor    *Executor  // v3 dispatch (takes precedence over Notify)
 	UseFSNotify bool
 	LedgerPath  string
 }
@@ -60,6 +61,7 @@ func NewDaemon(r *Router, opts DaemonOptions) *Daemon {
 			Interval:       opts.Interval,
 			Out:            opts.Out,
 			Notify:         opts.Notify,
+			Executor:       opts.Executor,
 			LedgerPath:     opts.LedgerPath,
 			FailureBackoff: 30 * time.Second,
 		}),

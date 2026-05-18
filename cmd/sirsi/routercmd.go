@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"os/user"
+	"path/filepath"
 	"time"
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
@@ -221,14 +222,6 @@ Requires SIRSI_ROUTER_NOTIFY=1 to actually launch agents. Without it, only
   SIRSI_ROUTER_NOTIFY=1 sirsi router run --once     Dispatch once and exit
   SIRSI_ROUTER_NOTIFY=1 sirsi router run            Poll forever (Ctrl+C to stop)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Validate target
-		switch runTarget {
-		case "all", "codex", "claude":
-			// valid
-		default:
-			return fmt.Errorf("invalid --target %q: must be 'all', 'codex', or 'claude'", runTarget)
-		}
-
 		// Gate: notification requires SIRSI_ROUTER_NOTIFY=1 unless dry-run
 		if !runDryRun && os.Getenv("SIRSI_ROUTER_NOTIFY") != "1" {
 			return fmt.Errorf("autorouter dispatch requires SIRSI_ROUTER_NOTIFY=1 (use --dry-run to preview without launching agents)")
@@ -242,6 +235,23 @@ Requires SIRSI_ROUTER_NOTIFY=1 to actually launch agents. Without it, only
 		if err != nil {
 			return err
 		}
+		routerRoot := filepath.Join(repoRoot, ".agents", "idea-router")
+
+		// Validate target against registry
+		if runTarget != "all" {
+			reg, err := router.LoadRegistry(routerRoot)
+			if err == nil && !reg.IsRegistered(runTarget) {
+				// Allow legacy "codex"/"claude" for backwards compat
+				if runTarget != "codex" && runTarget != "claude" {
+					return fmt.Errorf("agent %q not registered in agents.json", runTarget)
+				}
+			}
+		}
+
+		// Build v3 executor
+		reg, _ := router.LoadRegistry(routerRoot)
+		wq, _ := router.LoadWorkQueue(routerRoot)
+		exec := router.NewExecutor(reg, r, wq, os.Stdout)
 
 		ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt) //nolint:govet
 		defer stop()
@@ -253,6 +263,7 @@ Requires SIRSI_ROUTER_NOTIFY=1 to actually launch agents. Without it, only
 			Once:     runOnce,
 			Interval: runInterval,
 			Out:      os.Stdout,
+			Executor: exec,
 		})
 		return rr.Run(ctx)
 	},
@@ -278,11 +289,6 @@ The daemon watches .agents/idea-router/ with fsnotify and also polls as a
 fallback. Live dispatch requires SIRSI_ROUTER_NOTIFY=1. It never acknowledges
 inbox items for an agent.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		switch daemonTarget {
-		case "all", "codex", "claude":
-		default:
-			return fmt.Errorf("invalid --target %q: must be 'all', 'codex', or 'claude'", daemonTarget)
-		}
 		if !daemonDryRun && os.Getenv("SIRSI_ROUTER_NOTIFY") != "1" {
 			return fmt.Errorf("autorouter daemon requires SIRSI_ROUTER_NOTIFY=1 (use --dry-run to preview without launching agents)")
 		}
@@ -294,6 +300,23 @@ inbox items for an agent.`,
 		if err != nil {
 			return err
 		}
+		routerRoot := filepath.Join(repoRoot, ".agents", "idea-router")
+
+		// Validate target against registry
+		if daemonTarget != "all" {
+			reg, err := router.LoadRegistry(routerRoot)
+			if err == nil && !reg.IsRegistered(daemonTarget) {
+				if daemonTarget != "codex" && daemonTarget != "claude" {
+					return fmt.Errorf("agent %q not registered in agents.json", daemonTarget)
+				}
+			}
+		}
+
+		// Build v3 executor for daemon
+		reg, _ := router.LoadRegistry(routerRoot)
+		wq, _ := router.LoadWorkQueue(routerRoot)
+		exec := router.NewExecutor(reg, r, wq, os.Stdout)
+
 		ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt) //nolint:govet
 		defer stop()
 
@@ -303,6 +326,7 @@ inbox items for an agent.`,
 			DryRun:      daemonDryRun,
 			Interval:    daemonInterval,
 			Out:         os.Stdout,
+			Executor:    exec,
 			UseFSNotify: true,
 		})
 		return d.Run(ctx)

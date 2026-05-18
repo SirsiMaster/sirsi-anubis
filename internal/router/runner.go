@@ -14,12 +14,13 @@ type NotifyFunc func(target, docType, docID, repoRoot string) error
 // RunnerOptions configures the autorouter dispatch loop.
 type RunnerOptions struct {
 	RepoRoot       string
-	Agent          string // "codex", "claude", or "all"
+	Agent          string // registered agent_id, legacy "codex"/"claude", or "all"
 	DryRun         bool
 	Once           bool
 	Interval       time.Duration
 	Out            io.Writer
-	Notify         NotifyFunc
+	Notify         NotifyFunc   // legacy dispatch (used when Executor is nil)
+	Executor       *Executor    // v3 dispatch: registry-based, writeback-verified
 	LedgerPath     string
 	FailureBackoff time.Duration
 }
@@ -38,11 +39,13 @@ type Dispatch struct {
 // for pending inbox items. It does NOT acknowledge items — the target
 // agent must ack after reading.
 type Runner struct {
-	router      *Router
-	opts        RunnerOptions
-	dispatched  map[string]string
-	failedUntil map[string]time.Time
-	ledger      *DispatchLedger
+	router       *Router
+	opts         RunnerOptions
+	dispatched   map[string]string
+	failedUntil  map[string]time.Time
+	failureCount map[string]int // consecutive failure count per key
+	ledger       *DispatchLedger
+	lastEmpty    bool // suppress repeated "No pending" messages
 }
 
 // NewRunner creates a Runner with the given options.
@@ -60,10 +63,11 @@ func NewRunner(r *Router, opts RunnerOptions) *Runner {
 		opts.Out = io.Discard
 	}
 	rr := &Runner{
-		router:      r,
-		opts:        opts,
-		dispatched:  make(map[string]string),
-		failedUntil: make(map[string]time.Time),
+		router:       r,
+		opts:         opts,
+		dispatched:   make(map[string]string),
+		failedUntil:  make(map[string]time.Time),
+		failureCount: make(map[string]int),
 	}
 	if opts.LedgerPath != "" {
 		ledger, err := LoadDispatchLedger(opts.LedgerPath)
@@ -102,9 +106,13 @@ func (rr *Runner) Tick(ctx context.Context) error {
 		return err
 	}
 	if len(dispatches) == 0 {
-		fmt.Fprintln(rr.opts.Out, "No pending dispatches.")
+		if !rr.lastEmpty {
+			fmt.Fprintln(rr.opts.Out, "No pending dispatches.")
+			rr.lastEmpty = true
+		}
 		return nil
 	}
+	rr.lastEmpty = false
 	for _, d := range dispatches {
 		key := d.Target + ":" + d.DocID
 		fingerprint := d.Fingerprint()
@@ -123,15 +131,48 @@ func (rr *Runner) Tick(ctx context.Context) error {
 			rr.dispatched[key] = fingerprint
 			continue
 		}
-		fmt.Fprintf(rr.opts.Out, "Notifying %s for %s %s — %s\n", d.Target, d.Type, d.DocID, d.Title)
-		if err := rr.opts.Notify(d.Target, string(d.Type), d.DocID, rr.opts.RepoRoot); err != nil {
-			fmt.Fprintf(rr.opts.Out, "  Warning: notification failed: %v\n", err)
-			if rr.opts.FailureBackoff > 0 {
-				rr.failedUntil[key+":"+fingerprint] = time.Now().Add(rr.opts.FailureBackoff)
+		fmt.Fprintf(rr.opts.Out, "Dispatching to %s for %s %s — %s\n", d.Target, d.Type, d.DocID, d.Title)
+		var dispatchErr error
+		if rr.opts.Executor != nil {
+			// v3 path: registry-based dispatch with writeback verification
+			item := &WorkItem{
+				ID:            key,
+				DocID:         d.DocID,
+				TargetAgentID: d.Target,
+				Topic:         d.Title,
+				Status:        StatusPending,
 			}
-			// Don't mark as dispatched so it retries next tick
+			dispatchErr = rr.opts.Executor.Dispatch(ctx, item)
+		} else {
+			// legacy path: NotifyFunc
+			dispatchErr = rr.opts.Notify(d.Target, string(d.Type), d.DocID, rr.opts.RepoRoot)
+		}
+		if err := dispatchErr; err != nil {
+			failKey := key + ":" + fingerprint
+			rr.failureCount[failKey]++
+			count := rr.failureCount[failKey]
+			backoff := rr.opts.FailureBackoff
+			if backoff > 0 {
+				// Exponential backoff: double each consecutive failure, cap at 5 min
+				scaled := time.Duration(count) * backoff
+				if scaled > 5*time.Minute {
+					scaled = 5 * time.Minute
+				}
+				rr.failedUntil[failKey] = time.Now().Add(scaled)
+				if count <= 2 {
+					fmt.Fprintf(rr.opts.Out, "  Warning: %s dispatch failed (attempt %d), backing off %s: %v\n", d.Target, count, scaled, err)
+				} else if count%5 == 0 {
+					fmt.Fprintf(rr.opts.Out, "  Warning: %s dispatch still failing (attempt %d), next retry in %s\n", d.Target, count, scaled)
+				}
+			} else {
+				if count <= 2 {
+					fmt.Fprintf(rr.opts.Out, "  Warning: notification failed: %v\n", err)
+				}
+			}
 			continue
 		}
+		// Reset failure counter on success
+		delete(rr.failureCount, key+":"+fingerprint)
 		rr.dispatched[key] = fingerprint
 		if rr.ledger != nil {
 			if err := rr.ledger.MarkDispatched(key, fingerprint); err != nil {
@@ -149,11 +190,17 @@ func (rr *Runner) PendingDispatches() ([]Dispatch, error) {
 		return nil, err
 	}
 	var out []Dispatch
+	seen := make(map[string]bool)
 	add := func(target string, ids []string) {
 		if rr.opts.Agent != "all" && rr.opts.Agent != target {
 			return
 		}
 		for _, id := range ids {
+			key := target + ":" + id
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
 			doc, err := rr.router.Get(id)
 			if err != nil {
 				fmt.Fprintf(rr.opts.Out, "Skipping %s for %s: %v\n", id, target, err)
@@ -169,6 +216,13 @@ func (rr *Runner) PendingDispatches() ([]Dispatch, error) {
 			})
 		}
 	}
+	// v3 path: read dynamic Pending map (keyed by agent_id)
+	if state.Pending != nil {
+		for agentID, ids := range state.Pending {
+			add(agentID, ids)
+		}
+	}
+	// Also read legacy fields (deduplication prevents double dispatch)
 	add("codex", state.PendingForCodex)
 	add("claude", state.PendingForClaude)
 	return out, nil
