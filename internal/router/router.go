@@ -45,17 +45,46 @@ type State struct {
 	LastClaudeRead  string   `json:"last_claude_read"`
 	Rules           map[string]bool `json:"rules"`
 
-	// Inbox: per-agent pending work tracking
-	PendingForCodex []string `json:"pending_for_codex,omitempty"`
+	// v3: Dynamic per-agent inbox keyed by agent ID
+	Pending map[string][]string `json:"pending,omitempty"`
+
+	// Legacy v2 fields — read for migration, written for backwards compat
+	PendingForCodex  []string `json:"pending_for_codex,omitempty"`
 	PendingForClaude []string `json:"pending_for_claude,omitempty"`
 }
 
+// MigratePending moves legacy pending_for_codex/pending_for_claude into
+// the dynamic Pending map. Call after reading state.json.
+func (s *State) MigratePending() {
+	if s.Pending == nil {
+		s.Pending = make(map[string][]string)
+	}
+	// Migrate legacy fields if they have items not already in the dynamic map
+	if len(s.PendingForCodex) > 0 {
+		if _, ok := s.Pending["codex-pantheon"]; !ok {
+			s.Pending["codex-pantheon"] = s.PendingForCodex
+		}
+	}
+	if len(s.PendingForClaude) > 0 {
+		if _, ok := s.Pending["claude-pantheon"]; !ok {
+			s.Pending["claude-pantheon"] = s.PendingForClaude
+		}
+	}
+}
+
 // InboxFor returns the list of unread document IDs addressed to the given agent.
+// Checks the dynamic Pending map first, falls back to legacy fields.
 func (s *State) InboxFor(agent string) []string {
+	if s.Pending != nil {
+		if items, ok := s.Pending[agent]; ok {
+			return items
+		}
+	}
+	// Legacy fallback
 	switch agent {
-	case "codex":
+	case "codex", "codex-pantheon":
 		return s.PendingForCodex
-	case "claude":
+	case "claude", "claude-pantheon":
 		return s.PendingForClaude
 	default:
 		return nil
@@ -63,12 +92,19 @@ func (s *State) InboxFor(agent string) []string {
 }
 
 // AddToInbox marks a document as pending for the target agent.
+// Uses the dynamic Pending map and syncs to legacy fields for backwards compat.
 func (s *State) AddToInbox(target, docID string) {
+	if s.Pending == nil {
+		s.Pending = make(map[string][]string)
+	}
+	s.Pending[target] = append(s.Pending[target], docID)
+
+	// Sync to legacy fields for backwards compat
 	switch target {
-	case "codex":
-		s.PendingForCodex = append(s.PendingForCodex, docID)
-	case "claude":
-		s.PendingForClaude = append(s.PendingForClaude, docID)
+	case "codex", "codex-pantheon":
+		s.PendingForCodex = s.Pending[target]
+	case "claude", "claude-pantheon":
+		s.PendingForClaude = s.Pending[target]
 	}
 }
 
@@ -83,10 +119,18 @@ func (s *State) ClearInbox(agent, docID string) {
 		}
 		return result
 	}
+
+	if s.Pending != nil {
+		if items, ok := s.Pending[agent]; ok {
+			s.Pending[agent] = remove(items, docID)
+		}
+	}
+
+	// Sync legacy fields
 	switch agent {
-	case "codex":
+	case "codex", "codex-pantheon":
 		s.PendingForCodex = remove(s.PendingForCodex, docID)
-	case "claude":
+	case "claude", "claude-pantheon":
 		s.PendingForClaude = remove(s.PendingForClaude, docID)
 	}
 }
