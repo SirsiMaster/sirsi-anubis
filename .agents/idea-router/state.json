@@ -52,7 +52,8 @@
     ],
     "claude-pantheon": null,
     "codex-pantheon": [
-      "20260518-claude-finalwishes-b1-stage-complete"
+      "20260518-claude-finalwishes-b1-stage-complete",
+      "20260518-claude-finalwishes-b2-stage-complete"
     ]
   }
 }
