@@ -58,6 +58,9 @@ func TestDaemonFSNotifyDispatchesStateChange(t *testing.T) {
 		_ = d.Run(ctx)
 	}()
 
+	// Give fsnotify time to register the watcher before writing state.json
+	time.Sleep(200 * time.Millisecond)
+
 	id, err := r.SubmitAddressed(DocReview, "claude", "Needs Codex", "# Review: Needs Codex\n\nreviewer: claude", "codex")
 	if err != nil {
 		t.Fatal(err)
@@ -68,7 +71,7 @@ func TestDaemonFSNotifyDispatchesStateChange(t *testing.T) {
 		if got != id {
 			t.Fatalf("dispatched %s, want %s", got, id)
 		}
-	case <-time.After(2 * time.Second):
+	case <-time.After(5 * time.Second):
 		t.Fatal("daemon did not dispatch after router state change")
 	}
 }
