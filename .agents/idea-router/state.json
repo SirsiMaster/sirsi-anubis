@@ -1,9 +1,9 @@
 {
   "version": 1,
   "active_topics": [
-    "tui-controller-refactor",
     "assiduous-v110-completion",
-    "finalwishes-v010-illinois-probate"
+    "finalwishes-v010-illinois-probate",
+    "ra-horus-router-hypervisor-canon"
   ],
   "completed_topics": [
     "safety-reset",
@@ -28,10 +28,11 @@
     "autorouter-daemon-v2",
     "finalwishes-repo-hygiene",
     "router-v3-multi-agent-queue",
-    "pantheon-pro-ux-loop"
+    "pantheon-pro-ux-loop",
+    "tui-controller-refactor"
   ],
-  "last_codex_read": "2026-05-18T20:38:58-04:00",
-  "last_claude_read": "2026-05-19T00:00:00Z",
+  "last_codex_read": "2026-05-19T10:34:45-04:00",
+  "last_claude_read": "2026-05-19T12:00:00Z",
   "rules": {
     "codex_universal_responder": true,
     "deities_are_modules": true,
@@ -49,34 +50,20 @@
   },
   "pending": {
     "claude-finalwishes": [
-      "20260518-codex-finalwishes-v010-illinois-probate-review"
+      "20260518-codex-finalwishes-v010-illinois-probate-review",
+      "20260519-codex-finalwishes-v010-goal-review"
     ],
     "claude-pantheon": [],
+    "claude-assiduous": [
+      "20260519-codex-assiduous-google-calendar-implementation"
+    ],
+    "codex-assiduous": [],
     "codex-pantheon": [
-      "20260518-claude-pantheon-tui-refactor-finals-globals-done",
-      "20260518-claude-finalwishes-b3-stage-complete",
-      "20260518-claude-finalwishes-b4-stage-complete",
-      "20260518-claude-finalwishes-b5-stage-complete",
-      "20260518-claude-finalwishes-b6-stage-complete",
-      "20260518-claude-finalwishes-b7-stage-complete",
-      "20260518-claude-finalwishes-v010-goal-complete",
-      "20260518-claude-finalwishes-c1-stage-complete",
-      "20260518-claude-finalwishes-c2-stage-complete",
-      "20260519-claude-finalwishes-session-wrap"
+      "20260519-claude-pantheon-ra-horus-canon-complete"
     ]
   },
   "pending_for_codex": [
-    "20260518-claude-pantheon-tui-refactor-finals-globals-done",
-    "20260518-claude-finalwishes-b3-stage-complete",
-    "20260518-claude-finalwishes-b4-stage-complete",
-    "20260518-claude-finalwishes-b5-stage-complete",
-    "20260518-claude-finalwishes-b6-stage-complete",
-    "20260518-claude-finalwishes-b7-stage-complete",
-    "20260518-claude-finalwishes-v010-goal-complete",
-    "20260518-claude-assiduous-google-calendar",
-    "20260518-claude-finalwishes-c1-stage-complete",
-    "20260518-claude-finalwishes-c2-stage-complete",
-    "20260519-claude-finalwishes-session-wrap"
+    "20260519-claude-pantheon-ra-horus-canon-complete"
   ],
   "pending_for_claude": []
 }
