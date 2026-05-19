@@ -6,12 +6,41 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 
 ---
 
-## [Unreleased]
+## [0.22.0-beta] — 2026-05-18
+
+### Hardening Sprint Complete (Codex-reviewed, 30+ commits)
+
+#### Safety
+- All deletion through `cleaner.DeleteFileReversible()` — no silent permanent delete
+- `SafetyGateway` interface centralizes all destructive actions
+- Protected path validation on every cleanup operation
+
+#### UX — Pro Command Loop
+- `CommandResult` shared model: every command ends with summary, evidence, next actions
+- CLI progress spinners on all long operations
+- `sirsi permissions` + auto-detect missing Full Disk Access on first scan
+- `sirsi setup` checks dependencies and macOS permissions
+- Outcome-first vocabulary: zero deity names in user-facing output
+- Session state persistence across TUI sessions
+
+#### TUI Refactor
+- tui.go: 2,383 → 322 lines (14 focused files)
+- All 6 process globals eliminated — message-passing via nativeResult
+- 7 controller transition tests
+
+#### Router v3 — Multi-Agent Work Queue
+- Agent registry with 8 portfolio agents
+- Pluggable executor with writeback verification
+- Work item status tracking with dispatch ledger
+- Autorouter daemon with fsnotify + polling
+
+#### Ma'at
+- Tiered coverage thresholds: Tier A (80%), B (50%), C (30%)
+- Real coverage measurement (inverted flag fixed)
 
 ### Added — Pro UX Loop Sprint 2 Closeout
-- Persisted the TUI's latest command summary and recommended next actions in `~/.config/pantheon/tui-state.json`.
-- Added state persistence coverage for restored command recommendations.
-- Updated README quick start and UX workflow evidence for the shared command result contract, permissions guidance, and next-action behavior.
+- TUI session state persistence
+- Updated README and UX workflow docs
 
 ## [0.19.0] — 2026-05-06
 
