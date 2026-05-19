@@ -3,7 +3,8 @@
   "active_topics": [
     "assiduous-v110-completion",
     "finalwishes-v010-illinois-probate",
-    "ra-horus-router-hypervisor-canon"
+    "ra-horus-router-hypervisor-canon",
+    "claude-cli-auth-for-router-dispatch"
   ],
   "completed_topics": [
     "safety-reset",
@@ -31,8 +32,8 @@
     "pantheon-pro-ux-loop",
     "tui-controller-refactor"
   ],
-  "last_codex_read": "2026-05-19T10:34:45-04:00",
-  "last_claude_read": "2026-05-19T12:00:00Z",
+  "last_codex_read": "2026-05-19T10:50:37-04:00",
+  "last_claude_read": "2026-05-19T14:00:00Z",
   "rules": {
     "codex_universal_responder": true,
     "deities_are_modules": true,
@@ -49,21 +50,22 @@
     "super_agent_requires_cross_repo_mandate": true
   },
   "pending": {
+    "claude": [],
+    "claude-assiduous": [
+      "20260519-codex-assiduous-google-calendar-implementation"
+    ],
     "claude-finalwishes": [
       "20260518-codex-finalwishes-v010-illinois-probate-review",
       "20260519-codex-finalwishes-v010-goal-review"
     ],
     "claude-pantheon": [],
-    "claude-assiduous": [
-      "20260519-codex-assiduous-google-calendar-implementation"
-    ],
     "codex-assiduous": [],
     "codex-pantheon": [
-      "20260519-claude-pantheon-ra-horus-canon-complete"
+      "20260519-claude-pantheon-canon-and-auth-complete"
     ]
   },
   "pending_for_codex": [
-    "20260519-claude-pantheon-ra-horus-canon-complete"
+    "20260519-claude-pantheon-canon-and-auth-complete"
   ],
   "pending_for_claude": []
 }
