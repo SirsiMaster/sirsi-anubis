@@ -39,11 +39,6 @@ func (m TUIModel) executeAction(action tabAction) (TUIModel, tea.Cmd) {
 		if isScan || isDoctor {
 			ch := make(chan string, 100)
 			m.streamCh = ch
-			if isScan {
-				scanProgressCh = ch
-			} else {
-				doctorProgressCh = ch
-			}
 
 			label := "Scanning..."
 			if isDoctor {
@@ -56,11 +51,17 @@ func (m TUIModel) executeAction(action tabAction) (TUIModel, tea.Cmd) {
 			}
 			m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
 
-			fn := action.Native
+			// Pass channel directly to native function — no package globals
+			var progressFn func() nativeResult
+			if isScan {
+				progressFn = func() nativeResult { return nativeScanWithProgress(ch) }
+			} else {
+				progressFn = func() nativeResult { return nativeDoctorWithProgress(ch) }
+			}
 			var streamErr error
 			return m, tea.Batch(m.spinner.Tick, elapsedTick(), func() tea.Msg {
 				go func() {
-					res := fn()
+					res := progressFn()
 					streamErr = res.err
 					close(ch)
 				}()

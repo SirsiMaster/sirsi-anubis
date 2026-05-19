@@ -104,10 +104,4 @@ var nativeCommands = map[string]func() nativeResult{
 	"findings": nativeFindings,
 }
 
-// TODO: scanProgressCh and doctorProgressCh remain package-level globals because
-// they are streaming channels set before the native function runs and consumed
-// during execution. Moving them to TUIModel fields requires passing the model
-// (or channel) into the native function closure, which is a larger change.
-var scanProgressCh chan string
-var doctorProgressCh chan string
 

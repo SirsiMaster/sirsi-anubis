@@ -26,14 +26,20 @@ import (
 
 // ── Native Deity Functions ───────────────────────────────────────────
 
+// nativeScanWithProgress is called when a progress channel is available.
+func nativeScanWithProgress(ch chan string) nativeResult {
+	return nativeScanImpl(ch)
+}
+
 func nativeScan() nativeResult {
+	return nativeScanImpl(nil)
+}
+
+func nativeScanImpl(ch chan string) nativeResult {
 	engine := jackal.DefaultEngine()
 	engine.RegisterAll(rules.AllRules()...)
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	// Grab the progress channel if set — streams per-rule updates to TUI
-	ch := scanProgressCh
-	scanProgressCh = nil
 
 	opts := jackal.ScanOptions{}
 	if ch != nil {
@@ -218,10 +224,15 @@ func nativeNetworkFix() nativeResult {
 	return nativeResult{lines: lines, deityKey: "isis"}
 }
 
-func nativeDoctor() nativeResult {
-	ch := doctorProgressCh
-	doctorProgressCh = nil
+func nativeDoctorWithProgress(ch chan string) nativeResult {
+	return nativeDoctorImpl(ch)
+}
 
+func nativeDoctor() nativeResult {
+	return nativeDoctorImpl(nil)
+}
+
+func nativeDoctorImpl(ch chan string) nativeResult {
 	opts := guard.DoctorOpts{}
 	if ch != nil {
 		opts.OnCheck = func(name string, sev guard.DiagnosticSeverity, msg string, done, total int) {
