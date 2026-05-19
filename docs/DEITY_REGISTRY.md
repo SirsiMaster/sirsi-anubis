@@ -1,5 +1,5 @@
 # Deity Registry — Canonical Glyph & Domain Reference
-**Version:** 2.0.0 | **Date:** April 5, 2026 | **Custodian:** Net (The Weaver)
+**Version:** 2.1.0 | **Date:** May 19, 2026 | **Custodian:** Net (The Weaver)
 
 > This document is the single source of truth for deity identities, glyphs, and functional domains across the entire Sirsi portfolio. Every repo, hook, CLI output, and agent prompt must reference this registry. Misattributing a deity's glyph or function is a governance violation.
 
@@ -9,7 +9,7 @@
 
 | Deity | Glyph | Domain | Functional Responsibility | Reserved Symbols |
 |-------|-------|--------|--------------------------|------------------|
-| **Ra** | 𓇶 | Supreme Overseer | Multi-repo orchestration, Idea Router ownership, agent registry, agent dispatch, window management, sprint governance | `𓂀` (ProtectGlyph — Ra's exclusive authority to mark windows as immune to KillAll) |
+| **Ra** | 𓇶 | Supreme Overseer & CTR Hypervisor | Multi-repo orchestration, CTR Hypervisor (ADR-017), Idea Router ownership, agent registry, work queue, dispatch protocol, relay verification, super-agent mandates, portfolio authority, window management, sprint governance | `𓂀` (ProtectGlyph — Ra's exclusive authority to mark windows as immune to KillAll) |
 | **Net** | 𓁯 | Scope Weaver | Task definition, scope assembly, tiled context rendering, canon alignment, drift detection, development plan ownership | |
 | **Thoth** | 𓁟 | Session Memory | Context compression, session persistence, memory sync, journal, router continuity snapshots | |
 | **Ma'at** | 𓆄 | Quality Gate | QA governance, quality gates, pre-push hooks, coverage audits, Feather Weight scoring, router governance validation | All pre-push gates across all repos are Ma'at's domain |
@@ -17,7 +17,8 @@
 | **Seshat** | 𓁆 | Knowledge Bridge | Knowledge grafting, ingestion/export, Gemini Bridge, NotebookLM sync, cross-platform knowledge | |
 | **Anubis** | 𓃣 | Hygiene Engine | Infrastructure hygiene, waste scanning, policy enforcement, ghost app detection, residual hunting, file deduplication, semantic ranking | Jackal head (profile), NOT full-body jackal |
 | **Seba** | 𓇽 | Infra & Hardware | Architecture mapping, topology visualization, dependency graphs, fleet discovery, subnet scanning, container audit, hardware detection, GPU/ANE/CUDA profiling | Absorbs Hapi (v2.0.0) |
-| **Osiris** | 𓁹 | Snapshot Keeper | State preservation, checkpoints, death/rebirth cycles, FinalWishes integration | NOT the quality gate — that's Ma'at |
+| **Horus** | 𓂀 | Local Workstation Lord | Per-desktop runtime node: daemon health, local agent/window visibility, repo status, operator dashboard, code graph (AST symbols), file watching | Ra orchestrates across machines; Horus sees everything on ONE machine (ADR-017) |
+| **Osiris** | 𓁹 | Checkpoint Guardian | Uncommitted work detection, risk assessment, time-based escalation, checkpoint snapshots | NOT the quality gate — that's Ma'at |
 | **Stele** | 𓊖 | The Ledger | Append-only hash-chained event bus, universal deity communication | Infrastructure, not a deity |
 
 ---
