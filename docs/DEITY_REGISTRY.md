@@ -40,8 +40,8 @@ Every pre-push hook, CI gate, coverage check, and quality assessment across the 
 ### Rule D5: The Stele Is Universal Communication
 All deities inscribe events to the Stele (`~/.config/ra/stele.jsonl`) via `stele.Inscribe()`. The Stele is the single source of truth for inter-deity communication. Every deity identifies itself by name in the `deity` field of Stele entries. The deity name must match this registry.
 
-### Rule D6: Ra Owns the Idea Router
-The Idea Router is Ra infrastructure. Ra owns the agent registry, work queue, launch/dispatch behavior, cross-agent relay, super-agent mandates, and completion routing until `/goal` is met. Thoth preserves router memory and pending work across compaction/session boundaries. Ma'at validates router governance, including correct agent targeting, repo segmentation, test evidence, honest blocker reporting, and `/goal` completion.
+### Rule D6: Ra Owns the Idea Router; Horus Owns the Local Node
+The Idea Router is Ra infrastructure. Ra owns the agent registry, work queue, launch/dispatch behavior, cross-agent relay, super-agent mandates, and completion routing until `/goal` is met. Horus owns the per-desktop runtime node view: daemon health, local agent/window visibility, pending work aggregation, and the operator surface (`sirsi router node-status`). Ra orchestrates across machines; Horus sees everything on ONE machine (ADR-017). Thoth preserves router memory and pending work across compaction/session boundaries. Ma'at validates router governance, including correct agent targeting, repo segmentation, test evidence, honest blocker reporting, and `/goal` completion.
 
 ### Rule D7: Hierarchy Is Invariant
 ```

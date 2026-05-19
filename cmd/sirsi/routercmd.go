@@ -40,27 +40,23 @@ var routerStatusCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		state.NormalizePending()
 
 		output.Header("Ra — Router Status")
 		fmt.Println()
 
-		// Inbox
-		if len(state.PendingForClaude) > 0 {
-			fmt.Printf("  📥 Claude inbox: %d pending\n", len(state.PendingForClaude))
-			for _, id := range state.PendingForClaude {
-				fmt.Printf("     • %s\n", id)
-			}
+		// Registered inboxes
+		entries := state.PendingEntries(false)
+		if len(entries) == 0 {
+			fmt.Println("  📥 Registered inboxes: clear")
 		} else {
-			fmt.Println("  📥 Claude inbox: clear")
-		}
-
-		if len(state.PendingForCodex) > 0 {
-			fmt.Printf("  📥 Codex inbox:  %d pending\n", len(state.PendingForCodex))
-			for _, id := range state.PendingForCodex {
-				fmt.Printf("     • %s\n", id)
+			fmt.Printf("  📥 Registered inboxes: %d active\n", len(entries))
+			for _, entry := range entries {
+				fmt.Printf("     %s: %d pending\n", entry.Agent, len(entry.IDs))
+				for _, id := range entry.IDs {
+					fmt.Printf("       • %s\n", id)
+				}
 			}
-		} else {
-			fmt.Println("  📥 Codex inbox:  clear")
 		}
 
 		fmt.Println()
@@ -124,15 +120,18 @@ MCP server, or external automation.`,
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "  Warning: %v\n", err)
 			} else {
-				total := len(state.PendingForClaude) + len(state.PendingForCodex)
+				entries := state.PendingEntries(false)
+				total := 0
+				for _, entry := range entries {
+					total += len(entry.IDs)
+				}
 				ts := time.Now().Format("15:04:05")
 				if total > 0 {
 					fmt.Printf("  [%s] %d pending items\n", ts, total)
-					for _, id := range state.PendingForClaude {
-						fmt.Printf("     Pending for Claude: %s\n", id)
-					}
-					for _, id := range state.PendingForCodex {
-						fmt.Printf("     Pending for Codex:  %s\n", id)
+					for _, entry := range entries {
+						for _, id := range entry.IDs {
+							fmt.Printf("     Pending for %s: %s\n", entry.Agent, id)
+						}
 					}
 				} else {
 					fmt.Printf("  [%s] No pending items\n", ts)
@@ -273,6 +272,10 @@ var (
 	daemonDryRun   bool
 	daemonTarget   string
 	daemonInterval time.Duration
+	workDryRun     bool
+	workTarget     string
+	workPoll       bool
+	workInterval   time.Duration
 	installRepo    string
 	installLoad    bool
 	serviceRepo    string
@@ -333,6 +336,73 @@ inbox items for an agent.`,
 	},
 }
 
+var routerWorkCmd = &cobra.Command{
+	Use:   "work",
+	Short: "Check the router, then launch runnable registered-agent work",
+	Long: `Check the Idea Router queue and immediately dispatch runnable work to the
+registered target agents. This is the operator verb for "check the router,
+then work."
+
+Unlike router run, this command is live by default because invoking it is the
+operator approval to launch registered agents. Use --dry-run to preview.
+
+  sirsi router work                       Check once, launch runnable work
+  sirsi router work --dry-run             Check once, preview launches
+  sirsi router work --poll                Keep polling and launching work
+  sirsi router work --target claude-finalwishes`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		repoRoot, err := router.FindRepoRoot()
+		if err != nil {
+			return fmt.Errorf("no idea-router found: %w", err)
+		}
+		r, err := router.New(repoRoot)
+		if err != nil {
+			return err
+		}
+		routerRoot := filepath.Join(repoRoot, ".agents", "idea-router")
+		if err := validateRouterTarget(routerRoot, workTarget); err != nil {
+			return err
+		}
+
+		reg, err := router.LoadRegistry(routerRoot)
+		if err != nil {
+			return err
+		}
+		wq, err := router.LoadWorkQueue(routerRoot)
+		if err != nil {
+			return err
+		}
+		exec := router.NewExecutor(reg, r, wq, os.Stdout)
+
+		ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt) //nolint:govet
+		defer stop()
+
+		rr := router.NewRunner(r, router.RunnerOptions{
+			RepoRoot: repoRoot,
+			Agent:    workTarget,
+			DryRun:   workDryRun,
+			Once:     !workPoll,
+			Interval: workInterval,
+			Out:      os.Stdout,
+			Executor: exec,
+		})
+
+		pending, err := rr.PendingDispatches()
+		if err != nil {
+			return err
+		}
+		if workDryRun {
+			fmt.Printf("Router work check: %d runnable dispatches would launch.\n", len(pending))
+		} else {
+			fmt.Printf("Router work check: %d runnable dispatches ready.\n", len(pending))
+		}
+		if workPoll {
+			fmt.Printf("Polling every %s. Press Ctrl+C to stop.\n", workInterval)
+		}
+		return rr.Run(ctx)
+	},
+}
+
 var routerInstallAgentCmd = &cobra.Command{
 	Use:   "install-agent",
 	Short: "Install the autorouter launch agent for this repo",
@@ -348,6 +418,10 @@ var routerInstallAgentCmd = &cobra.Command{
 		exe, err := os.Executable()
 		if err != nil {
 			return fmt.Errorf("resolve executable: %w", err)
+		}
+		exe, err = router.ResolveStableBinary(repoRoot, exe)
+		if err != nil {
+			return err
 		}
 		opts := router.DefaultServiceOptions(repoRoot, exe)
 		if err := router.InstallLaunchAgent(opts); err != nil {
@@ -427,6 +501,21 @@ var routerServiceStatusCmd = &cobra.Command{
 		fmt.Printf("Plist: %s\n", opts.PlistPath)
 		if _, err := os.Stat(opts.PlistPath); err == nil {
 			fmt.Println("Installed: yes")
+			if program, err := router.LaunchAgentProgram(opts.PlistPath); err == nil {
+				fmt.Printf("Configured binary: %s\n", program)
+				if _, err := os.Stat(program); err == nil {
+					fmt.Println("Configured binary exists: yes")
+				} else {
+					fmt.Printf("Configured binary exists: no (%v)\n", err)
+				}
+				if router.IsGoRunBinary(program) {
+					fmt.Println("Configured binary is temporary go-run output: yes")
+				} else {
+					fmt.Println("Configured binary is temporary go-run output: no")
+				}
+			} else {
+				fmt.Printf("Configured binary: unreadable (%v)\n", err)
+			}
 		} else {
 			fmt.Println("Installed: no")
 		}
@@ -439,6 +528,161 @@ var routerServiceStatusCmd = &cobra.Command{
 		} else {
 			fmt.Println("Loaded: yes")
 		}
+		return nil
+	},
+}
+
+func validateRouterTarget(routerRoot, target string) error {
+	if target == "" || target == "all" {
+		return nil
+	}
+	reg, err := router.LoadRegistry(routerRoot)
+	if err == nil && reg.IsRegistered(target) {
+		return nil
+	}
+	if target == "codex" || target == "claude" {
+		return nil
+	}
+	return fmt.Errorf("agent %q not registered in agents.json", target)
+}
+
+var routerNodeStatusCmd = &cobra.Command{
+	Use:   "node-status",
+	Short: "Horus — local node status (agents, queue, daemon health)",
+	Long: `Horus local-node status aggregation. Shows everything happening on this
+machine's router node: registered agents, pending work by agent, work-queue
+item statuses, daemon health, and recent dispatch failures.
+
+Ra owns the queue and dispatch. Horus owns this per-desktop view.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		repoRoot, err := router.FindRepoRoot()
+		if err != nil {
+			return fmt.Errorf("no idea-router found: %w", err)
+		}
+
+		domain, err := launchctlUserDomain()
+		if err != nil {
+			domain = ""
+		}
+		launchctlCheck := func(lcArgs ...string) error {
+			if domain == "" {
+				return fmt.Errorf("no user domain")
+			}
+			// Replace empty domain prefix with the actual domain
+			if len(lcArgs) >= 2 && lcArgs[0] == "print" {
+				lcArgs[1] = domain + "/" + lcArgs[1]
+			}
+			return router.Launchctl(lcArgs...)
+		}
+
+		ns, err := router.CollectNodeStatus(repoRoot, launchctlCheck)
+		if err != nil {
+			return err
+		}
+
+		output.Header("𓂀 Horus — Local Node Status")
+		fmt.Println()
+
+		// Router home
+		fmt.Printf("  Router home:  %s\n", ns.RouterHome)
+		fmt.Printf("  Repo root:    %s\n", ns.RepoRoot)
+		fmt.Println()
+
+		// Registered agents
+		fmt.Printf("  Registered agents: %d\n", ns.AgentCount)
+		for _, id := range ns.RegisteredAgents {
+			fmt.Printf("    • %s\n", id)
+		}
+		fmt.Println()
+
+		// Pending work
+		if ns.TotalPending == 0 {
+			fmt.Println("  Pending work: none")
+		} else {
+			fmt.Printf("  Pending work: %d items\n", ns.TotalPending)
+			for agent, ids := range ns.PendingByAgent {
+				fmt.Printf("    %s: %d\n", agent, len(ids))
+				for _, id := range ids {
+					fmt.Printf("      • %s\n", id)
+				}
+			}
+		}
+		fmt.Println()
+
+		// Active topics
+		if len(ns.ActiveTopics) > 0 {
+			fmt.Printf("  Active topics: %d\n", len(ns.ActiveTopics))
+			for _, t := range ns.ActiveTopics {
+				fmt.Printf("    • %s\n", t)
+			}
+		}
+		fmt.Printf("  Completed topics: %d\n", ns.CompletedCount)
+		fmt.Println()
+
+		// Work queue summary
+		if len(ns.WorkItemSummary) > 0 {
+			fmt.Println("  Work queue:")
+			for status, count := range ns.WorkItemSummary {
+				fmt.Printf("    %s: %d\n", status, count)
+			}
+			fmt.Println()
+		}
+
+		// Daemon health
+		fmt.Println("  Daemon:")
+		fmt.Printf("    Label:     %s\n", ns.DaemonLabel)
+		if ns.DaemonInstalled {
+			fmt.Println("    Installed: yes")
+		} else {
+			fmt.Println("    Installed: no")
+		}
+		if ns.DaemonLoaded {
+			fmt.Println("    Loaded:    yes")
+		} else {
+			fmt.Println("    Loaded:    no")
+		}
+		if ns.ConfiguredBinary != "" {
+			fmt.Printf("    Binary:    %s\n", ns.ConfiguredBinary)
+			if !ns.BinaryExists {
+				fmt.Println("    Binary exists: no (stale plist?)")
+			}
+			if ns.BinaryIsGoRun {
+				fmt.Println("    Warning: binary is temporary go-run output")
+			}
+		}
+		fmt.Println()
+
+		// Last reads
+		fmt.Printf("  Last Claude read: %s\n", ns.LastClaudeRead)
+		fmt.Printf("  Last Codex read:  %s\n", ns.LastCodexRead)
+
+		// Agent CLI health
+		if len(ns.AgentHealth) > 0 {
+			fmt.Println("  Agent CLI health:")
+			for _, h := range ns.AgentHealth {
+				if h.CLIFound && h.AuthOK {
+					fmt.Printf("    ✅ %s: ready (%s)\n", h.AgentType, h.CLIPath)
+				} else if h.CLIFound && !h.AuthOK {
+					fmt.Printf("    ❌ %s: found but auth failed — run '%s' then /login\n", h.AgentType, h.AgentType)
+					if h.AuthError != "" {
+						fmt.Printf("       %s\n", h.AuthError)
+					}
+				} else {
+					fmt.Printf("    ⚠️  %s: not found in PATH\n", h.AgentType)
+				}
+			}
+			fmt.Println()
+		}
+
+		// Recent failures
+		if len(ns.RecentFailures) > 0 {
+			fmt.Println()
+			fmt.Printf("  Recent failures: %d\n", len(ns.RecentFailures))
+			for _, f := range ns.RecentFailures {
+				fmt.Printf("    %s → %s: %s (%s)\n", f.Agent, f.ItemID, f.Error, f.FailedAt.Format(time.RFC3339))
+			}
+		}
+
 		return nil
 	},
 }
@@ -515,11 +759,15 @@ func init() {
 	routerDaemonCmd.Flags().BoolVar(&daemonDryRun, "dry-run", false, "Print dispatches without launching agents")
 	routerDaemonCmd.Flags().StringVar(&daemonTarget, "target", "all", "Dispatch target: codex, claude, or all")
 	routerDaemonCmd.Flags().DurationVar(&daemonInterval, "interval", time.Second, "Fallback polling interval")
+	routerWorkCmd.Flags().BoolVar(&workDryRun, "dry-run", false, "Print dispatches without launching agents")
+	routerWorkCmd.Flags().StringVar(&workTarget, "target", "all", "Dispatch target: registered agent id, codex, claude, or all")
+	routerWorkCmd.Flags().BoolVar(&workPoll, "poll", false, "Keep polling and dispatching until interrupted")
+	routerWorkCmd.Flags().DurationVar(&workInterval, "interval", 10*time.Second, "Polling interval for --poll")
 	routerInstallAgentCmd.Flags().StringVar(&installRepo, "repo", "", "Repository root (defaults to current repo)")
 	routerInstallAgentCmd.Flags().BoolVar(&installLoad, "load", false, "Load/start the launch agent after writing it")
 	routerUninstallAgentCmd.Flags().StringVar(&serviceRepo, "repo", "", "Repository root (defaults to current repo)")
 	routerServiceStatusCmd.Flags().StringVar(&serviceRepo, "repo", "", "Repository root (defaults to current repo)")
 	routerSmokeCmd.Flags().BoolVar(&smokeDryRun, "dry-run", false, "Check CLIs exist without launching agents")
 	routerSmokeCmd.Flags().BoolVar(&smokeAgentPair, "agent-pair", false, "Full relay test: seed router item, launch both agents, verify writeback")
-	routerCmd.AddCommand(routerStatusCmd, routerWatchCmd, routerInboxCmd, routerRunCmd, routerDaemonCmd, routerInstallAgentCmd, routerUninstallAgentCmd, routerServiceStatusCmd, routerSmokeCmd)
+	routerCmd.AddCommand(routerStatusCmd, routerWatchCmd, routerInboxCmd, routerRunCmd, routerDaemonCmd, routerWorkCmd, routerInstallAgentCmd, routerUninstallAgentCmd, routerServiceStatusCmd, routerNodeStatusCmd, routerSmokeCmd)
 }

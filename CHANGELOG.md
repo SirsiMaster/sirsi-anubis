@@ -6,6 +6,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 
 ---
 
+## [0.23.0-beta] — 2026-05-19
+
+### Ra/Horus CTR Hypervisor Canon Completion
+
+#### Code Surface
+- `sirsi router node-status` — Horus local-node status command showing router home, registered agents, pending work by agent, work-queue item statuses, daemon health, configured binary, and recent dispatch failures
+- `internal/router/nodestatus.go` — `CollectNodeStatus()` aggregation with `LaunchctlChecker` injectable for testability
+- `internal/router/nodestatus_test.go` — 5 tests covering basic fields, pending-by-agent, sorted agents, daemon-not-installed, and work-queue summary with failures
+
+#### Documentation
+- Case study indexed: `docs/case-studies/ra-horus-ctr-hypervisor.md`
+- Rule D6 in DEITY_REGISTRY.md updated with Horus per-desktop node split
+- PANTHEON_HIERARCHY.md §VII CTR Hypervisor boundary table verified
+- ADR-017 propagated to ARCHITECTURE_DESIGN.md §2.8
+
 ## [0.22.0-beta] — 2026-05-18
 
 ### Hardening Sprint Complete (Codex-reviewed, 30+ commits)
