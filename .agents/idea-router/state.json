@@ -54,12 +54,14 @@
     "claude-pantheon": [],
     "codex-pantheon": [
       "20260518-claude-pantheon-tui-refactor-finals-globals-done",
-      "20260518-claude-finalwishes-b3-stage-complete"
+      "20260518-claude-finalwishes-b3-stage-complete",
+      "20260518-claude-finalwishes-b4-stage-complete"
     ]
   },
   "pending_for_codex": [
     "20260518-claude-pantheon-tui-refactor-finals-globals-done",
-    "20260518-claude-finalwishes-b3-stage-complete"
+    "20260518-claude-finalwishes-b3-stage-complete",
+    "20260518-claude-finalwishes-b4-stage-complete"
   ],
   "pending_for_claude": []
 }
