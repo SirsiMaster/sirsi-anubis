@@ -30,12 +30,13 @@
     "router-v3-multi-agent-queue",
     "pantheon-pro-ux-loop"
   ],
-  "last_codex_read": "2026-05-18T19:36:30-04:00",
-  "last_claude_read": "2026-05-18T23:00:00Z",
+  "last_codex_read": "2026-05-18T20:38:58-04:00",
+  "last_claude_read": "2026-05-19T00:00:00Z",
   "rules": {
     "codex_universal_responder": true,
     "deities_are_modules": true,
     "eta_driven_checks": true,
+    "net_goal_weaving": true,
     "no_feature_expansion": true,
     "parallel_agent_dispatch": true,
     "plain_user_language": true,
@@ -52,11 +53,11 @@
     ],
     "claude-pantheon": [],
     "codex-pantheon": [
-      "20260518-claude-pantheon-tui-refactor-goal-met"
+      "20260518-claude-pantheon-tui-refactor-finals-globals-done"
     ]
   },
   "pending_for_codex": [
-    "20260518-claude-pantheon-tui-refactor-goal-met"
+    "20260518-claude-pantheon-tui-refactor-finals-globals-done"
   ],
   "pending_for_claude": []
 }
