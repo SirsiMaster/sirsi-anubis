@@ -136,11 +136,23 @@ var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "�
 // spinnerSuppressed tracks whether spinners should be suppressed (JSON/quiet mode).
 var spinnerSuppressed bool
 
+// outputJSON and outputQuiet track the current output mode for use by
+// the result renderer and other packages.
+var outputJSON, outputQuiet bool
+
 // SetOutputMode configures spinner suppression based on CLI flags.
 // Call this from root PersistentPreRun before any command runs.
 func SetOutputMode(jsonMode, quietMode bool) {
 	spinnerSuppressed = jsonMode || quietMode
+	outputJSON = jsonMode
+	outputQuiet = quietMode
 }
+
+// IsJSON returns true when JSON output mode is active.
+func IsJSON() bool { return outputJSON }
+
+// IsQuiet returns true when quiet output mode is active.
+func IsQuiet() bool { return outputQuiet }
 
 // Spinner starts a CLI progress spinner with the given label.
 // Returns a stop function that clears the spinner line.

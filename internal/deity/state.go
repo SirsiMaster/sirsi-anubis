@@ -19,8 +19,11 @@ const (
 
 // PersistedState is the JSON-serializable deity state shared across TUI and menubar.
 type PersistedState struct {
-	DeityState map[string]RunState `json:"deity_state"`
-	LastUsed   string              `json:"last_used"`
+	DeityState          map[string]RunState `json:"deity_state"`
+	LastUsed            string              `json:"last_used"`
+	LastCommand         string              `json:"last_command,omitempty"`
+	LastSummary         string              `json:"last_summary,omitempty"`
+	LastRecommendations []string            `json:"last_recommendations,omitempty"`
 }
 
 // StatePath returns the filesystem path to the shared deity state file.

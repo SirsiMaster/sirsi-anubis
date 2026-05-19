@@ -110,20 +110,25 @@ func init() {
 
 func runMaatAudit(cmd *cobra.Command, args []string) error {
 	start := time.Now()
-	output.Banner()
-	output.Header("Quality & Governance Audit")
 
-	if auditSkipTests {
-		output.Info("Skipping tests — using cached coverage only")
-	} else {
-		output.Info("Running go test -cover ./... (streaming per-package results)")
+	if !JsonOutput {
+		output.Banner()
+		output.Header("Quality & Governance Audit")
+
+		if auditSkipTests {
+			output.Info("Skipping tests — using cached coverage only")
+		} else {
+			output.Info("Running go test -cover ./... (streaming per-package results)")
+		}
 	}
 
 	assessor := &maat.CoverageAssessor{
 		Thresholds: maat.DefaultThresholds(),
 		DiffOnly:   auditSkipTests,
 		SkipTests:  auditSkipTests,
-		ProgressFn: func(p maat.PackageProgress) {
+	}
+	if !JsonOutput {
+		assessor.ProgressFn = func(p maat.PackageProgress) {
 			prefix := fmt.Sprintf("  [%d/%d]", p.Current, p.Total)
 			switch {
 			case p.NoTests:
@@ -137,7 +142,7 @@ func runMaatAudit(cmd *cobra.Command, args []string) error {
 			default:
 				output.Error("%s %s — %.1f%% coverage", prefix, p.Package, p.Coverage)
 			}
-		},
+		}
 	}
 
 	report, err := maat.Weigh(assessor)
@@ -145,34 +150,42 @@ func runMaatAudit(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Print per-module verdict table.
-	var rows [][]string
-	for _, a := range report.Assessments {
-		rows = append(rows, []string{
-			a.Verdict.Icon(),
-			a.Subject,
-			a.Message,
-			fmt.Sprintf("%d", a.FeatherWeight),
-		})
-	}
-	if len(rows) > 0 {
-		output.Table([]string{"", "Module", "Result", "Weight"}, rows)
+	if !JsonOutput {
+		// Print per-module verdict table.
+		var rows [][]string
+		for _, a := range report.Assessments {
+			rows = append(rows, []string{
+				a.Verdict.Icon(),
+				a.Subject,
+				a.Message,
+				fmt.Sprintf("%d", a.FeatherWeight),
+			})
+		}
+		if len(rows) > 0 {
+			output.Table([]string{"", "Module", "Result", "Weight"}, rows)
+		}
 	}
 
-	output.Dashboard(map[string]string{
-		"Verdict":  report.OverallVerdict.Icon() + " " + report.OverallVerdict.String(),
-		"Weight":   fmt.Sprintf("%d/100", report.OverallWeight),
-		"Passed":   fmt.Sprintf("%d", report.Passes),
-		"Warnings": fmt.Sprintf("%d", report.Warnings),
-		"Failures": fmt.Sprintf("%d", report.Failures),
-	})
-	output.Footer(time.Since(start))
-	actions := suggest.After(suggest.Context{Deity: "maat", Subcommand: "audit"})
-	var steps [][]string
-	for _, a := range actions {
-		steps = append(steps, []string{a.Command, a.Description})
+	elapsed := time.Since(start)
+
+	cr := &output.CommandResult{
+		Command:  "sirsi audit",
+		Summary:  fmt.Sprintf("Quality score: %s %d/100 (%d passed, %d warnings, %d failures)", report.OverallVerdict.Icon(), report.OverallWeight, report.Passes, report.Warnings, report.Failures),
+		Duration: elapsed,
 	}
-	output.NextSteps(steps)
+	cr.AddEvidence("Verdict", report.OverallVerdict.Icon()+" "+report.OverallVerdict.String())
+	cr.AddEvidence("Feather weight", fmt.Sprintf("%d/100", report.OverallWeight))
+	cr.AddEvidence("Passed", fmt.Sprintf("%d", report.Passes))
+	if report.Warnings > 0 {
+		cr.AddEvidence("Warnings", fmt.Sprintf("%d", report.Warnings))
+	}
+	if report.Failures > 0 {
+		cr.AddEvidence("Failures", fmt.Sprintf("%d", report.Failures))
+		cr.AddNextAction("sirsi maat heal", "Auto-remediate quality issues")
+	}
+	cr.AddNextAction("sirsi maat pulse", "Quick coverage summary")
+	cr.AddNextAction("sirsi scan", "Scan for infrastructure waste")
+	cr.Render()
 	return nil
 }
 

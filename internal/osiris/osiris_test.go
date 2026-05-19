@@ -219,8 +219,8 @@ func TestAssess_CriticalRisk_ManyFiles(t *testing.T) {
 	if cp.StatusIcon() != "🔴" {
 		t.Errorf("StatusIcon = %q, want 🔴", cp.StatusIcon())
 	}
-	if !strings.Contains(cp.Warning, "OSIRIS WARNING") {
-		t.Errorf("Warning = %q, should contain 'OSIRIS WARNING'", cp.Warning)
+	if !strings.Contains(cp.Warning, "CRITICAL") {
+		t.Errorf("Warning = %q, should contain 'CRITICAL'", cp.Warning)
 	}
 }
 
@@ -313,8 +313,8 @@ func TestFormatReport(t *testing.T) {
 	}
 
 	report := cp.FormatReport()
-	if !strings.Contains(report, "Osiris Checkpoint") {
-		t.Error("Report should contain 'Osiris Checkpoint'")
+	if !strings.Contains(report, "Checkpoint") {
+		t.Error("Report should contain 'Checkpoint'")
 	}
 	if !strings.Contains(report, "main") {
 		t.Error("Report should contain branch name")

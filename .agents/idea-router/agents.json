@@ -24,11 +24,29 @@
       "cwd": "/Users/thekryptodragon/Development/SirsiNexusApp",
       "workstream": "nexus"
     },
+    "claude-sirsinexusapp": {
+      "type": "claude",
+      "command": ["claude", "--print", "--permission-mode", "auto"],
+      "cwd": "/Users/thekryptodragon/Development/SirsiNexusApp",
+      "workstream": "nexus"
+    },
+    "codex-sirsinexusapp": {
+      "type": "codex",
+      "command": ["codex", "exec", "-C", "/Users/thekryptodragon/Development/SirsiNexusApp", "--sandbox", "workspace-write"],
+      "cwd": "/Users/thekryptodragon/Development/SirsiNexusApp",
+      "workstream": "nexus"
+    },
     "claude-assiduous": {
       "type": "claude",
       "command": ["claude", "--print", "--permission-mode", "auto"],
       "cwd": "/Users/thekryptodragon/Development/assiduous",
       "workstream": "assiduous"
+    },
+    "codex-assiduous": {
+      "type": "codex",
+      "command": ["codex", "exec", "-C", "/Users/thekryptodragon/Development/assiduous", "--sandbox", "workspace-write"],
+      "cwd": "/Users/thekryptodragon/Development/assiduous",
+      "workstream": "assiduous-v110-completion"
     },
     "claude-finalwishes": {
       "type": "claude",
@@ -36,13 +54,49 @@
       "cwd": "/Users/thekryptodragon/Development/FinalWishes",
       "workstream": "finalwishes"
     },
+    "codex-finalwishes": {
+      "type": "codex",
+      "command": ["codex", "exec", "-C", "/Users/thekryptodragon/Development/FinalWishes", "--sandbox", "workspace-write"],
+      "cwd": "/Users/thekryptodragon/Development/FinalWishes",
+      "workstream": "finalwishes"
+    },
+    "claude-finalwishes-web": {
+      "type": "claude",
+      "command": ["claude", "--print", "--permission-mode", "auto"],
+      "cwd": "/Users/thekryptodragon/Development/FinalWishes/web",
+      "workstream": "finalwishes-web"
+    },
+    "codex-finalwishes-web": {
+      "type": "codex",
+      "command": ["codex", "exec", "-C", "/Users/thekryptodragon/Development/FinalWishes/web", "--sandbox", "workspace-write"],
+      "cwd": "/Users/thekryptodragon/Development/FinalWishes/web",
+      "workstream": "finalwishes-web"
+    },
     "claude-porch-and-alley": {
       "type": "claude",
       "command": ["claude", "--print", "--permission-mode", "auto"],
       "cwd": "/Users/thekryptodragon/Development/porch-and-alley",
       "workstream": "porch-and-alley"
     },
+    "codex-porch-and-alley": {
+      "type": "codex",
+      "command": ["codex", "exec", "-C", "/Users/thekryptodragon/Development/porch-and-alley", "--sandbox", "workspace-write"],
+      "cwd": "/Users/thekryptodragon/Development/porch-and-alley",
+      "workstream": "porch-and-alley"
+    },
+    "claude-homebrew-tools": {
+      "type": "claude",
+      "command": ["claude", "--print", "--permission-mode", "auto"],
+      "cwd": "/Users/thekryptodragon/Development/homebrew-tools",
+      "workstream": "homebrew"
+    },
     "codex-homebrew": {
+      "type": "codex",
+      "command": ["codex", "exec", "-C", "/Users/thekryptodragon/Development/homebrew-tools", "--sandbox", "workspace-write"],
+      "cwd": "/Users/thekryptodragon/Development/homebrew-tools",
+      "workstream": "homebrew"
+    },
+    "codex-homebrew-tools": {
       "type": "codex",
       "command": ["codex", "exec", "-C", "/Users/thekryptodragon/Development/homebrew-tools", "--sandbox", "workspace-write"],
       "cwd": "/Users/thekryptodragon/Development/homebrew-tools",

@@ -55,9 +55,12 @@ func notifyCodex(docType, docID, repoRoot string) error {
 	prompt := buildRouterPrompt("codex", docType, docID)
 	run := getRunner()
 
+	// workspace-write already grants write access to everything under -C repoRoot.
+	// Do NOT add --add-dir for paths inside the workspace — it creates a conflicting
+	// sandbox rule that can block writes (see: codex-router-automation-blocker review).
 	cmd := run("codex",
 		"exec",
-		"--ask-for-approval", "on-request",
+		"-C", repoRoot,
 		"--sandbox", "workspace-write",
 		prompt,
 	)

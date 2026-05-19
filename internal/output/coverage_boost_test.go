@@ -224,3 +224,31 @@ func TestDeduplicateHistory(t *testing.T) {
 		t.Errorf("expected 2 unique commands, got %d: %v", len(result), result)
 	}
 }
+
+func TestTUIModelPersistedStateRoundTripIncludesRecommendations(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	m := NewTUIModel()
+	m.deityState["anubis"] = stateHasData
+	m.lastCommand = "scan"
+	m.lastSummary = "Completed"
+	m.postRunCmds = []string{"clean --dry-run", "diagnose"}
+	m.savePersistedState()
+
+	restored := NewTUIModel()
+	restored.loadPersistedState()
+
+	if restored.deityState["anubis"] != stateHasData {
+		t.Fatalf("restored anubis state = %v, want %v", restored.deityState["anubis"], stateHasData)
+	}
+	if restored.lastCommand != "scan" {
+		t.Fatalf("restored lastCommand = %q, want scan", restored.lastCommand)
+	}
+	if restored.lastSummary != "Completed" {
+		t.Fatalf("restored lastSummary = %q, want Completed", restored.lastSummary)
+	}
+	if strings.Join(restored.postRunCmds, ",") != "clean --dry-run,diagnose" {
+		t.Fatalf("restored postRunCmds = %#v", restored.postRunCmds)
+	}
+}

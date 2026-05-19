@@ -6,6 +6,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 
 ---
 
+## [Unreleased]
+
+### Added — Pro UX Loop Sprint 2 Closeout
+- Persisted the TUI's latest command summary and recommended next actions in `~/.config/pantheon/tui-state.json`.
+- Added state persistence coverage for restored command recommendations.
+- Updated README quick start and UX workflow evidence for the shared command result contract, permissions guidance, and next-action behavior.
+
 ## [0.19.0] — 2026-05-06
 
 ### Added — TUI & CLI UX Overhaul (7 commits, ~1,500 lines)

@@ -54,6 +54,10 @@ func TestMain(m *testing.M) {
 // runSirsi executes the test binary with the given args and a timeout.
 // It returns stdout, stderr, and any error (including non-zero exit).
 func runSirsi(t *testing.T, timeout time.Duration, args ...string) (stdout, stderr string, err error) {
+	return runSirsiWithEnv(t, timeout, nil, args...)
+}
+
+func runSirsiWithEnv(t *testing.T, timeout time.Duration, env []string, args ...string) (stdout, stderr string, err error) {
 	t.Helper()
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -61,6 +65,7 @@ func runSirsi(t *testing.T, timeout time.Duration, args ...string) (stdout, stde
 
 	cmd := exec.CommandContext(ctx, testBinary, args...)
 	cmd.Dir = repoRoot
+	cmd.Env = append(os.Environ(), env...)
 	// Prevent interactive prompts by closing stdin.
 	cmd.Stdin = nil
 
@@ -519,6 +524,167 @@ func TestBinaryExists(t *testing.T) {
 	// Verify it is executable.
 	if info.Mode()&0111 == 0 {
 		t.Fatal("test binary is not executable")
+	}
+}
+
+// TestUXContract_JSONClean verifies that --json commands emit only valid JSON
+// to stdout with no styled UI framing (banner, header, progress text).
+// This directly addresses Codex review blocking finding #3.
+func TestUXContract_JSONClean(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping UX contract tests in short mode")
+	}
+
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{"audit_json", []string{"maat", "audit", "--skip-test", "--json"}},
+		{"risk_json", []string{"risk", "--json"}},
+		{"status_json", []string{"status", "--json"}},
+		{"network_json", []string{"network", "--json"}},
+		{"diagnose_json", []string{"diagnose", "--json"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			stdout, _, err := runSirsi(t, 2*time.Minute, tt.args...)
+			if err != nil {
+				t.Fatalf("command %v failed: %v", tt.args, err)
+			}
+
+			// stdout must start with '{' or '[' (valid JSON)
+			trimmed := strings.TrimSpace(stdout)
+			if len(trimmed) == 0 {
+				t.Fatalf("command %v produced empty stdout", tt.args)
+			}
+			if trimmed[0] != '{' && trimmed[0] != '[' {
+				t.Errorf("command %v stdout is not clean JSON — starts with %q\nfirst 200 chars:\n%s",
+					tt.args, string(trimmed[0]), trimmed[:min(200, len(trimmed))])
+			}
+
+			// stdout must NOT contain ANSI escape codes or banner text
+			if strings.Contains(stdout, "P A N T H E O N") {
+				t.Errorf("command %v stdout contains banner text (should be JSON only)", tt.args)
+			}
+			if strings.Contains(stdout, "\033[") {
+				t.Errorf("command %v stdout contains ANSI escape codes", tt.args)
+			}
+		})
+	}
+}
+
+// TestUXContract_WhatsNext verifies that normal-mode commands emit
+// "What's Next" section with suggested follow-up commands.
+// This directly addresses Codex review blocking finding #4.
+func TestUXContract_WhatsNext(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping UX contract tests in short mode")
+	}
+
+	tests := []struct {
+		name    string
+		args    []string
+		timeout time.Duration
+	}{
+		{"scan", []string{"scan"}, 3 * time.Minute},
+		{"ghosts", []string{"ghosts"}, 3 * time.Minute},
+		{"diagnose", []string{"diagnose"}, 60 * time.Second},
+		{"network", []string{"network"}, 60 * time.Second},
+		{"risk", []string{"risk"}, 30 * time.Second},
+		{"status", []string{"status"}, 30 * time.Second},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			homeDir := t.TempDir()
+			env := []string{
+				"HOME=" + homeDir,
+				"XDG_CONFIG_HOME=" + filepath.Join(homeDir, ".config"),
+				"XDG_CACHE_HOME=" + filepath.Join(homeDir, ".cache"),
+			}
+
+			stdout, stderr, err := runSirsiWithEnv(t, tt.timeout, env, tt.args...)
+			if err != nil {
+				t.Fatalf("command %v failed: %v", tt.args, err)
+			}
+
+			combined := stdout + stderr
+			if !strings.Contains(combined, "What's Next") {
+				t.Errorf("command %v missing 'What's Next' section\noutput:\n%s",
+					tt.args, combined[:min(500, len(combined))])
+			}
+		})
+	}
+}
+
+// TestUXContract_NoDeityVocab verifies that normal-mode output does not
+// expose internal deity/module names to users.
+// This directly addresses Codex review requirement: deity vocabulary hidden.
+func TestUXContract_NoDeityVocab(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping UX contract tests in short mode")
+	}
+
+	// These deity names should NOT appear in user-facing output (normal mode)
+	deityNames := []string{"𓆄", "𓁹", "𓁐", "Anubis", "Osiris", "Isis", "Jackal", "Scarab"}
+
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{"risk", []string{"risk"}},
+		{"status", []string{"status"}},
+		{"diagnose", []string{"diagnose"}},
+		{"network", []string{"network"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			stdout, stderr, err := runSirsi(t, 60*time.Second, tt.args...)
+			if err != nil {
+				t.Fatalf("command %v failed: %v", tt.args, err)
+			}
+
+			combined := stdout + stderr
+			for _, deity := range deityNames {
+				if strings.Contains(combined, deity) {
+					t.Errorf("command %v exposes deity vocabulary %q in user-facing output",
+						tt.args, deity)
+				}
+			}
+		})
+	}
+}
+
+// TestUXContract_StatusCLI verifies the new status non-interactive mode.
+// This directly addresses Codex review blocking finding #2.
+func TestUXContract_StatusCLI(t *testing.T) {
+	t.Parallel()
+
+	stdout, stderr, err := runSirsi(t, 30*time.Second, "status")
+	if err != nil {
+		t.Fatalf("sirsi status failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+	}
+
+	combined := stdout + stderr
+	// Must show health score
+	if !strings.Contains(combined, "health") && !strings.Contains(combined, "Health") {
+		t.Errorf("status output missing health info\noutput:\n%s", combined)
+	}
+	// Must show next actions
+	if !strings.Contains(combined, "What's Next") {
+		t.Errorf("status output missing 'What's Next' section\noutput:\n%s", combined)
+	}
+	// Must suggest --live for TUI
+	if !strings.Contains(combined, "--live") {
+		t.Errorf("status output missing '--live' suggestion\noutput:\n%s", combined)
 	}
 }
 

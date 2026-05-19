@@ -9,10 +9,10 @@
 
 | Deity | Glyph | Domain | Functional Responsibility | Reserved Symbols |
 |-------|-------|--------|--------------------------|------------------|
-| **Ra** | 𓇶 | Supreme Overseer | Multi-repo orchestration, agent deployment, window management, sprint governance | `𓂀` (ProtectGlyph — Ra's exclusive authority to mark windows as immune to KillAll) |
+| **Ra** | 𓇶 | Supreme Overseer | Multi-repo orchestration, Idea Router ownership, agent registry, agent dispatch, window management, sprint governance | `𓂀` (ProtectGlyph — Ra's exclusive authority to mark windows as immune to KillAll) |
 | **Net** | 𓁯 | Scope Weaver | Task definition, scope assembly, tiled context rendering, canon alignment, drift detection, development plan ownership | |
-| **Thoth** | 𓁟 | Session Memory | Context compression, session persistence, memory sync, journal | |
-| **Ma'at** | 𓆄 | Quality Gate | QA governance, quality gates, pre-push hooks, coverage audits, Feather Weight scoring | All pre-push gates across all repos are Ma'at's domain |
+| **Thoth** | 𓁟 | Session Memory | Context compression, session persistence, memory sync, journal, router continuity snapshots | |
+| **Ma'at** | 𓆄 | Quality Gate | QA governance, quality gates, pre-push hooks, coverage audits, Feather Weight scoring, router governance validation | All pre-push gates across all repos are Ma'at's domain |
 | **Isis** | 𓁐 | Health & Remediation | Doctor, network security, process guard, remediation engine, auto-fix lint/vet/coverage/canon drift, watchdog daemon, CPU/RAM monitoring, ANE hardening | |
 | **Seshat** | 𓁆 | Knowledge Bridge | Knowledge grafting, ingestion/export, Gemini Bridge, NotebookLM sync, cross-platform knowledge | |
 | **Anubis** | 𓃣 | Hygiene Engine | Infrastructure hygiene, waste scanning, policy enforcement, ghost app detection, residual hunting, file deduplication, semantic ranking | Jackal head (profile), NOT full-body jackal |
@@ -39,7 +39,10 @@ Every pre-push hook, CI gate, coverage check, and quality assessment across the 
 ### Rule D5: The Stele Is Universal Communication
 All deities inscribe events to the Stele (`~/.config/ra/stele.jsonl`) via `stele.Inscribe()`. The Stele is the single source of truth for inter-deity communication. Every deity identifies itself by name in the `deity` field of Stele entries. The deity name must match this registry.
 
-### Rule D6: Hierarchy Is Invariant
+### Rule D6: Ra Owns the Idea Router
+The Idea Router is Ra infrastructure. Ra owns the agent registry, work queue, launch/dispatch behavior, cross-agent relay, super-agent mandates, and completion routing until `/goal` is met. Thoth preserves router memory and pending work across compaction/session boundaries. Ma'at validates router governance, including correct agent targeting, repo segmentation, test evidence, honest blocker reporting, and `/goal` completion.
+
+### Rule D7: Hierarchy Is Invariant
 ```
 Ra (Supreme Overseer)
   └── Net (Scope Weaver — owns the plan)
@@ -48,7 +51,7 @@ Ra (Supreme Overseer)
 ```
 Ra supervises. Net aligns. Ma'at weighs. Isis heals. This cycle governs all work across all repos.
 
-### Rule D7: No Repo-Specific Deity Aliases
+### Rule D8: No Repo-Specific Deity Aliases
 A deity is never renamed for a specific repo. "Osiris (FinalWishes)" is wrong — Osiris is Osiris everywhere. Repos are identified by name in brackets, not by deity reassignment. Correct: `𓆄 Ma'at pre-push gate... [FinalWishes]`. Wrong: `𓁹 Osiris (FinalWishes) pre-push gate...`.
 
 ---

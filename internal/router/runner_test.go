@@ -237,3 +237,68 @@ func TestRunnerClearedInboxStopsDispatch(t *testing.T) {
 		t.Fatalf("notify calls = %d, want 0 after inbox clear", calls)
 	}
 }
+
+func TestRunnerExecutorPersistsWorkQueueStatus(t *testing.T) {
+	r, tmp := setupTestRouter(t)
+
+	fakeAgent := filepath.Join(tmp, "fake-codex-agent.sh")
+	script := `#!/bin/sh
+cat > .agents/idea-router/state.json <<'JSON'
+{
+  "version": 1,
+  "active_topics": ["safety-reset"],
+  "completed_topics": [],
+  "last_codex_read": "2026-05-18T14:00:00Z",
+  "last_claude_read": null,
+  "rules": {"no_feature_expansion": true},
+  "pending": {"codex-pantheon": ["keep"]}
+}
+JSON
+`
+	if err := os.WriteFile(fakeAgent, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	routerRoot := filepath.Join(tmp, ".agents", "idea-router")
+	err := SaveRegistry(routerRoot, &Registry{Agents: map[string]AgentConfig{
+		"codex-pantheon": {
+			Type:    "codex",
+			Command: []string{fakeAgent},
+			Cwd:     tmp,
+		},
+	}})
+	if err != nil {
+		t.Fatalf("SaveRegistry() error: %v", err)
+	}
+
+	id, err := r.SubmitAddressed(DocReview, "claude", "Needs Registered Codex", "content", "codex-pantheon")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	reg, err := LoadRegistry(routerRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wq, err := LoadWorkQueue(routerRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	exec := NewExecutor(reg, r, wq, io.Discard)
+	rr := NewRunner(r, RunnerOptions{RepoRoot: tmp, Agent: "codex-pantheon", Out: io.Discard, Executor: exec})
+	if err := rr.Tick(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	loaded, err := LoadWorkQueue(routerRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	item := loaded.Find("codex-pantheon:" + id)
+	if item == nil {
+		t.Fatalf("work item not persisted")
+	}
+	if item.Status != StatusCompleted {
+		t.Fatalf("work item status = %s, want %s; last error: %s", item.Status, StatusCompleted, item.LastError)
+	}
+}

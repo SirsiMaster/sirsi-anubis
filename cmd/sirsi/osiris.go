@@ -88,31 +88,29 @@ func runOsirisAssess(cmd *cobra.Command, args []string) error {
 	fmt.Print(cp.FormatReport())
 	fmt.Println()
 
-	// Dashboard summary
-	dashboard := map[string]string{
-		"Risk Level": fmt.Sprintf("%s %s", cp.StatusIcon(), cp.Risk),
-		"Branch":     cp.Branch,
-		"Changes":    fmt.Sprintf("%d files", cp.TotalChanges),
+	elapsed := time.Since(start)
+
+	cr := &output.CommandResult{
+		Command:  "sirsi risk",
+		Summary:  fmt.Sprintf("Risk: %s %s — %d uncommitted files on %s", cp.StatusIcon(), cp.Risk, cp.TotalChanges, cp.Branch),
+		Duration: elapsed,
 	}
+	cr.AddEvidence("Risk level", fmt.Sprintf("%s %s", cp.StatusIcon(), cp.Risk))
+	cr.AddEvidence("Branch", cp.Branch)
+	cr.AddEvidence("Uncommitted changes", fmt.Sprintf("%d files", cp.TotalChanges))
 	if cp.LinesAdded > 0 || cp.LinesDeleted > 0 {
-		dashboard["Diff"] = fmt.Sprintf("+%d / -%d lines", cp.LinesAdded, cp.LinesDeleted)
+		cr.AddEvidence("Diff", fmt.Sprintf("+%d / -%d lines", cp.LinesAdded, cp.LinesDeleted))
 	}
 	if !cp.LastCommitTime.IsZero() {
-		dashboard["Last Commit"] = cp.LastCommitHash
+		cr.AddEvidence("Last commit", cp.LastCommitHash)
 	}
-	output.Dashboard(dashboard)
-
 	if cp.ShouldWarn() {
-		output.Warn("%s", cp.Warning)
+		cr.AddWarning("%s", cp.Warning)
 	}
-
-	output.Footer(time.Since(start))
-	actions := suggest.After(suggest.Context{Deity: "osiris", Subcommand: "assess"})
-	var steps [][]string
-	for _, a := range actions {
-		steps = append(steps, []string{a.Command, a.Description})
-	}
-	output.NextSteps(steps)
+	cr.AddNextAction("git commit", "Commit your changes to reduce risk")
+	cr.AddNextAction("sirsi scan", "Scan for infrastructure waste")
+	cr.AddNextAction("sirsi diagnose", "Check system health")
+	cr.Render()
 	return nil
 }
 

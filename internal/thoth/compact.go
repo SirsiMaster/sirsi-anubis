@@ -40,13 +40,15 @@ func Compact(opts CompactOptions) error {
 		return fmt.Errorf("thoth compact: .thoth directory not found — run 'thoth init' first")
 	}
 
+	summary := appendRouterSnapshot(opts.RepoRoot, opts.Summary)
+
 	// Step 1: Append decisions to memory.yaml
-	if err := appendSessionDecisions(memoryPath, opts.Summary); err != nil {
+	if err := appendSessionDecisions(memoryPath, summary); err != nil {
 		return fmt.Errorf("thoth compact: update memory: %w", err)
 	}
 
 	// Step 2: Create journal entry
-	if err := appendCompactEntry(journalPath, opts.Summary); err != nil {
+	if err := appendCompactEntry(journalPath, summary); err != nil {
 		return fmt.Errorf("thoth compact: update journal: %w", err)
 	}
 
@@ -68,7 +70,7 @@ func Compact(opts CompactOptions) error {
 	}
 
 	stele.Inscribe("thoth", stele.TypeThothCompact, opts.RepoRoot, map[string]string{
-		"summary": opts.Summary,
+		"summary": summary,
 	})
 	return nil
 }

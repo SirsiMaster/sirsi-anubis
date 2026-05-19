@@ -25,22 +25,22 @@ const (
 
 // Document represents a single router file.
 type Document struct {
-	ID       string    // filename without extension
-	Type     DocType   // proposal, review, decision
-	Path     string    // full filesystem path
-	Author   string    // codex or claude
-	Title    string    // extracted from first heading
-	ModTime  time.Time // file modification time
-	Content  string    // full file content
+	ID      string    // filename without extension
+	Type    DocType   // proposal, review, decision
+	Path    string    // full filesystem path
+	Author  string    // codex or claude
+	Title   string    // extracted from first heading
+	ModTime time.Time // file modification time
+	Content string    // full file content
 }
 
 // State represents the router state.json file.
 type State struct {
-	Version         int      `json:"version"`
-	ActiveTopics    []string `json:"active_topics"`
-	CompletedTopics []string `json:"completed_topics,omitempty"`
-	LastCodexRead   string   `json:"last_codex_read"`
-	LastClaudeRead  string   `json:"last_claude_read"`
+	Version         int             `json:"version"`
+	ActiveTopics    []string        `json:"active_topics"`
+	CompletedTopics []string        `json:"completed_topics,omitempty"`
+	LastCodexRead   string          `json:"last_codex_read"`
+	LastClaudeRead  string          `json:"last_claude_read"`
 	Rules           map[string]bool `json:"rules"`
 
 	// v3: Dynamic per-agent inbox keyed by agent ID
@@ -49,6 +49,12 @@ type State struct {
 	// Legacy v2 fields — read for migration, written for backwards compat
 	PendingForCodex  []string `json:"pending_for_codex,omitempty"`
 	PendingForClaude []string `json:"pending_for_claude,omitempty"`
+}
+
+// PendingEntry is a display-friendly view of one registered inbox.
+type PendingEntry struct {
+	Agent string
+	IDs   []string
 }
 
 // MigratePending moves legacy pending_for_codex/pending_for_claude into
@@ -70,9 +76,52 @@ func (s *State) MigratePending() {
 	}
 }
 
+// NormalizePending keeps v3 registered inboxes and legacy compatibility
+// fields coherent, and avoids nil slices being written as JSON null.
+func (s *State) NormalizePending() {
+	s.MigratePending()
+	for agent, ids := range s.Pending {
+		if ids == nil {
+			s.Pending[agent] = []string{}
+		}
+	}
+	if ids, ok := s.Pending["codex-pantheon"]; ok {
+		s.PendingForCodex = ids
+	}
+	if ids, ok := s.Pending["claude-pantheon"]; ok {
+		s.PendingForClaude = ids
+	}
+	if s.PendingForCodex == nil {
+		s.PendingForCodex = []string{}
+	}
+	if s.PendingForClaude == nil {
+		s.PendingForClaude = []string{}
+	}
+}
+
+// PendingEntries returns registered inboxes in stable order.
+func (s *State) PendingEntries(includeEmpty bool) []PendingEntry {
+	s.NormalizePending()
+	agents := make([]string, 0, len(s.Pending))
+	for agent, ids := range s.Pending {
+		if !includeEmpty && len(ids) == 0 {
+			continue
+		}
+		agents = append(agents, agent)
+	}
+	sort.Strings(agents)
+	entries := make([]PendingEntry, 0, len(agents))
+	for _, agent := range agents {
+		ids := append([]string(nil), s.Pending[agent]...)
+		entries = append(entries, PendingEntry{Agent: agent, IDs: ids})
+	}
+	return entries
+}
+
 // InboxFor returns the list of unread document IDs addressed to the given agent.
 // Checks the dynamic Pending map first, falls back to legacy fields.
 func (s *State) InboxFor(agent string) []string {
+	s.NormalizePending()
 	if s.Pending != nil {
 		if items, ok := s.Pending[agent]; ok {
 			return items
@@ -92,8 +141,14 @@ func (s *State) InboxFor(agent string) []string {
 // AddToInbox marks a document as pending for the target agent.
 // Uses the dynamic Pending map and syncs to legacy fields for backwards compat.
 func (s *State) AddToInbox(target, docID string) {
+	s.NormalizePending()
 	if s.Pending == nil {
 		s.Pending = make(map[string][]string)
+	}
+	for _, existing := range s.Pending[target] {
+		if existing == docID {
+			return
+		}
 	}
 	s.Pending[target] = append(s.Pending[target], docID)
 
@@ -109,7 +164,7 @@ func (s *State) AddToInbox(target, docID string) {
 // ClearInbox removes a document from the target agent's inbox.
 func (s *State) ClearInbox(agent, docID string) {
 	remove := func(ids []string, id string) []string {
-		var result []string
+		result := make([]string, 0, len(ids))
 		for _, v := range ids {
 			if v != id {
 				result = append(result, v)
@@ -131,6 +186,7 @@ func (s *State) ClearInbox(agent, docID string) {
 	case "claude", "claude-pantheon":
 		s.PendingForClaude = remove(s.PendingForClaude, docID)
 	}
+	s.NormalizePending()
 }
 
 // Router provides access to the idea-router filesystem.
@@ -182,6 +238,7 @@ func (r *Router) ReadState() (*State, error) {
 
 // WriteState persists the router state.
 func (r *Router) WriteState(state *State) error {
+	state.NormalizePending()
 	data, err := json.MarshalIndent(state, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal state: %w", err)
@@ -191,7 +248,7 @@ func (r *Router) WriteState(state *State) error {
 
 // validAuthors is the whitelist of allowed author values.
 var validAuthors = map[string]bool{
-	"codex": true,
+	"codex":  true,
 	"claude": true,
 }
 
@@ -287,7 +344,7 @@ func (r *Router) Submit(docType DocType, author, title, content string) (string,
 func (r *Router) SubmitAddressed(docType DocType, author, title, content, addressedTo string) (string, error) {
 	// Validate addressed_to BEFORE writing the file to avoid false-success
 	if addressedTo != "" {
-		if err := ValidateAuthor(addressedTo); err != nil {
+		if err := r.ValidateAgent(addressedTo); err != nil {
 			return "", fmt.Errorf("invalid addressed_to: %w", err)
 		}
 	}
@@ -342,10 +399,10 @@ func (r *Router) AckInbox(agent string, ids []string) error {
 		state.ClearInbox(agent, id)
 	}
 	now := time.Now().Format(time.RFC3339)
-	switch agent {
-	case "claude":
+	switch {
+	case agent == "claude" || strings.HasPrefix(agent, "claude-"):
 		state.LastClaudeRead = now
-	case "codex":
+	case agent == "codex" || strings.HasPrefix(agent, "codex-"):
 		state.LastCodexRead = now
 	}
 	return r.WriteState(state)

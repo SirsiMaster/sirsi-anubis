@@ -29,23 +29,23 @@ const (
 // WorkItem tracks a single piece of work addressed to an agent.
 type WorkItem struct {
 	// Identity
-	ID      string `json:"id"`
-	DocID   string `json:"doc_id"`
-	Topic   string `json:"topic,omitempty"`
-	Goal    string `json:"goal,omitempty"`
+	ID    string `json:"id"`
+	DocID string `json:"doc_id"`
+	Topic string `json:"topic,omitempty"`
+	Goal  string `json:"goal,omitempty"`
 
 	// Routing
 	TargetAgentID string `json:"target_agent_id"`
 	SourceAgentID string `json:"source_agent_id,omitempty"`
 
 	// Status
-	Status     WorkStatus `json:"status"`
-	Attempts   []Attempt  `json:"attempts,omitempty"`
-	LastError  string     `json:"last_error,omitempty"`
+	Status    WorkStatus `json:"status"`
+	Attempts  []Attempt  `json:"attempts,omitempty"`
+	LastError string     `json:"last_error,omitempty"`
 
 	// Expected writeback
-	ExpectedArtifact string `json:"expected_artifact,omitempty"` // e.g., "review"
-	ExpectedStateUpdate bool `json:"expected_state_update"`
+	ExpectedArtifact    string `json:"expected_artifact,omitempty"` // e.g., "review"
+	ExpectedStateUpdate bool   `json:"expected_state_update"`
 
 	// Timestamps
 	CreatedAt    time.Time `json:"created_at"`
@@ -97,18 +97,31 @@ func (wq *WorkQueue) Save() error {
 
 // AddItem creates a new pending work item.
 func (wq *WorkQueue) AddItem(docID, targetAgentID, sourceAgentID, topic string) *WorkItem {
+	if existing := wq.Find(fmt.Sprintf("%s:%s", targetAgentID, docID)); existing != nil {
+		return existing
+	}
 	item := WorkItem{
-		ID:            fmt.Sprintf("%s:%s", targetAgentID, docID),
-		DocID:         docID,
-		TargetAgentID: targetAgentID,
-		SourceAgentID: sourceAgentID,
-		Topic:         topic,
-		Status:        StatusPending,
-		CreatedAt:     time.Now(),
+		ID:                  fmt.Sprintf("%s:%s", targetAgentID, docID),
+		DocID:               docID,
+		TargetAgentID:       targetAgentID,
+		SourceAgentID:       sourceAgentID,
+		Topic:               topic,
+		Status:              StatusPending,
+		CreatedAt:           time.Now(),
 		ExpectedStateUpdate: true,
 	}
 	wq.Items = append(wq.Items, item)
 	return &wq.Items[len(wq.Items)-1]
+}
+
+// Find returns a work item by ID.
+func (wq *WorkQueue) Find(itemID string) *WorkItem {
+	for i := range wq.Items {
+		if wq.Items[i].ID == itemID {
+			return &wq.Items[i]
+		}
+	}
+	return nil
 }
 
 // PendingFor returns all pending work items for the given agent ID.

@@ -65,8 +65,8 @@ func TestReadState(t *testing.T) {
 func TestWriteState(t *testing.T) {
 	r, _ := setupTestRouter(t)
 	state := &State{
-		Version:      1,
-		ActiveTopics: []string{"new-topic"},
+		Version:        1,
+		ActiveTopics:   []string{"new-topic"},
 		LastClaudeRead: "2026-05-14T12:00:00Z",
 	}
 	if err := r.WriteState(state); err != nil {
@@ -259,6 +259,33 @@ func TestSubmitAddressed_AddsToInbox(t *testing.T) {
 	state, _ := r.ReadState()
 	if len(state.PendingForCodex) != 1 || state.PendingForCodex[0] != id {
 		t.Errorf("PendingForCodex = %v, want [%s]", state.PendingForCodex, id)
+	}
+}
+
+func TestSubmitAddressed_RegisteredAgent(t *testing.T) {
+	r, _ := setupTestRouter(t)
+	err := SaveRegistry(r.root, &Registry{Agents: map[string]AgentConfig{
+		"codex-assiduous": {
+			Type:    "codex",
+			Command: []string{"/bin/echo"},
+			Cwd:     "/tmp",
+		},
+	}})
+	if err != nil {
+		t.Fatalf("SaveRegistry() error: %v", err)
+	}
+
+	id, err := r.SubmitAddressed(DocReview, "claude", "Review for Assiduous", "content", "codex-assiduous")
+	if err != nil {
+		t.Fatalf("SubmitAddressed() registered target error: %v", err)
+	}
+
+	pending, err := r.PollInbox("codex-assiduous")
+	if err != nil {
+		t.Fatalf("PollInbox() registered target error: %v", err)
+	}
+	if len(pending) != 1 || pending[0] != id {
+		t.Fatalf("registered inbox = %v, want [%s]", pending, id)
 	}
 }
 

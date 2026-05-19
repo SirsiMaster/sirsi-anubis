@@ -29,10 +29,13 @@ Or download from [GitHub Releases](https://github.com/SirsiMaster/sirsi-pantheon
 ## Quick Start
 
 ```bash
+sirsi setup                     # Checks dependencies and Full Disk Access
 sirsi                           # Opens interactive TUI
 ```
 
-Type `scan` in the TUI to run a waste scan. After completion, you'll see gold-highlighted "What's Next" suggestions — contextual follow-up commands like `findings`, `clean`, `purge`. Press Tab to cycle through them.
+On macOS, `sirsi setup` tells you whether Full Disk Access is granted. If it is missing, run `sirsi permissions` to open System Settings, then add the `sirsi` binary and your terminal app under Privacy & Security → Full Disk Access.
+
+Type `scan` in the TUI to run a waste scan. After completion, you'll see gold-highlighted "What's Next" suggestions — contextual follow-up commands like `findings`, `clean`, `purge`. Press Tab to cycle through them. The TUI remembers the last command result and its recommended next actions across sessions.
 
 Or use standalone commands directly:
 
@@ -42,7 +45,7 @@ sirsi diagnose   # System health — RAM pressure, disk space, kernel panics
 sirsi ghosts     # Find remnants of apps you already uninstalled
 ```
 
-That's it. No config files, no accounts, no setup. Every command works immediately.
+Every user-facing command ends with a short summary, evidence counts, warnings when needed, and a "What's Next" section. Use `--json` for scripts or `--quiet` for minimal output.
 
 Want a guided walkthrough? Run `sirsi quickstart` for your first scan with recommendations.
 

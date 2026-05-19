@@ -9,7 +9,7 @@ var Modules = map[string]string{
 	"seshat": "2.1.0", // v2.1.0: Stele integration — ingest events inscribed
 	"seba":   "2.0.0", // v2.0.0: absorbs khepri + hapi — infra mapping, fleet discovery, hardware profiling
 	"net":    "1.1.0", // v1.1.0: scope weaving, alignment (formerly neith)
-	"ra":     "1.1.0", // v1.1.0: ProtectGlyph, Stele deploy events
+	"ra":     "1.2.0", // v1.2.0: owns Idea Router registry, dispatch, relay, and super-agent mandates
 	"stele":  "1.0.0", // append-only hash-chained event ledger (ADR-014)
 	"osiris": "0.5.0", // state snapshots, checkpoints (in development)
 	"rtk":    "1.0.0", // output filtering — ANSI strip, dedup, truncation (subsumes RTK)

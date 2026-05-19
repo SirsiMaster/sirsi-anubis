@@ -19,8 +19,8 @@ type RunnerOptions struct {
 	Once           bool
 	Interval       time.Duration
 	Out            io.Writer
-	Notify         NotifyFunc   // legacy dispatch (used when Executor is nil)
-	Executor       *Executor    // v3 dispatch: registry-based, writeback-verified
+	Notify         NotifyFunc // legacy dispatch (used when Executor is nil)
+	Executor       *Executor  // v3 dispatch: registry-based, writeback-verified
 	LedgerPath     string
 	FailureBackoff time.Duration
 }
@@ -135,13 +135,8 @@ func (rr *Runner) Tick(ctx context.Context) error {
 		var dispatchErr error
 		if rr.opts.Executor != nil {
 			// v3 path: registry-based dispatch with writeback verification
-			item := &WorkItem{
-				ID:            key,
-				DocID:         d.DocID,
-				TargetAgentID: d.Target,
-				Topic:         d.Title,
-				Status:        StatusPending,
-			}
+			item := rr.opts.Executor.workQueue.AddItem(d.DocID, d.Target, "", d.Title)
+			_ = rr.opts.Executor.workQueue.Save()
 			dispatchErr = rr.opts.Executor.Dispatch(ctx, item)
 		} else {
 			// legacy path: NotifyFunc
@@ -216,15 +211,23 @@ func (rr *Runner) PendingDispatches() ([]Dispatch, error) {
 			})
 		}
 	}
+	if rr.opts.Executor != nil {
+		state.MigratePending()
+	}
+
 	// v3 path: read dynamic Pending map (keyed by agent_id)
-	if state.Pending != nil {
+	if rr.opts.Executor != nil && state.Pending != nil {
 		for agentID, ids := range state.Pending {
 			add(agentID, ids)
 		}
 	}
-	// Also read legacy fields (deduplication prevents double dispatch)
-	add("codex", state.PendingForCodex)
-	add("claude", state.PendingForClaude)
+	// Also read legacy fields when not using v3 migration.
+	if rr.opts.Executor == nil || len(state.Pending["codex-pantheon"]) == 0 {
+		add("codex", state.PendingForCodex)
+	}
+	if rr.opts.Executor == nil || len(state.Pending["claude-pantheon"]) == 0 {
+		add("claude", state.PendingForClaude)
+	}
 	return out, nil
 }
 

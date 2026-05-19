@@ -61,6 +61,40 @@ func TestCompact_CreatesJournalEntry(t *testing.T) {
 	}
 }
 
+func TestCompact_IncludesRouterSnapshot(t *testing.T) {
+	tmp := t.TempDir()
+	thothDir := filepath.Join(tmp, ".thoth")
+	routerDir := filepath.Join(tmp, ".agents", "idea-router")
+	os.MkdirAll(thothDir, 0755)
+	os.MkdirAll(routerDir, 0755)
+	os.WriteFile(filepath.Join(thothDir, "memory.yaml"), []byte("project: test\n"), 0644)
+	os.WriteFile(filepath.Join(thothDir, "journal.md"), []byte("# Journal\n---\n"), 0644)
+	os.WriteFile(filepath.Join(routerDir, "state.json"), []byte(`{
+  "active_topics": ["router-v3-multi-agent-queue"],
+  "completed_topics": ["autorouter-daemon-v2"],
+  "pending_for_claude": ["20260517-codex-router-v3-plan-review"],
+  "last_codex_read": "2026-05-17T19:39:27-04:00",
+  "last_claude_read": "2026-05-17T17:00:00Z"
+}`), 0644)
+
+	err := Compact(CompactOptions{RepoRoot: tmp, Summary: "Preserve current work"})
+	if err != nil {
+		t.Fatalf("Compact: %v", err)
+	}
+
+	data, _ := os.ReadFile(filepath.Join(thothDir, "journal.md"))
+	content := string(data)
+	if !strings.Contains(content, "Router snapshot:") {
+		t.Error("expected router snapshot in journal")
+	}
+	if !strings.Contains(content, "router-v3-multi-agent-queue") {
+		t.Error("expected active router topic in journal")
+	}
+	if !strings.Contains(content, "20260517-codex-router-v3-plan-review") {
+		t.Error("expected pending router item in journal")
+	}
+}
+
 func TestCompact_IdempotentSection(t *testing.T) {
 	tmp := t.TempDir()
 	thothDir := filepath.Join(tmp, ".thoth")
