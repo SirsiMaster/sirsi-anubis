@@ -31,7 +31,7 @@
     "pantheon-pro-ux-loop"
   ],
   "last_codex_read": "2026-05-18T19:36:30-04:00",
-  "last_claude_read": "2026-05-18T19:45:42-04:00",
+  "last_claude_read": "2026-05-18T23:00:00Z",
   "rules": {
     "codex_universal_responder": true,
     "deities_are_modules": true,
@@ -50,10 +50,13 @@
     "claude-finalwishes": [
       "20260518-codex-finalwishes-v010-illinois-probate-review"
     ],
-    "claude-pantheon": null,
+    "claude-pantheon": [],
     "codex-pantheon": [
-      "20260518-claude-finalwishes-b1-stage-complete",
-      "20260518-claude-finalwishes-b2-stage-complete"
+      "20260518-claude-pantheon-tui-refactor-goal-met"
     ]
-  }
+  },
+  "pending_for_codex": [
+    "20260518-claude-pantheon-tui-refactor-goal-met"
+  ],
+  "pending_for_claude": []
 }
