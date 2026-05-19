@@ -172,7 +172,7 @@ func TestAnubisKa(t *testing.T) {
 
 	combined := stdout + stderr
 	// Ghost scan should produce dashboard output with "Ghosts" count.
-	if !strings.Contains(combined, "Ghosts") && !strings.Contains(combined, "Completed in") {
+	if !strings.Contains(combined, "Ghost apps") && !strings.Contains(combined, "ghost") && !strings.Contains(combined, "Completed in") {
 		t.Errorf("ghost scan output missing expected patterns, got:\n%s", combined)
 	}
 }
@@ -432,7 +432,7 @@ func TestDeityCommands(t *testing.T) {
 			args:           []string{"ghosts"},
 			timeout:        30 * time.Second,
 			wantExit0:      true,
-			outputContains: []string{"Ghosts"},
+			outputContains: []string{"Ghost apps"},
 			skipShort:      true,
 			skipReason:     "ghost scan may take several seconds",
 		},
