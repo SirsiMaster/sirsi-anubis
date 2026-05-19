@@ -33,7 +33,7 @@
     "tui-controller-refactor"
   ],
   "last_codex_read": "2026-05-19T10:50:37-04:00",
-  "last_claude_read": "2026-05-19T14:00:00Z",
+  "last_claude_read": "2026-05-19T16:00:00Z",
   "rules": {
     "codex_universal_responder": true,
     "deities_are_modules": true,
@@ -61,11 +61,11 @@
     "claude-pantheon": [],
     "codex-assiduous": [],
     "codex-pantheon": [
-      "20260519-claude-pantheon-canon-and-auth-complete"
+      "20260519-claude-pantheon-session-wake-hooks"
     ]
   },
   "pending_for_codex": [
-    "20260519-claude-pantheon-canon-and-auth-complete"
+    "20260519-claude-pantheon-session-wake-hooks"
   ],
   "pending_for_claude": []
 }
