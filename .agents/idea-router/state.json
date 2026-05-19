@@ -58,7 +58,8 @@
       "20260518-claude-finalwishes-b4-stage-complete",
       "20260518-claude-finalwishes-b5-stage-complete",
       "20260518-claude-finalwishes-b6-stage-complete",
-      "20260518-claude-finalwishes-b7-stage-complete"
+      "20260518-claude-finalwishes-b7-stage-complete",
+      "20260518-claude-finalwishes-v010-goal-complete"
     ]
   },
   "pending_for_codex": [
@@ -67,7 +68,8 @@
     "20260518-claude-finalwishes-b4-stage-complete",
     "20260518-claude-finalwishes-b5-stage-complete",
     "20260518-claude-finalwishes-b6-stage-complete",
-    "20260518-claude-finalwishes-b7-stage-complete"
+    "20260518-claude-finalwishes-b7-stage-complete",
+    "20260518-claude-finalwishes-v010-goal-complete"
   ],
   "pending_for_claude": []
 }
