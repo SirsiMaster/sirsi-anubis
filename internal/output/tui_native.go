@@ -103,6 +103,22 @@ func nativeGhosts() nativeResult {
 			title: "𓃣 Ghosts — Select Hauntings to Exorcise",
 			items: items,
 			onConfirm: func(selected []selectItem) nativeResult {
+				// Route through safety gateway before any deletion
+				if gw := getCleanGateway(); gw != nil {
+					var gatewayItems []jackal.Finding
+					for _, item := range selected {
+						if g, ok := item.Data.(ka.Ghost); ok {
+							gatewayItems = append(gatewayItems, jackal.Finding{
+								RuleName:    "ghost-exorcism",
+								Description: g.AppName,
+								SizeBytes:   g.TotalSize,
+							})
+						}
+					}
+					if err := gw.ConfirmClean(gatewayItems, "ghost-exorcism"); err != nil {
+						return nativeResult{err: err}
+					}
+				}
 				s := ka.NewScanner()
 				var totalFreed int64
 				var totalCleaned int
@@ -284,6 +300,11 @@ func nativeCleanDryRun() nativeResult {
 				if len(findings) == 0 {
 					return nativeResult{lines: []string{"", "  Nothing selected to clean."}, deityKey: "anubis"}
 				}
+				if gw := getCleanGateway(); gw != nil {
+					if err := gw.ConfirmClean(findings, "clean-select"); err != nil {
+						return nativeResult{err: err}
+					}
+				}
 				engine := jackal.DefaultEngine()
 				engine.RegisterAll(rules.AllRules()...)
 				ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -324,6 +345,12 @@ func nativeCleanConfirm() nativeResult {
 
 	if len(safeFindings) == 0 {
 		return nativeResult{lines: []string{"", "  Nothing to clean."}, deityKey: "anubis"}
+	}
+
+	if gw := getCleanGateway(); gw != nil {
+		if err := gw.ConfirmClean(safeFindings, "clean-confirm"); err != nil {
+			return nativeResult{deityKey: "anubis", err: err}
+		}
 	}
 
 	engine := jackal.DefaultEngine()
@@ -409,6 +436,21 @@ func nativePurge() nativeResult {
 				}
 				if len(toClean) == 0 {
 					return nativeResult{lines: []string{"", "  Nothing selected to purge."}, deityKey: "anubis"}
+				}
+				// Route through safety gateway before any deletion
+				if gw := getCleanGateway(); gw != nil {
+					var gatewayItems []jackal.Finding
+					for _, a := range toClean {
+						gatewayItems = append(gatewayItems, jackal.Finding{
+							RuleName:    "purge-artifact",
+							Description: a.ProjectName,
+							Path:        a.ArtifactDir,
+							SizeBytes:   a.Size,
+						})
+					}
+					if err := gw.ConfirmClean(gatewayItems, "purge"); err != nil {
+						return nativeResult{err: err}
+					}
 				}
 				result, err := jackal.PurgeArtifacts(toClean, true)
 				if err != nil {
@@ -526,6 +568,21 @@ func nativeInstaller() nativeResult {
 				}
 				if len(toRemove) == 0 {
 					return nativeResult{lines: []string{"", "  Nothing selected to remove."}, deityKey: "anubis"}
+				}
+				// Route through safety gateway before any deletion
+				if gw := getCleanGateway(); gw != nil {
+					var gatewayItems []jackal.Finding
+					for _, f := range toRemove {
+						gatewayItems = append(gatewayItems, jackal.Finding{
+							RuleName:    "installer-removal",
+							Description: f.Name,
+							Path:        f.Path,
+							SizeBytes:   f.Size,
+						})
+					}
+					if err := gw.ConfirmClean(gatewayItems, "installer"); err != nil {
+						return nativeResult{err: err}
+					}
 				}
 				result, err := jackal.RemoveInstallers(toRemove, true)
 				if err != nil {

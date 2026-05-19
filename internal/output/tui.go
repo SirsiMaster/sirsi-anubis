@@ -95,8 +95,11 @@ type TUIModel struct {
 	netDownHist []float64 // last 60 samples
 	netUpHist   []float64 // last 60 samples
 
+	// Safety gateway for destructive actions
+	safetyGateway SafetyGateway
+
 	// Disk analyzer state
-	analyzePath    string
+	analyzePath string
 	analyzeEntries []jackal.DirEntry
 	analyzeCursor  int
 	analyzeTotal   int64
@@ -138,6 +141,8 @@ func NewTUIModel() TUIModel {
 		runningProc: &atomic.Pointer[os.Process]{},
 		steleReader: stele.NewReader("tui"),
 	}
+	m.safetyGateway = &defaultSafetyGateway{}
+	setCleanGateway(m.safetyGateway)
 	m.refreshActive()
 	return m
 }
