@@ -8,12 +8,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 
 ## [0.23.0-beta] — 2026-05-19
 
+### Claude Router Inbox Hooks
+
+- Added repo-local Claude Code hooks for router inbox awareness at session start and user prompt submit.
+- Added `.claude/hooks/router_inbox_check.py` to read the Idea Router state and stay silent unless the registered Claude agent has pending work.
+
 ### Ra/Horus CTR Hypervisor Canon Completion
 
 #### Code Surface
 - `sirsi router node-status` — Horus local-node status command showing router home, registered agents, pending work by agent, work-queue item statuses, daemon health, configured binary, and recent dispatch failures
 - `internal/router/nodestatus.go` — `CollectNodeStatus()` aggregation with `LaunchctlChecker` injectable for testability
 - `internal/router/nodestatus_test.go` — 5 tests covering basic fields, pending-by-agent, sorted agents, daemon-not-installed, and work-queue summary with failures
+- `internal/router/executor_test.go` — added non-Claude/non-Codex webhook registration and API wake dispatch coverage for universal agent wake proof
 
 #### Documentation
 - Case study indexed: `docs/case-studies/ra-horus-ctr-hypervisor.md`

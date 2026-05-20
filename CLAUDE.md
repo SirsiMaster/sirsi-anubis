@@ -1,3 +1,21 @@
+# AI Agent Startup
+
+Start with the universal workspace law:
+
+```text
+/Users/thekryptodragon/Development/AGENTS.md
+```
+
+Then read the target repository's `AGENTS.md` and the portfolio router:
+
+```text
+/Users/thekryptodragon/Development/sirsi-pantheon/.agents/idea-router/
+```
+
+Use the router for `/plan`, `/goal`, ETA, repo ownership, verification evidence, and handoff writeback. Do not use this file as a private side channel.
+
+---
+
 # PANTHEON_RULES.md
 **Operational Directive for All Development Agents (sirsi-pantheon)**
 **Version:** 3.0.0 (v0.9.0-rc1 Release)

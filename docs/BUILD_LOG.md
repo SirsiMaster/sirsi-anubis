@@ -8,6 +8,30 @@
 
 ---
 
+## Session 34: 2026-05-19 — Ra/Horus CTR Hypervisor Canon Completion
+**Objective:** Complete the Ra/Horus CTR Hypervisor canon — code surface, docs propagation, and Codex review resolution.
+
+### Accomplishments:
+1. **Horus Local-Node Status (`sirsi router node-status`)**:
+   - `CollectNodeStatus()` aggregates registry, queue state, work items, daemon health, and dispatch failures
+   - `LaunchctlChecker` abstraction for testable daemon probing (Rule A16)
+   - 5 tests: basic fields, pending-by-agent, sorted agents, daemon health, work-queue summary with failures
+2. **Documentation Propagation**:
+   - CHANGELOG.md: v0.23.0-beta entry for CTR canon
+   - DEITY_REGISTRY.md: Rule D6 updated with Horus per-desktop node split
+   - CASE-STUDIES.md: Case Study 15 indexed (Ra/Horus CTR Hypervisor)
+   - PANTHEON_HIERARCHY.md §VII and ARCHITECTURE_DESIGN.md §2.8 verified consistent
+3. **Codex Review Resolution**:
+   - Addressed all 3 blocking gaps from `20260519-codex-ra-horus-canon-review-request-changes`
+   - Completion note written to codex-pantheon with full evidence
+
+### Technical Metrics:
+- **Tests**: 5 new (node-status), all passing
+- **Build**: `go build ./cmd/sirsi/` passes (existing `-lobjc` warning only)
+- **Files Changed**: 7 (nodestatus.go, nodestatus_test.go, routercmd.go, CHANGELOG, DEITY_REGISTRY, CASE-STUDIES, BUILD_LOG)
+
+---
+
 ## Session 33: 2026-03-27 — The Weave of Net & the Healing of Isis
 **Objective:** Hardening the core deities to 95% coverage and establishing the Net/Isis cycle.
 

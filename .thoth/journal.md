@@ -5,23 +5,6 @@
 
 ---
 
-## Entry 015 — 2026-03-23 08:30 — "The Pantheon's Modular Soul"
-
-**Context**: Session 11 — Full project audit and modular vision refinement.
-
-**Insight**: The Pantheon is not a monolith. It is an ecosystem of independent deities. Users should be able to download any single deity (Ra, Seba, Anubis, Thoth, Ma'at) without platooning the entire Pantheon. Findings should allude to other deities (Referral Logic).
-
-**Decision**: 
-- Canonized ADR-005 update: Ra (Hypervisor), Seba (Mapping), Ma'at (Observation).
-- Updated SIRSI_PORTFOLIO_STANDARD to v2.1.0 (Independent Deployment + Referral Logic).
-- Renamed internal/mapper to internal/seba and cmd/pantheon/map to cmd/pantheon/seba to honor the 'star map' deity.
-- Fixed phantom domain sirsinexus.dev → sirsi.ai everywhere.
-- Wired structured logging into all core modules.
-
-**Result**: Architectural clarity. The Pantheon is now both a unified brand and a modular toolkit. Seba is no longer a generic 'mapper' but a designated deity with a focused research path.
-
----
-
 ## Entry 016 — 2026-03-23 16:25 — "First, Do No Harm"
 
 **Context**: Session 11 — experienced IDE degradation firsthand during a multi-hour agent session.
@@ -390,5 +373,26 @@ func setSampleFn(fn func(...)) { sampleMu.Lock(); defer sampleMu.Unlock(); sampl
 
 **Decisions**:
 - {"session_id":"73458060-7593-4916-9c32-3885e6708be2","transcript_path":"/Users/thekryptodragon/.claude/projects/-Users-thekryptodragon-Development-sirsi-pantheon/73458060-7593-4916-9c32-3885e6708be2.jsonl","cwd":"/Users/thekryptodragon/Development/sirsi-pantheon","hook_event_name":"PreCompact","trigger":"auto","custom_instructions":null}
+
+---
+
+## Entry 035 — 2026-05-19 18:35 — Session Compact (COMPACT)
+
+> Persisted via `thoth compact` before context compression.
+
+**Decisions**:
+- -
+- Router snapshot:
+- active topics: assiduous-v110-completion, finalwishes-v010-illinois-probate, ra-horus-router-hypervisor-canon, claude-cli-auth-for-router-dispatch
+- completed topics: 25
+- last Codex read: 2026-05-19T10:50:37-04:00
+- last Claude read: 2026-05-19T20:00:00Z
+- pending:
+- claude-assiduous: 20260519-codex-assiduous-google-calendar-implementation
+- claude-finalwishes: 20260518-codex-finalwishes-v010-illinois-probate-review, 20260519-codex-finalwishes-v010-goal-review
+- codex: 20260519-claude-pantheon-horus-wake-complete
+- codex-assiduous: 20260519-claude-assiduous-codex-batch2
+- codex-pantheon: 20260519-claude-pantheon-horus-wake-complete
+- dispatch ledger: 968 bytes, updated 2026-05-19 11:42:04
 
 ---

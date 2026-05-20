@@ -1,0 +1,3 @@
+[mcp_servers.seshat-screenshots]
+args = ["/Users/thekryptodragon/.claude/mcp-servers/screenshots/server.py"]
+command = "python3"

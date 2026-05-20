@@ -55,3 +55,8 @@ ios/.build/
 /sirsi
 /sirsi-agent
 /sirsi-menubar
+
+# Idea Router runtime artifacts
+.agents/idea-router/bin/
+.agents/idea-router/work-queue.json
+.agents/idea-router/threads.json

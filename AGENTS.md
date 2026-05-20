@@ -1,4 +1,19 @@
 # PANTHEON_RULES.md
+
+## Development Workspace Router Law
+
+This repo inherits the workspace-wide agent law at `/Users/thekryptodragon/Development/AGENTS.md`.
+
+All AI agents, regardless of vendor or model family, must follow that Development-root law plus this repo's local rules. Before non-trivial work, read:
+
+1. `/Users/thekryptodragon/Development/AGENTS.md`
+2. this repo's `AGENTS.md`
+3. `/Users/thekryptodragon/Development/sirsi-pantheon/.agents/idea-router/state.json`
+4. `/Users/thekryptodragon/Development/sirsi-pantheon/.agents/idea-router/agents.json`
+5. any router item addressed to this repo's registered agent id
+
+Router etiquette is mandatory: use `/plan`, `/goal`, ETA fields, repo-segmented ownership, verification evidence, and router writeback. Agent type does not matter; Codex, Claude, Gemini, Gemma, Qwen, and future agents obey the same contract.
+
 **Operational Directive for All Development Agents (sirsi-pantheon)**
 **Version:** 3.0.0 (v0.9.0-rc1 Release)
 **Date:** March 31, 2026
@@ -18,6 +33,27 @@ Every AI agent working in this repository, including Codex, Claude, Gemini, Qwen
 
 User shorthand: `ctr` means check the router.
 
+## Thread Registration Law
+
+Every agent thread or session must register with CTR at startup, not only the agent binary/profile.
+
+An agent id answers "who can receive work?" A thread id answers "which open conversation or worker instance is alive right now?" Horus owns the per-desktop thread surface.
+
+At startup, every Codex, Claude, Gemini, Gemma, Qwen, or future agent thread must:
+
+1. determine its registered `agent_id`
+2. create or refresh a `thread_id`
+3. record repo path, workstream, start time, last heartbeat, wake mechanism, and inbox subscription
+4. read pending CTR items addressed to its `agent_id`
+5. either work the item, route it, or mark it blocked with evidence
+6. keep heartbeat/status fresh until the thread exits or becomes inactive
+
+Horus node status must show active threads, stale threads, blocked wake surfaces, and which inboxes each thread is watching. A thread that can receive notification but cannot wake or cannot write back is not healthy.
+
+
+## Ra Owns CTR
+
+CTR and the Idea Router are owned by Ra and homed in this Pantheon repo. Horus owns the per-desktop node and local operator view. Other repos inherit router law through their `AGENTS.md` files, but they must not create competing router homes. Ra owns orchestration, dispatch, registry, work queue law, and super-agent authority. Horus owns this workstation's local agent/window visibility, daemon health, repo status, and desktop control surface. Thoth preserves memory, Ma'at validates governance, and Net keeps work aligned to portfolio goals.
 ## Net Goal-Weaving & Architecture Doctrine
 
 Net 𓁯, The Weaver, keeps every workstream aligned to its full `/goal`, product surface target, and architecture decisions. Agents must work independently where possible and must include `eta_for_review`, `next_check_at`, or `estimated_duration` in router handoffs.
@@ -375,7 +411,7 @@ Anubis scans filesystems and processes. Scan results may contain sensitive infor
 > Established May 15, 2026. Codex and Claude must collaborate through the Idea Router for multi-agent and cross-agent workstreams.
 
 *   **Rule**: All non-trivial Sirsi workstreams MUST begin with `/plan`. Codex and Claude MUST collaborate through `.agents/idea-router/` to create or review the plan before implementation when both agents are involved.
-*   **Ra Ownership**: The Idea Router belongs to 𓇶 Ra. Ra owns agent registry, work queue, dispatch, relay, and super-agent mandates. Thoth preserves router memory; Ma'at validates router governance.
+*   **Ra/Horus Ownership**: The Idea Router belongs to 𓇶 Ra and is homed in Pantheon. Ra owns agent registry, work queue law, dispatch protocol, relay, portfolio authority, and super-agent mandates. Horus owns the per-desktop runtime node: local daemon health, local agent/window visibility, local repo status, and workstation operator surface. Thoth preserves router memory; Ma'at validates router governance.
 *   **Goal Flag**: Every workstream MUST define a `/goal` flag in the plan. The `/goal` is the explicit completion condition, including required verification, tests, review, and handoff artifacts. Agents continue working until the `/goal` is met, blocked by safety/user approval, or impossible with a stated reason.
 *   **Repo Segmentation**: Work on repositories MUST be segmented. Each repository requires its own agent/workstream. A single agent MUST NOT modify multiple repositories unless it is explicitly designated as a **super agent** with a written cross-repo mandate in the `/plan`.
 *   **Super Agent Mandate**: A super agent may coordinate multiple repo agents, compare evidence across repos, and write cross-repo decisions, but MUST avoid direct code edits across repos unless the mandate explicitly permits those paths.

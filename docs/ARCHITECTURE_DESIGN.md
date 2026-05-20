@@ -1,6 +1,6 @@
 # Architecture Design — Sirsi Pantheon
-**Version:** 2.1.0
-**Date:** March 29, 2026
+**Version:** 2.2.0
+**Date:** May 19, 2026
 **Custodian:** 𓁯 Net (The Weaver)
 
 ---
@@ -101,6 +101,24 @@ The Token Intelligence Layer composes three modules that minimize token consumpt
 - **Horus (The All-Seeing)** — Structural code graph engine. Uses Go AST symbol extraction to produce file outlines (declarations only, no function bodies) that are 8-49x smaller than full source. Serves symbol context queries for targeted code understanding without reading entire files. CLI: `sirsi horus`. MCP tools: `code_symbols`, `code_outline`, `code_context`.
 
 **Composition**: All three modules compose naturally. RTK filters raw output, Vault sandboxes what remains too large, and Horus replaces full-file reads with structural outlines. Together they add **10 new MCP tools** and **8 new Stele events** to the platform.
+
+### 2.8 CTR Hypervisor Layer (ADR-017)
+
+The CTR (Cross-Team Router) Hypervisor is Ra-owned infrastructure that orchestrates AI agents across the Sirsi portfolio. It is homed in Pantheon at `.agents/idea-router/`.
+
+**Ra** owns Sirsi-wide orchestration: agent registry (`agents.json`), work queue (`state.json`), dispatch protocol, relay verification, super-agent mandates, and portfolio authority.
+
+**Horus** owns the per-desktop runtime view: daemon health, local agent/window visibility, local repo status, and the operator surface (TUI, menubar).
+
+**Supporting deities**: Thoth preserves router memory across sessions. Ma'at validates router governance. Net keeps portfolio goals aligned.
+
+**Components**:
+- `internal/router/` — Router CLI commands, service layer, runner, work items
+- `.agents/idea-router/` — Filesystem protocol: proposals, reviews, decisions, state
+- `cmd/sirsi/routercmd.go` — Cobra command registration for `sirsi router *`
+- `configs/` — Agent launch configurations
+
+**User surface**: `sirsi router status | work | daemon | install-agent | smoke`
 
 ---
 
