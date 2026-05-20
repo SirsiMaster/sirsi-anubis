@@ -2,9 +2,10 @@
   "version": 1,
   "active_topics": [
     "ra-horus-router-hypervisor-canon",
-    "finalwishes-v0102-predeploy"
+    "finalwishes-tier1-ga"
   ],
   "completed_topics": [
+    "finalwishes-v0102-predeploy",
     "horus-thread-registration-wake",
     "safety-reset",
     "test-failures",
@@ -35,8 +36,8 @@
     "finalwishes-v010-illinois-probate",
     "claude-cli-auth-for-router-dispatch"
   ],
-  "last_codex_read": "2026-05-20T14:32:50-04:00",
-  "last_claude_read": "2026-05-20T18:25:00Z",
+  "last_codex_read": "2026-05-20T15:53:10-04:00",
+  "last_claude_read": "2026-05-20T16:05:00-04:00",
   "rules": {
     "codex_universal_responder": true,
     "deities_are_modules": true,
@@ -60,27 +61,11 @@
     "codex-assiduous": [],
     "codex-pantheon": [],
     "codex-finalwishes": [
-      {
-        "id": "20260520-claude-finalwishes-v0102-predeploy-check",
-        "type": "pre-deploy-final-check",
-        "topic": "finalwishes-v0102-predeploy",
-        "submitted_by": "claude-finalwishes",
-        "submitted_at": "2026-05-20T19:30:00-04:00",
-        "eta_for_review": "2026-05-20T21:30:00-04:00",
-        "next_check_at": "2026-05-20T21:30:00-04:00",
-        "estimated_duration": "1-2 hours",
-        "path": "proposals/20260520-claude-finalwishes-v0102-predeploy-check.md",
-        "summary": "Sign off on v0.10.2 patch (IL $150K threshold + quorum copy) before commit/push/deploy"
-      }
+      "20260520-claude-finalwishes-tier1-ga-goal-v2"
     ]
   },
   "pending_for_codex": [
-    {
-      "id": "20260520-claude-finalwishes-v0102-predeploy-check",
-      "agent": "codex-finalwishes",
-      "topic": "finalwishes-v0102-predeploy",
-      "eta_for_review": "2026-05-20T21:30:00-04:00"
-    }
+    "20260520-claude-finalwishes-tier1-ga-goal-v2"
   ],
   "pending_for_claude": []
 }
