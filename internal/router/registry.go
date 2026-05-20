@@ -32,6 +32,21 @@ type AgentConfig struct {
 
 	// Workstream is the default workstream this agent handles.
 	Workstream string `json:"workstream,omitempty"`
+
+	// Wake describes how Horus should wake this agent when work is pending.
+	// Missing wake metadata defaults to cli-spawn for existing agents.
+	Wake WakeConfig `json:"wake,omitempty"`
+}
+
+// WakeConfig defines the pluggable wake adapter for a registered agent.
+type WakeConfig struct {
+	Mechanism   string            `json:"mechanism,omitempty"`
+	Endpoint    string            `json:"endpoint,omitempty"`
+	Auth        string            `json:"auth,omitempty"`
+	MCPServer   string            `json:"mcp_server,omitempty"`
+	HealthCheck []string          `json:"health_check,omitempty"`
+	AuthCheck   []string          `json:"auth_check,omitempty"`
+	Hooks       map[string]string `json:"hooks,omitempty"`
 }
 
 // Registry holds all registered agent configurations.
@@ -73,7 +88,34 @@ func SaveRegistry(routerRoot string, reg *Registry) error {
 	if err != nil {
 		return fmt.Errorf("marshal agents.json: %w", err)
 	}
-	return os.WriteFile(filepath.Join(routerRoot, "agents.json"), data, 0o644)
+	path := filepath.Join(routerRoot, "agents.json")
+	mode := os.FileMode(0o644)
+	if info, err := os.Stat(path); err == nil {
+		mode = info.Mode().Perm()
+	}
+
+	tmp, err := os.CreateTemp(routerRoot, ".agents.json-*")
+	if err != nil {
+		return fmt.Errorf("create temporary agents.json: %w", err)
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return fmt.Errorf("write temporary agents.json: %w", err)
+	}
+	if err := tmp.Chmod(mode); err != nil {
+		tmp.Close()
+		return fmt.Errorf("chmod temporary agents.json: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("close temporary agents.json: %w", err)
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		return fmt.Errorf("replace agents.json: %w", err)
+	}
+	return nil
 }
 
 // Lookup returns the agent config for the given ID, or an error if not registered.
@@ -93,13 +135,38 @@ func (cfg *AgentConfig) Validate() error {
 	if cfg.Type == "" {
 		return fmt.Errorf("agent %q: type is required", cfg.ID)
 	}
-	if len(cfg.Command) == 0 {
-		return fmt.Errorf("agent %q: command array is required (no shell strings)", cfg.ID)
-	}
-	if cfg.Cwd == "" {
-		return fmt.Errorf("agent %q: cwd is required", cfg.ID)
+	switch cfg.WakeMechanism() {
+	case "", "cli-spawn":
+		if len(cfg.Command) == 0 {
+			return fmt.Errorf("agent %q: command array is required for cli-spawn (no shell strings)", cfg.ID)
+		}
+		if cfg.Cwd == "" {
+			return fmt.Errorf("agent %q: cwd is required for cli-spawn", cfg.ID)
+		}
+	case "api-call":
+		if cfg.Wake.Endpoint == "" {
+			return fmt.Errorf("agent %q: wake.endpoint is required for api-call", cfg.ID)
+		}
+	case "mcp-notification":
+		if cfg.Wake.MCPServer == "" {
+			return fmt.Errorf("agent %q: wake.mcp_server is required for mcp-notification", cfg.ID)
+		}
+	default:
+		return fmt.Errorf("agent %q: unsupported wake mechanism %q", cfg.ID, cfg.Wake.Mechanism)
 	}
 	return nil
+}
+
+// WakeMechanism returns the configured wake mechanism, defaulting legacy agents
+// with commands to cli-spawn.
+func (cfg AgentConfig) WakeMechanism() string {
+	if cfg.Wake.Mechanism != "" {
+		return cfg.Wake.Mechanism
+	}
+	if len(cfg.Command) > 0 {
+		return "cli-spawn"
+	}
+	return ""
 }
 
 // ValidateAll checks every registered agent.

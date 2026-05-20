@@ -38,7 +38,9 @@ func (m TUIModel) executeAction(action tabAction) (TUIModel, tea.Cmd) {
 		isDoctor := len(action.Args) >= 2 && action.Args[0] == "isis" && action.Args[1] == "diagnose"
 		if isScan || isDoctor {
 			ch := make(chan string, 100)
+			errCh := make(chan error, 1)
 			m.streamCh = ch
+			m.streamErrCh = errCh
 
 			label := "Scanning..."
 			if isDoctor {
@@ -58,18 +60,13 @@ func (m TUIModel) executeAction(action tabAction) (TUIModel, tea.Cmd) {
 			} else {
 				progressFn = func() nativeResult { return nativeDoctorWithProgress(ch) }
 			}
-			var streamErr error
 			return m, tea.Batch(m.spinner.Tick, elapsedTick(), func() tea.Msg {
 				go func() {
 					res := progressFn()
-					streamErr = res.err
+					errCh <- res.err
 					close(ch)
 				}()
-				line, ok := <-ch
-				if !ok {
-					return streamLineMsg{done: true, err: streamErr}
-				}
-				return streamLineMsg{line: line}
+				return waitForStreamLineResult(ch, errCh)()
 			})
 		}
 
@@ -88,6 +85,7 @@ func (m TUIModel) executeArgs(args []string) (TUIModel, tea.Cmd) {
 	m.runningArgs = args
 	m.cmdStartTime = time.Now()
 	m.streamCh = make(chan string, 100)
+	m.streamErrCh = nil
 	m.outputLines = nil
 	m.postRunCmds = nil
 
@@ -163,6 +161,7 @@ func (m TUIModel) handleStreamLine(msg streamLineMsg) (TUIModel, tea.Cmd) {
 	if msg.done {
 		m.mode = viewDone
 		m.runningProc.Store(nil)
+		m.streamErrCh = nil
 		m.lastDeity = m.runningDeity
 
 		if m.runningDeity != "" {
@@ -270,6 +269,9 @@ func (m TUIModel) handleStreamLine(msg streamLineMsg) (TUIModel, tea.Cmd) {
 	m.outputLines = append(m.outputLines, "  "+msg.line)
 	m.viewport.SetContent(strings.Join(m.outputLines, "\n"))
 	m.viewport.GotoBottom()
+	if m.streamErrCh != nil {
+		return m, waitForStreamLineResult(m.streamCh, m.streamErrCh)
+	}
 	return m, waitForStreamLine(m.streamCh)
 }
 

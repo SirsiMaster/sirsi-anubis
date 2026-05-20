@@ -5,13 +5,14 @@
 // with numbered actions. Press a number to act. Press esc to go back.
 //
 // Layout:
-//   tui.go                     — Model, constructor, Init, Update, launchers, persistence
-//   tui_keys.go                — Key handling dispatch per view mode
-//   tui_view.go                — View rendering, tab bar, status dashboard, layout helpers
-//   tui_runner.go              — Command execution (native + subprocess streaming)
-//   tui_actions.go             — Tab definitions, native deity functions
-//   tui_messages.go            — Message types, view modes, tick functions
-//   tui_render*.go             — Render primitives and detail renderers
+//
+//	tui.go                     — Model, constructor, Init, Update, launchers, persistence
+//	tui_keys.go                — Key handling dispatch per view mode
+//	tui_view.go                — View rendering, tab bar, status dashboard, layout helpers
+//	tui_runner.go              — Command execution (native + subprocess streaming)
+//	tui_actions.go             — Tab definitions, native deity functions
+//	tui_messages.go            — Message types, view modes, tick functions
+//	tui_render*.go             — Render primitives and detail renderers
 package output
 
 import (
@@ -60,6 +61,7 @@ type TUIModel struct {
 	cmdStartTime time.Time
 	spinner      spinner.Model
 	streamCh     chan string
+	streamErrCh  chan error
 	runningProc  *atomic.Pointer[os.Process]
 
 	// Post-run suggestions
@@ -99,7 +101,7 @@ type TUIModel struct {
 	safetyGateway SafetyGateway
 
 	// Disk analyzer state
-	analyzePath string
+	analyzePath    string
 	analyzeEntries []jackal.DirEntry
 	analyzeCursor  int
 	analyzeTotal   int64

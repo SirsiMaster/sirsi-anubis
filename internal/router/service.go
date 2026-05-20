@@ -40,6 +40,92 @@ func DefaultServiceOptions(repoRoot, binaryPath string) ServiceOptions {
 	}
 }
 
+// ResolveStableBinary returns an executable path suitable for a long-lived
+// launchd plist. When invoked through `go run`, os.Executable points into a
+// temporary go-build directory that disappears after the command exits, so we
+// build a repo-local binary for the service instead.
+func ResolveStableBinary(repoRoot, candidate string) (string, error) {
+	if !isGoRunBinary(candidate) {
+		return candidate, nil
+	}
+	out := filepath.Join(repoRoot, ".agents", "idea-router", "bin", "sirsi")
+	if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
+		return "", fmt.Errorf("create router bin dir: %w", err)
+	}
+	cmd := exec.Command("go", "build", "-o", out, "./cmd/sirsi")
+	cmd.Dir = repoRoot
+	combined, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("build stable router binary: %w\n%s", err, string(combined))
+	}
+	return out, nil
+}
+
+// IsGoRunBinary reports whether a path is the temporary executable produced by
+// `go run`. It is exported for status reporting and tests.
+func IsGoRunBinary(path string) bool {
+	return isGoRunBinary(path)
+}
+
+func isGoRunBinary(path string) bool {
+	cleaned := filepath.Clean(path)
+	if strings.Contains(cleaned, string(filepath.Separator)+"go-build") &&
+		(strings.Contains(cleaned, string(filepath.Separator)+"exe"+string(filepath.Separator)) ||
+			strings.HasSuffix(filepath.Dir(cleaned), "-d")) {
+		return true
+	}
+	if gocache := os.Getenv("GOCACHE"); gocache != "" {
+		if rel, err := filepath.Rel(filepath.Clean(gocache), cleaned); err == nil && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && rel != ".." {
+			return true
+		}
+	}
+	parent := filepath.Base(filepath.Dir(cleaned))
+	grandparent := filepath.Base(filepath.Dir(filepath.Dir(cleaned)))
+	return strings.HasSuffix(parent, "-d") && len(grandparent) == 2 && isHexPair(grandparent)
+}
+
+func isHexPair(s string) bool {
+	if len(s) != 2 {
+		return false
+	}
+	for _, r := range s {
+		if (r < '0' || r > '9') && (r < 'a' || r > 'f') && (r < 'A' || r > 'F') {
+			return false
+		}
+	}
+	return true
+}
+
+// LaunchAgentProgram returns the first ProgramArguments entry from a rendered
+// launchd plist, which is the binary launchd will execute.
+func LaunchAgentProgram(plistPath string) (string, error) {
+	data, err := os.ReadFile(plistPath)
+	if err != nil {
+		return "", err
+	}
+	lines := strings.Split(string(data), "\n")
+	inArgs := false
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		switch trimmed {
+		case "<key>ProgramArguments</key>":
+			inArgs = true
+			continue
+		case "</array>":
+			if inArgs {
+				return "", fmt.Errorf("ProgramArguments has no executable")
+			}
+		}
+		if !inArgs || !strings.HasPrefix(trimmed, "<string>") || !strings.HasSuffix(trimmed, "</string>") {
+			continue
+		}
+		value := strings.TrimPrefix(trimmed, "<string>")
+		value = strings.TrimSuffix(value, "</string>")
+		return xmlUnescape(value), nil
+	}
+	return "", fmt.Errorf("ProgramArguments not found")
+}
+
 // RenderLaunchAgentPlist returns a launchd plist that starts the router daemon.
 func RenderLaunchAgentPlist(opts ServiceOptions) string {
 	args := []string{opts.BinaryPath, "router", "daemon", "--target", "all"}
@@ -139,6 +225,17 @@ func xmlEscape(s string) string {
 		">", "&gt;",
 		`"`, "&quot;",
 		"'", "&apos;",
+	)
+	return replacer.Replace(s)
+}
+
+func xmlUnescape(s string) string {
+	replacer := strings.NewReplacer(
+		"&apos;", "'",
+		"&quot;", `"`,
+		"&gt;", ">",
+		"&lt;", "<",
+		"&amp;", "&",
 	)
 	return replacer.Replace(s)
 }

@@ -63,16 +63,26 @@ func (s *State) MigratePending() {
 	if s.Pending == nil {
 		s.Pending = make(map[string][]string)
 	}
-	// Migrate legacy fields if they have items not already in the dynamic map
-	if len(s.PendingForCodex) > 0 {
-		if _, ok := s.Pending["codex-pantheon"]; !ok {
-			s.Pending["codex-pantheon"] = s.PendingForCodex
+	merge := func(target string, ids []string) {
+		for _, id := range ids {
+			found := false
+			for _, existing := range s.Pending[target] {
+				if existing == id {
+					found = true
+					break
+				}
+			}
+			if !found {
+				s.Pending[target] = append(s.Pending[target], id)
+			}
 		}
 	}
+	// Migrate legacy fields if they have items not already in the dynamic map
+	if len(s.PendingForCodex) > 0 {
+		merge("codex-pantheon", s.PendingForCodex)
+	}
 	if len(s.PendingForClaude) > 0 {
-		if _, ok := s.Pending["claude-pantheon"]; !ok {
-			s.Pending["claude-pantheon"] = s.PendingForClaude
-		}
+		merge("claude-pantheon", s.PendingForClaude)
 	}
 }
 
@@ -176,6 +186,16 @@ func (s *State) ClearInbox(agent, docID string) {
 	if s.Pending != nil {
 		if items, ok := s.Pending[agent]; ok {
 			s.Pending[agent] = remove(items, docID)
+		}
+		switch agent {
+		case "codex":
+			s.Pending["codex-pantheon"] = remove(s.Pending["codex-pantheon"], docID)
+		case "codex-pantheon":
+			s.Pending["codex"] = remove(s.Pending["codex"], docID)
+		case "claude":
+			s.Pending["claude-pantheon"] = remove(s.Pending["claude-pantheon"], docID)
+		case "claude-pantheon":
+			s.Pending["claude"] = remove(s.Pending["claude"], docID)
 		}
 	}
 

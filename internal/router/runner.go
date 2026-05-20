@@ -184,6 +184,7 @@ func (rr *Runner) PendingDispatches() ([]Dispatch, error) {
 	if err != nil {
 		return nil, err
 	}
+	state.NormalizePending()
 	var out []Dispatch
 	seen := make(map[string]bool)
 	add := func(target string, ids []string) {
@@ -194,6 +195,11 @@ func (rr *Runner) PendingDispatches() ([]Dispatch, error) {
 			key := target + ":" + id
 			if seen[key] {
 				continue
+			}
+			if rr.opts.Executor != nil {
+				if item := rr.opts.Executor.workQueue.Find(key); item != nil && workItemSuppressesDispatch(item.Status) {
+					continue
+				}
 			}
 			seen[key] = true
 			doc, err := rr.router.Get(id)
@@ -211,10 +217,6 @@ func (rr *Runner) PendingDispatches() ([]Dispatch, error) {
 			})
 		}
 	}
-	if rr.opts.Executor != nil {
-		state.MigratePending()
-	}
-
 	// v3 path: read dynamic Pending map (keyed by agent_id)
 	if rr.opts.Executor != nil && state.Pending != nil {
 		for agentID, ids := range state.Pending {
@@ -234,4 +236,13 @@ func (rr *Runner) PendingDispatches() ([]Dispatch, error) {
 // Fingerprint changes when the underlying router document changes.
 func (d Dispatch) Fingerprint() string {
 	return string(d.Type) + ":" + strconv.FormatInt(d.ModTime.UnixNano(), 10) + ":" + strconv.Itoa(d.Size)
+}
+
+func workItemSuppressesDispatch(status WorkStatus) bool {
+	switch status {
+	case StatusDispatched, StatusStarted, StatusWorking, StatusCompleted:
+		return true
+	default:
+		return false
+	}
 }

@@ -302,3 +302,40 @@ JSON
 		t.Fatalf("work item status = %s, want %s; last error: %s", item.Status, StatusCompleted, item.LastError)
 	}
 }
+
+func TestRunnerExecutorSkipsInFlightWorkItemAfterRestart(t *testing.T) {
+	r, tmp := setupTestRouter(t)
+	routerRoot := filepath.Join(tmp, ".agents", "idea-router")
+	err := SaveRegistry(routerRoot, &Registry{Agents: map[string]AgentConfig{
+		"codex-pantheon": {
+			Type:    "codex",
+			Command: []string{"/bin/echo"},
+			Cwd:     tmp,
+		},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	id, err := r.SubmitAddressed(DocReview, "claude", "Needs Registered Codex", "content", "codex-pantheon")
+	if err != nil {
+		t.Fatal(err)
+	}
+	reg, _ := LoadRegistry(routerRoot)
+	wq, _ := LoadWorkQueue(routerRoot)
+	item := wq.AddItem(id, "codex-pantheon", "claude-pantheon", "test")
+	wq.UpdateStatus(item.ID, StatusDispatched, "")
+	if err := wq.Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	exec := NewExecutor(reg, r, wq, &buf)
+	rr := NewRunner(r, RunnerOptions{RepoRoot: tmp, Agent: "all", Out: &buf, Executor: exec})
+	if err := rr.Tick(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(buf.String(), "Dispatching to codex-pantheon") {
+		t.Fatalf("in-flight work item was redispatched after restart:\n%s", buf.String())
+	}
+}

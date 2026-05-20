@@ -875,7 +875,7 @@ func init() {
 	rootCmd.AddCommand(purgeCmd, analyzeCmd, installerCmd)
 	rootCmd.AddCommand(networkCmd, fixCmd, monitorCmd)
 	rootCmd.AddCommand(auditCmd, riskCmd, hardwareCmd, diagramCmd, statusCmd)
-	rootCmd.AddCommand(versionCmd, quickstartCmd, setupCmd, routerCmd)
+	rootCmd.AddCommand(versionCmd, quickstartCmd, setupCmd, routerCmd, agentCmd, threadCmd)
 
 	// ── Power-user deity modules (hidden from default help, still work) ──
 	anubisCmd.Hidden = true

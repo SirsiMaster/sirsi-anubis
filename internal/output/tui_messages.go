@@ -12,11 +12,11 @@ import (
 
 // nativeResult is returned by native deity calls.
 type nativeResult struct {
-	lines      []string             // rendered output lines
-	deityKey   string               // which deity ran
-	fixCmds    []string             // actionable fix commands (override suggest engine)
+	lines      []string // rendered output lines
+	deityKey   string   // which deity ran
+	fixCmds    []string // actionable fix commands (override suggest engine)
 	err        error
-	selectReq  *selectRequest       // if non-nil, enter viewSelect mode instead of viewDone
+	selectReq  *selectRequest        // if non-nil, enter viewSelect mode instead of viewDone
 	analyzeRes *jackal.AnalyzeResult // if non-nil, enter viewAnalyze mode
 }
 
@@ -109,5 +109,19 @@ func waitForStreamLine(ch <-chan string) tea.Cmd {
 			return streamLineMsg{done: true}
 		}
 		return streamLineMsg{line: line}
+	}
+}
+
+func waitForStreamLineResult(ch <-chan string, errCh <-chan error) tea.Cmd {
+	return func() tea.Msg {
+		line, ok := <-ch
+		if ok {
+			return streamLineMsg{line: line}
+		}
+		var err error
+		if errCh != nil {
+			err = <-errCh
+		}
+		return streamLineMsg{done: true, err: err}
 	}
 }

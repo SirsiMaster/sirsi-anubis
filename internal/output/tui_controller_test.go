@@ -48,6 +48,22 @@ func newTestModel() TUIModel {
 	}
 }
 
+func TestWaitForStreamLineResultPropagatesErrorOnClose(t *testing.T) {
+	ch := make(chan string)
+	errCh := make(chan error, 1)
+	wantErr := errors.New("scan failed")
+	errCh <- wantErr
+	close(ch)
+
+	msg := waitForStreamLineResult(ch, errCh)().(streamLineMsg)
+	if !msg.done {
+		t.Fatal("done = false, want true")
+	}
+	if msg.err != wantErr {
+		t.Fatalf("err = %v, want %v", msg.err, wantErr)
+	}
+}
+
 // ── TestScanSelectTransition ────────────────────────────────────────
 // Verifies that a nativeResult carrying a selectReq transitions the
 // TUI to viewSelect mode and exposes the request's items.
@@ -395,11 +411,11 @@ func TestAnalyzeCursorBounds(t *testing.T) {
 
 func TestCleanGatewayBlocks(t *testing.T) {
 	type testCase struct {
-		name        string
-		gatewayErr  error
-		wantMode    viewMode
-		wantErrNil  bool
-		wantLines   int // minimum lines in output
+		name       string
+		gatewayErr error
+		wantMode   viewMode
+		wantErrNil bool
+		wantLines  int // minimum lines in output
 	}
 
 	tests := []testCase{

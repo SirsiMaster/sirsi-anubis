@@ -9,22 +9,33 @@ package router
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 )
 
 // Executor launches registered agents and verifies writeback.
 type Executor struct {
-	registry  *Registry
-	router    *Router
-	workQueue *WorkQueue
-	out       io.Writer
-	timeout   time.Duration
+	registry       *Registry
+	router         *Router
+	workQueue      *WorkQueue
+	out            io.Writer
+	timeout        time.Duration
+	authProbe      AuthProbeFunc
+	wakeHTTPClient wakeHTTPClient
 }
+
+// DefaultExecutorTimeout is the per-dispatch wall-clock cap for an agent CLI
+// run. Claude/Codex sessions that read context and write router artifacts
+// routinely take 5–20 minutes; the previous 5-minute cap killed legitimate
+// in-progress work with `signal: killed` before writeback. Override with
+// SIRSI_ROUTER_EXECUTOR_TIMEOUT (a Go duration, e.g. "45m").
+const DefaultExecutorTimeout = 30 * time.Minute
 
 // NewExecutor creates an executor backed by the given registry, router, and work queue.
 func NewExecutor(reg *Registry, r *Router, wq *WorkQueue, out io.Writer) *Executor {
@@ -33,8 +44,30 @@ func NewExecutor(reg *Registry, r *Router, wq *WorkQueue, out io.Writer) *Execut
 		router:    r,
 		workQueue: wq,
 		out:       out,
-		timeout:   5 * time.Minute,
+		timeout:   resolveExecutorTimeout(),
+		authProbe: DefaultAuthProbe,
 	}
+}
+
+func resolveExecutorTimeout() time.Duration {
+	if raw := strings.TrimSpace(os.Getenv("SIRSI_ROUTER_EXECUTOR_TIMEOUT")); raw != "" {
+		if d, err := time.ParseDuration(raw); err == nil && d > 0 {
+			return d
+		}
+	}
+	return DefaultExecutorTimeout
+}
+
+// SetTimeout overrides the per-dispatch timeout (for testing).
+func (e *Executor) SetTimeout(d time.Duration) {
+	if d > 0 {
+		e.timeout = d
+	}
+}
+
+// SetAuthProbe overrides the auth probe function (for testing).
+func (e *Executor) SetAuthProbe(fn AuthProbeFunc) {
+	e.authProbe = fn
 }
 
 // Dispatch launches the target agent for a work item and verifies writeback.
@@ -52,13 +85,33 @@ func (e *Executor) Dispatch(ctx context.Context, item *WorkItem) error {
 		return err
 	}
 
+	// Pre-dispatch auth check: fail fast for direct agent CLI launches.
+	if e.authProbe != nil && len(cfg.Command) > 0 && shouldProbeCommandAuth(cfg.Command[0], cfg.Type) {
+		cliPath, lookErr := exec.LookPath(cfg.Command[0])
+		if lookErr != nil {
+			reason := fmt.Sprintf("%s CLI not found in PATH — install before dispatching", cfg.Command[0])
+			e.workQueue.UpdateStatus(item.ID, StatusBlocked, reason)
+			e.workQueue.Save()
+			fmt.Fprintf(e.out, "  Blocked: %s\n", reason)
+			return fmt.Errorf("dispatch to %s blocked: %s", item.TargetAgentID, reason)
+		}
+		authOK, needsLogin, detail := e.authProbe(cliPath, cfg.Type)
+		if !authOK {
+			var reason string
+			if needsLogin {
+				reason = fmt.Sprintf("%s CLI not authenticated — run '%s' then /login to unblock dispatch", cfg.Type, cfg.Type)
+			} else {
+				reason = fmt.Sprintf("%s CLI auth check failed: %s", cfg.Type, detail)
+			}
+			e.workQueue.UpdateStatus(item.ID, StatusBlocked, reason)
+			e.workQueue.Save()
+			fmt.Fprintf(e.out, "  Blocked: %s\n", reason)
+			return fmt.Errorf("dispatch to %s blocked: %s", item.TargetAgentID, reason)
+		}
+	}
+
 	// Build the work prompt
 	prompt := buildWorkPrompt(item, cfg)
-
-	// Build the command: agent command + prompt as final arg
-	args := make([]string, len(cfg.Command)-1)
-	copy(args, cfg.Command[1:])
-	args = append(args, prompt)
 
 	// Record pre-dispatch state for writeback detection
 	preState, _ := e.router.ReadState()
@@ -77,28 +130,15 @@ func (e *Executor) Dispatch(ctx context.Context, item *WorkItem) error {
 	e.workQueue.Save()
 	fmt.Fprintf(e.out, "  Dispatching to %s (%s)...\n", item.TargetAgentID, cfg.Type)
 
-	// Launch with timeout
+	// Wake with timeout
 	execCtx, cancel := context.WithTimeout(ctx, e.timeout)
 	defer cancel()
 
-	var stderr bytes.Buffer
-	cmd := exec.CommandContext(execCtx, cfg.Command[0], args...)
-	cmd.Dir = cfg.Cwd
-	cmd.Stdout = e.out
-	cmd.Stderr = &stderr
-
-	// Set env overrides
-	if len(cfg.Env) > 0 {
-		cmd.Env = os.Environ()
-		for k, v := range cfg.Env {
-			cmd.Env = append(cmd.Env, k+"="+v)
-		}
-	}
-
-	err = cmd.Run()
+	err = e.wake(execCtx, item, cfg, prompt)
 	exitCode := 0
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
 			exitCode = exitErr.ExitCode()
 		} else {
 			exitCode = -1
@@ -106,11 +146,25 @@ func (e *Executor) Dispatch(ctx context.Context, item *WorkItem) error {
 	}
 
 	// Record attempt
-	stderrStr := stderr.String()
+	stderrStr := errString(err)
 	if len(stderrStr) > 4000 {
 		stderrStr = stderrStr[:4000] + "...(truncated)"
 	}
 	e.workQueue.RecordAttempt(item.ID, exitCode, errString(err), stderrStr)
+
+	if cfg.WakeMechanism() != WakeCLISpawn {
+		if err != nil {
+			reason := fmt.Sprintf("wake failed: %s", errString(err))
+			e.workQueue.UpdateStatus(item.ID, StatusFailed, reason)
+			e.workQueue.Save()
+			fmt.Fprintf(e.out, "  Failed: %s\n", reason)
+			return fmt.Errorf("wake %s failed: %w", item.TargetAgentID, err)
+		}
+		e.workQueue.UpdateStatus(item.ID, StatusDispatched, "")
+		e.workQueue.Save()
+		fmt.Fprintf(e.out, "  Wake sent via %s\n", cfg.WakeMechanism())
+		return nil
+	}
 
 	// Check for writeback: did the agent update state.json?
 	postState, _ := e.router.ReadState()
@@ -146,6 +200,37 @@ func (e *Executor) Dispatch(ctx context.Context, item *WorkItem) error {
 	e.workQueue.Save()
 	fmt.Fprintf(e.out, "  Warning: %s\n", reason)
 	return fmt.Errorf("%s", reason)
+}
+
+func (e *Executor) wakeCLI(ctx context.Context, _ *WorkItem, cfg *AgentConfig, prompt string) error {
+	args := make([]string, len(cfg.Command)-1)
+	copy(args, cfg.Command[1:])
+	args = append(args, prompt)
+
+	var stderr bytes.Buffer
+	cmd := exec.CommandContext(ctx, cfg.Command[0], args...)
+	cmd.Dir = cfg.Cwd
+	cmd.Stdout = e.out
+	cmd.Stderr = &stderr
+
+	if len(cfg.Env) > 0 {
+		cmd.Env = os.Environ()
+		for k, v := range cfg.Env {
+			cmd.Env = append(cmd.Env, k+"="+v)
+		}
+	}
+
+	if err := cmd.Run(); err != nil {
+		if stderr.Len() > 0 {
+			return fmt.Errorf("%w: %s", err, strings.TrimSpace(stderr.String()))
+		}
+		return err
+	}
+	return nil
+}
+
+func shouldProbeCommandAuth(command, agentType string) bool {
+	return filepath.Base(command) == agentType
 }
 
 func buildWorkPrompt(item *WorkItem, cfg *AgentConfig) string {

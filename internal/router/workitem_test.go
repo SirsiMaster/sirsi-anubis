@@ -139,3 +139,24 @@ func TestStateDynamicInbox(t *testing.T) {
 		t.Error("expected 0 items for unknown agent")
 	}
 }
+
+func TestStateNormalizePendingKeepsEmptySlices(t *testing.T) {
+	s := &State{
+		Pending: map[string][]string{
+			"claude-pantheon": nil,
+			"codex-pantheon":  []string{"work"},
+		},
+	}
+
+	s.NormalizePending()
+
+	if s.Pending["claude-pantheon"] == nil {
+		t.Fatal("expected empty registered inbox slice, got nil")
+	}
+	if s.PendingForClaude == nil {
+		t.Fatal("expected empty legacy claude inbox slice, got nil")
+	}
+	if len(s.PendingForCodex) != 1 || s.PendingForCodex[0] != "work" {
+		t.Fatalf("legacy codex inbox = %v, want [work]", s.PendingForCodex)
+	}
+}

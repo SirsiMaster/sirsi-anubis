@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
@@ -580,6 +581,12 @@ Ra owns the queue and dispatch. Horus owns this per-desktop view.`,
 			return err
 		}
 
+		if JsonOutput {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			return enc.Encode(ns)
+		}
+
 		output.Header("𓂀 Horus — Local Node Status")
 		fmt.Println()
 
@@ -592,6 +599,43 @@ Ra owns the queue and dispatch. Horus owns this per-desktop view.`,
 		fmt.Printf("  Registered agents: %d\n", ns.AgentCount)
 		for _, id := range ns.RegisteredAgents {
 			fmt.Printf("    • %s\n", id)
+		}
+		fmt.Println()
+
+		// Wake mechanisms
+		if len(ns.WakeHealth) > 0 {
+			fmt.Println("  Wake mechanisms:")
+			for _, h := range ns.WakeHealth {
+				status := "ready"
+				if !h.Ready {
+					status = "not ready"
+				}
+				if h.Detail != "" {
+					fmt.Printf("    • %s: %s (%s) — %s\n", h.AgentID, h.Mechanism, status, h.Detail)
+				} else {
+					fmt.Printf("    • %s: %s (%s)\n", h.AgentID, h.Mechanism, status)
+				}
+			}
+			fmt.Println()
+		}
+
+		// Live threads (CTR)
+		totalThreads := len(ns.LiveThreads) + len(ns.StaleThreads)
+		if totalThreads == 0 {
+			fmt.Println("  Live threads: none (run `sirsi thread register --agent <id> --surface <surface>`)")
+		} else {
+			fmt.Printf("  Live threads: %d active, %d stale\n", len(ns.LiveThreads), len(ns.StaleThreads))
+			for _, t := range ns.LiveThreads {
+				fmt.Printf("    🟢 %s  agent=%s surface=%s status=%s (idle %.0fs)\n",
+					t.ThreadID, t.AgentID, t.Surface, t.Status, t.IdleSeconds)
+				if t.CurrentItem != "" {
+					fmt.Printf("        current_item=%s\n", t.CurrentItem)
+				}
+			}
+			for _, t := range ns.StaleThreads {
+				fmt.Printf("    ⚠️  %s  agent=%s surface=%s status=%s (idle %.0fs — STALE)\n",
+					t.ThreadID, t.AgentID, t.Surface, t.Status, t.IdleSeconds)
+			}
 		}
 		fmt.Println()
 
@@ -658,12 +702,18 @@ Ra owns the queue and dispatch. Horus owns this per-desktop view.`,
 
 		// Agent CLI health
 		if len(ns.AgentHealth) > 0 {
+			fmt.Println()
 			fmt.Println("  Agent CLI health:")
 			for _, h := range ns.AgentHealth {
 				if h.CLIFound && h.AuthOK {
 					fmt.Printf("    ✅ %s: ready (%s)\n", h.AgentType, h.CLIPath)
+				} else if h.CLIFound && h.NeedsLogin {
+					fmt.Printf("    ❌ %s: not logged in — run '%s' then /login\n", h.AgentType, h.AgentType)
+					if h.BlockedItems > 0 {
+						fmt.Printf("       ⚠️  %d dispatch(es) blocked by auth\n", h.BlockedItems)
+					}
 				} else if h.CLIFound && !h.AuthOK {
-					fmt.Printf("    ❌ %s: found but auth failed — run '%s' then /login\n", h.AgentType, h.AgentType)
+					fmt.Printf("    ❌ %s: CLI check failed\n", h.AgentType)
 					if h.AuthError != "" {
 						fmt.Printf("       %s\n", h.AuthError)
 					}

@@ -81,6 +81,28 @@ func TestValidate_MissingCommand(t *testing.T) {
 	}
 }
 
+func TestValidate_APICallWake(t *testing.T) {
+	cfg := AgentConfig{
+		ID:   "gemini-test",
+		Type: "gemini",
+		Wake: WakeConfig{Mechanism: WakeAPICall, Endpoint: "http://127.0.0.1/wake"},
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("Validate() error: %v", err)
+	}
+}
+
+func TestValidate_MCPWake(t *testing.T) {
+	cfg := AgentConfig{
+		ID:   "cursor-test",
+		Type: "ide-extension",
+		Wake: WakeConfig{Mechanism: WakeMCPNotification, MCPServer: "sirsi"},
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("Validate() error: %v", err)
+	}
+}
+
 func TestValidate_EmptyType(t *testing.T) {
 	cfg := AgentConfig{ID: "test", Command: []string{"cmd"}, Cwd: "/tmp"}
 	if err := cfg.Validate(); err == nil {

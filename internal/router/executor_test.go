@@ -2,7 +2,10 @@ package router
 
 import (
 	"context"
+	"encoding/json"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -122,6 +125,161 @@ func TestExecutor_NoWriteback(t *testing.T) {
 	}
 }
 
+func TestExecutor_DispatchAPICallWake(t *testing.T) {
+	r, reg, wq, _ := setupExecutorTest(t)
+	var got WakePayload
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodPost {
+			t.Errorf("method = %s, want POST", req.Method)
+		}
+		if req.Header.Get("Authorization") != "Bearer secret-token" {
+			t.Errorf("authorization header = %q", req.Header.Get("Authorization"))
+		}
+		if err := json.NewDecoder(req.Body).Decode(&got); err != nil {
+			t.Errorf("decode wake payload: %v", err)
+		}
+		w.WriteHeader(http.StatusAccepted)
+	}))
+	defer server.Close()
+	t.Setenv("WAKE_TOKEN", "secret-token")
+
+	reg.Agents["api-agent"] = AgentConfig{
+		ID:   "api-agent",
+		Type: "gemini",
+		Wake: WakeConfig{Mechanism: WakeAPICall, Endpoint: server.URL, Auth: "env:WAKE_TOKEN"},
+	}
+	item := wq.AddItem("test-doc", "api-agent", "codex-pantheon", "api wake")
+	exec := NewExecutor(reg, r, wq, io.Discard)
+
+	if err := exec.Dispatch(context.Background(), item); err != nil {
+		t.Fatalf("Dispatch() error: %v", err)
+	}
+	if got.AgentID != "api-agent" || got.DocID != "test-doc" {
+		t.Fatalf("wake payload = %+v", got)
+	}
+	if wq.Items[0].Status != StatusDispatched {
+		t.Errorf("status = %s, want dispatched", wq.Items[0].Status)
+	}
+}
+
+func TestExecutor_RegisterAndDispatchWebhookAgent(t *testing.T) {
+	r, _, wq, tmp := setupExecutorTest(t)
+	routerRoot := filepath.Join(tmp, ".agents", "idea-router")
+
+	received := make(chan WakePayload, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodPost {
+			t.Errorf("method = %s, want POST", req.Method)
+		}
+		var payload WakePayload
+		if err := json.NewDecoder(req.Body).Decode(&payload); err != nil {
+			t.Errorf("decode wake payload: %v", err)
+		}
+		received <- payload
+		w.WriteHeader(http.StatusAccepted)
+	}))
+	defer server.Close()
+
+	cfg := AgentConfig{
+		ID:   "test-webhook",
+		Type: "webhook",
+		Wake: WakeConfig{Mechanism: WakeAPICall, Endpoint: server.URL},
+	}
+	if err := RegisterAgent(routerRoot, cfg); err != nil {
+		t.Fatalf("RegisterAgent() error: %v", err)
+	}
+
+	reg, err := LoadRegistry(routerRoot)
+	if err != nil {
+		t.Fatalf("LoadRegistry() error: %v", err)
+	}
+	registered, err := reg.Lookup("test-webhook")
+	if err != nil {
+		t.Fatalf("Lookup(test-webhook) error: %v", err)
+	}
+	if registered.Type == "claude" || registered.Type == "codex" {
+		t.Fatalf("registered non-Claude/Codex proof has type %q", registered.Type)
+	}
+
+	item := wq.AddItem("test-doc", "test-webhook", "codex-pantheon", "webhook wake")
+	exec := NewExecutor(reg, r, wq, io.Discard)
+	if err := exec.Dispatch(context.Background(), item); err != nil {
+		t.Fatalf("Dispatch() error: %v", err)
+	}
+
+	select {
+	case payload := <-received:
+		if payload.AgentID != "test-webhook" || payload.Type != "webhook" || payload.DocID != "test-doc" {
+			t.Fatalf("wake payload = %+v", payload)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("webhook agent did not receive wake payload")
+	}
+	if wq.Items[0].Status != StatusDispatched {
+		t.Errorf("status = %s, want dispatched", wq.Items[0].Status)
+	}
+}
+
+func TestExecutor_DispatchMCPNotificationWake(t *testing.T) {
+	r, reg, wq, tmp := setupExecutorTest(t)
+	reg.Agents["mcp-agent"] = AgentConfig{
+		ID:   "mcp-agent",
+		Type: "ide-extension",
+		Wake: WakeConfig{Mechanism: WakeMCPNotification, MCPServer: "sirsi"},
+	}
+	item := wq.AddItem("test-doc", "mcp-agent", "codex-pantheon", "mcp wake")
+	exec := NewExecutor(reg, r, wq, io.Discard)
+
+	if err := exec.Dispatch(context.Background(), item); err != nil {
+		t.Fatalf("Dispatch() error: %v", err)
+	}
+	path := filepath.Join(tmp, ".agents", "idea-router", mcpNotificationFile)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read MCP notification outbox: %v", err)
+	}
+	if !contains(string(data), `"mcp_server":"sirsi"`) || !contains(string(data), `"agent_id":"mcp-agent"`) {
+		t.Fatalf("notification outbox missing payload: %s", string(data))
+	}
+	if wq.Items[0].Status != StatusDispatched {
+		t.Errorf("status = %s, want dispatched", wq.Items[0].Status)
+	}
+}
+
+func TestExecutor_DirectAgentCLIAuthFailureBlocksDispatch(t *testing.T) {
+	r, reg, wq, tmp := setupExecutorTest(t)
+	binDir := filepath.Join(tmp, "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cliPath := filepath.Join(binDir, "claude")
+	if err := os.WriteFile(cliPath, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	reg.Agents["direct-claude"] = AgentConfig{
+		ID:      "direct-claude",
+		Type:    "claude",
+		Command: []string{"claude", "--print"},
+		Cwd:     tmp,
+	}
+
+	item := wq.AddItem("test-doc", "direct-claude", "codex-pantheon", "test")
+	exec := NewExecutor(reg, r, wq, io.Discard)
+	exec.SetAuthProbe(func(cliPath, agentType string) (bool, bool, string) {
+		return false, true, "Not logged in"
+	})
+
+	err := exec.Dispatch(context.Background(), item)
+	if err == nil {
+		t.Fatal("expected auth failure to block dispatch")
+	}
+	if wq.Items[0].Status != StatusBlocked {
+		t.Errorf("status = %s, want blocked", wq.Items[0].Status)
+	}
+}
+
 func TestExecutor_Timeout(t *testing.T) {
 	r, reg, wq, tmp := setupExecutorTest(t)
 
@@ -142,6 +300,46 @@ func TestExecutor_Timeout(t *testing.T) {
 	}
 	if wq.Items[0].Status != StatusFailed {
 		t.Errorf("status = %s, want failed (timeout)", wq.Items[0].Status)
+	}
+}
+
+func TestResolveExecutorTimeout(t *testing.T) {
+	t.Run("default when unset", func(t *testing.T) {
+		t.Setenv("SIRSI_ROUTER_EXECUTOR_TIMEOUT", "")
+		if got := resolveExecutorTimeout(); got != DefaultExecutorTimeout {
+			t.Errorf("got %s, want %s", got, DefaultExecutorTimeout)
+		}
+	})
+	t.Run("override via env", func(t *testing.T) {
+		t.Setenv("SIRSI_ROUTER_EXECUTOR_TIMEOUT", "45m")
+		if got := resolveExecutorTimeout(); got != 45*time.Minute {
+			t.Errorf("got %s, want 45m", got)
+		}
+	})
+	t.Run("invalid env falls back to default", func(t *testing.T) {
+		t.Setenv("SIRSI_ROUTER_EXECUTOR_TIMEOUT", "not-a-duration")
+		if got := resolveExecutorTimeout(); got != DefaultExecutorTimeout {
+			t.Errorf("got %s, want default %s", got, DefaultExecutorTimeout)
+		}
+	})
+	t.Run("zero/negative falls back", func(t *testing.T) {
+		t.Setenv("SIRSI_ROUTER_EXECUTOR_TIMEOUT", "0s")
+		if got := resolveExecutorTimeout(); got != DefaultExecutorTimeout {
+			t.Errorf("got %s, want default %s", got, DefaultExecutorTimeout)
+		}
+	})
+}
+
+func TestExecutor_SetTimeout(t *testing.T) {
+	r, reg, wq, _ := setupExecutorTest(t)
+	exec := NewExecutor(reg, r, wq, io.Discard)
+	exec.SetTimeout(2 * time.Second)
+	if exec.timeout != 2*time.Second {
+		t.Errorf("timeout = %s, want 2s", exec.timeout)
+	}
+	exec.SetTimeout(0) // ignored
+	if exec.timeout != 2*time.Second {
+		t.Errorf("zero override should be ignored, got %s", exec.timeout)
 	}
 }
 

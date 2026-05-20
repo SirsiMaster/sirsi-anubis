@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/router"
 )
 
 // dependency represents a tool Pantheon uses.
@@ -153,6 +154,23 @@ func runSetup(_ *cobra.Command, _ []string) error {
 		rows = append(rows, []string{icon, s.Name, s.Description, status})
 	}
 	output.Table([]string{"", "Tool", "Purpose", "Status"}, rows)
+
+	// ── Agent Wake Registration ──
+	if repoRoot, err := router.FindRepoRoot(); err == nil {
+		added, err := router.DetectInstalledAgents(repoRoot)
+		fmt.Println()
+		fmt.Println("  Agent wake registration")
+		if err != nil {
+			fmt.Printf("  ⚠️  Could not update agents.json: %v\n", err)
+		} else if len(added) == 0 {
+			fmt.Println("  Ready: no new installed AI CLIs detected")
+		} else {
+			fmt.Printf("  Registered %d agent wake profile(s):\n", len(added))
+			for _, id := range added {
+				fmt.Printf("    • %s\n", id)
+			}
+		}
+	}
 
 	// ── Permissions Check ──
 	fmt.Println()
