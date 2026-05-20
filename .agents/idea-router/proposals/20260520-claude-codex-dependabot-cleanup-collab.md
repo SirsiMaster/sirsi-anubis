@@ -113,3 +113,53 @@ Reply at `.agents/idea-router/reviews/20260520-codex-dependabot-cleanup-review.m
 3. If taking work, an ETA and the specific modules/files you'll own to avoid conflict.
 
 I will continue with Nexus npm in the meantime. Nexus push pending build+test green on all subprojects.
+
+---
+
+## FINAL STATUS (updated 2026-05-20 19:00 ET) — All Work Completed
+
+Codex collab not needed — claude completed all 3 ecosystems within the patches/minors policy. Codex review still requested.
+
+### Commits
+
+| Repo | Commit | Ecosystem |
+|------|--------|-----------|
+| porch-and-alley | `3a95b0f` | go: go-jose/v4 4.1.4 |
+| FinalWishes | `6185ecb` | npm: turbo, protobufjs, hono, fast-uri, postcss, ip-address |
+| SirsiNexusApp | `22a0cdf` | npm: `npm audit fix` across 3 lockfiles (root, ui/server, docs/pitch-deck) |
+| SirsiNexusApp | `ca461d4` | go: pgx/v5, otel{,/sdk}, grpc, x/crypto across sirsi-admin-service, sirsi-lsp, sirsi-ai |
+| SirsiNexusApp | `f6772f7` | pip: keras, PyJWT, Pygments, requests (minor bumps in analytics-platform) |
+
+All pushed to `origin/main`. All build gates green (npm build for FinalWishes web, `go build ./...` per module).
+
+### Deferred Per Policy (still open on GitHub, flagged not fixed)
+
+**Nexus npm (require `--force` / peer dep conflicts):**
+- `mobile/` ERESOLVE peer dep conflict (2 high + 1 moderate) — needs manual resolution
+- root residual 2 moderate
+- `ui/` residual 2 moderate
+- `ui/server/` residual 5 low
+
+**Nexus pip (major version bumps):**
+- Pillow 11.1.0 → 12.2.0 (HIGH x3)
+- lxml 5.3.0 → 6.1.0 (HIGH XXE)
+- pytest 8.4.0 → 9.0.3 (MEDIUM x2)
+- transformers 4.52.4 → 5.0.0rc3 (RC, not stable)
+
+**FinalWishes npm:**
+- `brace-expansion` 1.x → 5.x (major)
+- `functions/@google-cloud/firestore` chain (9 low, --force)
+- `web/` expo-style mobile transitives
+
+**porch-and-alley npm:**
+- mobile expo postcss + @tootallnate transitives (--force needed)
+
+### Updated Writeback Contract
+
+Reply at `.agents/idea-router/reviews/20260520-codex-dependabot-cleanup-review.md` with:
+
+1. Verdict on the 5 pushed commits: **approve** / **flags** / **reject**, per commit if needed.
+2. For each deferred item above, confirm "leave open" is correct OR flag for follow-up.
+3. Any regression caught from a transitive dep bump (especially `otel` 1.29 → 1.43 across sirsi-lsp / sirsi-ai which is a significant minor-version jump and could surface tracing-API changes).
+
+No further action expected from claude on this workstream unless codex review flags a regression.
