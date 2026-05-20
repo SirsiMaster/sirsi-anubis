@@ -2,9 +2,11 @@
 
 Shared filesystem protocol for agent collaboration on sirsi-pantheon.
 
-The Idea Router is Ra infrastructure. Ra owns the agent registry, work queue, dispatch daemon, cross-agent relay, and super-agent mandates. Router v3 treats the router as a multi-agent work queue, not a two-person notice board. Work is addressed to registered agent IDs, and dispatch is successful only when the target agent starts and writes back to the router protocol.
+The Idea Router is Ra infrastructure homed in Pantheon. Ra owns the agent registry, work queue, dispatch protocol, cross-agent relay, portfolio authority, and super-agent mandates. Horus owns each desktop's local node: daemon health, local agent/window visibility, local repo status, and the operator dashboard for this machine. Router v3 treats the router as a multi-agent work queue, not a two-person notice board. Work is addressed to registered agent IDs, and dispatch is successful only when the target agent starts and writes back to the router protocol.
 
 Thoth preserves router memory across compaction and session boundaries. Ma'at validates router governance: correct agent targeting, repo segmentation, test evidence, honest blockers, and `/goal` completion.
+
+Other repositories must not fork the router. They carry startup pointers and repo-specific law, while Sirsi-wide orchestration remains here under Ra.
 
 ## How it works
 
@@ -12,6 +14,29 @@ Thoth preserves router memory across compaction and session boundaries. Ma'at va
 - `reviews/` — The other agent reviews the proposal or the code
 - `decisions/` — Converged recommendations for user authorization
 - `state.json` — Active topics and collaboration rules
+- `agents.json` — Registered agent CLIs and wake mechanisms
+- `threads.json` — Live thread registrations (CTR): one entry per open agent session/worker
+
+## Thread Registration (CTR)
+
+Registered agents describe *who can be woken*. Threads describe *which sessions are alive right now*. Every conversation/worker that touches the router should:
+
+1. Determine or declare its `agent_id`.
+2. Register a `thread_id` once at startup.
+3. Heartbeat while alive (periodically or on each work step).
+4. Watch its inbox and either work, queue, or block.
+5. Close the thread at the end of the session.
+
+Commands:
+
+```sh
+sirsi thread register --agent claude-pantheon --surface claude --workstream pantheon
+sirsi thread heartbeat --thread thr-XXXX --status active --current-item <doc-id>
+sirsi thread list
+sirsi thread close --thread thr-XXXX
+```
+
+Surfaces are model-neutral: `claude`, `codex`, `gemini`, `gemma`, `qwen`, `mcp`, `api`, `webhook`, `worker`. Missing/invalid registration is treated as a local-node health problem in `sirsi router node-status`.
 
 ## Protocol
 
@@ -145,12 +170,22 @@ Thoth is part of the router loop. Before context compaction or session handoff, 
 
 ## Full Automation
 
-The commercial path is the autorouter daemon, not manual polling.
+### Thread Registration
+
+Agents are registered in `agents.json`; live conversations and workers must also register as threads. A registered agent without a live thread is only an address. A live thread tells Horus what is actually awake on this desktop.
+
+Required thread facts: `thread_id`, `agent_id`, repo, workstream, surface, start time, last heartbeat, watched inboxes, wake mechanism, current item, and last error. Horus `router node-status` must distinguish registered agents from live/stale threads.
+
+The commercial path is `sirsi router work` for operator-driven pull, plus the autorouter daemon for always-on push/pull. Manual status checks are diagnostic only.
 
 ### Commands
 
 | Command | Purpose |
 |---------|---------|
+| `sirsi router status` | Show registered-agent inboxes and active topics |
+| `sirsi router work` | Check the router once, then launch runnable registered-agent work |
+| `sirsi router work --poll` | Keep polling and launching runnable work until interrupted |
+| `sirsi router work --dry-run` | Preview runnable launches without starting agents |
 | `sirsi router daemon --dry-run` | Preview dispatches without launching agents |
 | `SIRSI_ROUTER_NOTIFY=1 sirsi router daemon` | Run live in the foreground |
 | `sirsi router install-agent --load` | Install and start the resident macOS launch agent |
@@ -161,6 +196,8 @@ The commercial path is the autorouter daemon, not manual polling.
 | `sirsi router smoke --dry-run` | Check CLIs exist without launching |
 
 ### What Process Runs
+
+`sirsi router work` is the explicit "check the router, then work" command. It does not require `SIRSI_ROUTER_NOTIFY=1` because invoking it is the operator approval to launch registered agents. By default it checks once; `--poll` makes it a foreground polling worker.
 
 The daemon (`sirsi router daemon`) watches `.agents/idea-router/state.json`, `proposals/`, `reviews/`, and `decisions/` with `fsnotify`, with a one-second fallback poll. It dispatches pending inbox items immediately, keeps a persistent `dispatch-ledger.json` so restarts do not relaunch unchanged work, and never acknowledges inbox items for an agent.
 

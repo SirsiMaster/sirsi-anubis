@@ -1,10 +1,18 @@
-# Idea Router Design — Codex ↔ Claude Collaboration
+# Ra Idea Router Design — Sirsi-Wide Agent Hypervisor
 
 ## Goal
 
-Create a shared, low-friction collaboration channel where Codex and Claude can independently propose, critique, revise, and converge on implementation plans before presenting recommendations to the user for authorization.
+Create the Sirsi-wide agent hypervisor surface where Ra can register agents, route work, launch workers, verify writeback, and keep multi-agent work moving until the `/goal` is met.
 
-The user should not be the message bus.
+The user should not be the message bus. Codex, Claude, Gemini, Gemma, Qwen, and future agents should all obey the same router contract.
+
+## Ownership
+
+Ra owns this feature. Pantheon is the home repository for CTR and the Idea Router. Horus owns each desktop's local runtime node and operator view under Ra's authority.
+
+Other repositories may contain `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `GEMMA.md`, or `QWEN.md` startup pointers, but they must not host competing routers. They read and write through Pantheon's Ra-owned router unless a future Ra decision explicitly promotes a different Sirsi-wide control plane.
+
+Ra decides and routes Sirsi-wide work. Horus observes and controls the local workstation node. Thoth preserves continuity. Ma'at validates governance. Net keeps workstreams aligned to product goals and architecture choices.
 
 ## Recommended v0: Filesystem Router
 

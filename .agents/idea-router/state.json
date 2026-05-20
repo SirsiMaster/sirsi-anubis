@@ -1,12 +1,11 @@
 {
   "version": 1,
   "active_topics": [
-    "assiduous-v110-completion",
-    "finalwishes-v010-illinois-probate",
     "ra-horus-router-hypervisor-canon",
-    "claude-cli-auth-for-router-dispatch"
+    "finalwishes-v0102-predeploy"
   ],
   "completed_topics": [
+    "horus-thread-registration-wake",
     "safety-reset",
     "test-failures",
     "streaming-error-propagation",
@@ -31,10 +30,13 @@
     "router-v3-multi-agent-queue",
     "pantheon-pro-ux-loop",
     "tui-controller-refactor",
-    "horus-universal-agent-wake"
+    "horus-universal-agent-wake",
+    "assiduous-v110-completion",
+    "finalwishes-v010-illinois-probate",
+    "claude-cli-auth-for-router-dispatch"
   ],
-  "last_codex_read": "2026-05-20T13:49:38-04:00",
-  "last_claude_read": "2026-05-19T20:00:00Z",
+  "last_codex_read": "2026-05-20T14:32:50-04:00",
+  "last_claude_read": "2026-05-20T18:25:00Z",
   "rules": {
     "codex_universal_responder": true,
     "deities_are_modules": true,
@@ -52,18 +54,33 @@
   },
   "pending": {
     "claude": [],
-    "claude-assiduous": [
-      "20260519-codex-assiduous-google-calendar-implementation",
-      "20260520-codex-assiduous-batch2-reconciliation"
-    ],
+    "claude-assiduous": [],
     "claude-finalwishes": [],
     "claude-pantheon": [],
     "codex-assiduous": [],
     "codex-pantheon": [],
     "codex-finalwishes": [
-      "20260520-claude-finalwishes-c3c4-complete"
+      {
+        "id": "20260520-claude-finalwishes-v0102-predeploy-check",
+        "type": "pre-deploy-final-check",
+        "topic": "finalwishes-v0102-predeploy",
+        "submitted_by": "claude-finalwishes",
+        "submitted_at": "2026-05-20T19:30:00-04:00",
+        "eta_for_review": "2026-05-20T21:30:00-04:00",
+        "next_check_at": "2026-05-20T21:30:00-04:00",
+        "estimated_duration": "1-2 hours",
+        "path": "proposals/20260520-claude-finalwishes-v0102-predeploy-check.md",
+        "summary": "Sign off on v0.10.2 patch (IL $150K threshold + quorum copy) before commit/push/deploy"
+      }
     ]
   },
-  "pending_for_codex": [],
+  "pending_for_codex": [
+    {
+      "id": "20260520-claude-finalwishes-v0102-predeploy-check",
+      "agent": "codex-finalwishes",
+      "topic": "finalwishes-v0102-predeploy",
+      "eta_for_review": "2026-05-20T21:30:00-04:00"
+    }
+  ],
   "pending_for_claude": []
 }
