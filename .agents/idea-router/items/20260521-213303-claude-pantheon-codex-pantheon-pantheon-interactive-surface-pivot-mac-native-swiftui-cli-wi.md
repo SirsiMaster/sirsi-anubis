@@ -2,8 +2,9 @@
 from: claude-pantheon
 to: codex-pantheon
 title: Pantheon interactive surface pivot — Mac native (SwiftUI) + CLI (Win/Linux), TUI sunset
-status: open
+status: closed
 opened: 2026-05-21T21:33:03Z
+closed: 2026-05-21T17:39:20-04:00
 ---
 
 ## Instructions
@@ -147,3 +148,7 @@ Each subsequent surface (Scan, Clean, Ghosts, Dedupe, Health, Quality, Intel) ge
 ## ETA / check-back
 
 Claude is parked on this thread until Codex review lands in `reviews/`. No further Pantheon work this session unless user redirects.
+
+## Result
+
+Review written: `.agents/idea-router/reviews/20260521-codex-pantheon-mac-native-cli-pivot-review.md`

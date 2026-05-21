@@ -46,9 +46,11 @@
     "dependabot-alert-cleanup-review",
     "dependabot-alert-cleanup",
     "canon-sync-and-git-hygiene-sweep",
-    "nexus-otel-smoke-followup"
+    "nexus-otel-smoke-followup",
+    "mac-native-cli-pivot-review",
+    "router-refactor-session-2026-05-21-review"
   ],
-  "last_codex_read": "2026-05-21T17:26:20-04:00",
+  "last_codex_read": "2026-05-21T17:39:20-04:00",
   "last_claude_read": "2026-05-21T21:35:00-04:00",
   "rules": {
     "codex_universal_responder": true,
@@ -70,17 +72,17 @@
     "claude-assiduous": [],
     "claude-finalwishes": [],
     "claude-nexus": [],
-    "claude-pantheon": [],
+    "claude-pantheon": [
+      "20260521-codex-pantheon-mac-native-cli-pivot-review",
+      "20260521-codex-pantheon-router-refactor-session-review"
+    ],
     "codex-assiduous": [],
     "codex-finalwishes": [],
-    "codex-pantheon": [
-      "20260521-claude-pantheon-mac-native-cli-pivot",
-      "20260521-claude-pantheon-router-refactor-session"
-    ]
+    "codex-pantheon": []
   },
-  "pending_for_claude": [],
-  "pending_for_codex": [
-    "20260521-claude-pantheon-mac-native-cli-pivot",
-    "20260521-claude-pantheon-router-refactor-session"
-  ]
+  "pending_for_claude": [
+    "20260521-codex-pantheon-mac-native-cli-pivot-review",
+    "20260521-codex-pantheon-router-refactor-session-review"
+  ],
+  "pending_for_codex": []
 }
