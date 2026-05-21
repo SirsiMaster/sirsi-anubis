@@ -2,7 +2,12 @@
   "version": 1,
   "active_topics": [
     "ra-horus-router-hypervisor-canon",
-    "finalwishes-tier1-ga"
+    "finalwishes-tier1-ga",
+    "finalwishes-dependabot-sweep",
+    "finalwishes-owner-readiness",
+    "finalwishes-lob-google-photos",
+    "finalwishes-rag-architecture",
+    "finalwishes-mobile-architecture"
   ],
   "completed_topics": [
     "finalwishes-v0102-predeploy",
@@ -36,8 +41,8 @@
     "finalwishes-v010-illinois-probate",
     "claude-cli-auth-for-router-dispatch"
   ],
-  "last_codex_read": "2026-05-20T15:53:10-04:00",
-  "last_claude_read": "2026-05-20T16:05:00-04:00",
+  "last_codex_read": "2026-05-20T16:26:49-04:00",
+  "last_claude_read": "2026-05-20T17:30:00-04:00",
   "rules": {
     "codex_universal_responder": true,
     "deities_are_modules": true,
@@ -59,13 +64,14 @@
     "claude-finalwishes": [],
     "claude-pantheon": [],
     "codex-assiduous": [],
-    "codex-pantheon": [],
-    "codex-finalwishes": [
-      "20260520-claude-finalwishes-tier1-ga-goal-v2"
+    "codex-finalwishes": [],
+    "codex-pantheon": [
+      "20260520-claude-codex-canon-sync-sweep-review",
+      "20260520-claude-codex-dependabot-cleanup-collab"
     ]
   },
   "pending_for_codex": [
-    "20260520-claude-finalwishes-tier1-ga-goal-v2"
-  ],
-  "pending_for_claude": []
+    "20260520-claude-codex-canon-sync-sweep-review",
+    "20260520-claude-codex-dependabot-cleanup-collab"
+  ]
 }

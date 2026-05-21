@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"os/user"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
@@ -799,6 +800,84 @@ func launchctlUserDomain() (string, error) {
 	return "gui/" + u.Uid, nil
 }
 
+var submitExistingTo string
+
+var routerSubmitExistingCmd = &cobra.Command{
+	Use:   "submit-existing <file>",
+	Short: "Register an existing router doc with a target agent's inbox",
+	Long: `Adds an already-written proposal/review/decision file to a target agent's
+pending inbox. Use this when a markdown file was dropped into the router
+directory without going through SubmitAddressed, so the receiver's heartbeat
+worker never sees it.
+
+  sirsi router submit-existing .agents/idea-router/proposals/foo.md --to codex-pantheon`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if submitExistingTo == "" {
+			return fmt.Errorf("--to <agent> is required")
+		}
+
+		repoRoot, err := router.FindRepoRoot()
+		if err != nil {
+			return fmt.Errorf("no idea-router found: %w", err)
+		}
+		r, err := router.New(repoRoot)
+		if err != nil {
+			return err
+		}
+
+		absFile, err := filepath.Abs(args[0])
+		if err != nil {
+			return fmt.Errorf("resolve file path: %w", err)
+		}
+		if resolved, err := filepath.EvalSymlinks(absFile); err == nil {
+			absFile = resolved
+		}
+		routerDir, err := filepath.Abs(filepath.Join(repoRoot, ".agents", "idea-router"))
+		if err != nil {
+			return fmt.Errorf("resolve router dir: %w", err)
+		}
+		if resolved, err := filepath.EvalSymlinks(routerDir); err == nil {
+			routerDir = resolved
+		}
+		if !strings.HasPrefix(absFile, routerDir+string(os.PathSeparator)) {
+			return fmt.Errorf("file %q is not under router root %q", absFile, routerDir)
+		}
+		parent := filepath.Base(filepath.Dir(absFile))
+		switch parent {
+		case "proposals", "reviews", "decisions":
+		default:
+			return fmt.Errorf("file must live under proposals/, reviews/, or decisions/ (got %q)", parent)
+		}
+		if _, err := os.Stat(absFile); err != nil {
+			return fmt.Errorf("file not readable: %w", err)
+		}
+
+		if err := r.ValidateAgent(submitExistingTo); err != nil {
+			return err
+		}
+
+		stem := strings.TrimSuffix(filepath.Base(absFile), filepath.Ext(absFile))
+
+		state, err := r.ReadState()
+		if err != nil {
+			return fmt.Errorf("read state: %w", err)
+		}
+		for _, existing := range state.InboxFor(submitExistingTo) {
+			if existing == stem {
+				fmt.Printf("  Already pending for %s: %s\n", submitExistingTo, stem)
+				return nil
+			}
+		}
+		state.AddToInbox(submitExistingTo, stem)
+		if err := r.WriteState(state); err != nil {
+			return fmt.Errorf("write state: %w", err)
+		}
+		fmt.Printf("  Registered %s in %s inbox.\n", stem, submitExistingTo)
+		return nil
+	},
+}
+
 func init() {
 	routerWatchCmd.Flags().BoolVar(&watchOnce, "once", false, "Poll once and exit (for testing/CI)")
 	routerInboxCmd.Flags().BoolVar(&inboxAck, "ack", false, "Acknowledge and clear pending items")
@@ -819,5 +898,6 @@ func init() {
 	routerServiceStatusCmd.Flags().StringVar(&serviceRepo, "repo", "", "Repository root (defaults to current repo)")
 	routerSmokeCmd.Flags().BoolVar(&smokeDryRun, "dry-run", false, "Check CLIs exist without launching agents")
 	routerSmokeCmd.Flags().BoolVar(&smokeAgentPair, "agent-pair", false, "Full relay test: seed router item, launch both agents, verify writeback")
-	routerCmd.AddCommand(routerStatusCmd, routerWatchCmd, routerInboxCmd, routerRunCmd, routerDaemonCmd, routerWorkCmd, routerInstallAgentCmd, routerUninstallAgentCmd, routerServiceStatusCmd, routerNodeStatusCmd, routerSmokeCmd)
+	routerSubmitExistingCmd.Flags().StringVar(&submitExistingTo, "to", "", "Target agent inbox (e.g., codex-pantheon, claude-finalwishes)")
+	routerCmd.AddCommand(routerStatusCmd, routerWatchCmd, routerInboxCmd, routerRunCmd, routerDaemonCmd, routerWorkCmd, routerInstallAgentCmd, routerUninstallAgentCmd, routerServiceStatusCmd, routerNodeStatusCmd, routerSmokeCmd, routerSubmitExistingCmd)
 }

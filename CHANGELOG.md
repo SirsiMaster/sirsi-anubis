@@ -6,6 +6,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 
 ---
 
+## [Unreleased]
+
+### Added
+- `sirsi router submit-existing <file> --to <agent>` — registers an orphan markdown file (already present in `proposals/`, `reviews/`, or `decisions/`) into a target agent's pending inbox. Closes the dead-letter loop where file-drops bypassing `SubmitAddressed` never reach the receiver's heartbeat worker.
+- `TestRouterSubmitExisting` integration test covering happy path, dedup on re-submit, and missing-`--to` error.
+
+### Fixed
+- Path containment check in `submit-existing` calls `filepath.EvalSymlinks` so it works on macOS where `/var/folders` resolves to `/private/var/folders`.
+
+---
+
 ## [0.23.0-beta] — 2026-05-19
 
 ### Claude Router Inbox Hooks
