@@ -1,23 +1,17 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
-	"os/signal"
-	"os/user"
 	"path/filepath"
 	"strings"
-	"time"
 
-	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/router"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/work"
 	"github.com/spf13/cobra"
 )
 
-// workRoot resolves the items directory for the current repo (new pull-model).
-// Legacy router commands are unaffected.
+// workRoot resolves the router items directory for the current repo.
 func workRoot() (string, error) {
 	repoRoot, err := router.FindRepoRoot()
 	if err != nil {
@@ -43,6 +37,50 @@ func loadOrLiteral(v string) (string, error) {
 	return v, nil
 }
 
+var routerCmd = &cobra.Command{
+	Use:   "router",
+	Short: "Pull-model work queue between agent threads",
+	Long: `The router is a directory of markdown files. Senders write items
+with sirsi router send; recipients pull with sirsi router pull and close
+with sirsi router close. No daemon, no dispatch, no launch agents — each
+agent session reads its own inbox on wake.
+
+Thread registration is handled separately by sirsi thread register.`,
+}
+
+var routerStatusCmd = &cobra.Command{
+	Use:   "status",
+	Short: "Summarize the work queue",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		root, err := workRoot()
+		if err != nil {
+			return err
+		}
+		all, err := work.ListAll(root)
+		if err != nil {
+			return err
+		}
+		var open, closed int
+		perAgent := map[string]int{}
+		for _, it := range all {
+			if it.Status == "closed" {
+				closed++
+				continue
+			}
+			open++
+			perAgent[it.To]++
+		}
+		fmt.Printf("  Items: %d open, %d closed\n", open, closed)
+		if open > 0 {
+			fmt.Println("\n  Open by recipient:")
+			for agent, n := range perAgent {
+				fmt.Printf("    %s: %d\n", agent, n)
+			}
+		}
+		return nil
+	},
+}
+
 var (
 	sendFrom         string
 	sendTo           string
@@ -50,16 +88,11 @@ var (
 	sendInstructions string
 )
 
-// routerSendCmd writes a new pull-model work item. Bare-minimum dispatch:
-// no daemon, no launch agent, no SIRSI_ROUTER_NOTIFY. The file is the queue.
 var routerSendCmd = &cobra.Command{
 	Use:   "send",
-	Short: "Send a work item from one agent to another (pull-model)",
+	Short: "Send a work item from one agent to another",
 	Long: `Writes a new open work item under .agents/idea-router/items/. The
 recipient picks it up next time they run sirsi router pull <their-id>.
-
-No daemon. No dispatch. No launch agents. Each agent session reads its
-own inbox on wake, does the work, and runs sirsi router close.
 
   sirsi router send --from claude-pantheon --to codex-pantheon \
     --title "review canon-sync" --instructions @proposal.md`,
@@ -87,11 +120,9 @@ own inbox on wake, does the work, and runs sirsi router close.
 	},
 }
 
-// routerPullCmd lists open pull-model items for an agent. Named pull (not
-// inbox) to avoid colliding with the legacy inbox verb that reads state.json.
 var routerPullCmd = &cobra.Command{
 	Use:   "pull <agent>",
-	Short: "Pull open pull-model work items addressed to an agent",
+	Short: "Pull open work items addressed to an agent",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		root, err := workRoot()
@@ -118,7 +149,7 @@ var routerPullCmd = &cobra.Command{
 
 var routerShowCmd = &cobra.Command{
 	Use:   "show <id>",
-	Short: "Print the full text of a pull-model work item",
+	Short: "Print the full text of a work item",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		root, err := workRoot()
@@ -139,7 +170,7 @@ var closeResult string
 
 var routerCloseCmd = &cobra.Command{
 	Use:   "close <id>",
-	Short: "Mark a pull-model work item closed",
+	Short: "Mark a work item closed",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		result, err := loadOrLiteral(closeResult)
@@ -158,894 +189,11 @@ var routerCloseCmd = &cobra.Command{
 	},
 }
 
-var routerCmd = &cobra.Command{
-	Use:   "router",
-	Short: "Ra — multi-agent work queue and dispatch",
-	Long: `Ra's Idea Router: multi-agent work queue for autonomous collaboration.
-
-Routes work to registered agents (Claude, Codex, Gemini, Qwen, etc.),
-launches them with context, and verifies writeback. Thoth preserves
-router continuity; Ma'at validates governance.`,
-}
-
-var routerStatusCmd = &cobra.Command{
-	Use:   "status",
-	Short: "Show router inbox and topic status",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		repoRoot, err := router.FindRepoRoot()
-		if err != nil {
-			return fmt.Errorf("no idea-router found: %w", err)
-		}
-		r, err := router.New(repoRoot)
-		if err != nil {
-			return err
-		}
-
-		state, err := r.ReadState()
-		if err != nil {
-			return err
-		}
-		state.NormalizePending()
-
-		output.Header("Ra — Router Status")
-		fmt.Println()
-
-		// Registered inboxes
-		entries := state.PendingEntries(false)
-		if len(entries) == 0 {
-			fmt.Println("  📥 Registered inboxes: clear")
-		} else {
-			fmt.Printf("  📥 Registered inboxes: %d active\n", len(entries))
-			for _, entry := range entries {
-				fmt.Printf("     %s: %d pending\n", entry.Agent, len(entry.IDs))
-				for _, id := range entry.IDs {
-					fmt.Printf("       • %s\n", id)
-				}
-			}
-		}
-
-		fmt.Println()
-
-		// Active topics
-		if len(state.ActiveTopics) > 0 {
-			fmt.Printf("  Active topics: %d\n", len(state.ActiveTopics))
-			for _, t := range state.ActiveTopics {
-				fmt.Printf("     • %s\n", t)
-			}
-		}
-
-		// Completed topics
-		if len(state.CompletedTopics) > 0 {
-			fmt.Printf("  Completed: %d topics\n", len(state.CompletedTopics))
-		}
-
-		fmt.Println()
-		fmt.Printf("  Last Codex read:  %s\n", state.LastCodexRead)
-		fmt.Printf("  Last Claude read: %s\n", state.LastClaudeRead)
-		return nil
-	},
-}
-
-var (
-	watchOnce bool
-	inboxAck  bool
-)
-
-var routerWatchCmd = &cobra.Command{
-	Use:   "watch",
-	Short: "Poll the router inbox for pending work (Ctrl+C to stop)",
-	Long: `Monitor mode — polls the idea-router state every 10 seconds and
-prints pending inbox items. This is a human-visible monitor, not
-automatic agent triggering. Use --once for a single poll cycle.
-
-True automatic Codex ↔ Claude wakeup requires a router runner (v1),
-MCP server, or external automation.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		repoRoot, err := router.FindRepoRoot()
-		if err != nil {
-			return fmt.Errorf("no idea-router found: %w", err)
-		}
-		r, err := router.New(repoRoot)
-		if err != nil {
-			return err
-		}
-
-		sig := make(chan os.Signal, 1)
-		signal.Notify(sig, os.Interrupt)
-
-		interval := 10 * time.Second
-		if !watchOnce {
-			fmt.Printf("  Watching router inbox every %s (Ctrl+C to stop)\n", interval)
-			fmt.Println("  Note: this is monitor-only, not auto-triggering.")
-			fmt.Println()
-		}
-
-		for {
-			state, err := r.ReadState()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "  Warning: %v\n", err)
-			} else {
-				entries := state.PendingEntries(false)
-				total := 0
-				for _, entry := range entries {
-					total += len(entry.IDs)
-				}
-				ts := time.Now().Format("15:04:05")
-				if total > 0 {
-					fmt.Printf("  [%s] %d pending items\n", ts, total)
-					for _, entry := range entries {
-						for _, id := range entry.IDs {
-							fmt.Printf("     Pending for %s: %s\n", entry.Agent, id)
-						}
-					}
-				} else {
-					fmt.Printf("  [%s] No pending items\n", ts)
-				}
-			}
-
-			if watchOnce {
-				return nil
-			}
-
-			select {
-			case <-sig:
-				fmt.Println("\n  Stopped.")
-				return nil
-			case <-time.After(interval):
-			}
-		}
-	},
-}
-
-var routerInboxCmd = &cobra.Command{
-	Use:   "inbox <agent>",
-	Short: "Show pending items for an agent (codex or claude)",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		agent := args[0]
-
-		repoRoot, err := router.FindRepoRoot()
-		if err != nil {
-			return fmt.Errorf("no idea-router found: %w", err)
-		}
-		r, err := router.New(repoRoot)
-		if err != nil {
-			return err
-		}
-
-		pending, err := r.PollInbox(agent)
-		if err != nil {
-			return err
-		}
-
-		if len(pending) == 0 {
-			fmt.Printf("  No pending items for %s.\n", agent)
-			return nil
-		}
-
-		fmt.Printf("  Pending for %s: %d items\n\n", agent, len(pending))
-		for _, id := range pending {
-			doc, err := r.Get(id)
-			if err != nil {
-				fmt.Printf("  • %s (could not load: %v)\n", id, err)
-				continue
-			}
-			fmt.Printf("  • [%s] %s — %s\n", doc.Type, doc.ID, doc.Title)
-		}
-
-		if inboxAck {
-			if err := r.AckInbox(agent, pending); err != nil {
-				return fmt.Errorf("ack failed: %w", err)
-			}
-			fmt.Printf("\n  Acknowledged %d items.\n", len(pending))
-		} else {
-			fmt.Printf("\n  Use --ack to acknowledge and clear these items.\n")
-		}
-
-		return nil
-	},
-}
-
-var (
-	runOnce     bool
-	runDryRun   bool
-	runTarget   string
-	runInterval time.Duration
-)
-
-var routerRunCmd = &cobra.Command{
-	Use:   "run",
-	Short: "Autorouter v1 — dispatch pending inbox items to agents",
-	Long: `Autorouter v1 dispatches pending Idea Router inbox items to the target agent.
-
-It does NOT acknowledge inbox items. The target agent must ack after reading.
-Requires SIRSI_ROUTER_NOTIFY=1 to actually launch agents. Without it, only
---dry-run is allowed (safe preview mode).
-
-  sirsi router run --once --dry-run                 Show what would dispatch
-  SIRSI_ROUTER_NOTIFY=1 sirsi router run --once     Dispatch once and exit
-  SIRSI_ROUTER_NOTIFY=1 sirsi router run            Poll forever (Ctrl+C to stop)`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		// Gate: notification requires SIRSI_ROUTER_NOTIFY=1 unless dry-run
-		if !runDryRun && os.Getenv("SIRSI_ROUTER_NOTIFY") != "1" {
-			return fmt.Errorf("autorouter dispatch requires SIRSI_ROUTER_NOTIFY=1 (use --dry-run to preview without launching agents)")
-		}
-
-		repoRoot, err := router.FindRepoRoot()
-		if err != nil {
-			return fmt.Errorf("no idea-router found: %w", err)
-		}
-		r, err := router.New(repoRoot)
-		if err != nil {
-			return err
-		}
-		routerRoot := filepath.Join(repoRoot, ".agents", "idea-router")
-
-		// Validate target against registry
-		if runTarget != "all" {
-			reg, err := router.LoadRegistry(routerRoot)
-			if err == nil && !reg.IsRegistered(runTarget) {
-				// Allow legacy "codex"/"claude" for backwards compat
-				if runTarget != "codex" && runTarget != "claude" {
-					return fmt.Errorf("agent %q not registered in agents.json", runTarget)
-				}
-			}
-		}
-
-		// Build v3 executor
-		reg, _ := router.LoadRegistry(routerRoot)
-		wq, _ := router.LoadWorkQueue(routerRoot)
-		exec := router.NewExecutor(reg, r, wq, os.Stdout)
-
-		ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt) //nolint:govet
-		defer stop()
-
-		rr := router.NewRunner(r, router.RunnerOptions{
-			RepoRoot: repoRoot,
-			Agent:    runTarget,
-			DryRun:   runDryRun,
-			Once:     runOnce,
-			Interval: runInterval,
-			Out:      os.Stdout,
-			Executor: exec,
-		})
-		return rr.Run(ctx)
-	},
-}
-
-var (
-	daemonDryRun   bool
-	daemonTarget   string
-	daemonInterval time.Duration
-	workDryRun     bool
-	workTarget     string
-	workPoll       bool
-	workInterval   time.Duration
-	installRepo    string
-	installLoad    bool
-	serviceRepo    string
-	smokeDryRun    bool
-	smokeAgentPair bool
-)
-
-var routerDaemonCmd = &cobra.Command{
-	Use:   "daemon",
-	Short: "Run the always-on autorouter daemon",
-	Long: `Run the resident autorouter daemon for immediate Codex ↔ Claude dispatch.
-
-The daemon watches .agents/idea-router/ with fsnotify and also polls as a
-fallback. Live dispatch requires SIRSI_ROUTER_NOTIFY=1. It never acknowledges
-inbox items for an agent.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if !daemonDryRun && os.Getenv("SIRSI_ROUTER_NOTIFY") != "1" {
-			return fmt.Errorf("autorouter daemon requires SIRSI_ROUTER_NOTIFY=1 (use --dry-run to preview without launching agents)")
-		}
-		repoRoot, err := router.FindRepoRoot()
-		if err != nil {
-			return fmt.Errorf("no idea-router found: %w", err)
-		}
-		r, err := router.New(repoRoot)
-		if err != nil {
-			return err
-		}
-		routerRoot := filepath.Join(repoRoot, ".agents", "idea-router")
-
-		// Validate target against registry
-		if daemonTarget != "all" {
-			reg, err := router.LoadRegistry(routerRoot)
-			if err == nil && !reg.IsRegistered(daemonTarget) {
-				if daemonTarget != "codex" && daemonTarget != "claude" {
-					return fmt.Errorf("agent %q not registered in agents.json", daemonTarget)
-				}
-			}
-		}
-
-		// Build v3 executor for daemon
-		reg, _ := router.LoadRegistry(routerRoot)
-		wq, _ := router.LoadWorkQueue(routerRoot)
-		exec := router.NewExecutor(reg, r, wq, os.Stdout)
-
-		ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt) //nolint:govet
-		defer stop()
-
-		d := router.NewDaemon(r, router.DaemonOptions{
-			RepoRoot:    repoRoot,
-			Agent:       daemonTarget,
-			DryRun:      daemonDryRun,
-			Interval:    daemonInterval,
-			Out:         os.Stdout,
-			Executor:    exec,
-			UseFSNotify: true,
-		})
-		return d.Run(ctx)
-	},
-}
-
-var routerWorkCmd = &cobra.Command{
-	Use:   "work",
-	Short: "Check the router, then launch runnable registered-agent work",
-	Long: `Check the Idea Router queue and immediately dispatch runnable work to the
-registered target agents. This is the operator verb for "check the router,
-then work."
-
-Unlike router run, this command is live by default because invoking it is the
-operator approval to launch registered agents. Use --dry-run to preview.
-
-  sirsi router work                       Check once, launch runnable work
-  sirsi router work --dry-run             Check once, preview launches
-  sirsi router work --poll                Keep polling and launching work
-  sirsi router work --target claude-finalwishes`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		repoRoot, err := router.FindRepoRoot()
-		if err != nil {
-			return fmt.Errorf("no idea-router found: %w", err)
-		}
-		r, err := router.New(repoRoot)
-		if err != nil {
-			return err
-		}
-		routerRoot := filepath.Join(repoRoot, ".agents", "idea-router")
-		if err := validateRouterTarget(routerRoot, workTarget); err != nil {
-			return err
-		}
-
-		reg, err := router.LoadRegistry(routerRoot)
-		if err != nil {
-			return err
-		}
-		wq, err := router.LoadWorkQueue(routerRoot)
-		if err != nil {
-			return err
-		}
-		exec := router.NewExecutor(reg, r, wq, os.Stdout)
-
-		ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt) //nolint:govet
-		defer stop()
-
-		rr := router.NewRunner(r, router.RunnerOptions{
-			RepoRoot: repoRoot,
-			Agent:    workTarget,
-			DryRun:   workDryRun,
-			Once:     !workPoll,
-			Interval: workInterval,
-			Out:      os.Stdout,
-			Executor: exec,
-		})
-
-		pending, err := rr.PendingDispatches()
-		if err != nil {
-			return err
-		}
-		if workDryRun {
-			fmt.Printf("Router work check: %d runnable dispatches would launch.\n", len(pending))
-		} else {
-			fmt.Printf("Router work check: %d runnable dispatches ready.\n", len(pending))
-		}
-		if workPoll {
-			fmt.Printf("Polling every %s. Press Ctrl+C to stop.\n", workInterval)
-		}
-		return rr.Run(ctx)
-	},
-}
-
-var routerInstallAgentCmd = &cobra.Command{
-	Use:   "install-agent",
-	Short: "Install the autorouter launch agent for this repo",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		repoRoot := installRepo
-		if repoRoot == "" {
-			var err error
-			repoRoot, err = router.FindRepoRoot()
-			if err != nil {
-				return fmt.Errorf("no idea-router found: %w", err)
-			}
-		}
-		exe, err := os.Executable()
-		if err != nil {
-			return fmt.Errorf("resolve executable: %w", err)
-		}
-		exe, err = router.ResolveStableBinary(repoRoot, exe)
-		if err != nil {
-			return err
-		}
-		opts := router.DefaultServiceOptions(repoRoot, exe)
-		if err := router.InstallLaunchAgent(opts); err != nil {
-			return err
-		}
-		fmt.Printf("Installed autorouter launch agent: %s\n", opts.PlistPath)
-		fmt.Printf("Label: %s\n", opts.Label)
-		if installLoad {
-			domain, err := launchctlUserDomain()
-			if err != nil {
-				return err
-			}
-			if err := router.Launchctl("bootout", domain, opts.PlistPath); err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: prior service was not loaded or could not be unloaded: %v\n", err)
-			}
-			if err := router.Launchctl("bootstrap", domain, opts.PlistPath); err != nil {
-				return err
-			}
-			fmt.Println("Autorouter launch agent loaded.")
-		} else {
-			fmt.Println("Use --load to start it now.")
-		}
-		return nil
-	},
-}
-
-var routerUninstallAgentCmd = &cobra.Command{
-	Use:   "uninstall-agent",
-	Short: "Unload and remove the autorouter launch agent for this repo",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		repoRoot := serviceRepo
-		if repoRoot == "" {
-			var err error
-			repoRoot, err = router.FindRepoRoot()
-			if err != nil {
-				return fmt.Errorf("no idea-router found: %w", err)
-			}
-		}
-		exe, err := os.Executable()
-		if err != nil {
-			return fmt.Errorf("resolve executable: %w", err)
-		}
-		opts := router.DefaultServiceOptions(repoRoot, exe)
-		domain, err := launchctlUserDomain()
-		if err != nil {
-			return err
-		}
-		if err := router.Launchctl("bootout", domain, opts.PlistPath); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: service was not loaded or could not be unloaded: %v\n", err)
-		}
-		if err := os.Remove(opts.PlistPath); err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("remove launch agent plist: %w", err)
-		}
-		fmt.Printf("Removed autorouter launch agent: %s\n", opts.PlistPath)
-		return nil
-	},
-}
-
-var routerServiceStatusCmd = &cobra.Command{
-	Use:   "service-status",
-	Short: "Show autorouter launch agent status",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		repoRoot := serviceRepo
-		if repoRoot == "" {
-			var err error
-			repoRoot, err = router.FindRepoRoot()
-			if err != nil {
-				return fmt.Errorf("no idea-router found: %w", err)
-			}
-		}
-		exe, err := os.Executable()
-		if err != nil {
-			return fmt.Errorf("resolve executable: %w", err)
-		}
-		opts := router.DefaultServiceOptions(repoRoot, exe)
-		fmt.Printf("Label: %s\n", opts.Label)
-		fmt.Printf("Plist: %s\n", opts.PlistPath)
-		if _, err := os.Stat(opts.PlistPath); err == nil {
-			fmt.Println("Installed: yes")
-			if program, err := router.LaunchAgentProgram(opts.PlistPath); err == nil {
-				fmt.Printf("Configured binary: %s\n", program)
-				if _, err := os.Stat(program); err == nil {
-					fmt.Println("Configured binary exists: yes")
-				} else {
-					fmt.Printf("Configured binary exists: no (%v)\n", err)
-				}
-				if router.IsGoRunBinary(program) {
-					fmt.Println("Configured binary is temporary go-run output: yes")
-				} else {
-					fmt.Println("Configured binary is temporary go-run output: no")
-				}
-			} else {
-				fmt.Printf("Configured binary: unreadable (%v)\n", err)
-			}
-		} else {
-			fmt.Println("Installed: no")
-		}
-		domain, err := launchctlUserDomain()
-		if err != nil {
-			return err
-		}
-		if err := router.Launchctl("print", domain+"/"+opts.Label); err != nil {
-			fmt.Println("Loaded: no")
-		} else {
-			fmt.Println("Loaded: yes")
-		}
-		return nil
-	},
-}
-
-func validateRouterTarget(routerRoot, target string) error {
-	if target == "" || target == "all" {
-		return nil
-	}
-	reg, err := router.LoadRegistry(routerRoot)
-	if err == nil && reg.IsRegistered(target) {
-		return nil
-	}
-	if target == "codex" || target == "claude" {
-		return nil
-	}
-	return fmt.Errorf("agent %q not registered in agents.json", target)
-}
-
-var routerNodeStatusCmd = &cobra.Command{
-	Use:   "node-status",
-	Short: "Horus — local node status (agents, queue, daemon health)",
-	Long: `Horus local-node status aggregation. Shows everything happening on this
-machine's router node: registered agents, pending work by agent, work-queue
-item statuses, daemon health, and recent dispatch failures.
-
-Ra owns the queue and dispatch. Horus owns this per-desktop view.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		repoRoot, err := router.FindRepoRoot()
-		if err != nil {
-			return fmt.Errorf("no idea-router found: %w", err)
-		}
-
-		domain, err := launchctlUserDomain()
-		if err != nil {
-			domain = ""
-		}
-		launchctlCheck := func(lcArgs ...string) error {
-			if domain == "" {
-				return fmt.Errorf("no user domain")
-			}
-			// Replace empty domain prefix with the actual domain
-			if len(lcArgs) >= 2 && lcArgs[0] == "print" {
-				lcArgs[1] = domain + "/" + lcArgs[1]
-			}
-			return router.Launchctl(lcArgs...)
-		}
-
-		ns, err := router.CollectNodeStatus(repoRoot, launchctlCheck)
-		if err != nil {
-			return err
-		}
-
-		if JsonOutput {
-			enc := json.NewEncoder(os.Stdout)
-			enc.SetIndent("", "  ")
-			return enc.Encode(ns)
-		}
-
-		output.Header("𓂀 Horus — Local Node Status")
-		fmt.Println()
-
-		// Router home
-		fmt.Printf("  Router home:  %s\n", ns.RouterHome)
-		fmt.Printf("  Repo root:    %s\n", ns.RepoRoot)
-		fmt.Println()
-
-		// Registered agents
-		fmt.Printf("  Registered agents: %d\n", ns.AgentCount)
-		for _, id := range ns.RegisteredAgents {
-			fmt.Printf("    • %s\n", id)
-		}
-		fmt.Println()
-
-		// Wake mechanisms
-		if len(ns.WakeHealth) > 0 {
-			fmt.Println("  Wake mechanisms:")
-			for _, h := range ns.WakeHealth {
-				status := "ready"
-				if !h.Ready {
-					status = "not ready"
-				}
-				if h.Detail != "" {
-					fmt.Printf("    • %s: %s (%s) — %s\n", h.AgentID, h.Mechanism, status, h.Detail)
-				} else {
-					fmt.Printf("    • %s: %s (%s)\n", h.AgentID, h.Mechanism, status)
-				}
-			}
-			fmt.Println()
-		}
-
-		// Live threads (CTR)
-		totalThreads := len(ns.LiveThreads) + len(ns.StaleThreads)
-		if totalThreads == 0 {
-			fmt.Println("  Live threads: none (run `sirsi thread register --agent <id> --surface <surface>`)")
-		} else {
-			fmt.Printf("  Live threads: %d active, %d stale\n", len(ns.LiveThreads), len(ns.StaleThreads))
-			for _, t := range ns.LiveThreads {
-				fmt.Printf("    🟢 %s  agent=%s surface=%s status=%s (idle %.0fs)\n",
-					t.ThreadID, t.AgentID, t.Surface, t.Status, t.IdleSeconds)
-				if t.CurrentItem != "" {
-					fmt.Printf("        current_item=%s\n", t.CurrentItem)
-				}
-			}
-			for _, t := range ns.StaleThreads {
-				fmt.Printf("    ⚠️  %s  agent=%s surface=%s status=%s (idle %.0fs — STALE)\n",
-					t.ThreadID, t.AgentID, t.Surface, t.Status, t.IdleSeconds)
-			}
-		}
-		fmt.Println()
-
-		// Pending work
-		if ns.TotalPending == 0 {
-			fmt.Println("  Pending work: none")
-		} else {
-			fmt.Printf("  Pending work: %d items\n", ns.TotalPending)
-			for agent, ids := range ns.PendingByAgent {
-				fmt.Printf("    %s: %d\n", agent, len(ids))
-				for _, id := range ids {
-					fmt.Printf("      • %s\n", id)
-				}
-			}
-		}
-		fmt.Println()
-
-		// Active topics
-		if len(ns.ActiveTopics) > 0 {
-			fmt.Printf("  Active topics: %d\n", len(ns.ActiveTopics))
-			for _, t := range ns.ActiveTopics {
-				fmt.Printf("    • %s\n", t)
-			}
-		}
-		fmt.Printf("  Completed topics: %d\n", ns.CompletedCount)
-		fmt.Println()
-
-		// Work queue summary
-		if len(ns.WorkItemSummary) > 0 {
-			fmt.Println("  Work queue:")
-			for status, count := range ns.WorkItemSummary {
-				fmt.Printf("    %s: %d\n", status, count)
-			}
-			fmt.Println()
-		}
-
-		// Daemon health
-		fmt.Println("  Daemon:")
-		fmt.Printf("    Label:     %s\n", ns.DaemonLabel)
-		if ns.DaemonInstalled {
-			fmt.Println("    Installed: yes")
-		} else {
-			fmt.Println("    Installed: no")
-		}
-		if ns.DaemonLoaded {
-			fmt.Println("    Loaded:    yes")
-		} else {
-			fmt.Println("    Loaded:    no")
-		}
-		if ns.ConfiguredBinary != "" {
-			fmt.Printf("    Binary:    %s\n", ns.ConfiguredBinary)
-			if !ns.BinaryExists {
-				fmt.Println("    Binary exists: no (stale plist?)")
-			}
-			if ns.BinaryIsGoRun {
-				fmt.Println("    Warning: binary is temporary go-run output")
-			}
-		}
-		fmt.Println()
-
-		// Last reads
-		fmt.Printf("  Last Claude read: %s\n", ns.LastClaudeRead)
-		fmt.Printf("  Last Codex read:  %s\n", ns.LastCodexRead)
-
-		// Agent CLI health
-		if len(ns.AgentHealth) > 0 {
-			fmt.Println()
-			fmt.Println("  Agent CLI health:")
-			for _, h := range ns.AgentHealth {
-				if h.CLIFound && h.AuthOK {
-					fmt.Printf("    ✅ %s: ready (%s)\n", h.AgentType, h.CLIPath)
-				} else if h.CLIFound && h.NeedsLogin {
-					fmt.Printf("    ❌ %s: not logged in — run '%s' then /login\n", h.AgentType, h.AgentType)
-					if h.BlockedItems > 0 {
-						fmt.Printf("       ⚠️  %d dispatch(es) blocked by auth\n", h.BlockedItems)
-					}
-				} else if h.CLIFound && !h.AuthOK {
-					fmt.Printf("    ❌ %s: CLI check failed\n", h.AgentType)
-					if h.AuthError != "" {
-						fmt.Printf("       %s\n", h.AuthError)
-					}
-				} else {
-					fmt.Printf("    ⚠️  %s: not found in PATH\n", h.AgentType)
-				}
-			}
-			fmt.Println()
-		}
-
-		// Recent failures
-		if len(ns.RecentFailures) > 0 {
-			fmt.Println()
-			fmt.Printf("  Recent failures: %d\n", len(ns.RecentFailures))
-			for _, f := range ns.RecentFailures {
-				fmt.Printf("    %s → %s: %s (%s)\n", f.Agent, f.ItemID, f.Error, f.FailedAt.Format(time.RFC3339))
-			}
-		}
-
-		return nil
-	},
-}
-
-var routerSmokeCmd = &cobra.Command{
-	Use:   "smoke",
-	Short: "Verify both agents can launch and write to the router directory",
-	Long: `Smoke test for the autorouter relay. Launches each agent (Claude and Codex)
-with a minimal prompt that writes a token file into .agents/idea-router/smoke-test/.
-Verifies write access succeeds, then cleans up.
-
-  sirsi router smoke --dry-run       Check CLIs exist without launching
-  sirsi router smoke                 Full probe (launches agents, verifies writes)
-  sirsi router smoke --agent-pair    Full relay: seed → Claude → Codex → verify`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		repoRoot, err := router.FindRepoRoot()
-		if err != nil {
-			return fmt.Errorf("no idea-router found: %w", err)
-		}
-
-		results, err := router.RunSmoke(cmd.Context(), router.SmokeOptions{
-			RepoRoot:  repoRoot,
-			DryRun:    smokeDryRun,
-			AgentPair: smokeAgentPair,
-			Out:       os.Stdout,
-		})
-		if err != nil {
-			return err
-		}
-
-		allPassed := true
-		fmt.Println()
-		output.Header("Ra — Router Smoke Test")
-		fmt.Println()
-		for _, r := range results {
-			status := "PASS"
-			if !r.Passed {
-				status = "FAIL"
-				allPassed = false
-			}
-			fmt.Printf("  %-8s [%s] %s (%s)\n", r.Agent, status, r.Detail, r.Elapsed.Round(time.Millisecond))
-		}
-		fmt.Println()
-		if !allPassed {
-			return fmt.Errorf("smoke test failed — one or more agents cannot write to the router")
-		}
-		if smokeDryRun {
-			fmt.Println("  Dry-run complete. Agent CLIs found. Live writeback was NOT tested.")
-			fmt.Println("  Run without --dry-run from your terminal to verify live relay.")
-		} else {
-			fmt.Println("  Live smoke passed. Agents launched and wrote to the router.")
-			fmt.Println("  Note: full relay proof requires both agents to read, act, and advance the queue.")
-			fmt.Println("  Run 'sirsi router status' to verify pending items cleared after relay.")
-		}
-		return nil
-	},
-}
-
-func launchctlUserDomain() (string, error) {
-	u, err := user.Current()
-	if err != nil {
-		return "", fmt.Errorf("resolve current user: %w", err)
-	}
-	return "gui/" + u.Uid, nil
-}
-
-var submitExistingTo string
-
-var routerSubmitExistingCmd = &cobra.Command{
-	Use:   "submit-existing <file>",
-	Short: "Register an existing router doc with a target agent's inbox",
-	Long: `Adds an already-written proposal/review/decision file to a target agent's
-pending inbox. Use this when a markdown file was dropped into the router
-directory without going through SubmitAddressed, so the receiver's heartbeat
-worker never sees it.
-
-  sirsi router submit-existing .agents/idea-router/proposals/foo.md --to codex-pantheon`,
-	Args: cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if submitExistingTo == "" {
-			return fmt.Errorf("--to <agent> is required")
-		}
-
-		repoRoot, err := router.FindRepoRoot()
-		if err != nil {
-			return fmt.Errorf("no idea-router found: %w", err)
-		}
-		r, err := router.New(repoRoot)
-		if err != nil {
-			return err
-		}
-
-		absFile, err := filepath.Abs(args[0])
-		if err != nil {
-			return fmt.Errorf("resolve file path: %w", err)
-		}
-		if resolved, err := filepath.EvalSymlinks(absFile); err == nil {
-			absFile = resolved
-		}
-		routerDir, err := filepath.Abs(filepath.Join(repoRoot, ".agents", "idea-router"))
-		if err != nil {
-			return fmt.Errorf("resolve router dir: %w", err)
-		}
-		if resolved, err := filepath.EvalSymlinks(routerDir); err == nil {
-			routerDir = resolved
-		}
-		if !strings.HasPrefix(absFile, routerDir+string(os.PathSeparator)) {
-			return fmt.Errorf("file %q is not under router root %q", absFile, routerDir)
-		}
-		parent := filepath.Base(filepath.Dir(absFile))
-		switch parent {
-		case "proposals", "reviews", "decisions":
-		default:
-			return fmt.Errorf("file must live under proposals/, reviews/, or decisions/ (got %q)", parent)
-		}
-		if _, err := os.Stat(absFile); err != nil {
-			return fmt.Errorf("file not readable: %w", err)
-		}
-
-		if err := r.ValidateAgent(submitExistingTo); err != nil {
-			return err
-		}
-
-		stem := strings.TrimSuffix(filepath.Base(absFile), filepath.Ext(absFile))
-
-		state, err := r.ReadState()
-		if err != nil {
-			return fmt.Errorf("read state: %w", err)
-		}
-		for _, existing := range state.InboxFor(submitExistingTo) {
-			if existing == stem {
-				fmt.Printf("  Already pending for %s: %s\n", submitExistingTo, stem)
-				return nil
-			}
-		}
-		state.AddToInbox(submitExistingTo, stem)
-		if err := r.WriteState(state); err != nil {
-			return fmt.Errorf("write state: %w", err)
-		}
-		fmt.Printf("  Registered %s in %s inbox.\n", stem, submitExistingTo)
-		return nil
-	},
-}
-
 func init() {
-	routerWatchCmd.Flags().BoolVar(&watchOnce, "once", false, "Poll once and exit (for testing/CI)")
-	routerInboxCmd.Flags().BoolVar(&inboxAck, "ack", false, "Acknowledge and clear pending items")
-	routerRunCmd.Flags().BoolVar(&runOnce, "once", false, "Run one dispatch pass and exit")
-	routerRunCmd.Flags().BoolVar(&runDryRun, "dry-run", false, "Print dispatches without launching agents")
-	routerRunCmd.Flags().StringVar(&runTarget, "target", "all", "Dispatch target: codex, claude, or all")
-	routerRunCmd.Flags().DurationVar(&runInterval, "interval", 10*time.Second, "Polling interval")
-	routerDaemonCmd.Flags().BoolVar(&daemonDryRun, "dry-run", false, "Print dispatches without launching agents")
-	routerDaemonCmd.Flags().StringVar(&daemonTarget, "target", "all", "Dispatch target: codex, claude, or all")
-	routerDaemonCmd.Flags().DurationVar(&daemonInterval, "interval", time.Second, "Fallback polling interval")
-	routerWorkCmd.Flags().BoolVar(&workDryRun, "dry-run", false, "Print dispatches without launching agents")
-	routerWorkCmd.Flags().StringVar(&workTarget, "target", "all", "Dispatch target: registered agent id, codex, claude, or all")
-	routerWorkCmd.Flags().BoolVar(&workPoll, "poll", false, "Keep polling and dispatching until interrupted")
-	routerWorkCmd.Flags().DurationVar(&workInterval, "interval", 10*time.Second, "Polling interval for --poll")
-	routerInstallAgentCmd.Flags().StringVar(&installRepo, "repo", "", "Repository root (defaults to current repo)")
-	routerInstallAgentCmd.Flags().BoolVar(&installLoad, "load", false, "Load/start the launch agent after writing it")
-	routerUninstallAgentCmd.Flags().StringVar(&serviceRepo, "repo", "", "Repository root (defaults to current repo)")
-	routerServiceStatusCmd.Flags().StringVar(&serviceRepo, "repo", "", "Repository root (defaults to current repo)")
-	routerSmokeCmd.Flags().BoolVar(&smokeDryRun, "dry-run", false, "Check CLIs exist without launching agents")
-	routerSmokeCmd.Flags().BoolVar(&smokeAgentPair, "agent-pair", false, "Full relay test: seed router item, launch both agents, verify writeback")
-	routerSubmitExistingCmd.Flags().StringVar(&submitExistingTo, "to", "", "Target agent inbox (e.g., codex-pantheon, claude-finalwishes)")
 	routerSendCmd.Flags().StringVar(&sendFrom, "from", "", "Sender agent id (e.g., claude-pantheon)")
 	routerSendCmd.Flags().StringVar(&sendTo, "to", "", "Recipient agent id (e.g., codex-pantheon)")
 	routerSendCmd.Flags().StringVar(&sendTitle, "title", "", "Short title for the work item")
 	routerSendCmd.Flags().StringVar(&sendInstructions, "instructions", "", "Instructions body (literal text, or @file)")
 	routerCloseCmd.Flags().StringVar(&closeResult, "result", "", "Result body (literal text, or @file)")
-	routerCmd.AddCommand(routerStatusCmd, routerWatchCmd, routerInboxCmd, routerRunCmd, routerDaemonCmd, routerWorkCmd, routerInstallAgentCmd, routerUninstallAgentCmd, routerServiceStatusCmd, routerNodeStatusCmd, routerSmokeCmd, routerSubmitExistingCmd, routerSendCmd, routerPullCmd, routerShowCmd, routerCloseCmd)
+	routerCmd.AddCommand(routerStatusCmd, routerSendCmd, routerPullCmd, routerShowCmd, routerCloseCmd)
 }

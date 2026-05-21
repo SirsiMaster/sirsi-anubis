@@ -106,69 +106,6 @@ func runSirsiInDir(t *testing.T, dir string, timeout time.Duration, args ...stri
 	return outBuf.String(), errBuf.String(), err
 }
 
-// TestRouterSubmitExisting verifies that the submit-existing command registers
-// an orphan markdown file into a target agent's inbox without duplicating the
-// file. Closes the dead-letter loop where a file-drop into proposals/ would
-// never reach the receiver's heartbeat worker.
-func TestRouterSubmitExisting(t *testing.T) {
-	t.Parallel()
-
-	tmp := t.TempDir()
-	routerDir := filepath.Join(tmp, ".agents", "idea-router")
-	for _, sub := range []string{"proposals", "reviews", "decisions", "logs"} {
-		if err := os.MkdirAll(filepath.Join(routerDir, sub), 0o755); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err := os.WriteFile(filepath.Join(routerDir, "state.json"), []byte(`{"version":1}`), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(routerDir, "agents.json"), []byte(`{"agents":{}}`), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	propPath := filepath.Join(routerDir, "proposals", "20260521-claude-codex-test-proposal.md")
-	propBody := "# Test Proposal\n\nauthor: claude\naddressed_to: codex\n"
-	if err := os.WriteFile(propPath, []byte(propBody), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	stdout, stderr, err := runSirsiInDir(t, tmp, 10*time.Second,
-		"router", "submit-existing", propPath, "--to", "codex")
-	if err != nil {
-		t.Fatalf("submit-existing failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
-	}
-	if !strings.Contains(stdout, "Registered") {
-		t.Errorf("expected 'Registered' in stdout, got: %s", stdout)
-	}
-
-	stateBytes, err := os.ReadFile(filepath.Join(routerDir, "state.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	stateStr := string(stateBytes)
-	if !strings.Contains(stateStr, "20260521-claude-codex-test-proposal") {
-		t.Errorf("state.json missing registered stem:\n%s", stateStr)
-	}
-
-	stdout2, _, err := runSirsiInDir(t, tmp, 10*time.Second,
-		"router", "submit-existing", propPath, "--to", "codex")
-	if err != nil {
-		t.Fatalf("re-register failed: %v", err)
-	}
-	if !strings.Contains(stdout2, "Already pending") {
-		t.Errorf("expected dedup 'Already pending', got: %s", stdout2)
-	}
-
-	_, stderr3, err := runSirsiInDir(t, tmp, 10*time.Second,
-		"router", "submit-existing", propPath)
-	if err == nil {
-		t.Errorf("expected error when --to is missing")
-	}
-	if !strings.Contains(stderr3, "--to") {
-		t.Errorf("expected '--to' in stderr, got: %s", stderr3)
-	}
-}
-
 // TestRouterPullModelRoundtrip verifies the new pull-model loop: A sends to B,
 // B pulls and sees the item, B closes with a result, B's pull is then empty.
 // This is the bare-minimum any-to-any flow, independent of legacy state.json.

@@ -14,13 +14,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
   - `sirsi router pull <agent>` — list open items addressed to an agent
   - `sirsi router show <id>` — print full body + frontmatter
   - `sirsi router close <id> --result <text-or-@file>` — flip status to closed
+  - `sirsi router status` — count open vs closed items, open by recipient
   - New `internal/work` package; items live as plain markdown under `.agents/idea-router/items/`
-  - Coexists with legacy push-model verbs (`run`, `daemon`, `work --poll`, `install-agent`, etc.) — those remain for backwards compatibility, but the pull-model is the recommended path
-- `sirsi router submit-existing <file> --to <agent>` — registers an orphan markdown file into a target agent's pending inbox (legacy push-model rescue).
-- `TestRouterSubmitExisting` and `TestRouterPullModelRoundtrip` integration tests.
+- `.claude/hooks/router_inbox_check.py` now also surfaces pull-model items (was legacy-only).
+- `TestRouterPullModelRoundtrip` integration test.
+
+### Removed
+- **Legacy push-model router CLI verbs**: `watch`, `run`, `daemon`, `work` (--poll), `install-agent`, `uninstall-agent`, `service-status`, `node-status`, `smoke`, `submit-existing`, plus the legacy `inbox` verb. The pull model replaces all of them with one mental model (file in items/ + recipient pulls). The `internal/router` Go package is left intact (still imported by `agentcmd.go`, `threadcmd.go`, `setup.go`, `internal/mcp/tools.go` for thread/agent registry reads) — a follow-up can prune the now-dead dispatcher/runner/launchctl code from that package.
+- Any running `sirsi router daemon` process (e.g., from the launch agent) keeps running on its loaded binary, but restarts will fail with "unknown command" — uninstall the launch agent with `launchctl unload ~/Library/LaunchAgents/com.sirsi.idea-router.*.plist` if you previously installed one.
 
 ### Fixed
-- Path containment check in `submit-existing` calls `filepath.EvalSymlinks` so it works on macOS where `/var/folders` resolves to `/private/var/folders`.
+- Path containment check in the (removed) `submit-existing` verb used `filepath.EvalSymlinks` so tempdir tests worked on macOS; same pattern carries forward to `workRoot()`.
 
 ---
 
