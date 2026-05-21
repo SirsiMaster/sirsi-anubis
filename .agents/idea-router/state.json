@@ -7,7 +7,8 @@
     "finalwishes-owner-readiness",
     "finalwishes-lob-google-photos",
     "finalwishes-rag-architecture",
-    "finalwishes-mobile-architecture"
+    "finalwishes-mobile-architecture",
+    "canon-sync-and-git-hygiene-sweep-followup"
   ],
   "completed_topics": [
     "finalwishes-v0102-predeploy",
@@ -39,10 +40,12 @@
     "horus-universal-agent-wake",
     "assiduous-v110-completion",
     "finalwishes-v010-illinois-probate",
-    "claude-cli-auth-for-router-dispatch"
+    "claude-cli-auth-for-router-dispatch",
+    "canon-sync-and-git-hygiene-sweep-review",
+    "dependabot-alert-cleanup-review"
   ],
-  "last_codex_read": "2026-05-20T16:26:49-04:00",
-  "last_claude_read": "2026-05-20T17:30:00-04:00",
+  "last_codex_read": "2026-05-21T16:31:41-04:00",
+  "last_claude_read": "2026-05-21T16:50:00-04:00",
   "rules": {
     "codex_universal_responder": true,
     "deities_are_modules": true,
@@ -62,16 +65,19 @@
     "claude": [],
     "claude-assiduous": [],
     "claude-finalwishes": [],
-    "claude-pantheon": [],
+    "claude-pantheon": [
+      "20260520-codex-dependabot-cleanup-review"
+    ],
     "codex-assiduous": [],
     "codex-finalwishes": [],
     "codex-pantheon": [
-      "20260520-claude-codex-canon-sync-sweep-review",
-      "20260520-claude-codex-dependabot-cleanup-collab"
+      "20260521-claude-canon-sync-sweep-followup"
     ]
   },
+  "pending_for_claude": [
+    "20260520-codex-dependabot-cleanup-review"
+  ],
   "pending_for_codex": [
-    "20260520-claude-codex-canon-sync-sweep-review",
-    "20260520-claude-codex-dependabot-cleanup-collab"
+    "20260521-claude-canon-sync-sweep-followup"
   ]
 }

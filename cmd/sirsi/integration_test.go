@@ -534,7 +534,19 @@ func TestDeityCommands(t *testing.T) {
 				t.Skip(tt.skipReason)
 			}
 
-			stdout, stderr, err := runSirsi(t, tt.timeout, tt.args...)
+			// Scan/ghosts walk $HOME by default. Pin them to an empty temp
+			// HOME so the test runtime doesn't depend on the developer's disk.
+			var env []string
+			if tt.name == "scan_json" || tt.name == "ghosts" {
+				homeDir := t.TempDir()
+				env = []string{
+					"HOME=" + homeDir,
+					"XDG_CONFIG_HOME=" + filepath.Join(homeDir, ".config"),
+					"XDG_CACHE_HOME=" + filepath.Join(homeDir, ".cache"),
+				}
+			}
+
+			stdout, stderr, err := runSirsiWithEnv(t, tt.timeout, env, tt.args...)
 			combined := stdout + stderr
 
 			if tt.wantExit0 && err != nil {
@@ -559,22 +571,33 @@ func TestNextStepsPresent(t *testing.T) {
 	}
 
 	tests := []struct {
-		name string
-		args []string
+		name      string
+		args      []string
+		isolateHome bool
 	}{
-		{"scan_next_steps", []string{"scan"}},
-		{"ghosts_next_steps", []string{"ghosts"}},
-		{"doctor_next_steps", []string{"doctor"}},
-		{"network_next_steps", []string{"network"}},
-		{"hardware_next_steps", []string{"hardware"}},
-		{"osiris_assess_next_steps", []string{"osiris", "assess"}},
+		{"scan_next_steps", []string{"scan"}, true},
+		{"ghosts_next_steps", []string{"ghosts"}, true},
+		{"doctor_next_steps", []string{"doctor"}, false},
+		{"network_next_steps", []string{"network"}, false},
+		{"hardware_next_steps", []string{"hardware"}, false},
+		{"osiris_assess_next_steps", []string{"osiris", "assess"}, false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			stdout, stderr, err := runSirsi(t, 60*time.Second, tt.args...)
+			var env []string
+			if tt.isolateHome {
+				homeDir := t.TempDir()
+				env = []string{
+					"HOME=" + homeDir,
+					"XDG_CONFIG_HOME=" + filepath.Join(homeDir, ".config"),
+					"XDG_CACHE_HOME=" + filepath.Join(homeDir, ".cache"),
+				}
+			}
+
+			stdout, stderr, err := runSirsiWithEnv(t, 60*time.Second, env, tt.args...)
 			if err != nil {
 				t.Fatalf("command %v failed: %v", tt.args, err)
 			}
