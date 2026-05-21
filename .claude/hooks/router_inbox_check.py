@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -82,6 +83,44 @@ def pull_model_open_items(router_root: Path, agent_id: str) -> list[str]:
     return matches
 
 
+def heartbeat_active_thread(agent_id: str) -> None:
+    """Heartbeat the most recently active CTR thread matching agent_id.
+
+    Best-effort, silent. Skips entirely if sirsi is missing, no matching
+    thread is registered, or the subprocess fails. Never blocks the prompt.
+    """
+    try:
+        out = subprocess.run(
+            ["sirsi", "thread", "list", "--json"],
+            capture_output=True, text=True, timeout=2,
+        )
+        if out.returncode != 0 or not out.stdout.strip():
+            return
+        threads = json.loads(out.stdout)
+    except (FileNotFoundError, subprocess.TimeoutExpired, json.JSONDecodeError):
+        return
+
+    candidates = [
+        t for t in threads
+        if (t.get("thread") or {}).get("agent_id") == agent_id
+        and (t.get("thread") or {}).get("status") == "active"
+    ]
+    if not candidates:
+        return
+    # Pick the freshest (lowest idle_seconds)
+    candidates.sort(key=lambda t: t.get("idle_seconds", float("inf")))
+    thread_id = (candidates[0].get("thread") or {}).get("thread_id")
+    if not thread_id:
+        return
+    try:
+        subprocess.run(
+            ["sirsi", "thread", "heartbeat", "--thread", thread_id, "--quiet"],
+            capture_output=True, timeout=2,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+
+
 def main() -> int:
     mode = sys.argv[1] if len(sys.argv) > 1 else "session"
     repo_override = os.environ.get("SIRSI_ROUTER_REPO_ROOT")
@@ -97,6 +136,11 @@ def main() -> int:
         return 0
 
     agent_id = claude_agent_id(repo_root, agents)
+
+    # Keep this session's CTR thread fresh. Fire-and-forget; never block the
+    # prompt on registry latency or failures.
+    heartbeat_active_thread(agent_id)
+
     legacy = pending_items(state, agent_id)
     pull = pull_model_open_items(router_root, agent_id)
     total = len(legacy) + len(pull)
