@@ -10,6 +10,12 @@ import (
 	"strings"
 )
 
+// historyEntry is a recorded prompt command. Defined here because the TUI
+// removal pruned the original declaration but suggestions/tests still use it.
+type historyEntry struct {
+	command string
+}
+
 // deduplicateHistory extracts unique command strings from history entries,
 // preserving the original casing, most recent occurrence wins.
 func deduplicateHistory(history []historyEntry) []string {

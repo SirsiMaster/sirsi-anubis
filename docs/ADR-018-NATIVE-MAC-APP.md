@@ -38,10 +38,12 @@ The TUI in `internal/output/tui*.go` (~4,800 LOC across 20 files) is frozen now 
 2. **Standalone app target + menubar companion.** `cmd/sirsi-app/` is the primary window architecture. `cmd/sirsi-menubar/` remains the status/companion surface. The two share a core/bridge layer. We do **not** extend the menubar binary into a window-bearing app — that path repeats the "small surface grows into product shell" failure of v0.21.0.
 3. **Reuse before greenfield.** Phase 1 reuse audit of `cmd/sirsi-menubar/`, `ios/Pantheon/`, and `mobile/*.go` gomobile bindings (PantheonCore.xcframework v0.17.0) precedes any view-level code. iOS views are *adapted*, not blindly forked or Catalyst-wrapped.
 4. **First vertical slice = Status.** Smallest bridge risk; reuses `cmd/sirsi-menubar/` stats collection (105 ms cadence).
-5. **TUI cadence:**
-   - **Now (pre-v0.23):** freeze TUI; hide from default entry points and public docs; keep behind explicit dev/experimental flag for internal salvage only.
-   - **v0.23 release:** CLI is the only supported terminal surface. No "interactive TUI complete" claims anywhere.
-   - **After Mac app v1.0 user-UAT parity:** delete `internal/output/tui*.go`. Keep `internal/output/terminal.go` (styled non-interactive CLI output).
+5. **TUI cadence — IMMEDIATE ELIMINATION (user-escalated 2026-05-21):**
+   - **2026-05-21 (this commit):** all 20 TUI files deleted from `internal/output/` (`tui.go`, `dashboard.go`, all `tui_*.go`, all TUI tests, `suggestions.go`, `coverage_boost_test.go`, `output_sprint_test.go`). All 4 `cmd/sirsi/main.go` TUI entry points removed (no-arg `LaunchTUI`, `status --live`, `sirsi pantheon`/`sirsi tui` aliases, the `showGateway` menu's TUI dispatch). Dead `showGateway` function deleted entirely.
+   - **Now:** `sirsi` with no args prints help. There is no interactive surface in the terminal. CLI is the only terminal surface.
+   - **Until Mac app v1.0 ships:** Mac users also use CLI only (no interactive UI of any kind).
+   - **Kept:** `internal/output/terminal.go`, `result.go`, `pid_*.go` — styled non-interactive CLI output used by every verb. The `internal/output/` package is no longer a TUI module.
+   - **Note vs Codex condition:** Codex recommended freeze-then-delete-at-v1.0-parity. User overrode to immediate deletion (reputational-risk reasoning: keeping the broken TUI behind any flag preserves the failure surface). ADR-018 reflects the user's stronger position.
 6. **Distribution:** Developer ID + notarization + **Sparkle** first. Mac App Store evaluated later only if sandboxing does not break value (e.g., Ka ghost detection across user `~/Library` paths).
 7. **No Mole asset reuse.** Mole sets the quality bar; it is not a source of imagery, color tokens, or visual identity. Pantheon uses its own Egyptian gold/lapis tokens (see Rule A10).
 8. **Honest CLI compatibility matrix.** Before v0.23 messaging, publish `docs/CLI_COMPATIBILITY.md` listing every `sirsi` verb against macOS / Linux / Windows status (supported / partial / planned). No implied parity for Windows.

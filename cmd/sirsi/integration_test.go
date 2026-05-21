@@ -160,7 +160,7 @@ func TestRouterPullModelRoundtrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("show failed: %v", err)
 	}
-	if !strings.Contains(stdoutShow, "from: claude-a") || !strings.Contains(stdoutShow, "status: open") {
+	if !strings.Contains(stdoutShow, "claude-a") || !strings.Contains(stdoutShow, "status: open") {
 		t.Errorf("show missing expected frontmatter:\n%s", stdoutShow)
 	}
 
@@ -818,10 +818,10 @@ func TestUXContract_StatusCLI(t *testing.T) {
 	if !strings.Contains(combined, "What's Next") {
 		t.Errorf("status output missing 'What's Next' section\noutput:\n%s", combined)
 	}
-	// Must suggest --live for TUI
-	if !strings.Contains(combined, "--live") {
-		t.Errorf("status output missing '--live' suggestion\noutput:\n%s", combined)
-	}
+	// Per ADR-018 the TUI was eliminated 2026-05-21; the prior
+	// `--live` suggestion was removed with it. CLI status output is the
+	// authoritative surface for terminal users until the native Mac app
+	// ships.
 }
 
 // TestSubcommandHelp verifies every registered subcommand's --help exits 0.

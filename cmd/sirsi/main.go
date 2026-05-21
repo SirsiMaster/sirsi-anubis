@@ -1,11 +1,9 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -14,11 +12,9 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/logging"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/mcp"
-	"github.com/SirsiMaster/sirsi-pantheon/internal/notify"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
 	modversion "github.com/SirsiMaster/sirsi-pantheon/internal/version"
-	"github.com/SirsiMaster/sirsi-pantheon/internal/workstream"
 )
 
 var version = "v0.21.0"
@@ -82,8 +78,6 @@ var rootCmd = &cobra.Command{
 	Short: "Sirsi Pantheon — Infrastructure Hygiene & Developer Intelligence",
 	Long: `Sirsi Pantheon — Infrastructure Hygiene & Developer Intelligence
 
-  sirsi                    Launch interactive TUI
-
   Clean My Machine
   sirsi scan               Find infrastructure waste
   sirsi clean              Remove safe items (caches, logs, temp)
@@ -113,14 +107,9 @@ var rootCmd = &cobra.Command{
   sirsi ra <verb>          Fleet orchestration module
   sirsi version            Show version`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if len(args) == 0 {
-			// sirsi with no args → launch TUI directly
-			if err := output.LaunchTUI(); err != nil {
-				fmt.Fprintf(os.Stderr, "TUI error: %v\n", err)
-				os.Exit(1)
-			}
-			return
-		}
+		// sirsi no-args prints help. The interactive surface is the
+		// forthcoming native macOS app (ADR-018); the terminal TUI was
+		// eliminated 2026-05-21.
 		_ = cmd.Help()
 	},
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
@@ -215,26 +204,15 @@ var auditCmd = &cobra.Command{
 
 var statusCmd = &cobra.Command{
 	Use:   "status",
-	Short: "System status summary (or live dashboard with --live)",
+	Short: "System status summary",
 	Long: `Show a quick system status summary with health score.
 
   sirsi status          One-shot status summary with next actions
-  sirsi status --live   Launch live TUI dashboard (press q to quit)
   sirsi status --json   Output status as JSON`,
 	RunE: runStatus,
 }
 
-var statusLive bool
-
 func runStatus(cmd *cobra.Command, args []string) error {
-	// --live: launch TUI dashboard (original behavior)
-	if statusLive {
-		if err := output.LaunchTUIOnTab(4); err != nil {
-			return fmt.Errorf("TUI error: %w", err)
-		}
-		return nil
-	}
-
 	start := time.Now()
 
 	if !JsonOutput {
@@ -282,7 +260,6 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		cr.AddEvidence("Status", "All checks passing")
 	}
 
-	cr.AddNextAction("sirsi status --live", "Launch live dashboard for real-time monitoring")
 	cr.AddNextAction("sirsi diagnose", "Detailed health diagnostic with per-check breakdown")
 	cr.AddNextAction("sirsi scan", "Scan for infrastructure waste")
 	cr.Render()
@@ -693,155 +670,11 @@ Configure in your IDE:
 	},
 }
 
-// showGateway presents the Sirsi brand gateway when no subcommand is given.
-// Shows environment status (AI, IDE, workstreams) and routes the user.
-// On a clean install with nothing configured, guides through setup.
-// pantheonTUICmd launches the BubbleTea TUI directly, bypassing the gateway.
-// Used by the menubar to ensure the user always lands in the TUI.
-var pantheonTUICmd = &cobra.Command{
-	Use:     "pantheon",
-	Aliases: []string{"tui"},
-	Short:   "Launch the interactive Pantheon TUI",
-	Run: func(cmd *cobra.Command, args []string) {
-		nStore, _ := notify.Open(notify.DefaultPath())
-		if err := output.LaunchTUIWithNotify(nStore); err != nil {
-			fmt.Fprintf(os.Stderr, "TUI error: %v\n", err)
-		}
-		if nStore != nil {
-			nStore.Close()
-		}
-	},
-}
+// The Pantheon TUI and brand-gateway menu were removed 2026-05-21 per ADR-018.
+// The forthcoming native macOS app (cmd/sirsi-app/) replaces them; `sirsi`
+// with no arguments now prints help. `sirsi pantheon` / `sirsi tui` aliases
+// are no longer registered.
 
-func showGateway(cmd *cobra.Command) {
-	gold := output.TitleStyle
-	dim := output.DimStyle
-	green := output.SuccessStyle
-	red := output.ErrorStyle
-	p := platform.Current()
-
-	// ── Load or create inventory ──
-	inv, err := workstream.LoadInventory()
-	firstRun := err != nil
-	if firstRun {
-		fmt.Println()
-		fmt.Println(gold.Render("  \U000130DF  Sirsi \u2014 First Run"))
-		fmt.Println(dim.Render("  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"))
-		fmt.Println()
-		fmt.Println(dim.Render("  Scanning your system..."))
-		fmt.Println()
-		inv = workstream.ScanInventory(p)
-		_ = workstream.SaveInventory(inv)
-	}
-
-	ai := inv.InstalledAI()
-	ides := inv.InstalledIDEs()
-
-	// Count workstreams
-	store, _ := workstream.NewStore(workstream.DefaultConfigPath())
-	activeCount := 0
-	if store != nil {
-		activeCount = len(store.Active())
-	}
-
-	// ── Status banner (skip on first run — already printed) ──
-	if !firstRun {
-		fmt.Println()
-		fmt.Println(gold.Render("  𓁟  Sirsi"))
-		fmt.Println(dim.Render("  ─────────────────────────────"))
-		fmt.Println()
-	}
-
-	// System
-	fmt.Printf("  %s  %s %s\n", dim.Render("Sys"), inv.OS+"/"+inv.Arch, dim.Render(inv.Shell))
-
-	// AI
-	if len(ai) > 0 {
-		names := make([]string, len(ai))
-		for i, t := range ai {
-			names[i] = t.Name
-		}
-		fmt.Printf("  %s   %s\n", green.Render("AI"), strings.Join(names, ", "))
-	} else {
-		fmt.Printf("  %s   %s\n", red.Render("AI"), dim.Render("none installed"))
-	}
-
-	// IDE
-	if len(ides) > 0 {
-		names := make([]string, len(ides))
-		for i, t := range ides {
-			names[i] = t.Name
-		}
-		fmt.Printf("  %s  %s\n", green.Render("IDE"), strings.Join(names, ", "))
-	} else {
-		fmt.Printf("  %s  %s\n", red.Render("IDE"), dim.Render("none installed"))
-	}
-
-	// Repos
-	if len(inv.GitRepos) > 0 {
-		fmt.Printf("  %s  %s\n", dim.Render("Dev"), dim.Render(fmt.Sprintf("%d git repos found", len(inv.GitRepos))))
-	}
-
-	// Workstreams
-	if activeCount > 0 {
-		fmt.Printf("  %s %s\n", green.Render("Work"), dim.Render(fmt.Sprintf("%d active workstreams", activeCount)))
-	} else {
-		fmt.Printf("  %s %s\n", red.Render("Work"), dim.Render("no workstreams"))
-	}
-
-	// Stale warning
-	if !firstRun && inv.IsStale() {
-		days := int(inv.Age().Hours() / 24)
-		fmt.Printf("\n  %s\n", dim.Render(fmt.Sprintf("Inventory is %d days old. Run: sirsi work inventory", days)))
-	}
-
-	fmt.Println()
-
-	// First run or clean install → setup
-	if firstRun || (len(ai) == 0 && len(ides) == 0) {
-		_ = runSetupFlow()
-		fmt.Println()
-		fmt.Println(dim.Render("  Quick start — try any of these right now:"))
-		fmt.Println()
-		fmt.Printf("    %s  %s\n", gold.Render("sirsi scan"), dim.Render("Find infrastructure waste"))
-		fmt.Printf("    %s  %s\n", gold.Render("sirsi diagnose"), dim.Render("Full system health check"))
-		fmt.Printf("    %s  %s\n", gold.Render("sirsi clean"), dim.Render("Preview and remove safe items"))
-		fmt.Printf("    %s  %s\n", gold.Render("sirsi quickstart"), dim.Render("Guided first scan with recommendations"))
-		fmt.Println()
-		fmt.Println(dim.Render("  Run 'sirsi setup' anytime to configure AI tools and IDEs."))
-		fmt.Println()
-		return
-	}
-
-	// ── Menu ──
-	fmt.Printf("  %s  Pantheon      %s\n", gold.Render("1"), dim.Render("Infrastructure & Developer Intelligence"))
-	fmt.Printf("  %s  Workstreams   %s\n", gold.Render("2"), dim.Render("Open / manage AI sessions"))
-	fmt.Printf("  %s  Setup         %s\n", gold.Render("3"), dim.Render("Install AI assistants & IDEs"))
-	fmt.Println()
-	fmt.Print(dim.Render("  Choice [2]: "))
-
-	reader := bufio.NewReader(os.Stdin)
-	input, _ := reader.ReadString('\n')
-	input = strings.TrimSpace(input)
-
-	switch input {
-	case "1":
-		nStore, _ := notify.Open(notify.DefaultPath())
-		if err := output.LaunchTUIWithNotify(nStore); err != nil {
-			output.Banner()
-			_ = cmd.Help()
-		}
-		if nStore != nil {
-			nStore.Close()
-		}
-	case "3":
-		_ = runSetupFlow()
-	default:
-		_ = runWorkstreamInteractive(false)
-	}
-}
-
-// isTerminal returns true if the file descriptor is connected to a terminal
 // (not piped from an IDE or redirected from a file).
 func isTerminal(fd uintptr) bool {
 	fi, err := os.Stdin.Stat()
@@ -862,8 +695,6 @@ func init() {
 	networkCmd.Flags().BoolVar(&isisNetworkRollback, "rollback", false, "Restore DNS to pre-fix state")
 	diagramCmd.Flags().StringVar(&diagramType, "type", "all", "Diagram type (hierarchy|dataflow|modules|memory|governance|pipeline|all)")
 	diagramCmd.Flags().BoolVar(&diagramHTML, "html", false, "Generate self-contained HTML")
-
-	statusCmd.Flags().BoolVar(&statusLive, "live", false, "Launch live TUI dashboard")
 
 	// Core commands
 	scanCmd.Flags().BoolVar(&anubisAll, "all", false, "Scan all categories")
@@ -901,7 +732,6 @@ func init() {
 	vaultCmd.Hidden = true
 	notificationsCmd.Hidden = true
 	dashboardCmd.Hidden = true
-	pantheonTUICmd.Hidden = true
 	rootCmd.AddCommand(guardCmd, judgeCmd, qualityCmd, mcpCmd, benchmarkCmd)
 	rootCmd.AddCommand(rtkCmd, vaultCmd, horusCmd)
 	rootCmd.AddCommand(notificationsCmd, dashboardCmd)
@@ -911,10 +741,10 @@ func init() {
 	// When code graph moves under dashboard as a tab, the horus command
 	// will become the dashboard entry point.
 
-	// Workstream manager and TUI launcher (hidden)
+	// Workstream manager (hidden). The pantheon/tui launcher commands were
+	// removed 2026-05-21 per ADR-018.
 	workCmd.Hidden = true
 	rootCmd.AddCommand(workCmd)
-	rootCmd.AddCommand(pantheonTUICmd)
 
 	// Isis — Health & Remediation
 	isisNetworkCmd.Flags().BoolVar(&isisNetworkFix, "fix", false, "Auto-apply safe fixes (DNS, firewall)")
