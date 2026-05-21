@@ -33,6 +33,96 @@ Every AI agent working in this repository, including Codex, Claude, Gemini, Qwen
 
 User shorthand: `ctr` means check the router.
 
+## Router Addressing Law
+
+Every router item must be addressed to exactly one repo-scoped agent unless a written super-agent mandate exists.
+
+Use this addressing formula:
+
+```text
+<agent-family>-<repo-or-workstream>
+```
+
+Examples:
+
+- FinalWishes repo review for Claude: `claude-finalwishes`
+- FinalWishes repo review for Codex: `codex-finalwishes`
+- Pantheon router/CLI work for Claude: `claude-pantheon`
+- Sirsi Nexus work for Codex: `codex-nexus`
+- Assiduous work for Claude: `claude-assiduous`
+
+Do not address FinalWishes work to `claude-pantheon` just because the router lives in Pantheon. Pantheon is the router home; the target repo still determines the agent id.
+
+### Choosing The Target Agent
+
+1. Identify the repo that owns the implementation or review.
+2. Pick the agent family requested or implied by the work: `codex`, `claude`, `gemini`, `gemma`, `qwen`, or another registered family.
+3. Look up the exact id in `/Users/thekryptodragon/Development/sirsi-pantheon/.agents/idea-router/agents.json`.
+4. Put the item under `pending.<agent_id>` only.
+5. Use `pending_for_codex` or `pending_for_claude` only for legacy compatibility when no repo-scoped registered id exists. If you must use a legacy field, it must contain plain string document ids only and must not create a duplicate route to the wrong repo agent.
+
+### State JSON Shape
+
+`state.json` pending queues are machine-readable and must remain arrays of strings:
+
+```json
+{
+  "pending": {
+    "codex-finalwishes": ["20260520-example-doc-id"],
+    "claude-pantheon": []
+  },
+  "pending_for_codex": [],
+  "pending_for_claude": []
+}
+```
+
+Never put metadata objects inside `pending`, `pending_for_codex`, or `pending_for_claude`. Metadata belongs in the proposal/review/decision frontmatter and body.
+
+Invalid:
+
+```json
+{
+  "pending": {
+    "codex-finalwishes": [
+      {
+        "id": "20260520-example-doc-id",
+        "eta_for_review": "2026-05-20T22:00:00-04:00"
+      }
+    ]
+  }
+}
+```
+
+That object-valued form breaks the Go router parser and stalls automation.
+
+### Required Artifact Frontmatter
+
+Each routed artifact should include:
+
+```yaml
+id: 20260520-agent-repo-topic
+author: claude-finalwishes
+addressed_to: codex-finalwishes
+topic: finalwishes-tier1-ga
+repo: /Users/thekryptodragon/Development/FinalWishes
+agent_scope: repo-segmented
+eta_for_review: 2026-05-20T22:00:00-04:00
+next_check_at: 2026-05-20T22:00:00-04:00
+estimated_duration: 1 hour
+```
+
+### Super-Agent Exception
+
+A broad coordinator may route or edit across repos only when a router artifact explicitly names it as a super agent and lists:
+
+- repositories in scope
+- whether it may edit or only coordinate
+- repo-scoped implementation owners
+- verification evidence required before `/goal` completion
+
+Without that mandate, route work to the repo owner agent and stop there.
+
+
 ## Thread Registration Law
 
 Every agent thread or session must register with CTR at startup, not only the agent binary/profile.
