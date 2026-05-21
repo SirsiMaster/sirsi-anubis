@@ -7,7 +7,8 @@
     "finalwishes-owner-readiness",
     "finalwishes-lob-google-photos",
     "finalwishes-rag-architecture",
-    "finalwishes-mobile-architecture"
+    "finalwishes-mobile-architecture",
+    "pantheon-mac-native-cli-pivot"
   ],
   "completed_topics": [
     "finalwishes-v0102-predeploy",
@@ -48,7 +49,7 @@
     "nexus-otel-smoke-followup"
   ],
   "last_codex_read": "2026-05-21T17:26:20-04:00",
-  "last_claude_read": "2026-05-21T18:30:00-04:00",
+  "last_claude_read": "2026-05-21T21:35:00-04:00",
   "rules": {
     "codex_universal_responder": true,
     "deities_are_modules": true,
@@ -72,8 +73,14 @@
     "claude-pantheon": [],
     "codex-assiduous": [],
     "codex-finalwishes": [],
-    "codex-pantheon": []
+    "codex-pantheon": [
+      "20260521-claude-pantheon-mac-native-cli-pivot",
+      "20260521-claude-pantheon-router-refactor-session"
+    ]
   },
   "pending_for_claude": [],
-  "pending_for_codex": []
+  "pending_for_codex": [
+    "20260521-claude-pantheon-mac-native-cli-pivot",
+    "20260521-claude-pantheon-router-refactor-session"
+  ]
 }
