@@ -45,6 +45,43 @@ def pending_items(state: dict, agent_id: str) -> list[str]:
     return items
 
 
+def pull_model_open_items(router_root: Path, agent_id: str) -> list[str]:
+    """Count open items for agent_id under items/ (new pull-model queue).
+
+    Each item is a markdown file with YAML frontmatter. We do a minimal scan
+    rather than pulling in a YAML library — only `to:` and `status:` matter.
+    """
+    items_dir = router_root / "items"
+    if not items_dir.is_dir():
+        return []
+    matches: list[str] = []
+    for path in items_dir.glob("*.md"):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if not text.startswith("---\n"):
+            continue
+        end = text.find("\n---\n", 4)
+        if end < 0:
+            continue
+        frontmatter = text[4:end]
+        to_val = status_val = ""
+        for line in frontmatter.splitlines():
+            key, sep, value = line.partition(":")
+            if not sep:
+                continue
+            key = key.strip()
+            value = value.strip()
+            if key == "to":
+                to_val = value
+            elif key == "status":
+                status_val = value
+        if status_val == "open" and to_val == agent_id:
+            matches.append(path.stem)
+    return matches
+
+
 def main() -> int:
     mode = sys.argv[1] if len(sys.argv) > 1 else "session"
     repo_override = os.environ.get("SIRSI_ROUTER_REPO_ROOT")
@@ -60,13 +97,21 @@ def main() -> int:
         return 0
 
     agent_id = claude_agent_id(repo_root, agents)
-    items = pending_items(state, agent_id)
-    if not items:
+    legacy = pending_items(state, agent_id)
+    pull = pull_model_open_items(router_root, agent_id)
+    total = len(legacy) + len(pull)
+    if total == 0:
         return 0
 
     prefix = "router-inbox" if mode == "prompt" else "router"
-    noun = "item" if len(items) == 1 else "items"
-    print(f"{prefix}:{agent_id} has {len(items)} pending inbox {noun}")
+    noun = "item" if total == 1 else "items"
+    parts = []
+    if legacy:
+        parts.append(f"{len(legacy)} legacy")
+    if pull:
+        parts.append(f"{len(pull)} pull-model")
+    breakdown = " + ".join(parts)
+    print(f"{prefix}:{agent_id} has {total} pending inbox {noun} ({breakdown})")
     return 0
 
 
