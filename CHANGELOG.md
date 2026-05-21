@@ -9,8 +9,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 ## [Unreleased]
 
 ### Added
-- `sirsi router submit-existing <file> --to <agent>` — registers an orphan markdown file (already present in `proposals/`, `reviews/`, or `decisions/`) into a target agent's pending inbox. Closes the dead-letter loop where file-drops bypassing `SubmitAddressed` never reach the receiver's heartbeat worker.
-- `TestRouterSubmitExisting` integration test covering happy path, dedup on re-submit, and missing-`--to` error.
+- **Pull-model work queue** — bare-minimum any-to-any routing between agent threads, no daemon required:
+  - `sirsi router send --from <id> --to <id> --title <s> --instructions <text-or-@file>` — write one work item
+  - `sirsi router pull <agent>` — list open items addressed to an agent
+  - `sirsi router show <id>` — print full body + frontmatter
+  - `sirsi router close <id> --result <text-or-@file>` — flip status to closed
+  - New `internal/work` package; items live as plain markdown under `.agents/idea-router/items/`
+  - Coexists with legacy push-model verbs (`run`, `daemon`, `work --poll`, `install-agent`, etc.) — those remain for backwards compatibility, but the pull-model is the recommended path
+- `sirsi router submit-existing <file> --to <agent>` — registers an orphan markdown file into a target agent's pending inbox (legacy push-model rescue).
+- `TestRouterSubmitExisting` and `TestRouterPullModelRoundtrip` integration tests.
 
 ### Fixed
 - Path containment check in `submit-existing` calls `filepath.EvalSymlinks` so it works on macOS where `/var/folders` resolves to `/private/var/folders`.

@@ -12,8 +12,151 @@ import (
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/router"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/work"
 	"github.com/spf13/cobra"
 )
+
+// workRoot resolves the items directory for the current repo (new pull-model).
+// Legacy router commands are unaffected.
+func workRoot() (string, error) {
+	repoRoot, err := router.FindRepoRoot()
+	if err != nil {
+		return "", fmt.Errorf("no .agents/idea-router/ found: %w", err)
+	}
+	root := filepath.Join(repoRoot, ".agents", "idea-router")
+	if err := work.EnsureRoot(root); err != nil {
+		return "", err
+	}
+	return root, nil
+}
+
+// loadOrLiteral returns the literal value, or the contents of the file if it
+// starts with @. Lets callers pass --instructions "text" or --instructions @file.
+func loadOrLiteral(v string) (string, error) {
+	if strings.HasPrefix(v, "@") {
+		data, err := os.ReadFile(strings.TrimPrefix(v, "@"))
+		if err != nil {
+			return "", err
+		}
+		return string(data), nil
+	}
+	return v, nil
+}
+
+var (
+	sendFrom         string
+	sendTo           string
+	sendTitle        string
+	sendInstructions string
+)
+
+// routerSendCmd writes a new pull-model work item. Bare-minimum dispatch:
+// no daemon, no launch agent, no SIRSI_ROUTER_NOTIFY. The file is the queue.
+var routerSendCmd = &cobra.Command{
+	Use:   "send",
+	Short: "Send a work item from one agent to another (pull-model)",
+	Long: `Writes a new open work item under .agents/idea-router/items/. The
+recipient picks it up next time they run sirsi router pull <their-id>.
+
+No daemon. No dispatch. No launch agents. Each agent session reads its
+own inbox on wake, does the work, and runs sirsi router close.
+
+  sirsi router send --from claude-pantheon --to codex-pantheon \
+    --title "review canon-sync" --instructions @proposal.md`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if sendFrom == "" || sendTo == "" {
+			return fmt.Errorf("--from and --to are required")
+		}
+		if sendTitle == "" {
+			return fmt.Errorf("--title is required")
+		}
+		instr, err := loadOrLiteral(sendInstructions)
+		if err != nil {
+			return fmt.Errorf("--instructions: %w", err)
+		}
+		root, err := workRoot()
+		if err != nil {
+			return err
+		}
+		id, err := work.Send(root, sendFrom, sendTo, sendTitle, instr)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("  Sent %s → %s: %s\n", sendFrom, sendTo, id)
+		return nil
+	},
+}
+
+// routerPullCmd lists open pull-model items for an agent. Named pull (not
+// inbox) to avoid colliding with the legacy inbox verb that reads state.json.
+var routerPullCmd = &cobra.Command{
+	Use:   "pull <agent>",
+	Short: "Pull open pull-model work items addressed to an agent",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		root, err := workRoot()
+		if err != nil {
+			return err
+		}
+		items, err := work.ListInbox(root, args[0])
+		if err != nil {
+			return err
+		}
+		if len(items) == 0 {
+			fmt.Printf("  No open items for %s.\n", args[0])
+			return nil
+		}
+		fmt.Printf("  %d open items for %s:\n\n", len(items), args[0])
+		for _, it := range items {
+			fmt.Printf("  • %s\n      from: %s\n      title: %s\n      opened: %s\n\n", it.ID, it.From, it.Title, it.Opened)
+		}
+		fmt.Printf("  Read full: sirsi router show <id>\n")
+		fmt.Printf("  Close when done: sirsi router close <id> --result @path/to/result.md\n")
+		return nil
+	},
+}
+
+var routerShowCmd = &cobra.Command{
+	Use:   "show <id>",
+	Short: "Print the full text of a pull-model work item",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		root, err := workRoot()
+		if err != nil {
+			return err
+		}
+		path := filepath.Join(root, "items", args[0]+".md")
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("read item: %w", err)
+		}
+		_, _ = os.Stdout.Write(data)
+		return nil
+	},
+}
+
+var closeResult string
+
+var routerCloseCmd = &cobra.Command{
+	Use:   "close <id>",
+	Short: "Mark a pull-model work item closed",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		result, err := loadOrLiteral(closeResult)
+		if err != nil {
+			return fmt.Errorf("--result: %w", err)
+		}
+		root, err := workRoot()
+		if err != nil {
+			return err
+		}
+		if err := work.Close(root, args[0], result); err != nil {
+			return err
+		}
+		fmt.Printf("  Closed %s\n", args[0])
+		return nil
+	},
+}
 
 var routerCmd = &cobra.Command{
 	Use:   "router",
@@ -899,5 +1042,10 @@ func init() {
 	routerSmokeCmd.Flags().BoolVar(&smokeDryRun, "dry-run", false, "Check CLIs exist without launching agents")
 	routerSmokeCmd.Flags().BoolVar(&smokeAgentPair, "agent-pair", false, "Full relay test: seed router item, launch both agents, verify writeback")
 	routerSubmitExistingCmd.Flags().StringVar(&submitExistingTo, "to", "", "Target agent inbox (e.g., codex-pantheon, claude-finalwishes)")
-	routerCmd.AddCommand(routerStatusCmd, routerWatchCmd, routerInboxCmd, routerRunCmd, routerDaemonCmd, routerWorkCmd, routerInstallAgentCmd, routerUninstallAgentCmd, routerServiceStatusCmd, routerNodeStatusCmd, routerSmokeCmd, routerSubmitExistingCmd)
+	routerSendCmd.Flags().StringVar(&sendFrom, "from", "", "Sender agent id (e.g., claude-pantheon)")
+	routerSendCmd.Flags().StringVar(&sendTo, "to", "", "Recipient agent id (e.g., codex-pantheon)")
+	routerSendCmd.Flags().StringVar(&sendTitle, "title", "", "Short title for the work item")
+	routerSendCmd.Flags().StringVar(&sendInstructions, "instructions", "", "Instructions body (literal text, or @file)")
+	routerCloseCmd.Flags().StringVar(&closeResult, "result", "", "Result body (literal text, or @file)")
+	routerCmd.AddCommand(routerStatusCmd, routerWatchCmd, routerInboxCmd, routerRunCmd, routerDaemonCmd, routerWorkCmd, routerInstallAgentCmd, routerUninstallAgentCmd, routerServiceStatusCmd, routerNodeStatusCmd, routerSmokeCmd, routerSubmitExistingCmd, routerSendCmd, routerPullCmd, routerShowCmd, routerCloseCmd)
 }

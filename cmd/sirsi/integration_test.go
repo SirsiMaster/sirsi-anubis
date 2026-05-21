@@ -77,6 +77,19 @@ func runSirsiWithEnv(t *testing.T, timeout time.Duration, env []string, args ...
 	return outBuf.String(), errBuf.String(), err
 }
 
+// isolatedHomeEnv returns env vars pinning HOME and XDG_* to a per-test temp
+// directory so scan/ghost rules don't walk the developer's actual home tree
+// (which exceeds the 30-60s test budget on machines with large $HOME).
+func isolatedHomeEnv(t *testing.T) []string {
+	t.Helper()
+	homeDir := t.TempDir()
+	return []string{
+		"HOME=" + homeDir,
+		"XDG_CONFIG_HOME=" + filepath.Join(homeDir, ".config"),
+		"XDG_CACHE_HOME=" + filepath.Join(homeDir, ".cache"),
+	}
+}
+
 // runSirsiInDir is like runSirsi but runs the binary in the given working
 // directory instead of repoRoot. Used to isolate router state mutations.
 func runSirsiInDir(t *testing.T, dir string, timeout time.Duration, args ...string) (stdout, stderr string, err error) {
@@ -156,6 +169,90 @@ func TestRouterSubmitExisting(t *testing.T) {
 	}
 }
 
+// TestRouterPullModelRoundtrip verifies the new pull-model loop: A sends to B,
+// B pulls and sees the item, B closes with a result, B's pull is then empty.
+// This is the bare-minimum any-to-any flow, independent of legacy state.json.
+func TestRouterPullModelRoundtrip(t *testing.T) {
+	t.Parallel()
+
+	tmp := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(tmp, ".agents", "idea-router"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	stdout, stderr, err := runSirsiInDir(t, tmp, 10*time.Second,
+		"router", "send",
+		"--from", "claude-a", "--to", "claude-b",
+		"--title", "test handoff",
+		"--instructions", "do the thing, then close with a one-line summary")
+	if err != nil {
+		t.Fatalf("send failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+	}
+	if !strings.Contains(stdout, "Sent claude-a → claude-b") {
+		t.Errorf("expected send confirmation, got: %s", stdout)
+	}
+
+	stdoutB, _, err := runSirsiInDir(t, tmp, 10*time.Second, "router", "pull", "claude-b")
+	if err != nil {
+		t.Fatalf("pull B failed: %v", err)
+	}
+	if !strings.Contains(stdoutB, "1 open items for claude-b") {
+		t.Errorf("expected 1 open item for B, got: %s", stdoutB)
+	}
+	stdoutA, _, err := runSirsiInDir(t, tmp, 10*time.Second, "router", "pull", "claude-a")
+	if err != nil {
+		t.Fatalf("pull A failed: %v", err)
+	}
+	if !strings.Contains(stdoutA, "No open items for claude-a") {
+		t.Errorf("expected empty pull for A, got: %s", stdoutA)
+	}
+
+	var id string
+	for _, line := range strings.Split(stdoutB, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "•") {
+			id = strings.TrimSpace(strings.TrimPrefix(line, "•"))
+			break
+		}
+	}
+	if id == "" {
+		t.Fatalf("could not extract item id:\n%s", stdoutB)
+	}
+
+	stdoutShow, _, err := runSirsiInDir(t, tmp, 10*time.Second, "router", "show", id)
+	if err != nil {
+		t.Fatalf("show failed: %v", err)
+	}
+	if !strings.Contains(stdoutShow, "from: claude-a") || !strings.Contains(stdoutShow, "status: open") {
+		t.Errorf("show missing expected frontmatter:\n%s", stdoutShow)
+	}
+
+	stdoutClose, _, err := runSirsiInDir(t, tmp, 10*time.Second,
+		"router", "close", id, "--result", "did the thing")
+	if err != nil {
+		t.Fatalf("close failed: %v", err)
+	}
+	if !strings.Contains(stdoutClose, "Closed") {
+		t.Errorf("expected close confirmation, got: %s", stdoutClose)
+	}
+
+	stdoutB2, _, err := runSirsiInDir(t, tmp, 10*time.Second, "router", "pull", "claude-b")
+	if err != nil {
+		t.Fatalf("pull B after close failed: %v", err)
+	}
+	if !strings.Contains(stdoutB2, "No open items for claude-b") {
+		t.Errorf("expected empty pull after close, got: %s", stdoutB2)
+	}
+
+	_, stderrDC, err := runSirsiInDir(t, tmp, 10*time.Second, "router", "close", id)
+	if err == nil {
+		t.Errorf("expected double-close to fail")
+	}
+	if !strings.Contains(stderrDC, "already closed") {
+		t.Errorf("expected 'already closed' error, got: %s", stderrDC)
+	}
+}
+
 // --- Table-Driven Deity Command Tests ---
 
 // deityTest defines a single integration test case for a CLI command.
@@ -226,7 +323,7 @@ func TestAnubisWeighTerminal(t *testing.T) {
 		t.Skip("skipping scan in short mode")
 	}
 
-	stdout, stderr, err := runSirsi(t, 60*time.Second, "scan")
+	stdout, stderr, err := runSirsiWithEnv(t, 60*time.Second, isolatedHomeEnv(t), "scan")
 	if err != nil {
 		t.Fatalf("sirsi scan failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
@@ -244,7 +341,7 @@ func TestAnubisKa(t *testing.T) {
 		t.Skip("skipping ghost scan in short mode")
 	}
 
-	stdout, stderr, err := runSirsi(t, 30*time.Second, "ghosts")
+	stdout, stderr, err := runSirsiWithEnv(t, 30*time.Second, isolatedHomeEnv(t), "ghosts")
 	if err != nil {
 		t.Fatalf("sirsi ghosts failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
