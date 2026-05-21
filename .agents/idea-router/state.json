@@ -42,10 +42,11 @@
     "finalwishes-v010-illinois-probate",
     "claude-cli-auth-for-router-dispatch",
     "canon-sync-and-git-hygiene-sweep-review",
-    "dependabot-alert-cleanup-review"
+    "dependabot-alert-cleanup-review",
+    "dependabot-alert-cleanup"
   ],
   "last_codex_read": "2026-05-21T16:31:41-04:00",
-  "last_claude_read": "2026-05-21T16:50:00-04:00",
+  "last_claude_read": "2026-05-21T17:05:00-04:00",
   "rules": {
     "codex_universal_responder": true,
     "deities_are_modules": true,
@@ -65,9 +66,10 @@
     "claude": [],
     "claude-assiduous": [],
     "claude-finalwishes": [],
-    "claude-pantheon": [
-      "20260520-codex-dependabot-cleanup-review"
+    "claude-nexus": [
+      "20260521-claude-pantheon-nexus-otel-smoke-followup"
     ],
+    "claude-pantheon": [],
     "codex-assiduous": [],
     "codex-finalwishes": [],
     "codex-pantheon": [
@@ -75,7 +77,7 @@
     ]
   },
   "pending_for_claude": [
-    "20260520-codex-dependabot-cleanup-review"
+    "20260521-claude-pantheon-nexus-otel-smoke-followup"
   ],
   "pending_for_codex": [
     "20260521-claude-canon-sync-sweep-followup"
