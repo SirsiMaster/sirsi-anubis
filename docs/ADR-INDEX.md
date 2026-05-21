@@ -2,7 +2,7 @@
 
 This index tracks **all** architectural decisions for the Sirsi Pantheon ecosystem.
 
-**Total ADRs: 17** | **Next available: ADR-018**
+**Total ADRs: 18** | **Next available: ADR-019**
 
 ---
 
@@ -25,8 +25,9 @@ This index tracks **all** architectural decisions for the Sirsi Pantheon ecosyst
 | [ADR-013](ADR-013-TILED-CONTEXT-RENDERING.md) | Tiled Context Rendering — GPU-inspired relevance scoring, token budgets, deferred manifest | Accepted | 2026-04-05 |
 | [ADR-014](ADR-014-STELE-LEDGER.md) | Stele Ledger — append-only hash-chained event log for all deity communications | Accepted | 2026-04-03 |
 | [ADR-015](ADR-015-DEITY-HIERARCHY.md) | Deity Hierarchy — Horus as local workstation lord, Ra as fleet lord | Accepted | 2026-04-24 |
-| [ADR-016](ADR-016-TUI-PRIMARY-INTERFACE.md) | TUI as Primary Interface — shared suggest engine, streaming, view stack, persistent state | Accepted | 2026-05-06 |
+| [ADR-016](ADR-016-TUI-PRIMARY-INTERFACE.md) | TUI as Primary Interface — shared suggest engine, streaming, view stack, persistent state | **Superseded by ADR-018** | 2026-05-06 |
 | [ADR-017](ADR-017-RA-HORUS-CTR-HYPERVISOR.md) | Ra/Horus CTR Hypervisor — multi-agent orchestration canon, ownership boundary | Accepted | 2026-05-19 |
+| [ADR-018](ADR-018-NATIVE-MAC-APP.md) | Native macOS App + CLI as Pantheon's Interactive Surfaces — TUI sunset, standalone SwiftUI + menubar companion | Accepted | 2026-05-21 |
 
 ---
 
@@ -41,8 +42,9 @@ This index tracks **all** architectural decisions for the Sirsi Pantheon ecosyst
 - ADR-012: Pantheon VS Code Extension
 - ADR-014: Stele Ledger
 - ADR-015: Deity Hierarchy
-- ADR-016: TUI as Primary Interface
+- ADR-016: TUI as Primary Interface *(superseded by ADR-018)*
 - ADR-017: Ra/Horus CTR Hypervisor
+- ADR-018: Native macOS App + CLI (TUI sunset)
 
 ### Ghost Detection & Indexing
 - ADR-002: Ka Ghost Detection
@@ -79,8 +81,9 @@ This index tracks **all** architectural decisions for the Sirsi Pantheon ecosyst
 | ADR-013 | Active — Tiled Context Rendering |
 | ADR-014 | Active — Stele Ledger |
 | ADR-015 | Active — Deity Hierarchy |
-| ADR-016 | Active — TUI as Primary Interface |
+| ADR-016 | **Superseded** by ADR-018 — TUI as Primary Interface |
 | ADR-017 | Active — Ra/Horus CTR Hypervisor |
-| ADR-018+ | Next available |
+| ADR-018 | Active — Native macOS App + CLI (TUI sunset) |
+| ADR-019+ | Next available |
 
-> **Last updated:** May 19, 2026 — ADR-017 accepted (Ra/Horus CTR Hypervisor).
+> **Last updated:** May 21, 2026 — ADR-018 **accepted** (Native macOS App + CLI; supersedes ADR-016). User authorization recorded via router decision `20260521-claude-pantheon-adr018-accepted.md`.
