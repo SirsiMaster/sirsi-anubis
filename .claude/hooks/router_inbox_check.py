@@ -83,33 +83,113 @@ def pull_model_open_items(router_root: Path, agent_id: str) -> list[str]:
     return matches
 
 
-def heartbeat_active_thread(agent_id: str) -> None:
-    """Heartbeat the most recently active CTR thread matching agent_id.
+def claude_session_pid() -> int | None:
+    """Walk up the process tree to find the Claude Code CLI process.
 
-    Best-effort, silent. Skips entirely if sirsi is missing, no matching
-    thread is registered, or the subprocess fails. Never blocks the prompt.
+    Hook is invoked as: claude → shell → python3 (this script).
+    So our grandparent should be the claude binary.
+    """
+    try:
+        shell_pid = os.getppid()
+        out = subprocess.run(
+            ["ps", "-p", str(shell_pid), "-o", "ppid="],
+            capture_output=True, text=True, timeout=2,
+        )
+        return int(out.stdout.strip()) if out.returncode == 0 else None
+    except (subprocess.TimeoutExpired, ValueError):
+        return None
+
+
+def ensure_active_thread(agent_id: str, repo_path: Path) -> str | None:
+    """Return an active thread_id for agent_id, registering one if none exists.
+
+    Solves the orphan problem: if a session opens and CTR has no active
+    thread for our agent (or only stale ones), register fresh instead of
+    silently heartbeating someone else's thread.
     """
     try:
         out = subprocess.run(
             ["sirsi", "thread", "list", "--json"],
             capture_output=True, text=True, timeout=2,
         )
-        if out.returncode != 0 or not out.stdout.strip():
-            return
-        threads = json.loads(out.stdout)
+        threads = json.loads(out.stdout) if out.returncode == 0 and out.stdout.strip() else []
     except (FileNotFoundError, subprocess.TimeoutExpired, json.JSONDecodeError):
-        return
+        threads = []
 
-    candidates = [
+    # Active and fresh (< 5 minutes idle) — adopt it
+    fresh = [
         t for t in threads
         if (t.get("thread") or {}).get("agent_id") == agent_id
         and (t.get("thread") or {}).get("status") == "active"
+        and t.get("idle_seconds", 1e9) < 300
     ]
-    if not candidates:
+    if fresh:
+        fresh.sort(key=lambda t: t.get("idle_seconds", 1e9))
+        return (fresh[0].get("thread") or {}).get("thread_id")
+
+    # No fresh thread — register a new one
+    try:
+        out = subprocess.run(
+            ["sirsi", "thread", "register",
+             "--agent", agent_id, "--surface", "claude", "--repo", str(repo_path)],
+            capture_output=True, text=True, timeout=3,
+        )
+        # Output contains "thr-XXXXXXXX" — extract it
+        for line in (out.stdout + out.stderr).splitlines():
+            for tok in line.split():
+                if tok.startswith("thr-") and len(tok) > 10:
+                    return tok.strip(",.;:")
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+    return None
+
+
+def caffeinate_thread(thread_id: str, claude_pid: int | None) -> None:
+    """Spawn a backgrounded heartbeat loop that keeps thread_id fresh until
+    the parent claude process exits. Dedup via pidfile so we don't stack
+    multiple loops per session.
+
+    This is the 'caffeinate' primitive: thread stays alive while the
+    process is alive, no prompt-dependence. Universal pattern any agent
+    can adopt — just a shell loop anchored to the parent PID.
+    """
+    if not thread_id or not claude_pid:
         return
-    # Pick the freshest (lowest idle_seconds)
-    candidates.sort(key=lambda t: t.get("idle_seconds", float("inf")))
-    thread_id = (candidates[0].get("thread") or {}).get("thread_id")
+    pidfile = Path(f"/tmp/sirsi-caffeinate-{thread_id}.pid")
+    if pidfile.exists():
+        try:
+            old_pid = int(pidfile.read_text().strip())
+            os.kill(old_pid, 0)  # check liveness; raises if dead
+            return  # caffeinator already running for this thread
+        except (ValueError, ProcessLookupError, PermissionError):
+            pass  # stale, replace it
+
+    script = (
+        f"while kill -0 {claude_pid} 2>/dev/null; do "
+        f"sirsi thread heartbeat --thread {thread_id} --quiet >/dev/null 2>&1; "
+        f"sleep 60; "
+        f"done; rm -f {pidfile}"
+    )
+    try:
+        p = subprocess.Popen(
+            ["bash", "-c", script],
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            start_new_session=True,  # detach from python so it survives our exit
+        )
+        pidfile.write_text(str(p.pid))
+    except OSError:
+        pass
+
+
+def heartbeat_active_thread(agent_id: str, repo_path: Path) -> None:
+    """Ensure agent_id has an active thread + immediate heartbeat + caffeinator.
+
+    Order:
+      1. Adopt fresh thread or register a new one (no more silent orphan loss)
+      2. Immediate heartbeat so this session shows idle=0 right away
+      3. Spawn caffeinator (if not already running) for sustained liveness
+    """
+    thread_id = ensure_active_thread(agent_id, repo_path)
     if not thread_id:
         return
     try:
@@ -118,7 +198,8 @@ def heartbeat_active_thread(agent_id: str) -> None:
             capture_output=True, timeout=2,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired):
-        pass
+        return
+    caffeinate_thread(thread_id, claude_session_pid())
 
 
 def main() -> int:
@@ -137,9 +218,10 @@ def main() -> int:
 
     agent_id = claude_agent_id(repo_root, agents)
 
-    # Keep this session's CTR thread fresh. Fire-and-forget; never block the
-    # prompt on registry latency or failures.
-    heartbeat_active_thread(agent_id)
+    # Keep this session's CTR thread caffeinated. Adopts a fresh thread or
+    # registers a new one, immediate heartbeat, then spawns a background
+    # loop that heartbeats every 60s until the claude process exits.
+    heartbeat_active_thread(agent_id, repo_root)
 
     legacy = pending_items(state, agent_id)
     pull = pull_model_open_items(router_root, agent_id)
