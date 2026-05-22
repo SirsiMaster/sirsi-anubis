@@ -1,23 +1,36 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+	"time"
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/router"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/work"
 	"github.com/spf13/cobra"
 )
 
-// workRoot resolves the router items directory for the current repo.
+// workRoot resolves the router directory for the current repo without
+// creating it. Read-only verbs (status, pull, show) use this so audits and
+// sandboxed checks don't materialize an items/ directory as a side effect.
 func workRoot() (string, error) {
 	repoRoot, err := router.FindRepoRoot()
 	if err != nil {
 		return "", fmt.Errorf("no .agents/idea-router/ found: %w", err)
 	}
-	root := filepath.Join(repoRoot, ".agents", "idea-router")
+	return filepath.Join(repoRoot, ".agents", "idea-router"), nil
+}
+
+// workRootEnsure is workRoot plus mkdir of items/. Writers (send, close) use it.
+func workRootEnsure() (string, error) {
+	root, err := workRoot()
+	if err != nil {
+		return "", err
+	}
 	if err := work.EnsureRoot(root); err != nil {
 		return "", err
 	}
@@ -40,17 +53,22 @@ func loadOrLiteral(v string) (string, error) {
 var routerCmd = &cobra.Command{
 	Use:   "router",
 	Short: "Pull-model work queue between agent threads",
-	Long: `The router is a directory of markdown files. Senders write items
-with sirsi router send; recipients pull with sirsi router pull and close
-with sirsi router close. No daemon, no dispatch, no launch agents — each
-agent session reads its own inbox on wake.
+	Long: `Five verbs over a directory of markdown files: send, pull, show,
+close, and status. send/pull/show/close are the workflow loop; status is a
+read-only observer over items/. No daemon, no dispatch, no launch agents —
+each agent session reads its own inbox on wake.
 
 Thread registration is handled separately by sirsi thread register.`,
 }
 
+var statusStaleHours int
+
 var routerStatusCmd = &cobra.Command{
 	Use:   "status",
-	Short: "Summarize the work queue",
+	Short: "Summarize the work queue (read-only)",
+	Long: `Read-only summary over items/. Does not create the directory if it is
+missing — safe to run in sandboxed or audit-only contexts. Use --stale to
+list open items older than N hours (default 24).`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		root, err := workRoot()
 		if err != nil {
@@ -60,8 +78,15 @@ var routerStatusCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		now := time.Now().UTC()
+		threshold := time.Duration(statusStaleHours) * time.Hour
 		var open, closed int
 		perAgent := map[string]int{}
+		type openItem struct {
+			it  work.Item
+			age time.Duration
+		}
+		var opens []openItem
 		for _, it := range all {
 			if it.Status == "closed" {
 				closed++
@@ -69,16 +94,64 @@ var routerStatusCmd = &cobra.Command{
 			}
 			open++
 			perAgent[it.To]++
+			age := time.Duration(0)
+			if t, perr := time.Parse(time.RFC3339, it.Opened); perr == nil {
+				age = now.Sub(t)
+			}
+			opens = append(opens, openItem{it, age})
 		}
 		fmt.Printf("  Items: %d open, %d closed\n", open, closed)
 		if open > 0 {
 			fmt.Println("\n  Open by recipient:")
-			for agent, n := range perAgent {
-				fmt.Printf("    %s: %d\n", agent, n)
+			recipients := make([]string, 0, len(perAgent))
+			for a := range perAgent {
+				recipients = append(recipients, a)
+			}
+			sort.Strings(recipients)
+			for _, agent := range recipients {
+				fmt.Printf("    %s: %d\n", agent, perAgent[agent])
+			}
+		}
+		// Oldest open item is always useful — surfaces a stuck queue without flags.
+		if len(opens) > 0 {
+			sort.Slice(opens, func(i, j int) bool { return opens[i].age > opens[j].age })
+			oldest := opens[0]
+			fmt.Printf("\n  Oldest open: %s (%s, → %s)\n", humanAge(oldest.age), oldest.it.ID, oldest.it.To)
+		}
+		// --stale lists items past the threshold (default 24h).
+		if statusStaleHours > 0 {
+			var stale []openItem
+			for _, o := range opens {
+				if o.age >= threshold {
+					stale = append(stale, o)
+				}
+			}
+			if len(stale) > 0 {
+				fmt.Printf("\n  Stale (>%dh):\n", statusStaleHours)
+				for _, o := range stale {
+					fmt.Printf("    • %s  age=%s  → %s\n", o.it.ID, humanAge(o.age), o.it.To)
+				}
 			}
 		}
 		return nil
 	},
+}
+
+// humanAge renders a duration as a compact "5h12m" or "3d4h" string.
+func humanAge(d time.Duration) string {
+	if d < time.Minute {
+		return "<1m"
+	}
+	days := int(d / (24 * time.Hour))
+	hours := int(d%(24*time.Hour)) / int(time.Hour)
+	minutes := int(d%time.Hour) / int(time.Minute)
+	if days > 0 {
+		return fmt.Sprintf("%dd%dh", days, hours)
+	}
+	if hours > 0 {
+		return fmt.Sprintf("%dh%dm", hours, minutes)
+	}
+	return fmt.Sprintf("%dm", minutes)
 }
 
 var (
@@ -107,7 +180,7 @@ recipient picks it up next time they run sirsi router pull <their-id>.
 		if err != nil {
 			return fmt.Errorf("--instructions: %w", err)
 		}
-		root, err := workRoot()
+		root, err := workRootEnsure()
 		if err != nil {
 			return err
 		}
@@ -166,6 +239,99 @@ var routerShowCmd = &cobra.Command{
 	},
 }
 
+var routerAckCmd = &cobra.Command{
+	Use:   "ack <agent> <id> [<id> ...]",
+	Short: "Acknowledge legacy state.json pending entries",
+	Long: `Removes one or more legacy pending stems from state.json for an agent.
+This is a migration helper for dispatchers while item files are becoming the
+canonical queue. It is idempotent and does not close items/*.md.`,
+	Args: cobra.MinimumNArgs(2),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		root, err := workRoot()
+		if err != nil {
+			return err
+		}
+		if err := ackLegacyPending(root, args[0], args[1:]); err != nil {
+			return err
+		}
+		fmt.Printf("  Acked %d legacy pending item(s) for %s\n", len(args)-1, args[0])
+		return nil
+	},
+}
+
+func ackLegacyPending(root, agent string, ids []string) error {
+	statePath := filepath.Join(root, "state.json")
+	data, err := os.ReadFile(statePath)
+	if err != nil {
+		return fmt.Errorf("read state.json: %w", err)
+	}
+
+	var state map[string]any
+	if err := json.Unmarshal(data, &state); err != nil {
+		return fmt.Errorf("parse state.json: %w", err)
+	}
+
+	idSet := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		if strings.TrimSpace(id) != "" {
+			idSet[id] = struct{}{}
+		}
+	}
+	if len(idSet) == 0 {
+		return nil
+	}
+
+	if pending, ok := state["pending"].(map[string]any); ok {
+		pending[agent] = removeLegacyIDs(pending[agent], idSet)
+	}
+	for _, key := range []string{"pending_for_codex", "pending_for_claude"} {
+		state[key] = removeLegacyIDs(state[key], idSet)
+	}
+
+	state[legacyReadKey(agent)] = time.Now().UTC().Format(time.RFC3339)
+
+	updated, err := json.MarshalIndent(state, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode state.json: %w", err)
+	}
+	updated = append(updated, '\n')
+	return os.WriteFile(statePath, updated, 0o644)
+}
+
+func removeLegacyIDs(value any, ids map[string]struct{}) []any {
+	list, ok := value.([]any)
+	if !ok {
+		return []any{}
+	}
+	out := make([]any, 0, len(list))
+	for _, v := range list {
+		s, ok := v.(string)
+		if !ok {
+			out = append(out, v)
+			continue
+		}
+		if _, drop := ids[s]; !drop {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+func legacyReadKey(agent string) string {
+	family := agent
+	if before, _, ok := strings.Cut(agent, "-"); ok {
+		family = before
+	}
+	switch family {
+	case "claude":
+		return "last_claude_read"
+	case "codex":
+		return "last_codex_read"
+	default:
+		return "last_" + strings.ReplaceAll(agent, "-", "_") + "_read"
+	}
+}
+
 var closeResult string
 
 var routerCloseCmd = &cobra.Command{
@@ -177,7 +343,7 @@ var routerCloseCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("--result: %w", err)
 		}
-		root, err := workRoot()
+		root, err := workRootEnsure()
 		if err != nil {
 			return err
 		}
@@ -195,5 +361,6 @@ func init() {
 	routerSendCmd.Flags().StringVar(&sendTitle, "title", "", "Short title for the work item")
 	routerSendCmd.Flags().StringVar(&sendInstructions, "instructions", "", "Instructions body (literal text, or @file)")
 	routerCloseCmd.Flags().StringVar(&closeResult, "result", "", "Result body (literal text, or @file)")
-	routerCmd.AddCommand(routerStatusCmd, routerSendCmd, routerPullCmd, routerShowCmd, routerCloseCmd)
+	routerStatusCmd.Flags().IntVar(&statusStaleHours, "stale", 24, "Hours after which an open item is flagged as stale (0 disables)")
+	routerCmd.AddCommand(routerStatusCmd, routerSendCmd, routerPullCmd, routerShowCmd, routerCloseCmd, routerAckCmd)
 }

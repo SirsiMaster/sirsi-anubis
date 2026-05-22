@@ -2,31 +2,29 @@
 # Router dispatch handler — fired by launchd WatchPaths on any change under
 # .agents/idea-router/{state.json,items,proposals}.
 #
-# Handles BOTH queues addressed to claude-* agents on this workstation:
-#   1. Pull-model:  .agents/idea-router/items/*.md  with `to:` matching agent + status: open
-#   2. Legacy push: state.json[pending][<agent>]    (compat for codex-side senders)
+# Handles queues for local agents this workstation can actually wake.
+# Pull-model items live in .agents/idea-router/items/*.md; legacy pending
+# queues live in state.json[pending][<agent>].
 #
-# For each item, spawns `claude --print --permission-mode auto` with an
-# instruction containing the item id(s) — the spawned headless session
-# reads, acts, closes. No daemon. Single one-shot per FSEvents fire.
-#
-# Per AGENTS.md §Lean #4 (smallest package wins) this is intentionally a
-# shell script, not a Go subcommand. ~50 lines beats ~150 in the binary.
+# Dispatch stays intentionally small: resolve each local agent, then spawn the
+# matching CLI once with a router-focused prompt. No daemon, no polling loop.
 
 set -uo pipefail
 ROUTER_ROOT="/Users/thekryptodragon/Development/sirsi-pantheon/.agents/idea-router"
 REPO_ROOT="/Users/thekryptodragon/Development/sirsi-pantheon"
 LOG="$ROUTER_ROOT/logs/dispatch.log"
-export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+export PATH="$HOME/.local/bin:/Applications/Codex.app/Contents/Resources:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
 SIRSI="$HOME/.local/bin/sirsi"
+CLAUDE_BIN="$HOME/.local/bin/claude"
+CODEX_BIN="/Applications/Codex.app/Contents/Resources/codex"
 
 ts() { date "+%Y-%m-%dT%H:%M:%S%z"; }
 
 mkdir -p "$(dirname "$LOG")"
 
-# Agents this host claims. Add more (claude-finalwishes, claude-assiduous,
-# claude-nexus) when those repo-scoped sessions live on this machine too.
-AGENTS=(claude-pantheon)
+# Agents this host claims. Keep this explicit so launchd does not pretend to
+# deliver to agents that have no local headless wake path.
+AGENTS=(claude-pantheon codex-pantheon)
 
 dispatched=0
 for agent in "${AGENTS[@]}"; do
@@ -50,9 +48,38 @@ except Exception:
   count=$(echo "$all_ids" | wc -l | tr -d ' ')
   echo "[$(ts)] $agent: $count item(s) to dispatch" >> "$LOG"
 
-  prompt="ctr"  # tells claude (via AGENTS.md §Starting Protocol) to check the router and work the items
+  prompt="ctr
+
+You are $agent on this workstation.
+Read $ROUTER_ROOT/state.json and the open router item(s) addressed to $agent:
+$all_ids
+
+Work only those addressed items. Write the required router review/decision/completion artifacts, update state.json, and stop. If a blocker prevents work, write a blocker artifact instead of looping."
+
   cd "$REPO_ROOT" || continue
-  echo "$prompt" | claude --print --permission-mode auto >> "$LOG" 2>&1 &
+  case "$agent" in
+    claude-*)
+      if [ ! -x "$CLAUDE_BIN" ]; then
+        echo "[$(ts)] $agent blocked: claude CLI not executable at $CLAUDE_BIN" >> "$LOG"
+        continue
+      fi
+      echo "$prompt" | "$CLAUDE_BIN" --print --permission-mode auto >> "$LOG" 2>&1 &
+      ;;
+    codex-*)
+      if [ ! -x "$CODEX_BIN" ]; then
+        echo "[$(ts)] $agent blocked: Codex CLI not executable at $CODEX_BIN" >> "$LOG"
+        continue
+      fi
+      echo "$prompt" | "$CODEX_BIN" exec -C "$REPO_ROOT" --sandbox workspace-write - >> "$LOG" 2>&1 &
+      ;;
+    *)
+      echo "[$(ts)] $agent blocked: no dispatch branch for agent family" >> "$LOG"
+      continue
+      ;;
+  esac
+  if ! "$SIRSI" router ack "$agent" $all_ids >> "$LOG" 2>&1; then
+    echo "[$(ts)] $agent warning: failed to ack legacy pending ids" >> "$LOG"
+  fi
   dispatched=$((dispatched + 1))
 done
 

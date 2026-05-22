@@ -3,6 +3,7 @@ package main_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -187,6 +188,61 @@ func TestRouterPullModelRoundtrip(t *testing.T) {
 	}
 	if !strings.Contains(stderrDC, "already closed") {
 		t.Errorf("expected 'already closed' error, got: %s", stderrDC)
+	}
+}
+
+func TestRouterAckLegacyPending(t *testing.T) {
+	t.Parallel()
+
+	tmp := t.TempDir()
+	root := filepath.Join(tmp, ".agents", "idea-router")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	state := `{
+  "pending": {
+    "claude-pantheon": ["item-a", "item-b"],
+    "codex-pantheon": ["item-c"]
+  },
+  "pending_for_claude": ["item-a", "item-z"],
+  "pending_for_codex": ["item-c"]
+}`
+	if err := os.WriteFile(filepath.Join(root, "state.json"), []byte(state), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	stdout, stderr, err := runSirsiInDir(t, tmp, 10*time.Second, "router", "ack", "claude-pantheon", "item-a", "missing-item")
+	if err != nil {
+		t.Fatalf("ack failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+	}
+	if !strings.Contains(stdout, "Acked 2 legacy pending item") {
+		t.Fatalf("expected ack confirmation, got: %s", stdout)
+	}
+
+	data, err := os.ReadFile(filepath.Join(root, "state.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal(data, &got); err != nil {
+		t.Fatal(err)
+	}
+	pending := got["pending"].(map[string]any)
+	claudePending := pending["claude-pantheon"].([]any)
+	if len(claudePending) != 1 || claudePending[0].(string) != "item-b" {
+		t.Fatalf("unexpected claude pending: %#v", claudePending)
+	}
+	mirror := got["pending_for_claude"].([]any)
+	if len(mirror) != 1 || mirror[0].(string) != "item-z" {
+		t.Fatalf("unexpected claude mirror: %#v", mirror)
+	}
+	if got["last_claude_read"] == nil {
+		t.Fatalf("last_claude_read was not bumped")
+	}
+
+	_, stderr, err = runSirsiInDir(t, tmp, 10*time.Second, "router", "ack", "claude-pantheon", "item-a")
+	if err != nil {
+		t.Fatalf("second ack should be idempotent: %v\nstderr: %s", err, stderr)
 	}
 }
 
@@ -605,8 +661,8 @@ func TestNextStepsPresent(t *testing.T) {
 	}
 
 	tests := []struct {
-		name      string
-		args      []string
+		name        string
+		args        []string
 		isolateHome bool
 	}{
 		{"scan_next_steps", []string{"scan"}, true},
