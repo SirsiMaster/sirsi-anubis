@@ -139,6 +139,26 @@ At startup, every Codex, Claude, Gemini, Gemma, Qwen, or future agent thread mus
 6. keep heartbeat/status fresh until the thread exits or becomes inactive
 
 Horus node status must show active threads, stale threads, blocked wake surfaces, and which inboxes each thread is watching. A thread that can receive notification but cannot wake or cannot write back is not healthy.
+### Caffeinate Contract (universal)
+
+Every AI agent thread must stay caffeinated for as long as its host process is alive. "Caffeinated" means CTR's `idle_seconds` for the thread stays near zero without depending on user prompts. The canonical pattern any agent can implement:
+
+1. **On session start (one-shot):** call `sirsi thread register --agent <agent_id> --surface <kind> --repo <path>`. If a fresh active thread for `<agent_id>` already exists (idle < 5 min), adopt it instead of registering a duplicate.
+2. **Immediate heartbeat:** `sirsi thread heartbeat --thread <thread_id> --quiet` so the thread shows idle 0 right away.
+3. **Background caffeinator (one per session):** spawn a detached loop anchored to the host process PID:
+   ```bash
+   ( while kill -0 <host_pid> 2>/dev/null; do
+       sirsi thread heartbeat --thread <thread_id> --quiet
+       sleep 60
+     done; rm -f /tmp/sirsi-caffeinate-<thread_id>.pid ) &
+   disown
+   ```
+   Dedupe via `/tmp/sirsi-caffeinate-<thread_id>.pid` so multiple session-start signals don't stack loops.
+4. **On host exit:** `kill -0` fails, loop exits, pidfile cleared. CTR sees the thread go stale on its own. Optionally call `sirsi thread close --thread <thread_id>` from a SessionEnd hook for explicit closure.
+
+Reference implementation: `.claude/hooks/router_inbox_check.py` in `sirsi-pantheon`. Codex, Gemini, Gemma, Qwen, and future agents should implement an equivalent in whatever hook/automation surface their runtime exposes. The contract is in this section; the implementation is per-runtime.
+
+Why this matters: orphan threads (host alive but CTR sees stale) hide live work, and ghost threads (host dead but CTR sees active) cause routing to wrong inboxes. The caffeinate loop closes both failure modes with one anchor: the host process PID.
 
 
 ## Ra Owns CTR
