@@ -526,8 +526,8 @@ Anubis scans filesystems and processes. Scan results may contain sensitive infor
 | :--- | :--- | :--- |
 | **Language** | **Go 1.22+** | Single static binary, cross-compile, contributor-friendly |
 | **CLI Framework** | **cobra** | Subcommands, auto-complete, help generation |
-| **Terminal UI** | **lipgloss + table** (charmbracelet) | Gold + black Egyptian theme |
-| **Interactive TUI** | **bubbletea** (optional) | Rich interactive mode for guided cleanup |
+| **Terminal UI** | **lipgloss + table** (charmbracelet) | Styled CLI output (tables, headers, progress). No interactive TUI. |
+| **Interactive Surface** | **Native macOS SwiftUI app** (planned) + CLI on all platforms | TUI eliminated v0.23 per ADR-018. Mac native app is the interactive surface; Windows/Linux are CLI-only. |
 | **Agent Protocol** | **gRPC** (fallback: SSH+JSON) | Streaming results, bidirectional |
 | **Config** | **viper** (YAML) | User-defined rules, profiles, budgets |
 | **Network Discovery** | **nmap** wrapper + native ARP/mDNS | Subnet/VLAN host discovery |
@@ -651,5 +651,7 @@ These principles are derived from a multi-day collapse of overengineered router 
 9. **Identity by string, not by registry.** When designing multi-actor protocols, default to "any string id can participate" rather than "named entities must register first." Registration is optional metadata for human readability, not a precondition for participation. The router collapse proved that an `agents.json` registry was not load-bearing for the actual file-based queue — any agent id that writes a file gets routed.
 
 10. **Atomicity at the filesystem boundary.** File creation is atomic; metadata in a separate sidecar JSON is not. When the design includes "write a file AND update a registry," collapse to "write a file with frontmatter that carries all the state." Two writes can race; one cannot.
+
+11. **Wake mechanisms should not own delivery semantics.** (codex-pantheon, 2026-05-21, validated independently.) The queue is the source of truth; wake (FSEvents, heartbeat, hook, webhook) is an observer over it. If wake fails, the work item still exists on disk and any agent can pull it later. Never make the wake mechanism the contract — if you do, every layer of wake (daemon health, launchd state, registry state, spawn binary presence, env var gates) becomes a place where delivery looks alive while it is dead.
 
 These principles are referenced as `AGENTS.md §Lean #<n>` in commit messages, ADRs, and router proposals. Cite, do not paraphrase.
