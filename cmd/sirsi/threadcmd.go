@@ -2,16 +2,52 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/router"
 	"github.com/spf13/cobra"
 )
+
+// reapDeadPIDThreads marks threads as closed when their recorded PID no
+// longer exists on this host. Only acts on threads whose Host matches the
+// current hostname — refuses to reap remote-host threads since we can't
+// observe other hosts' process tables. Returns count reaped.
+//
+// Called automatically at the top of `sirsi thread list` so orphans get
+// swept whenever anyone reads the registry — no daemon, no polling,
+// per AGENTS.md §Lean #1 (the read IS the event).
+func reapDeadPIDThreads(routerRoot string) int {
+	reg, err := router.LoadThreadRegistry(routerRoot)
+	if err != nil {
+		return 0
+	}
+	host, _ := os.Hostname()
+	reaped := 0
+	for _, t := range reg.SortedThreads() {
+		if t.Status == router.ThreadStatusClosed {
+			continue
+		}
+		if t.PID <= 0 || t.Host != host {
+			continue // missing PID or remote host — can't verify, leave alone
+		}
+		if err := syscall.Kill(t.PID, syscall.Signal(0)); err != nil && errors.Is(err, syscall.ESRCH) {
+			t.Status = router.ThreadStatusClosed
+			t.LastError = fmt.Sprintf("reaped: PID %d not alive at %s", t.PID, time.Now().UTC().Format(time.RFC3339))
+			reaped++
+		}
+	}
+	if reaped > 0 {
+		_ = router.SaveThreadRegistry(routerRoot, reg)
+	}
+	return reaped
+}
 
 var (
 	threadRegAgent      string
@@ -192,6 +228,8 @@ var threadListCmd = &cobra.Command{
 			return fmt.Errorf("no idea-router found: %w", err)
 		}
 		routerRoot := filepath.Join(repoRoot, ".agents", "idea-router")
+		// Sweep dead-PID threads to closed before reading.
+		reapDeadPIDThreads(routerRoot)
 		reg, err := router.LoadThreadRegistry(routerRoot)
 		if err != nil {
 			return err
