@@ -22,6 +22,10 @@ ts() { date "+%Y-%m-%dT%H:%M:%S%z"; }
 
 mkdir -p "$(dirname "$LOG")"
 
+# cd into the repo upfront so `sirsi` commands can locate the router via
+# FindRepoRoot() — launchd's default cwd is `/`, which silently breaks pull.
+cd "$REPO_ROOT" || { echo "[$(ts)] dispatch.sh exit — cannot cd to $REPO_ROOT" >> "$LOG"; exit 1; }
+
 # Agents this host claims. Keep this explicit so launchd does not pretend to
 # deliver to agents that have no local headless wake path.
 AGENTS=(claude-pantheon codex-pantheon)
