@@ -31,9 +31,19 @@ cd "$REPO_ROOT" || { echo "[$(ts)] dispatch.sh exit — cannot cd to $REPO_ROOT"
 AGENTS=(claude-pantheon codex-pantheon)
 
 dispatched=0
+pull_errors=0
 for agent in "${AGENTS[@]}"; do
   # --- Pull-model: items/*.md with to: <agent> and status: open ---
-  ids=$("$SIRSI" router pull "$agent" 2>/dev/null | awk '/• /{print $2}')
+  # Capture exit code AND stderr so a broken pull (missing sirsi, wrong cwd,
+  # corrupt items dir) reports loudly instead of silently returning empty.
+  pull_out=$("$SIRSI" router pull "$agent" 2>&1)
+  pull_rc=$?
+  if [ $pull_rc -ne 0 ]; then
+    echo "[$(ts)] $agent ERROR: sirsi router pull exit=$pull_rc -- $(echo "$pull_out" | head -2 | tr '\n' ' ')" >> "$LOG"
+    pull_errors=$((pull_errors + 1))
+    continue
+  fi
+  ids=$(echo "$pull_out" | awk '/• /{print $2}')
 
   # --- Legacy push: state.json pending[<agent>] ---
   legacy_ids=$(python3 -c "
@@ -87,4 +97,8 @@ Work only those addressed items. Write the required router review/decision/compl
   dispatched=$((dispatched + 1))
 done
 
-echo "[$(ts)] dispatch.sh exit — agents fired: $dispatched" >> "$LOG"
+if [ $pull_errors -gt 0 ]; then
+  echo "[$(ts)] dispatch.sh exit — agents fired: $dispatched  pull_errors: $pull_errors (see above)" >> "$LOG"
+else
+  echo "[$(ts)] dispatch.sh exit — agents fired: $dispatched" >> "$LOG"
+fi
