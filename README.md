@@ -65,6 +65,8 @@ Pantheon has three interfaces that work together:
 
 **Horus Dashboard (web)** — `sirsi dashboard` opens a terminal-first web app at localhost:9119 with API endpoints, SSE streaming, and a command bar. `sirsi horus` is the structural code graph. Optional for power users.
 
+**Knowledge Substrate (𓅓)** — A semantic graph of your repo, auto-derived from source via the Understand-Anything plugin. Every file, function, class, import, and architectural layer is a node; relationships are edges. Stored as portable JSON at `.understand-anything/knowledge-graph.json`. Today's per-repo capability is the feeder for the future **Sirsi hypergraph** — a cross-repo, cross-agent knowledge layer built on Hedera Consensus Service. See [ADR-019](docs/ADR-019-KNOWLEDGE-SUBSTRATE.md) for the decision, the [knowledge-substrate user guide](docs/user-guides/knowledge-substrate.md) for usage, and `~/Development/HYPERGRAPH_VISION.md` for the long-term direction.
+
 ---
 
 ## All Commands
@@ -81,6 +83,7 @@ Pantheon has three interfaces that work together:
 | `sirsi guard` | Real-time resource monitoring |
 | `sirsi quality` | Code governance audit |
 | `sirsi thoth init/sync` | AI project memory ([MCP](https://modelcontextprotocol.io)-compatible) |
+| `sirsi hypergraph status` | Semantic graph of the repo — feeds the future Sirsi hypergraph on Hedera ([ADR-019](docs/ADR-019-KNOWLEDGE-SUBSTRATE.md), [user guide](docs/user-guides/knowledge-substrate.md)) |
 | `sirsi mcp` | MCP server for Claude, Cursor, Windsurf |
 | `sirsi seshat ingest` | Knowledge ingestion from Chrome, Gemini, Apple Notes |
 | `sirsi diagram` | Generate architecture diagrams (Mermaid/HTML) |

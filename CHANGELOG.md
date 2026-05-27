@@ -8,7 +8,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 
 ## [Unreleased]
 
+> Cuts as **v0.23** per Codex review `20260521-codex-pantheon-tui-elimination-phase0-review`. `v1.0-alpha.0` is reserved for the first installable native Mac app.
+
+### Removed
+- **Interactive TUI eliminated** (ADR-018). All `internal/output/tui*.go` files (~4,800 LOC, 20 files), the TUI gateway entry point, `sirsi status --live`, and the no-args TUI launcher are gone. Binary dropped 24.2 MB → 22.2 MB. The `charm.land/bubbletea/v2` dependency is removed from `go.mod`. **This was intentional and immediate** — a broken or brand-damaging surface should not remain reachable behind a flag without a salvage owner and expiration date. No salvage harness was retained.
+- **`sirsi` with no args** no longer launches an interactive surface; it now prints help. This is the canonical no-args behavior going forward until the native Mac app ships, at which point launching the app from the CLI may be reconsidered as an opt-in. Per-verb behavior and flags are unchanged — see `docs/CLI_COMPATIBILITY.md` for the full matrix.
+
 ### Added
+- **Knowledge Substrate** — semantic verification layer via the Understand-Anything Claude Code plugin. First run on 2026-05-26 produced `.understand-anything/knowledge-graph.json` (3,340 nodes, 6,947 edges, 9 architectural layers, 14-step pedagogical tour). Codified as **ADR-019**.
+  - User-facing: `docs/user-guides/knowledge-substrate.md`
+  - Web page: `docs/pantheon/knowledge-substrate.html` (→ `sirsi.ai/pantheon/knowledge-substrate`)
+  - Case study: `docs/case-studies/2026-05-26-knowledge-substrate-day-1.md`
+  - Three-tool split codified: Thoth (memory) / Seba (architectural map) / Knowledge Substrate (semantic verification). No deity sovereignty changes — Seba's mapping authority unchanged.
+  - Bidirectional sync: `.thoth/memory.yaml` gains a `## Knowledge Graph (Understand-Anything)` block + `sync_protocol`; rule in `~/CLAUDE.md` so every Thoth-enabled repo auto-updates after `/understand` runs.
+  - Long-term direction: cross-repo, cross-agent hypergraph on **Hedera Consensus Service**. Workspace-canon builder vision at `~/Development/HYPERGRAPH_VISION.md`; pointer added to `~/Development/AGENTS.md` § Knowledge Substrate.
+  - CLI surface spec'd in ADR-019 § 6 (`sirsi hypergraph status|refresh|chat|explain|diff|layers|tour|export`), gated by `configs/hypergraph.yaml` `enabled:` and a `hypergraph` build tag. Implementation pending codex-pantheon review.
+- `docs/CLI_COMPATIBILITY.md` — concise per-verb compatibility matrix for the v0.22 → v0.23 transition.
+- **FSEvents-driven wake** — `.agents/idea-router/wake.example.plist` is a deployable launchd template. Copy to `~/Library/LaunchAgents/`, fill in paths, `launchctl load`. launchd watches `state.json`, `items/`, `proposals/` for any change and fires ONE dispatch pass per change (`sirsi router run --once`). `ThrottleInterval=10` prevents refire loops. **Zero idle process** — no polling daemon, no cron, no heartbeat. Replaces the prior 1-second-interval polling daemon (86,400 reads/day → ~0 idle, dispatch latency dropped from ≤1s to milliseconds).
+- `internal/work/work_test.go` — round-trip coverage for Send/Get/ListInbox/Close, YAML quoting edge cases, status transitions.
+- `internal/work` YAML quoting: `Send` now writes frontmatter values as double-quoted strings (`from: "claude-pantheon"`), escaped properly so titles/agent-ids containing colons, `|`, `*`, `&`, newlines, etc. round-trip cleanly. `Get`/`ListInbox` parsing handles both quoted and bare forms.
+- `routercmd.go` split: `workRoot()` (read-only, no mkdir side-effect) for `status/pull/show`, `workRootEnsure()` (mkdir items/) for `send/close`. Audits no longer materialize an items/ directory.
+
 - **Pull-model work queue** — bare-minimum any-to-any routing between agent threads, no daemon required:
   - `sirsi router send --from <id> --to <id> --title <s> --instructions <text-or-@file>` — write one work item
   - `sirsi router pull <agent>` — list open items addressed to an agent

@@ -19,6 +19,8 @@ The Pantheon is organized into six divine pillars, each assigned a canonical Anc
 - **𓇽 SEBA (Mapping)**: Infrastructure topology, project registry (Book), and fleet discovery (Scarab).
 - **𓁆 SESHAT (Scribe)**: Knowledge bridge (Gemini/NotebookLM), MCP context server, and AI sync.
 
+> **Knowledge Substrate (𓅓) — adjacent capability, not a pillar.** Codified in [ADR-019](ADR-019-KNOWLEDGE-SUBSTRATE.md) on 2026-05-26. The substrate is a *semantic verification* layer derived from source via the Understand-Anything plugin; it complements Thoth (memory) and Seba (architectural map) without competing with either deity's sovereignty. Today's per-repo `.understand-anything/knowledge-graph.json` is the local feeder for the future **Sirsi hypergraph** on Hedera Consensus Service (workspace-canon vision at `~/Development/HYPERGRAPH_VISION.md`). See [§ Knowledge Substrate](#knowledge-substrate) for the full integration spec.
+
 ```
                     ┌─────────────────────────────┐
                     │         USER / ADMIN         │
@@ -258,4 +260,69 @@ User Input → dispatch() → inferSubcommand() → exec.Command (piped)
 
 ---
 
-*𓁯 This document follows Neith's Architecture Triad (Rule A22). Updated to v2.3.0 for the v0.19.0 TUI UX Overhaul.*
+## Knowledge Substrate
+
+> Codified by [ADR-019](ADR-019-KNOWLEDGE-SUBSTRATE.md) on 2026-05-26. This section is the architecture-level integration spec; the ADR is the decision record; `docs/user-guides/knowledge-substrate.md` is the user-facing reference; `docs/pantheon/knowledge-substrate.html` is the public web surface.
+
+### Sovereignty matrix
+
+The Knowledge Substrate is a *semantic verification* layer that complements two existing deity sovereignties without competing with either:
+
+| Tool | Deity glyph | Owns | Artifact |
+|---|---|---|---|
+| **Thoth** | 𓁟 | Memory and intent — *why* / *what next* | `.thoth/memory.yaml` + `.thoth/journal.md` |
+| **Seba** | 𓇽 | Architectural mapping — canonical *topology* (Rule A25 sovereignty) | `internal/seba/` (deity-owned code) |
+| **Knowledge Substrate** | 𓅓 | Semantic verification — auto-derived *what exists* | `.understand-anything/knowledge-graph.json` |
+
+### Per-repo artifacts (today's local layer)
+
+Each Sirsi repo with the substrate enabled maintains:
+
+```
+.understand-anything/
+├── knowledge-graph.json    # 2.9 MB JSON on sirsi-pantheon (3,340 nodes, 6,947 edges)
+├── meta.json               # Commit hash + analysis timestamp
+├── fingerprints.json       # 907 per-file structural hashes for incremental refresh
+└── .understandignore       # Exclusion patterns (gitignore-style)
+```
+
+### Bidirectional Thoth ↔ Substrate sync
+
+Codified in global `~/CLAUDE.md`. After every `/understand` run in any Thoth-enabled repo:
+
+1. Update the `## Knowledge Graph (Understand-Anything)` block in `.thoth/memory.yaml` with the new commit hash, node/edge counts, layer counts.
+2. Append a delta paragraph to `.thoth/journal.md` describing what changed (new packages, layer shifts, edge-count moves).
+3. If no Knowledge Graph block exists yet, create one matching the schema in this repo's `.thoth/memory.yaml`.
+
+The contract is enforced by AI session behavior, not by a hook — agents detect the gap and refresh.
+
+### CLI surface (spec'd; implementation pending)
+
+```
+sirsi hypergraph status [--json]
+sirsi hypergraph refresh [--full]
+sirsi hypergraph chat <question>
+sirsi hypergraph explain <path>
+sirsi hypergraph diff <ref>
+sirsi hypergraph layers
+sirsi hypergraph tour
+sirsi hypergraph export <json|dot|mermaid>
+```
+
+Gated by `configs/hypergraph.yaml` `enabled:` (config-time) and a `hypergraph` build tag (compile-time). When disabled or absent, the subcommand has zero runtime cost.
+
+### Long-term direction — the Sirsi hypergraph
+
+The per-repo substrate is the **feeder**, not the destination. The destination is a cross-repo, cross-agent knowledge layer built on **Hedera Consensus Service** (HCS) as the event substrate — aBFT finality (~3–5s settlement), low cost per message, optimized for high-volume / low-stakes-per-event workloads. Graph topology materializes off-chain from the HCS event stream (event sourcing); replay always converges.
+
+Three node-types projected into the hypergraph:
+
+- **Memory nodes** ← per-repo Thoth memory/journal events
+- **Structure nodes** ← per-repo Understand-Anything graph deltas
+- **Routing events** ← per-repo idea-router handoffs
+
+Full builder vision and design principles at `~/Development/HYPERGRAPH_VISION.md` (workspace-canon, referenced from `~/Development/AGENTS.md` § Knowledge Substrate). Builders implementing the hypergraph MUST read that document before designing schemas or restructuring the local layer.
+
+---
+
+*𓁯 This document follows Neith's Architecture Triad (Rule A22). Updated to v2.4.0 for the Knowledge Substrate integration (ADR-019).*
