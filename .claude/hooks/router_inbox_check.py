@@ -127,13 +127,16 @@ def ensure_active_thread(agent_id: str, repo_path: Path) -> str | None:
         fresh.sort(key=lambda t: t.get("idle_seconds", 1e9))
         return (fresh[0].get("thread") or {}).get("thread_id")
 
-    # No fresh thread — register a new one
+    # No fresh thread — register a new one, anchoring the per-thread
+    # router watcher to the actual claude process PID (not this python
+    # hook's PPID, which is the ephemeral shell that runs us).
+    anchor = claude_session_pid()
+    args = ["sirsi", "thread", "register",
+            "--agent", agent_id, "--surface", "claude", "--repo", str(repo_path)]
+    if anchor:
+        args += ["--anchor-pid", str(anchor)]
     try:
-        out = subprocess.run(
-            ["sirsi", "thread", "register",
-             "--agent", agent_id, "--surface", "claude", "--repo", str(repo_path)],
-            capture_output=True, text=True, timeout=3,
-        )
+        out = subprocess.run(args, capture_output=True, text=True, timeout=3)
         # Output contains "thr-XXXXXXXX" — extract it
         for line in (out.stdout + out.stderr).splitlines():
             for tok in line.split():

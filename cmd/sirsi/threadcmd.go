@@ -1,19 +1,75 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/router"
+	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
 )
+
+// watcherPidfile returns the per-thread fs-watcher pidfile path.
+func watcherPidfile(threadID string) string {
+	return fmt.Sprintf("/tmp/sirsi-router-watch-%s.pid", threadID)
+}
+
+// spawnRouterWatcher forks a detached `sirsi thread watch-router` subprocess
+// that uses fsnotify on the router directory and fires the agent's spawn
+// command on every change. Dies when parent_pid exits or `sirsi thread close`
+// runs. Dedup via pidfile.
+func spawnRouterWatcher(threadID, agentID, routerRoot string, parentPID int) error {
+	pf := watcherPidfile(threadID)
+	if data, err := os.ReadFile(pf); err == nil {
+		if oldPID, err := strconv.Atoi(strings.TrimSpace(string(data))); err == nil {
+			if syscall.Kill(oldPID, syscall.Signal(0)) == nil {
+				return nil // existing watcher alive, dedup
+			}
+		}
+	}
+	self, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	cmd := exec.Command(self, "thread", "watch-router",
+		"--thread", threadID,
+		"--agent", agentID,
+		"--router-root", routerRoot,
+		"--parent-pid", strconv.Itoa(parentPID))
+	cmd.Stdin = nil
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true} // detach so we survive caller exit
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	_ = os.WriteFile(pf, []byte(strconv.Itoa(cmd.Process.Pid)), 0o644)
+	_ = cmd.Process.Release() // don't wait on it
+	return nil
+}
+
+// killRouterWatcher cleanly stops the fs-watcher for a thread, if any.
+func killRouterWatcher(threadID string) {
+	pf := watcherPidfile(threadID)
+	data, err := os.ReadFile(pf)
+	if err != nil {
+		return
+	}
+	if pid, err := strconv.Atoi(strings.TrimSpace(string(data))); err == nil {
+		_ = syscall.Kill(pid, syscall.SIGTERM)
+	}
+	_ = os.Remove(pf)
+}
 
 // reapDeadPIDThreads marks threads as closed when their recorded PID no
 // longer exists on this host. Only acts on threads whose Host matches the
@@ -57,6 +113,7 @@ var (
 	threadRegWatches    []string
 	threadRegWake       string
 	threadRegID         string
+	threadRegAnchorPID  int
 
 	threadHbID      string
 	threadHbStatus  string
@@ -157,8 +214,41 @@ var threadRegisterCmd = &cobra.Command{
 		fmt.Println()
 		fmt.Println("Send heartbeats with:")
 		fmt.Printf("  sirsi thread heartbeat --thread %s\n", out.ThreadID)
+
+		// Initiate the per-thread FSEvents subscription. Dies when the
+		// anchor PID exits — caller should pass the LONG-LIVED process
+		// PID (the actual claude/codex/gemini binary), not the ephemeral
+		// shell that invoked sirsi. Falls back to PPID's PPID (grandparent
+		// of sirsi) which is typically the agent runtime when called from
+		// a hook script.
+		anchor := threadRegAnchorPID
+		if anchor <= 0 {
+			anchor = resolveAnchorPID()
+		}
+		if err := spawnRouterWatcher(out.ThreadID, out.AgentID, routerRoot, anchor); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to spawn router watcher: %v\n", err)
+		} else {
+			fmt.Printf("  router watcher: pid in %s (anchored to pid=%d)\n", watcherPidfile(out.ThreadID), anchor)
+		}
 		return nil
 	},
+}
+
+// resolveAnchorPID returns the grandparent of sirsi (caller's caller),
+// which is typically the agent runtime binary when register is invoked
+// from a hook script. Falls back to PPID if grandparent lookup fails.
+func resolveAnchorPID() int {
+	ppid := os.Getppid()
+	// macOS: ps -p <ppid> -o ppid= returns ppid's parent
+	out, err := exec.Command("ps", "-p", strconv.Itoa(ppid), "-o", "ppid=").Output()
+	if err != nil {
+		return ppid
+	}
+	gp, err := strconv.Atoi(strings.TrimSpace(string(out)))
+	if err != nil || gp <= 1 {
+		return ppid
+	}
+	return gp
 }
 
 var threadHeartbeatCmd = &cobra.Command{
@@ -214,9 +304,137 @@ var threadCloseCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		killRouterWatcher(threadCloseID)
 		fmt.Printf("Closed thread %s (agent=%s)\n", thr.ThreadID, thr.AgentID)
 		return nil
 	},
+}
+
+var (
+	watchThreadID    string
+	watchAgentID     string
+	watchRouterRoot  string
+	watchParentPID   int
+	watchDebounce    = 800 * time.Millisecond
+	watchAliveCheck  = 30 * time.Second
+)
+
+var threadWatchRouterCmd = &cobra.Command{
+	Use:    "watch-router",
+	Short:  "Internal: long-running per-thread fs-watcher (spawned by `thread register`)",
+	Hidden: true,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if watchThreadID == "" || watchAgentID == "" || watchRouterRoot == "" || watchParentPID <= 0 {
+			return fmt.Errorf("--thread, --agent, --router-root, --parent-pid all required")
+		}
+
+		watcher, err := fsnotify.NewWatcher()
+		if err != nil {
+			return err
+		}
+		defer watcher.Close()
+
+		for _, path := range []string{
+			filepath.Join(watchRouterRoot, "state.json"),
+			filepath.Join(watchRouterRoot, "items"),
+			filepath.Join(watchRouterRoot, "proposals"),
+		} {
+			if _, err := os.Stat(path); err == nil {
+				_ = watcher.Add(path)
+			}
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		// Liveness ticker: exit when parent PID dies.
+		go func() {
+			t := time.NewTicker(watchAliveCheck)
+			defer t.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-t.C:
+					if syscall.Kill(watchParentPID, syscall.Signal(0)) != nil {
+						cancel()
+						return
+					}
+				}
+			}
+		}()
+
+		// Debounce: coalesce rapid bursts into one dispatch.
+		var debounceTimer *time.Timer
+		fire := func() {
+			handleRouterEvent(watchThreadID, watchAgentID, watchRouterRoot)
+		}
+
+		for {
+			select {
+			case <-ctx.Done():
+				return nil
+			case <-watcher.Events:
+				if debounceTimer != nil {
+					debounceTimer.Stop()
+				}
+				debounceTimer = time.AfterFunc(watchDebounce, fire)
+			case <-watcher.Errors:
+				// Non-fatal; keep going.
+			}
+		}
+	},
+}
+
+// handleRouterEvent is called per debounced fsnotify burst. It checks the
+// agent's inbox; if items exist, runs the agent's spawn command from
+// agents.json with a ctr prompt over stdin. Same shape as dispatch.sh but
+// scoped to one agent and one thread.
+func handleRouterEvent(threadID, agentID, routerRoot string) {
+	self, err := os.Executable()
+	if err != nil {
+		return
+	}
+	// Pull this agent's inbox via sirsi router pull.
+	out, err := exec.Command(self, "router", "pull", agentID).CombinedOutput()
+	if err != nil {
+		return
+	}
+	hasItems := false
+	for _, line := range strings.Split(string(out), "\n") {
+		if strings.Contains(line, "• ") {
+			hasItems = true
+			break
+		}
+	}
+	if !hasItems {
+		return
+	}
+
+	// Find agent's spawn command + cwd in agents.json.
+	reg, err := router.LoadRegistry(routerRoot)
+	if err != nil {
+		return
+	}
+	agent, ok := reg.Agents[agentID]
+	if !ok || len(agent.Command) == 0 {
+		return
+	}
+
+	prompt := fmt.Sprintf("ctr\n\nYou are %s on this workstation (thread %s).\nRead %s/state.json and act on items addressed to %s. Write router artifacts, ack/close, then stop.\n",
+		agentID, threadID, routerRoot, agentID)
+
+	cmd := exec.Command(agent.Command[0], agent.Command[1:]...)
+	if agent.Cwd != "" {
+		cmd.Dir = agent.Cwd
+	}
+	cmd.Stdin = strings.NewReader(prompt)
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	if err := cmd.Start(); err == nil {
+		_ = cmd.Process.Release()
+	}
 }
 
 var threadListCmd = &cobra.Command{
@@ -311,6 +529,7 @@ func init() {
 	threadRegisterCmd.Flags().StringSliceVar(&threadRegWatches, "watch", nil, "Inboxes this thread watches (defaults to --agent)")
 	threadRegisterCmd.Flags().StringVar(&threadRegWake, "wake", "", "Wake mechanism (defaults to agent registry entry)")
 	threadRegisterCmd.Flags().StringVar(&threadRegID, "thread", "", "Reuse a known thread_id instead of generating a new one")
+	threadRegisterCmd.Flags().IntVar(&threadRegAnchorPID, "anchor-pid", 0, "PID to anchor the fs-watcher lifetime to (defaults to grandparent of sirsi)")
 
 	threadHeartbeatCmd.Flags().StringVar(&threadHbID, "thread", "", "Thread ID to heartbeat (required)")
 	threadHeartbeatCmd.Flags().StringVar(&threadHbStatus, "status", "", "Set status: active|idle|blocked")
@@ -322,5 +541,9 @@ func init() {
 	threadListCmd.Flags().BoolVar(&threadListAll, "all", false, "Include closed threads")
 	threadListCmd.Flags().DurationVar(&threadListStale, "stale-after", router.DefaultThreadStaleAfter, "Stale threshold")
 
-	threadCmd.AddCommand(threadRegisterCmd, threadHeartbeatCmd, threadCloseCmd, threadListCmd)
+	threadWatchRouterCmd.Flags().StringVar(&watchThreadID, "thread", "", "Thread ID")
+	threadWatchRouterCmd.Flags().StringVar(&watchAgentID, "agent", "", "Agent ID")
+	threadWatchRouterCmd.Flags().StringVar(&watchRouterRoot, "router-root", "", "Router root directory")
+	threadWatchRouterCmd.Flags().IntVar(&watchParentPID, "parent-pid", 0, "Parent process to anchor lifetime to")
+	threadCmd.AddCommand(threadRegisterCmd, threadHeartbeatCmd, threadCloseCmd, threadListCmd, threadWatchRouterCmd)
 }
