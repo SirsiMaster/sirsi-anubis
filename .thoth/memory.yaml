@@ -1,12 +1,12 @@
 # 𓁟 Thoth — Project Memory for Sirsi Pantheon
 # Read this FIRST before any source files.
-# Last updated: 2026-05-26T17:07:00-04:00
+# Last updated: 2026-05-31T17:15:00-04:00
 
 ## Identity
 project: sirsi-pantheon
 repo: github.com/SirsiMaster/sirsi-pantheon
 language: Go 1.25 / TypeScript / Kotlin / Swift
-version: 0.19.0
+version: 0.22.0-beta
 binary_count: 8 (anubis, guard, maat, scarab, sirsi, sirsi-agent, sirsi-menubar, thoth)
 test_count: 1800+
 line_count: ~78,000
@@ -123,6 +123,12 @@ sync_protocol:
 #     (e.g., npx thoth-init) without platooning the entire Pantheon.
 # 15. Cross-Agent Referral Logic: deities allude to other deities that
 #     can act upon their findings (cohesive ecosystem, modular design).
+# 16. Deities must not assume single-repo (ADR-021, proposed 2026-05-31):
+#     workstation-scoped deities (Osiris/risk, Anubis/hygiene, Ma'at/quality,
+#     Isis/pressure) source scope from the CTR registry (sirsi thread +
+#     thread discover), never the process cwd. RepoDir: "." in a launchd
+#     surface (cwd=/) is the anti-pattern that surfaced this. Osiris →
+#     workstation-wide risk aggregator; non-git/zero-repo degrades to benign.
 
 ## Known Limitations (as of v0.18.0)
 # - GUI folder picker only works on macOS (Linux: zenity/kdialog in platform/linux.go)
@@ -150,6 +156,25 @@ sync_protocol:
 # - Rule A19: ABSOLUTE PROHIBITION — NEVER modify /Applications/*.app/ bundles.
 #   Proven by crash forensics: manifest patches caused V8 OOM → Jetsam → reinstall.
 #   Valid JSON can crash Extension Host via semantic corruption. No exceptions.
+# - Agent Work Safety Governor: `sirsi agent preflight` and `sirsi agent safe-run`
+#   compose Yield + Guard Doctor + RTK output budgets to block hazardous AI work
+#   before it can balloon memory. Current policy blocks unbounded $HOME/Development
+#   scans, direct `.codex/sessions/*.jsonl` reads, and Python repo/transcript-wide
+#   analysis without explicit override. Docs: docs/AGENT_WORK_SAFETY.md.
+# - Router Thread/Item Index: `.agents/idea-router/THREAD_ITEM_INDEX.md`
+#   records open router item ownership by agent and separates that from live
+#   thread ownership. As of 2026-05-31, no active registered Claude threads
+#   own open work; next Claude sessions must register and heartbeat
+#   `current_item=<item-id>` to claim thread-level ownership.
+# - 2026-05-31 Codex router closeout: `codex-pantheon` inbox is clean after
+#   closing dispatch-race, ADR-020 canon v2, and `sirsi thread discover` Phase 1
+#   review items. `.agents/idea-router/dispatch.sh` now has per-agent worker
+#   locks and no Python state reader; ADR-020 stale correction wording fixed.
+# - Process Scout: `sirsi thread scout` writes `.agents/idea-router/processes.json`
+#   as Pantheon's host process awareness ledger for every visible PID. It records
+#   agent/IDE/terminal/system/process roles without claiming router ownership.
+#   Sweep now runs `thread discover --json` and `thread scout --json`; control
+#   actions remain gated through Guard/Throttle/Slay approval paths.
 # - Website: sirsi.ai/pantheon (Firebase Hosting)
 # - Deity Registry: 13 HTML pages (index + 12 deities) with flip cards
 # - iOS app: Full SwiftUI app (ios/), 9 deity views, PantheonCore.xcframework at v0.17.0

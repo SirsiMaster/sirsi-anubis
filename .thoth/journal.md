@@ -559,3 +559,104 @@ The user's question "does it work" was the single highest-leverage prompt of the
 2. Folded periodic cleanup (reaper) into read-paths is the right shape — no daemon needed.
 3. Silent failure separation is a generalizable lean pattern: anywhere a primary check can return "empty" for either legitimate or broken reasons, distinguish them in the log.
 4. Real probes catch what telemetry misses. "Does it work" is the user's most valuable prompt.
+
+---
+
+## 2026-05-31 — Agent Work Safety Governor
+
+**Context:** During a Sirsi Nexus assessment, an agent analysis path ballooned to roughly 135 GB of application memory and crashed the working environment. The user correctly called out that this is the exact failure class Pantheon is supposed to prevent.
+
+**Decision:** Unified existing Pantheon safety primitives behind the `sirsi agent` surface:
+
+- `internal/agentguard/` added as the composable governor.
+- `sirsi agent preflight [command...]` checks system/resource state and command policy before work.
+- `sirsi agent safe-run -- <command...>` executes only after preflight, with timeout and RTK output budgets.
+- `docs/AGENT_WORK_SAFETY.md` records the crash lesson and the first policy set.
+
+**What was reused:** `internal/yield` for CPU pressure, `internal/guard` Doctor for RAM/swap/Jetsam/process facts, `internal/rtk` for output filtering, and the existing `sirsi agent` command namespace. Vault/Horus remain adjacent primitives for future large-output storage and structural code inspection.
+
+**Initial policy:** block unbounded `$HOME`/`~/Development` scans, direct `.codex/sessions/*.jsonl` reads via `cat`/`rg`/`grep`/Python, and Python-based repo/transcript-wide analysis without explicit budgets.
+
+**Verification:**
+
+- `go test ./internal/agentguard`
+- `go test ./cmd/sirsi`
+- `go build ./cmd/sirsi`
+- Live smoke: `sirsi --json agent preflight -- cat .../.codex/sessions/...jsonl` returns `verdict: block`.
+- Live smoke: `sirsi --json agent safe-run --force ...` runs with output budget while still reporting current Jetsam blockers.
+
+**Lesson:** Pantheon already had the organs: Guard, Yield, RTK, Vault, Horus. The missing piece was the front door that forces agent work through those organs before the machine is under pressure.
+
+---
+
+## 2026-05-31 — Router Thread/Item Relationship Index
+
+**Context:** After the crash recovery, the router needed a clear answer to which Claude thread owns which router item. `sirsi thread list` showed no active registered threads; `threads.json` contained only closed/reaped `claude-pantheon` sessions.
+
+**Decision:** Added `.agents/idea-router/THREAD_ITEM_INDEX.md` as the canonical relationship index. It records:
+
+- current open item ownership by `to` agent
+- `thread_unassigned` for every open Claude repo-agent item until a live thread registers
+- historical Pantheon thread/lane provenance for Lane B, Lane C, ADR-020, and LEAN AF coordinator sessions
+- the rule that thread ownership is established only by an active registered thread heartbeating `current_item=<item-id>`
+
+**Router cleanup:** Reconciled `state.json.pending` to match open item frontmatter for `claude-assiduous`, `claude-finalwishes`, `claude-homebrew-tools`, `claude-nexus`, and `claude-porch-and-alley`; corrected `pending_for_user` to the actual open Development-root decision.
+
+**Verification:** `sirsi router status` reports 20 open / 46 closed, with no `codex-pantheon` inbox items and no blank-recipient bucket.
+
+---
+
+## 2026-05-31 — Codex Router Reviews Closed + Dispatch Race Fixed
+
+**Context:** Terminal showed multiple live Claude windows while CTR still showed no registered threads. Claude then routed three `codex-pantheon` items: dispatch race, ADR-020 canon-correction v2, and `sirsi thread discover` Phase 1 review.
+
+**Decision / Work Completed:**
+
+- Patched `.agents/idea-router/dispatch.sh` with per-agent lock directories under `.agents/idea-router/locks/` so WatchPaths bursts cannot spawn sibling workers for the same inbox.
+- Removed the Python legacy-pending reader from `dispatch.sh`; it now uses `jq` when available and otherwise relies on pull-model item frontmatter.
+- Approved ADR-020 canon-correction v2 and made one follow-up line edit in `docs/ADR-020-INTERACTIVE-SURFACE-REOPENED.md` so it no longer says the changelog "needs" correction after the correction landed.
+- Approved `sirsi thread discover` Phase 1. Phase 2 hook scope is approved with the constraint that hooks call `sirsi thread discover --self` and do not enumerate process tables.
+
+**Router Artifacts Closed:**
+
+- `20260531-codex-pantheon-dispatch-concurrency-guard-review.md`
+- `20260531-codex-pantheon-adr020-canon-v2-approval.md`
+- `20260531-codex-pantheon-thread-discover-phase1-approval.md`
+
+**Verification:**
+
+- `bash -n .agents/idea-router/dispatch.sh`
+- `bash -n .agents/idea-router/sweep.sh`
+- `git diff --check -- .agents/idea-router/dispatch.sh docs/ADR-020-INTERACTIVE-SURFACE-REOPENED.md`
+- `go test ./internal/router ./cmd/sirsi`
+- `go test ./internal/agentguard ./internal/router`
+- `go build ./cmd/sirsi`
+- `sirsi router pull codex-pantheon` => no open items
+- `sirsi router status` => 20 open / 50 closed
+
+---
+
+## 2026-05-31 — Process Scout Registry
+
+**Context:** User clarified the desired bar: every IDE, terminal, agent, PID, and process should be known to Pantheon automatically. If a process cannot register as a router thread, Pantheon should still scout the machine and know it exists.
+
+**Decision:** Added a read-only process awareness registry separate from CTR thread ownership:
+
+- `internal/router/processes.go` and tests define `ProcessRegistry`, `ProcessRecord`, role classification, and reconciliation preserving `first_seen` while marking missing PIDs `gone`.
+- `sirsi thread scout` records the visible process table into `.agents/idea-router/processes.json`.
+- `.agents/idea-router/sweep.sh` now refreshes both `sirsi thread discover --json` and `sirsi thread scout --json` automatically.
+- Removed the old Python parser from `sweep.sh`; watcher validation uses `jq`.
+
+**Important boundary:** `threads.json` remains for agent sessions that can own router work. `processes.json` is the broader host awareness map for every visible PID. Pantheon observes broadly, but process control remains gated through Guard/Throttle/Slay and explicit safety rules.
+
+**Live smoke:** Escalated host run of `sirsi thread scout --limit 12` saw 831 visible processes on `Mac.lan`: 18 agent, 2 IDE, 30 terminal, 30 system, 751 process. It captured the live Claude/Codex PIDs that the screenshot showed.
+
+## 2026-05-31 — Runtime Restore After OOM + ADR-021 (Deities ≠ Single-Repo)
+
+**Context:** User's Mac crashed from application-memory exhaustion; Pantheon (which they expected running) was gone. No LaunchAgent/login-item ever made it auto-start, so every reboot killed it.
+
+**Restore:** Rebuilt v0.22.0-beta from source (`make build`, `build-menubar`, `bundle`). Found `guard.StartBridge` is embedded in the menubar (`cmd/sirsi-menubar/main.go:388`) — so menubar and the Sekhmet RAM watchdog are ONE process, not two (no separate `guard --watch`; that flag no longer exists in v0.22). Installed fresh `sirsi`+`sirsi-menubar` to all PATH copies (checksums unified), loaded `ai.sirsi.pantheon` LaunchAgent (RunAtLoad+KeepAlive → reboot-persistent), registered `sirsi mcp` user-scope (✓ Connected). Caught a silent regression: first agent launch ran the stale May-11 brew binary because login-shell PATH put /opt/homebrew/bin ahead of ~/.local/bin — fixed by unifying all copies. Menubar verified live via screenshot (🟢 RAM 11%).
+
+**Router:** Registered this thread `thr-7452fa9c16e656c9` (claude-pantheon, lane pantheon-runtime-restore) — had never registered. The two TUI items in the claude-pantheon inbox were MISROUTED (codex filed a MISROUTE NOTICE); closed the notice (the valid item), left the TUI correction for the intended thread.
+
+**ADR-021 (proposed):** The menubar's `osiris assess failed` traced to `stats.go:84` `RepoDir: "."` resolving to launchd cwd `/`. User rejected the shallow "pin a repo" fix: *"Sirsi/Pantheon components are NOT restricted to repo management… recognize we have a design problem."* ADR-021 names the principle — workstation-scoped deities source scope from the CTR registry (`sirsi thread discover`, committed `10a97b7` same day), never cwd; Osiris becomes a workstation-wide risk aggregator; non-git degrades to benign. Routed to codex-pantheon for review; no code before acceptance. Committed `dd36ccf` (ADR + INDEX + CHANGELOG).
