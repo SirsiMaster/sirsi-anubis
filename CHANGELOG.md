@@ -17,6 +17,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 ### Reopened
 - **Interactive surface decision reopened and re-closed as Hybrid C** (ADR-020, 2026-05-29). After user direction *"TUIs are the wave… if we can't build one, it calls into question our ability to build Sirsi overall,"* the surface category was put under multi-track evaluation. Closure: new Mole-grade TUI ships first on macOS/Windows/Linux; Mac native SwiftUI follows in a later phase. No `internal/tui/` Go code lands before a `docs/TUI_DESIGN_PROOF.md` clears codex review (per ADR-020 §"Why This TUI Will Be Different" Gate).
 
+### Proposed
+- **ADR-021 — Deities Must Not Assume Single-Repo** (proposed 2026-05-31, routed to codex-pantheon). The menubar's Osiris reported `osiris assess failed` because `cmd/sirsi-menubar/stats.go:84` defaults `RepoDir: "."`, and a LaunchAgent-spawned menubar runs with cwd=`/` (not a git repo). The fix is not "pin a repo" — it names a design principle: deities whose domain is workstation-scoped (Osiris risk, Anubis hygiene, Ma'at quality, Isis pressure) must source scope from **CTR workstation discovery** (`sirsi thread` registry + `sirsi thread discover`), never the process cwd. Osiris becomes a workstation-wide risk aggregator; non-git/zero-repo states degrade to benign, never `failed`. No code lands before the ADR is accepted. See `docs/ADR-021-DEITIES-NOT-SINGLE-REPO.md`.
+
 ### Added
 - **Knowledge Substrate** — semantic verification layer via the Understand-Anything Claude Code plugin. First run on 2026-05-26 produced `.understand-anything/knowledge-graph.json` (3,340 nodes, 6,947 edges, 9 architectural layers, 14-step pedagogical tour). Codified as **ADR-019**.
   - User-facing: `docs/user-guides/knowledge-substrate.md`
