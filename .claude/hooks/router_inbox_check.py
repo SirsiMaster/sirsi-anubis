@@ -100,6 +100,43 @@ def claude_session_pid() -> int | None:
         return None
 
 
+def ensure_router_watcher(thread_id: str, agent_id: str, anchor: int | None) -> None:
+    """Idempotent watcher spawn: if no live watcher process exists for
+    this thread_id, spawn one anchored to the given PID. Pidfile is
+    /tmp/sirsi-router-watch-<thread_id>.pid.
+
+    Solves the adopt-without-watcher gap: when ensure_active_thread()
+    adopts an existing fresh thread, the original watcher may have died
+    with its original anchor. Re-spawning under our own anchor here keeps
+    FSEvents wake alive for the new session.
+    """
+    if not thread_id or not anchor:
+        return
+    pidfile = f"/tmp/sirsi-router-watch-{thread_id}.pid"
+    try:
+        with open(pidfile) as f:
+            old_pid = int(f.read().strip())
+        os.kill(old_pid, 0)  # raises if dead
+        return  # existing watcher alive
+    except (FileNotFoundError, ValueError, ProcessLookupError, PermissionError):
+        pass
+
+    # Bounce the thread to spawn a watcher: re-register with --thread so
+    # the existing thread_id is reused (idempotent) and a fresh watcher
+    # gets spawned with our anchor.
+    try:
+        subprocess.run(
+            ["sirsi", "thread", "register",
+             "--thread", thread_id,
+             "--agent", agent_id,
+             "--surface", "claude",
+             "--anchor-pid", str(anchor)],
+            capture_output=True, timeout=3,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+
+
 def ensure_active_thread(agent_id: str, repo_path: Path) -> str | None:
     """Return an active thread_id for agent_id, registering one if none exists.
 
@@ -116,7 +153,9 @@ def ensure_active_thread(agent_id: str, repo_path: Path) -> str | None:
     except (FileNotFoundError, subprocess.TimeoutExpired, json.JSONDecodeError):
         threads = []
 
-    # Active and fresh (< 5 minutes idle) — adopt it
+    anchor = claude_session_pid()
+
+    # Active and fresh (< 5 minutes idle) — adopt it AND ensure a live watcher.
     fresh = [
         t for t in threads
         if (t.get("thread") or {}).get("agent_id") == agent_id
@@ -125,12 +164,12 @@ def ensure_active_thread(agent_id: str, repo_path: Path) -> str | None:
     ]
     if fresh:
         fresh.sort(key=lambda t: t.get("idle_seconds", 1e9))
-        return (fresh[0].get("thread") or {}).get("thread_id")
+        thread_id = (fresh[0].get("thread") or {}).get("thread_id")
+        ensure_router_watcher(thread_id, agent_id, anchor)
+        return thread_id
 
-    # No fresh thread — register a new one, anchoring the per-thread
-    # router watcher to the actual claude process PID (not this python
-    # hook's PPID, which is the ephemeral shell that runs us).
-    anchor = claude_session_pid()
+    # No fresh thread — register a new one. `register` itself spawns the
+    # watcher; we just supply the right anchor PID.
     args = ["sirsi", "thread", "register",
             "--agent", agent_id, "--surface", "claude", "--repo", str(repo_path)]
     if anchor:
