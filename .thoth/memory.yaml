@@ -499,6 +499,15 @@ sync_protocol:
 # .agent/workflows/session-start.md — session workflow (includes build-in-public step)
 
 ## Session Decisions
+# 2026-05-31: CTR auto-registration Phase 1 — `sirsi thread discover` (commit 10a97b7, codex APPROVED).
+#   Reconciles live agent processes into threads.json: bounded pgrep/lsof → cwd → agents.json match,
+#   registers mappable repo-launched sessions anchored to their PID. Home-launched=unmappable (never
+#   registered); same-cwd same-surface duplicate=ambiguous (never guessed, Rule A23). Pure
+#   ReconcileDiscovery + 9 tests (internal/router/discover.go); CLI (cmd/sirsi/threaddiscover.go) with
+#   --self (Phase 2 hook) + stable JSON. Phase 1.5: wired into hourly sweep.sh (with scout lane).
+#   Why 0 threads registered post-reboot: every session launched from $HOME → no repo identity.
+#   Phase 2 (SessionStart hook→discover --self) approved, not wired. Phase 3 (deliver into live
+#   session via remote-control) spike-gated. Feeds ADR-021 (Osiris workstation-scoping).
 # 2026-05-19: -
 # 2026-05-19: Router snapshot:
 # 2026-05-19: active topics: assiduous-v110-completion, finalwishes-v010-illinois-probate, ra-horus-router-hypervisor-canon, claude-cli-auth-for-router-dispatch
