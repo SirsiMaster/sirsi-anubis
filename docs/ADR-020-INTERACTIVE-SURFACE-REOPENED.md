@@ -54,7 +54,7 @@ These survive surface-independent and are **not** under re-evaluation:
 
 - The framing "Pantheon's interactive surface moves from TUI to native SwiftUI Mac app, benchmarked against Mole" implied the *idea* of a TUI was abandoned. **This is rescinded.** TUI returns as a first-class candidate surface.
 - The plan for Windows/Linux to be "CLI only. No native GUI planned. No TUI" was a default-from-elimination, not an evaluated choice. **Rescinded.** TUI may serve those platforms; the comparison matrix evaluates that explicitly.
-- The CHANGELOG `[Unreleased]` framing ("Interactive TUI eliminated") needs language correction — *implementation* eliminated is true; *surface category* eliminated is false. See `docs/CANON_LANGUAGE_CORRECTION_PLAN.md`.
+- The CHANGELOG `[Unreleased]` framing was corrected after ADR-020: the v0.22 implementation was eliminated, but the TUI surface category remains active under Hybrid C.
 
 ## Relationship to ADR-018
 
