@@ -22,7 +22,7 @@ The solution requires:
 ## Decision
 
 ### 1. Language: Go 1.22+
-Single static binary compilation, cross-platform (macOS, Linux, Windows — arm64 + amd64), excellent CLI ecosystem (cobra, lipgloss, bubbletea), contributor-friendly language with low barrier to entry.
+Single static binary compilation, cross-platform (macOS, Linux, Windows — arm64 + amd64), excellent CLI ecosystem (cobra, lipgloss; bubbletea used through v0.22, removed in v0.23 per ADR-018, returning under ADR-020 for the new Mole-grade TUI), contributor-friendly language with low barrier to entry.
 
 ### 2. CLI Framework: cobra
 Industry standard for Go CLI tools. Provides subcommands, auto-complete, help generation, and shell integration.

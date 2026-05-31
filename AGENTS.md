@@ -158,6 +158,8 @@ Every AI agent thread must stay caffeinated for as long as its host process is a
 
 Reference implementation: `.claude/hooks/router_inbox_check.py` in `sirsi-pantheon`. Codex, Gemini, Gemma, Qwen, and future agents should implement an equivalent in whatever hook/automation surface their runtime exposes. The contract is in this section; the implementation is per-runtime.
 
+Codex.app implementation note: until Codex exposes a managed SessionStart/SessionEnd hook or long-lived background-process API, the supported Codex variant is the `ctr-thread-wake` heartbeat automation. That automation is prompt-tick based rather than PID-anchored, so it must read the router queue, process Codex-addressed work, and stay quiet when there is no action. If Codex later exposes a durable per-thread hook, replace this note with the canonical PID-anchored caffeinator loop above.
+
 Why this matters: orphan threads (host alive but CTR sees stale) hide live work, and ghost threads (host dead but CTR sees active) cause routing to wrong inboxes. The caffeinate loop closes both failure modes with one anchor: the host process PID.
 
 
@@ -546,8 +548,8 @@ Anubis scans filesystems and processes. Scan results may contain sensitive infor
 | :--- | :--- | :--- |
 | **Language** | **Go 1.22+** | Single static binary, cross-compile, contributor-friendly |
 | **CLI Framework** | **cobra** | Subcommands, auto-complete, help generation |
-| **Terminal UI** | **lipgloss + table** (charmbracelet) | Styled CLI output (tables, headers, progress). No interactive TUI. |
-| **Interactive Surface** | **Native macOS SwiftUI app** (planned) + CLI on all platforms | TUI eliminated v0.23 per ADR-018. Mac native app is the interactive surface; Windows/Linux are CLI-only. |
+| **Terminal UI** | **lipgloss + table** (charmbracelet) | Styled CLI output (tables, headers, progress) for v0.23. New Mole-grade TUI follows under ADR-020 / Hybrid C. |
+| **Interactive Surface** | **New Mole-grade TUI** (in design) first on macOS/Windows/Linux + CLI on all platforms; native macOS SwiftUI as a later-phase polish-bar upgrade | v0.22 BubbleTea TUI implementation removed in v0.23 per ADR-018; surface direction reopened and closed as Hybrid C per ADR-020 (2026-05-29). No `internal/tui/` code lands before `docs/TUI_DESIGN_PROOF.md` clears codex review. |
 | **Agent Protocol** | **gRPC** (fallback: SSH+JSON) | Streaming results, bidirectional |
 | **Config** | **viper** (YAML) | User-defined rules, profiles, budgets |
 | **Network Discovery** | **nmap** wrapper + native ARP/mDNS | Subnet/VLAN host discovery |

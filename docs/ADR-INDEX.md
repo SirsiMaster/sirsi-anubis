@@ -2,7 +2,7 @@
 
 This index tracks **all** architectural decisions for the Sirsi Pantheon ecosystem.
 
-**Total ADRs: 19** | **Next available: ADR-020**
+**Total ADRs: 20** | **Next available: ADR-021**
 
 ---
 
@@ -27,8 +27,9 @@ This index tracks **all** architectural decisions for the Sirsi Pantheon ecosyst
 | [ADR-015](ADR-015-DEITY-HIERARCHY.md) | Deity Hierarchy — Horus as local workstation lord, Ra as fleet lord | Accepted | 2026-04-24 |
 | [ADR-016](ADR-016-TUI-PRIMARY-INTERFACE.md) | TUI as Primary Interface — shared suggest engine, streaming, view stack, persistent state | **Superseded by ADR-018** | 2026-05-06 |
 | [ADR-017](ADR-017-RA-HORUS-CTR-HYPERVISOR.md) | Ra/Horus CTR Hypervisor — multi-agent orchestration canon, ownership boundary | Accepted | 2026-05-19 |
-| [ADR-018](ADR-018-NATIVE-MAC-APP.md) | Native macOS App + CLI as Pantheon's Interactive Surfaces — TUI sunset, standalone SwiftUI + menubar companion | Accepted | 2026-05-21 |
+| [ADR-018](ADR-018-NATIVE-MAC-APP.md) | Native macOS App + CLI as Pantheon's Interactive Surfaces — TUI sunset, standalone SwiftUI + menubar companion | **Partially In Force — Amended By ADR-020** | 2026-05-21 |
 | [ADR-019](ADR-019-KNOWLEDGE-SUBSTRATE.md) | Knowledge Substrate — Thoth/Seba/Understand three-tool split, JSON-as-architectural-code, bidirectional sync, Hedera hypergraph direction | Accepted | 2026-05-26 |
+| [ADR-020](ADR-020-INTERACTIVE-SURFACE-REOPENED.md) | Interactive Surface Reopened — Multi-Track Evaluation; closed Hybrid C (TUI first cross-platform, Mac native later) | Accepted (Hybrid C) | 2026-05-29 |
 
 ---
 
@@ -45,7 +46,9 @@ This index tracks **all** architectural decisions for the Sirsi Pantheon ecosyst
 - ADR-015: Deity Hierarchy
 - ADR-016: TUI as Primary Interface *(superseded by ADR-018)*
 - ADR-017: Ra/Horus CTR Hypervisor
-- ADR-018: Native macOS App + CLI (TUI sunset)
+- ADR-018: Native macOS App + CLI *(v0.22 TUI sunset; partially in force — amended by ADR-020)*
+- ADR-019: Knowledge Substrate
+- ADR-020: Interactive Surface Reopened — closed Hybrid C (TUI first cross-platform, Mac native later)
 
 ### Ghost Detection & Indexing
 - ADR-002: Ka Ghost Detection
@@ -76,7 +79,7 @@ This index tracks **all** architectural decisions for the Sirsi Pantheon ecosyst
 | ADR-007 | Active — Unified Findings Portal |
 | ADR-008 | Active — Shared Filesystem Index |
 | ADR-009 | Active — Injectable System Providers |
-| ADR-010 | Proposed — Menu Bar Application |
+| ADR-010 | Active — Menu Bar Application |
 | ADR-011 | Active — Deity Alignment |
 | ADR-012 | Active — VS Code Extension |
 | ADR-013 | Active — Tiled Context Rendering |
@@ -84,7 +87,9 @@ This index tracks **all** architectural decisions for the Sirsi Pantheon ecosyst
 | ADR-015 | Active — Deity Hierarchy |
 | ADR-016 | **Superseded** by ADR-018 — TUI as Primary Interface |
 | ADR-017 | Active — Ra/Horus CTR Hypervisor |
-| ADR-018 | Active — Native macOS App + CLI (TUI sunset) |
-| ADR-019+ | Next available |
+| ADR-018 | **Partially In Force — Amended By ADR-020** — Native macOS App + CLI (v0.22 TUI sunset) |
+| ADR-019 | Active — Knowledge Substrate |
+| ADR-020 | Active — Interactive Surface Reopened (closed Hybrid C) |
+| ADR-021+ | Next available |
 
-> **Last updated:** May 21, 2026 — ADR-018 **accepted** (Native macOS App + CLI; supersedes ADR-016). User authorization recorded via router decision `20260521-claude-pantheon-adr018-accepted.md`.
+> **Last updated:** May 29, 2026 — ADR-020 **accepted** as Hybrid C (TUI first cross-platform, Mac native later); ADR-018 status changed to *Partially In Force / Amended By ADR-020*. User authorization recorded via the ADR-020 closure (`docs/ADR-020-INTERACTIVE-SURFACE-REOPENED.md` § Closure).

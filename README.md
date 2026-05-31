@@ -17,7 +17,7 @@
 brew tap SirsiMaster/tools && brew install sirsi-pantheon
 ```
 
-**Menu bar app** (macOS — persistent monitoring, click to open TUI):
+**Menu bar app** (macOS — persistent monitoring, click to open the browser dashboard):
 ```bash
 brew install --cask sirsi-pantheon
 ```
@@ -30,20 +30,20 @@ Or download from [GitHub Releases](https://github.com/SirsiMaster/sirsi-pantheon
 
 ```bash
 sirsi setup                     # Checks dependencies and Full Disk Access
-sirsi                           # Opens interactive TUI
+sirsi                           # Prints help (per-verb commands below)
 ```
 
 On macOS, `sirsi setup` tells you whether Full Disk Access is granted. If it is missing, run `sirsi permissions` to open System Settings, then add the `sirsi` binary and your terminal app under Privacy & Security → Full Disk Access.
 
-Type `scan` in the TUI to run a waste scan. After completion, you'll see gold-highlighted "What's Next" suggestions — contextual follow-up commands like `findings`, `clean`, `purge`. Press Tab to cycle through them. The TUI remembers the last command result and its recommended next actions across sessions.
-
-Or use standalone commands directly:
+Run standalone commands directly:
 
 ```bash
 sirsi scan       # Find waste — caches, build artifacts, orphaned files (81 rules)
 sirsi diagnose   # System health — RAM pressure, disk space, kernel panics
 sirsi ghosts     # Find remnants of apps you already uninstalled
 ```
+
+> **Interactive surface — under redesign.** v0.22 shipped a BubbleTea TUI that was unreleasable and was removed in v0.23 (ADR-018). A new Mole-grade TUI is in design under [ADR-020](docs/ADR-020-INTERACTIVE-SURFACE-REOPENED.md) (Hybrid C: TUI first cross-platform, Mac native later). Until it ships, `sirsi` with no args prints help; the browser dashboard at `localhost:9119` is the visual surface today.
 
 Every user-facing command ends with a short summary, evidence counts, warnings when needed, and a "What's Next" section. Use `--json` for scripts or `--quiet` for minimal output.
 
@@ -53,17 +53,17 @@ Want a guided walkthrough? Run `sirsi quickstart` for your first scan with recom
 
 ## How It Works
 
-Pantheon has three interfaces that work together:
+Pantheon ships three surfaces in v0.23, with a new interactive TUI in design:
 
-**Menu bar (always on)** — An ankh icon sits in your macOS menu bar. It runs a guard watchdog, periodic infrastructure scan, and shows live state: 🟢 Clean / 🟡 12 GB waste / 🔴 RAM pressure / ⚠️ process alert. Click to open the TUI.
+**Menu bar (always on)** — An ankh icon sits in your macOS menu bar. It runs a guard watchdog, periodic infrastructure scan, and shows live state: 🟢 Clean / 🟡 12 GB waste / 🔴 RAM pressure / ⚠️ process alert. Click to open the browser dashboard.
 
-**Interactive TUI** — `sirsi` with no args opens a persistent session. Type commands in plain English, see real-time streaming output, get contextual "What's Next" suggestions after every command. Findings drill-down by category. Tab cycles through suggestions. State persists across sessions.
-
-**CLI (scriptable)** — Every command works standalone: `sirsi scan`, `sirsi ghosts`, etc. All support `--json` for piping and automation.
-
-**Shared suggestion engine** — `internal/suggest/` is the action recommendation engine used by TUI, CLI, and menubar. After any command completes, it computes contextual next steps based on the command's output and current system state.
+**CLI (scriptable)** — Every command works standalone: `sirsi scan`, `sirsi ghosts`, etc. All support `--json` for piping and automation. This is the primary v0.23 surface on every platform.
 
 **Horus Dashboard (web)** — `sirsi dashboard` opens a terminal-first web app at localhost:9119 with API endpoints, SSE streaming, and a command bar. `sirsi horus` is the structural code graph. Optional for power users.
+
+**Interactive TUI (in design — ADR-020 / Hybrid C)** — A new Mole-grade operator console is the next interactive surface. v0.22's BubbleTea TUI was removed in v0.23 because it was unreleasable; the new TUI is a clean-sheet redesign under [ADR-020](docs/ADR-020-INTERACTIVE-SURFACE-REOPENED.md) and ships cross-platform first, with native Mac SwiftUI following in a later phase. No code lands before a `docs/TUI_DESIGN_PROOF.md` clears review.
+
+**Shared suggestion engine** — `internal/suggest/` is the action recommendation engine. After any command completes, it computes contextual next steps based on the command's output and current system state.
 
 **Knowledge Substrate (𓅓)** — A semantic graph of your repo, auto-derived from source via the Understand-Anything plugin. Every file, function, class, import, and architectural layer is a node; relationships are edges. Stored as portable JSON at `.understand-anything/knowledge-graph.json`. Today's per-repo capability is the feeder for the future **Sirsi hypergraph** — a cross-repo, cross-agent knowledge layer built on Hedera Consensus Service. See [ADR-019](docs/ADR-019-KNOWLEDGE-SUBSTRATE.md) for the decision, the [knowledge-substrate user guide](docs/user-guides/knowledge-substrate.md) for usage, and `~/Development/HYPERGRAPH_VISION.md` for the long-term direction.
 
@@ -85,6 +85,7 @@ Pantheon has three interfaces that work together:
 | `sirsi thoth init/sync` | AI project memory ([MCP](https://modelcontextprotocol.io)-compatible) |
 | `sirsi hypergraph status` | Semantic graph of the repo — feeds the future Sirsi hypergraph on Hedera ([ADR-019](docs/ADR-019-KNOWLEDGE-SUBSTRATE.md), [user guide](docs/user-guides/knowledge-substrate.md)) |
 | `sirsi mcp` | MCP server for Claude, Cursor, Windsurf |
+| `sirsi agent preflight/safe-run` | Guard AI agent work with resource checks and output budgets |
 | `sirsi seshat ingest` | Knowledge ingestion from Chrome, Gemini, Apple Notes |
 | `sirsi diagram` | Generate architecture diagrams (Mermaid/HTML) |
 | `sirsi work` | Workstream manager — launch AI sessions across projects |
@@ -125,7 +126,7 @@ The same scanning architecture — 81 rules, hardware detection, policy enforcem
 
 | | What | Example |
 |:--|:------|:--------|
-| **One machine** | Full CLI + menu bar + TUI. All 81 rules, all deities. | Solo developer cleaning up their Mac |
+| **One machine** | Full CLI + menu bar + browser dashboard. All 81 rules, all deities. (New TUI in design per ADR-020.) | Solo developer cleaning up their Mac |
 | **Small team** | Same tool, shared policies via `configs/`. Quality gates on every push. | 3-person startup with shared scan rules |
 | **Fleet (Ra)** | Multi-machine orchestration, subnet scanning, autonomous remediation. | 256-node cluster with cross-repo AI agents |
 

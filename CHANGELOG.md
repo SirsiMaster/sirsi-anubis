@@ -8,11 +8,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Sem
 
 ## [Unreleased]
 
-> Cuts as **v0.23** per Codex review `20260521-codex-pantheon-tui-elimination-phase0-review`. `v1.0-alpha.0` is reserved for the first installable native Mac app.
+> Cuts as **v0.23** per Codex review `20260521-codex-pantheon-tui-elimination-phase0-review`. Interactive surface direction reopened on 2026-05-29 (ADR-020) and closed as **Hybrid C**: a new Mole-grade TUI ships first cross-platform; Mac native follows later as the polish-bar upgrade. The `v1.0-alpha.0` slot now belongs to the first installable TUI cut, not the first Mac app.
 
 ### Removed
-- **Interactive TUI eliminated** (ADR-018). All `internal/output/tui*.go` files (~4,800 LOC, 20 files), the TUI gateway entry point, `sirsi status --live`, and the no-args TUI launcher are gone. Binary dropped 24.2 MB → 22.2 MB. The `charm.land/bubbletea/v2` dependency is removed from `go.mod`. **This was intentional and immediate** — a broken or brand-damaging surface should not remain reachable behind a flag without a salvage owner and expiration date. No salvage harness was retained.
-- **`sirsi` with no args** no longer launches an interactive surface; it now prints help. This is the canonical no-args behavior going forward until the native Mac app ships, at which point launching the app from the CLI may be reconsidered as an opt-in. Per-verb behavior and flags are unchanged — see `docs/CLI_COMPATIBILITY.md` for the full matrix.
+- **v0.22 BubbleTea TUI implementation removed** (ADR-018, 2026-05-21; status now *Partially In Force — Amended By ADR-020*). All `internal/output/tui*.go` files (~4,800 LOC, 20 files), the TUI gateway entry point, `sirsi status --live`, and the no-args TUI launcher are gone. Binary dropped 24.2 MB → 22.2 MB. The `charm.land/bubbletea/v2` dependency is removed from `go.mod`. **Scope clarification (2026-05-29):** this removed the *unreleasable v0.22 implementation*, not the TUI surface category. ADR-020 reopened the surface decision and closed Hybrid C; a new Mole-grade TUI is the next interactive deliverable, designed from scratch (no restoration of the deleted code as foundation). The "intentional and immediate" framing applies to the v0.22 deletion only.
+- **`sirsi` with no args** no longer launches an interactive surface; it now prints help. This holds for v0.23 until the new TUI lands. Per-verb behavior and flags are unchanged — see `docs/CLI_COMPATIBILITY.md` for the full matrix.
+
+### Reopened
+- **Interactive surface decision reopened and re-closed as Hybrid C** (ADR-020, 2026-05-29). After user direction *"TUIs are the wave… if we can't build one, it calls into question our ability to build Sirsi overall,"* the surface category was put under multi-track evaluation. Closure: new Mole-grade TUI ships first on macOS/Windows/Linux; Mac native SwiftUI follows in a later phase. No `internal/tui/` Go code lands before a `docs/TUI_DESIGN_PROOF.md` clears codex review (per ADR-020 §"Why This TUI Will Be Different" Gate).
 
 ### Added
 - **Knowledge Substrate** — semantic verification layer via the Understand-Anything Claude Code plugin. First run on 2026-05-26 produced `.understand-anything/knowledge-graph.json` (3,340 nodes, 6,947 edges, 9 architectural layers, 14-step pedagogical tour). Codified as **ADR-019**.

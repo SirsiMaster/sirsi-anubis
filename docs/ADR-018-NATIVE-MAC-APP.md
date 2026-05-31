@@ -1,10 +1,14 @@
-# ADR-018: Native macOS App + CLI as Pantheon's Interactive Surfaces (TUI Sunset)
+# ADR-018: Native macOS App + CLI as Pantheon's Interactive Surfaces (v0.22 TUI Sunset)
+
+> **Scoping note (added 2026-05-29 per ADR-020):** "TUI Sunset" in this title refers **only to the v0.22 BubbleTea implementation** that was unreleasable and was deleted in v0.23. It does **not** mean Sirsi/Pantheon abandons the TUI surface category. ADR-020 reopened that decision and closed Hybrid C: a new Mole-grade TUI is in design and ships first cross-platform; this ADR's native-Mac direction is deferred (not cancelled) to a later phase. Read this ADR as a historical record of the 2026-05-21 decision; current direction lives in ADR-020.
 
 ## Status
-**Accepted** — 2026-05-21
+**Partially In Force — Amended By [ADR-020](ADR-020-INTERACTIVE-SURFACE-REOPENED.md)** (2026-05-29)
+**Originally Accepted** — 2026-05-21
 **Deciders:** Cylton Collymore (user authorization), codex-pantheon (review: approve-with-conditions), claude-pantheon (proposal)
 **Supersedes:** [ADR-016 (TUI as Primary Interface)](ADR-016-TUI-PRIMARY-INTERFACE.md)
-**Related:** [ADR-010 (Menubar Application)](ADR-010-MENUBAR-APPLICATION.md), [ADR-015 (Deity Hierarchy)](ADR-015-DEITY-HIERARCHY.md), [ADR-017 (Ra/Horus CTR Hypervisor)](ADR-017-RA-HORUS-CTR-HYPERVISOR.md)
+**Amended By:** [ADR-020 (Interactive Surface Reopened)](ADR-020-INTERACTIVE-SURFACE-REOPENED.md) — the v0.22 TUI deletion (this ADR's tactical action) stays in force; the strategic claim that Pantheon abandons the TUI surface category is rescinded. Per Hybrid C closure of ADR-020 (2026-05-29), the Mac native direction this ADR chose is **deferred** to a later phase after a new Mole-grade TUI ships first.
+**Related:** [ADR-010 (Menubar Application)](ADR-010-MENUBAR-APPLICATION.md), [ADR-015 (Deity Hierarchy)](ADR-015-DEITY-HIERARCHY.md), [ADR-017 (Ra/Horus CTR Hypervisor)](ADR-017-RA-HORUS-CTR-HYPERVISOR.md), [ADR-020 (Interactive Surface Reopened)](ADR-020-INTERACTIVE-SURFACE-REOPENED.md)
 
 > **Note on numbering:** the proposal referenced "ADR-016-NATIVE-MAC-APP". That slot is already occupied by *ADR-016 (TUI as Primary Interface)*, which this ADR supersedes. The correct next-available number per the ADR-INDEX is **ADR-018**.
 

@@ -387,8 +387,8 @@ Anubis scans filesystems and processes. Scan results may contain sensitive infor
 | :--- | :--- | :--- |
 | **Language** | **Go 1.22+** | Single static binary, cross-compile, contributor-friendly |
 | **CLI Framework** | **cobra** | Subcommands, auto-complete, help generation |
-| **Terminal UI** | **lipgloss + table** (charmbracelet) | Gold + black Egyptian theme |
-| **Interactive TUI** | **bubbletea** (optional) | Rich interactive mode for guided cleanup |
+| **Terminal UI** | **lipgloss + table** (charmbracelet) | Styled CLI output (tables, headers, progress) for v0.23. New Mole-grade TUI follows under ADR-020 / Hybrid C. |
+| **Interactive Surface** | **New Mole-grade TUI** (in design) first on macOS/Windows/Linux + CLI on all platforms; native macOS SwiftUI as a later-phase polish-bar upgrade | v0.22 BubbleTea TUI implementation removed in v0.23 per ADR-018; surface direction reopened and closed as Hybrid C per ADR-020 (2026-05-29). No `internal/tui/` code lands before `docs/TUI_DESIGN_PROOF.md` clears codex review. |
 | **Agent Protocol** | **gRPC** (fallback: SSH+JSON) | Streaming results, bidirectional |
 | **Config** | **viper** (YAML) | User-defined rules, profiles, budgets |
 | **Network Discovery** | **nmap** wrapper + native ARP/mDNS | Subnet/VLAN host discovery |
