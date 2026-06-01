@@ -1,5 +1,16 @@
 #!/usr/bin/env python3
-"""Print a concise Claude Code router inbox reminder when work is pending."""
+"""Router supervisor hook (ADR-024).
+
+SessionStart/prompt: register the thread (handshake), heartbeat, and — keyed on
+OS truth — re-assert the ONE prescribed watcher by injecting the router's
+`arm_instruction` into context when no live watcher exists for this thread.
+Stop: optional backstop that blocks until the watcher is detected alive.
+
+ADR-024 retires the per-claude caffeinator and the auto fs-watcher: the `/loop`
+Monitor is the single liveness/wake mechanism for a claude surface. `register`
+no longer spawns a watcher; it RETURNS the spec, and this hook hands the
+agent the spec's `arm_instruction`.
+"""
 
 from __future__ import annotations
 
@@ -37,21 +48,16 @@ def claude_agent_id(repo_root: Path, agents: dict) -> str:
 def pending_items(state: dict, agent_id: str) -> list[str]:
     pending = state.get("pending") or {}
     items = list(pending.get(agent_id) or [])
-
     if agent_id == "claude-pantheon":
         for item in state.get("pending_for_claude") or []:
             if item not in items:
                 items.append(item)
-
     return items
 
 
 def pull_model_open_items(router_root: Path, agent_id: str) -> list[str]:
-    """Count open items for agent_id under items/ (new pull-model queue).
-
-    Each item is a markdown file with YAML frontmatter. We do a minimal scan
-    rather than pulling in a YAML library — only `to:` and `status:` matter.
-    """
+    """Count open items addressed to agent_id under items/ — the one inbox
+    (ADR-024 §5). reviews/ and decisions/ are NOT polled."""
     items_dir = router_root / "items"
     if not items_dir.is_dir():
         return []
@@ -73,7 +79,7 @@ def pull_model_open_items(router_root: Path, agent_id: str) -> list[str]:
             if not sep:
                 continue
             key = key.strip()
-            value = value.strip()
+            value = value.strip().strip('"')
             if key == "to":
                 to_val = value
             elif key == "status":
@@ -84,11 +90,7 @@ def pull_model_open_items(router_root: Path, agent_id: str) -> list[str]:
 
 
 def claude_session_pid() -> int | None:
-    """Walk up the process tree to find the Claude Code CLI process.
-
-    Hook is invoked as: claude → shell → python3 (this script).
-    So our grandparent should be the claude binary.
-    """
+    """Grandparent of this script (claude → shell → python3) is the CLI process."""
     try:
         shell_pid = os.getppid()
         out = subprocess.run(
@@ -100,148 +102,103 @@ def claude_session_pid() -> int | None:
         return None
 
 
-def ensure_router_watcher(thread_id: str, agent_id: str, anchor: int | None) -> None:
-    """Idempotent watcher spawn: if no live watcher process exists for
-    this thread_id, spawn one anchored to the given PID. Pidfile is
-    /tmp/sirsi-router-watch-<thread_id>.pid.
+def supervisor_mode(env: dict | None = None) -> str:
+    """Resolve the supervisor mode (ADR-024 §4).
 
-    Solves the adopt-without-watcher gap: when ensure_active_thread()
-    adopts an existing fresh thread, the original watcher may have died
-    with its original anchor. Re-spawning under our own anchor here keeps
-    FSEvents wake alive for the new session.
+      "off"     — SIRSI_SUPERVISOR=0: suppress managed arming + Stop-gate.
+                  The register spec stays visible (handled by `register` itself).
+      "enforce" — SIRSI_SUPERVISOR=enforce: arming injection + the Stop-gate
+                  backstop (off by default).
+      "on"      — default: arming injection on, Stop-gate off.
     """
-    if not thread_id or not anchor:
-        return
-    pidfile = f"/tmp/sirsi-router-watch-{thread_id}.pid"
-    try:
-        with open(pidfile) as f:
-            old_pid = int(f.read().strip())
-        os.kill(old_pid, 0)  # raises if dead
-        return  # existing watcher alive
-    except (FileNotFoundError, ValueError, ProcessLookupError, PermissionError):
-        pass
+    env = env if env is not None else os.environ
+    v = (env.get("SIRSI_SUPERVISOR") or "").strip().lower()
+    if v == "0":
+        return "off"
+    if v == "enforce":
+        return "enforce"
+    return "on"
 
-    # Bounce the thread to spawn a watcher: re-register with --thread so
-    # the existing thread_id is reused (idempotent) and a fresh watcher
-    # gets spawned with our anchor.
+
+def watcher_armed(thread_id: str, runner=subprocess.run) -> bool:
+    """OS-truth liveness check (ADR-024 §3, F2): is a watcher process alive for
+    THIS thread? Keys on `pgrep -f thr-<thread_id>` — the same (agent_id, pid)
+    identity ADR-022 reaps on — NEVER the harness TaskList (it falsely reports
+    empty) and NEVER the shared `DIR=` loop body (it matches OTHER agents'
+    loops on a shared host, a false 'already armed')."""
+    if not thread_id:
+        return False
     try:
-        subprocess.run(
-            ["sirsi", "thread", "register",
-             "--thread", thread_id,
-             "--agent", agent_id,
-             "--surface", "claude",
-             "--anchor-pid", str(anchor)],
-            capture_output=True, timeout=3,
-        )
+        out = runner(["pgrep", "-f", thread_id], capture_output=True, text=True, timeout=2)
     except (FileNotFoundError, subprocess.TimeoutExpired):
-        pass
+        return False
+    return out.returncode == 0 and bool((out.stdout or "").strip())
 
 
-def ensure_active_thread(agent_id: str, repo_path: Path) -> str | None:
-    """Return an active thread_id for agent_id, registering one if none exists.
+def should_arm(thread_id: str, mode: str, runner=subprocess.run) -> bool:
+    """Check-then-arm decision (ADR-024 §3). Arm iff the supervisor is not off,
+    we have a thread, and NO live watcher exists for it (OS truth). This is the
+    single gate behind F1 (re-assert when gone) and F2 (never duplicate when an
+    OS watcher is alive — keyed on pgrep, never TaskList)."""
+    if mode == "off" or not thread_id:
+        return False
+    return not watcher_armed(thread_id, runner=runner)
 
-    Solves the orphan problem: if a session opens and CTR has no active
-    thread for our agent (or only stale ones), register fresh instead of
-    silently heartbeating someone else's thread.
-    """
+
+def register_handshake(agent_id: str, repo_path: Path, thread_id: str | None,
+                       anchor: int | None, runner=subprocess.run) -> tuple[str | None, str]:
+    """Run `thread register --json` (the ADR-024 handshake) and return
+    (thread_id, arm_instruction). register no longer spawns a watcher; it
+    returns the spec the surface must arm."""
+    args = ["sirsi", "thread", "register", "--agent", agent_id,
+            "--surface", "claude", "--repo", str(repo_path), "--json"]
+    if thread_id:
+        args += ["--thread", thread_id]
+    if anchor:
+        args += ["--anchor-pid", str(anchor)]
     try:
-        out = subprocess.run(
-            ["sirsi", "thread", "list", "--json"],
-            capture_output=True, text=True, timeout=2,
-        )
+        out = runner(args, capture_output=True, text=True, timeout=3)
+        data = json.loads(out.stdout) if out.returncode == 0 and out.stdout.strip() else {}
+    except (FileNotFoundError, subprocess.TimeoutExpired, json.JSONDecodeError):
+        return thread_id, ""
+    tid = data.get("thread_id") or thread_id
+    arm = (data.get("watcher") or {}).get("arm_instruction", "")
+    return tid, arm
+
+
+def adopt_or_register(agent_id: str, repo_path: Path, runner=subprocess.run) -> tuple[str | None, str]:
+    """Adopt a fresh active thread for agent_id if one exists, else register a
+    new one. Returns (thread_id, arm_instruction). No watcher is spawned here —
+    register is a pure handshake (ADR-024 Decision 2)."""
+    try:
+        out = runner(["sirsi", "thread", "list", "--json"], capture_output=True, text=True, timeout=2)
         threads = json.loads(out.stdout) if out.returncode == 0 and out.stdout.strip() else []
     except (FileNotFoundError, subprocess.TimeoutExpired, json.JSONDecodeError):
         threads = []
 
     anchor = claude_session_pid()
-
-    # Active and fresh (< 5 minutes idle) — adopt it AND ensure a live watcher.
     fresh = [
         t for t in threads
         if (t.get("thread") or {}).get("agent_id") == agent_id
         and (t.get("thread") or {}).get("status") == "active"
         and t.get("idle_seconds", 1e9) < 300
     ]
+    existing = None
     if fresh:
         fresh.sort(key=lambda t: t.get("idle_seconds", 1e9))
-        thread_id = (fresh[0].get("thread") or {}).get("thread_id")
-        ensure_router_watcher(thread_id, agent_id, anchor)
-        return thread_id
-
-    # No fresh thread — register a new one. `register` itself spawns the
-    # watcher; we just supply the right anchor PID.
-    args = ["sirsi", "thread", "register",
-            "--agent", agent_id, "--surface", "claude", "--repo", str(repo_path)]
-    if anchor:
-        args += ["--anchor-pid", str(anchor)]
-    try:
-        out = subprocess.run(args, capture_output=True, text=True, timeout=3)
-        # Output contains "thr-XXXXXXXX" — extract it
-        for line in (out.stdout + out.stderr).splitlines():
-            for tok in line.split():
-                if tok.startswith("thr-") and len(tok) > 10:
-                    return tok.strip(",.;:")
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        pass
-    return None
+        existing = (fresh[0].get("thread") or {}).get("thread_id")
+    # Idempotent on (agent_id, pid): reuses `existing` if passed, else mints one.
+    return register_handshake(agent_id, repo_path, existing, anchor, runner=runner)
 
 
-def caffeinate_thread(thread_id: str, claude_pid: int | None) -> None:
-    """Spawn a backgrounded heartbeat loop that keeps thread_id fresh until
-    the parent claude process exits. Dedup via pidfile so we don't stack
-    multiple loops per session.
-
-    This is the 'caffeinate' primitive: thread stays alive while the
-    process is alive, no prompt-dependence. Universal pattern any agent
-    can adopt — just a shell loop anchored to the parent PID.
-    """
-    if not thread_id or not claude_pid:
-        return
-    pidfile = Path(f"/tmp/sirsi-caffeinate-{thread_id}.pid")
-    if pidfile.exists():
-        try:
-            old_pid = int(pidfile.read_text().strip())
-            os.kill(old_pid, 0)  # check liveness; raises if dead
-            return  # caffeinator already running for this thread
-        except (ValueError, ProcessLookupError, PermissionError):
-            pass  # stale, replace it
-
-    script = (
-        f"while kill -0 {claude_pid} 2>/dev/null; do "
-        f"sirsi thread heartbeat --thread {thread_id} --quiet >/dev/null 2>&1; "
-        f"sleep 60; "
-        f"done; rm -f {pidfile}"
-    )
-    try:
-        p = subprocess.Popen(
-            ["bash", "-c", script],
-            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-            start_new_session=True,  # detach from python so it survives our exit
-        )
-        pidfile.write_text(str(p.pid))
-    except OSError:
-        pass
-
-
-def heartbeat_active_thread(agent_id: str, repo_path: Path) -> None:
-    """Ensure agent_id has an active thread + immediate heartbeat + caffeinator.
-
-    Order:
-      1. Adopt fresh thread or register a new one (no more silent orphan loss)
-      2. Immediate heartbeat so this session shows idle=0 right away
-      3. Spawn caffeinator (if not already running) for sustained liveness
-    """
-    thread_id = ensure_active_thread(agent_id, repo_path)
+def heartbeat(thread_id: str, runner=subprocess.run) -> None:
     if not thread_id:
         return
     try:
-        subprocess.run(
-            ["sirsi", "thread", "heartbeat", "--thread", thread_id, "--quiet"],
-            capture_output=True, timeout=2,
-        )
+        runner(["sirsi", "thread", "heartbeat", "--thread", thread_id, "--quiet"],
+               capture_output=True, timeout=2)
     except (FileNotFoundError, subprocess.TimeoutExpired):
-        return
-    caffeinate_thread(thread_id, claude_session_pid())
+        pass
 
 
 def main() -> int:
@@ -259,11 +216,25 @@ def main() -> int:
         return 0
 
     agent_id = claude_agent_id(repo_root, agents)
+    sup = supervisor_mode()
 
-    # Keep this session's CTR thread caffeinated. Adopts a fresh thread or
-    # registers a new one, immediate heartbeat, then spawns a background
-    # loop that heartbeats every 60s until the claude process exits.
-    heartbeat_active_thread(agent_id, repo_root)
+    # Register handshake + heartbeat (no caffeinator, no fs-watcher — ADR-024).
+    thread_id, arm_instruction = adopt_or_register(agent_id, repo_root)
+    heartbeat(thread_id)
+
+    # Stop-gate backstop (off by default; only under SIRSI_SUPERVISOR=enforce).
+    if mode == "stop":
+        if sup == "enforce" and thread_id and not watcher_armed(thread_id):
+            print(f"router-supervisor: thread {thread_id} has no live /loop watcher — "
+                  f"arm it before stopping (SIRSI_SUPERVISOR=enforce).", file=sys.stderr)
+            return 2
+        return 0
+
+    # Check-then-arm (F1): re-assert the ONE watcher every SessionStart/wakeup.
+    # Keyed on OS truth (pgrep), so we never duplicate (F2) and never collide
+    # with other agents' loops. Suppressed only when SIRSI_SUPERVISOR=0.
+    if arm_instruction and should_arm(thread_id, sup):
+        print(f"router-supervisor:{agent_id} arm your watcher (thread {thread_id}): {arm_instruction}")
 
     legacy = pending_items(state, agent_id)
     pull = pull_model_open_items(router_root, agent_id)
@@ -278,8 +249,7 @@ def main() -> int:
         parts.append(f"{len(legacy)} legacy")
     if pull:
         parts.append(f"{len(pull)} pull-model")
-    breakdown = " + ".join(parts)
-    print(f"{prefix}:{agent_id} has {total} pending inbox {noun} ({breakdown})")
+    print(f"{prefix}:{agent_id} has {total} pending inbox {noun} ({' + '.join(parts)})")
     return 0
 
 
