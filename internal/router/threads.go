@@ -40,6 +40,13 @@ const (
 	// ThreadStatusStale marks a thread whose PID is alive but whose heartbeat
 	// loop has gone quiet past the stale window — live-but-silent, not dead.
 	ThreadStatusStale ThreadStatus = "stale-heartbeat"
+	// ThreadStatusSuspended is a resumable, NON-terminal resting state (ADR-025):
+	// the session ended cleanly (quit / compact / reconcile) with its memory
+	// synced and continuation state snapshotted into SuspendPayload. It is
+	// non-prunable (never removed by prune) and non-live (Heartbeat rejects it;
+	// RegisterThread bypasses the live fast-path and routes through resume). The
+	// only way back to active is `sirsi thread resume`.
+	ThreadStatusSuspended ThreadStatus = "suspended"
 )
 
 // IsTerminal reports whether a status is a final resting state that a heartbeat
@@ -65,6 +72,20 @@ type Thread struct {
 	LastError     string       `json:"last_error,omitempty"`
 	PID           int          `json:"pid,omitempty"`
 	Host          string       `json:"host,omitempty"`
+	// SuspendPayload carries resumable continuation state while Status is
+	// suspended (ADR-025). Nil for active/terminal threads.
+	SuspendPayload *SuspendPayload `json:"suspend_payload,omitempty"`
+}
+
+// SuspendPayload is the resumable snapshot captured when a thread is suspended
+// (ADR-025). It is what makes a clean exit recoverable: where memory was synced
+// (ThothRef), what inbox work the agent still owns, and a one-line continuation.
+type SuspendPayload struct {
+	ThothRef       string    `json:"thoth_ref,omitempty"`        // Stele ledger id / commit xref where memory was synced
+	OwnedOpenItems []string  `json:"owned_open_items,omitempty"` // router item ids still addressed to this agent
+	ResumePrompt   string    `json:"resume_prompt,omitempty"`    // one-line continuation (e.g. NOTEBOOKS resume name)
+	SuspendedAt    time.Time `json:"suspended_at"`               // when the suspend happened (UTC)
+	ReapedFrom     string    `json:"reaped_from,omitempty"`      // set when this is a successor minted for a reaped record
 }
 
 // ThreadRegistry is the on-disk record of live threads.
@@ -177,7 +198,13 @@ func RegisterThread(routerRoot string, t *Thread) (*Thread, error) {
 			if existing == nil {
 				continue
 			}
-			if existing.AgentID == t.AgentID && existing.PID == t.PID && !existing.Status.IsTerminal() {
+			// ADR-025: a suspended record must NOT be revived by the live
+			// fast-path — resuming is an explicit transition (`thread resume`)
+			// that restores the payload + re-arms the watcher. Skip it here so
+			// register mints a fresh thread rather than silently reactivating a
+			// suspended one without restoring its continuation state.
+			if existing.AgentID == t.AgentID && existing.PID == t.PID &&
+				!existing.Status.IsTerminal() && existing.Status != ThreadStatusSuspended {
 				existing.LastSeenAt = now
 				if t.CurrentItem != "" {
 					existing.CurrentItem = t.CurrentItem
@@ -240,6 +267,12 @@ func Heartbeat(routerRoot, threadID string, upd HeartbeatUpdate) (*Thread, error
 	if t.Status.IsTerminal() {
 		return nil, fmt.Errorf("thread %q is %s and cannot be revived by heartbeat (last_error=%q); register a new thread to resume", threadID, t.Status, t.LastError)
 	}
+	// ADR-025: suspended is resumable but NOT live. A heartbeat must not revive
+	// it or refresh last_seen_at — that would mask a session that has actually
+	// ended. Restoring requires the explicit resume transition.
+	if t.Status == ThreadStatusSuspended {
+		return nil, fmt.Errorf("thread %q is suspended and cannot heartbeat; run `sirsi thread resume --thread %s` to restore it", threadID, threadID)
+	}
 	t.LastSeenAt = time.Now().UTC()
 	if upd.Status != "" {
 		t.Status = upd.Status
@@ -274,6 +307,73 @@ func CloseThread(routerRoot, threadID string) (*Thread, error) {
 	return t, nil
 }
 
+// SuspendThread transitions a thread to the resumable suspended state (ADR-025),
+// snapshotting the supplied continuation payload. It is idempotent: a thread
+// already suspended is returned unchanged. A terminal (closed/reaped) thread
+// cannot be suspended — terminal is final.
+func SuspendThread(routerRoot, threadID string, payload *SuspendPayload) (*Thread, error) {
+	if threadID == "" {
+		return nil, fmt.Errorf("thread_id is required")
+	}
+	reg, err := LoadThreadRegistry(routerRoot)
+	if err != nil {
+		return nil, err
+	}
+	t, ok := reg.Threads[threadID]
+	if !ok {
+		return nil, fmt.Errorf("thread %q not registered", threadID)
+	}
+	if t.Status == ThreadStatusSuspended {
+		return t, nil // idempotent
+	}
+	if t.Status.IsTerminal() {
+		return nil, fmt.Errorf("thread %q is %s (terminal) and cannot be suspended", threadID, t.Status)
+	}
+	if payload == nil {
+		payload = &SuspendPayload{}
+	}
+	if payload.SuspendedAt.IsZero() {
+		payload.SuspendedAt = time.Now().UTC()
+	}
+	t.Status = ThreadStatusSuspended
+	t.SuspendPayload = payload
+	t.LastSeenAt = time.Now().UTC()
+	if err := SaveThreadRegistry(routerRoot, reg); err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
+// ResumeThread transitions a suspended thread back to active (ADR-025), clearing
+// the stored payload. The returned thread RETAINS the payload in memory so the
+// caller can re-surface owned items and print the resume prompt; the persisted
+// record has it cleared. Errors if the thread is not suspended.
+func ResumeThread(routerRoot, threadID string) (*Thread, error) {
+	if threadID == "" {
+		return nil, fmt.Errorf("thread_id is required")
+	}
+	reg, err := LoadThreadRegistry(routerRoot)
+	if err != nil {
+		return nil, err
+	}
+	t, ok := reg.Threads[threadID]
+	if !ok {
+		return nil, fmt.Errorf("thread %q not registered", threadID)
+	}
+	if t.Status != ThreadStatusSuspended {
+		return nil, fmt.Errorf("thread %q is %s, not suspended; nothing to resume", threadID, t.Status)
+	}
+	payload := t.SuspendPayload
+	t.Status = ThreadStatusActive
+	t.LastSeenAt = time.Now().UTC()
+	t.SuspendPayload = nil
+	if err := SaveThreadRegistry(routerRoot, reg); err != nil {
+		return nil, err
+	}
+	t.SuspendPayload = payload // re-attach for the caller (not persisted)
+	return t, nil
+}
+
 // ReapedThread records one thread the reaper retired against OS truth.
 type ReapedThread struct {
 	ThreadID string
@@ -305,6 +405,13 @@ func ReapDeadThreads(routerRoot, host string) ([]ReapedThread, error) {
 		if t == nil || t.Status.IsTerminal() {
 			continue
 		}
+		// ADR-025: suspended is resumable, not dead. Its PID is EXPECTED to be
+		// gone (the session ended cleanly), so the reaper must NOT retire it to
+		// terminal `reaped` — that would destroy the recoverable continuation
+		// state. Suspended leaves the OS-truth sweep untouched.
+		if t.Status == ThreadStatusSuspended {
+			continue
+		}
 		if t.PID <= 0 || (host != "" && t.Host != host) {
 			continue // unverifiable PID or a different host's process table
 		}
@@ -329,6 +436,10 @@ func ReapDeadThreads(routerRoot, host string) ([]ReapedThread, error) {
 // the configured stale-after window. Closed threads are not stale.
 func (t *Thread) IsStale(now time.Time, staleAfter time.Duration) bool {
 	if t == nil || t.Status.IsTerminal() {
+		return false
+	}
+	// Suspended threads are intentionally parked, not stale (ADR-025).
+	if t.Status == ThreadStatusSuspended {
 		return false
 	}
 	if staleAfter <= 0 {
