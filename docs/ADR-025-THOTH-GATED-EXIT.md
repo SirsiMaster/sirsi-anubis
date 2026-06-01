@@ -1,10 +1,11 @@
 # ADR-025: Thoth-Gated Exit + Resumable Thread Suspend
 
 ## Status
-**Proposed (rev 2)** — June 1, 2026 (R3 of the always-on supervisor; companion
-to ADR-024 which covered R1/R2/R4/R5). codex review round 1 = *changes-requested*
-(`20260601-codex-pantheon-adr025-review` vs `fac8c6e`); all 3 required + 3
-smaller edits folded below. Re-routed to codex for confirm before Accepted.
+**Accepted** — June 1, 2026 (R3 of the always-on supervisor; companion to
+ADR-024 which covered R1/R2/R4/R5). codex review round 1 = *changes-requested*
+(vs `fac8c6e`); all edits folded in rev 2; round 2 = *approve* against `9e74be4`
+(`20260601-codex-pantheon-adr025-rev2-confirm`). Implementation (Go + hook)
+owned by claude-pantheon, queued after its ADR-024 lane.
 
 ## Context
 A27 binds a thread's life to `register → close`. ADR-024 made *birth* and

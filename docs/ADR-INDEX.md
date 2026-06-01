@@ -34,7 +34,7 @@ This index tracks **all** architectural decisions for the Sirsi Pantheon ecosyst
 | [ADR-022](ADR-022-CTR-OS-TRUTH-LIVENESS.md) | CTR Liveness Is OS Truth, Not Heartbeat Recency — terminal `reaped` state, zombie-aware reaper, idempotent registration | **Accepted** | 2026-06-01 |
 | [ADR-023](ADR-023-BINARY-VERSION-CONTRACT.md) | One Build-Version Contract + Local Drift Detection — `internal/version` single source, unified ldflags, `internal/selfupdate` D2/D3 scan, `sirsi doctor` binary-drift finding | **Accepted** | 2026-06-01 |
 | [ADR-024](ADR-024-ONE-WATCHER-PER-SURFACE.md) | One Watcher Per Surface — Router-Prescribed Heartbeat — register handshake returns surface's canonical watcher; one inbox (`items/`); idempotent re-arm on OS truth | **Accepted** | 2026-06-01 |
-| [ADR-025](ADR-025-THOTH-GATED-EXIT.md) | Thoth-Gated Exit + Resumable Thread Suspend — `suspended` state carrying memory+plans; `thread suspend`/`resume`; SessionEnd hook; SessionStart reconciliation as the authoritative gate (R3) | **Proposed** | 2026-06-01 |
+| [ADR-025](ADR-025-THOTH-GATED-EXIT.md) | Thoth-Gated Exit + Resumable Thread Suspend — `suspended` (resumable-but-not-live) carrying memory+plans; `thread suspend`/`resume`; SessionEnd hook; SessionStart reconciliation as the authoritative gate (R3) | **Accepted** | 2026-06-01 |
 
 ---
 
@@ -58,7 +58,7 @@ This index tracks **all** architectural decisions for the Sirsi Pantheon ecosyst
 - ADR-022: CTR Liveness Is OS Truth, Not Heartbeat Recency *(accepted — reaped-is-terminal, zombie-aware reaper)*
 - ADR-023: One Build-Version Contract + Local Drift Detection *(accepted — single `internal/version`, `sirsi doctor` binary-drift)*
 - ADR-024: One Watcher Per Surface — Router-Prescribed Heartbeat *(accepted — register handshake returns the surface's canonical watcher; one inbox; one heartbeat per thread)*
-- ADR-025: Thoth-Gated Exit + Resumable Thread Suspend *(proposed — `suspended` state, `suspend`/`resume` verbs, SessionEnd hook, SessionStart reconciliation; completes R3)*
+- ADR-025: Thoth-Gated Exit + Resumable Thread Suspend *(accepted — `suspended` resumable-but-not-live, `suspend`/`resume` verbs, SessionEnd hook, SessionStart reconciliation; completes R3)*
 
 ### Ghost Detection & Indexing
 - ADR-002: Ka Ghost Detection
@@ -104,7 +104,7 @@ This index tracks **all** architectural decisions for the Sirsi Pantheon ecosyst
 | ADR-022 | **Accepted** — CTR Liveness Is OS Truth, Not Heartbeat Recency |
 | ADR-023 | **Accepted** — One Build-Version Contract + Local Drift Detection |
 | ADR-024 | **Accepted** — One Watcher Per Surface — Router-Prescribed Heartbeat |
-| ADR-025 | **Proposed** — Thoth-Gated Exit + Resumable Thread Suspend |
+| ADR-025 | **Accepted** — Thoth-Gated Exit + Resumable Thread Suspend |
 | ADR-024+ | Next available |
 
 > **Last updated:** June 1, 2026 — ADR-023 **accepted**: one build-version contract (`internal/version`) replaces seven scattered `var version` literals; ldflags unified across all binaries; `internal/selfupdate` detects sibling (D2) and PATH (D3) drift locally with no network; `sirsi doctor` emits a `binary-drift` finding that surfaces in the SessionStart health line. Fixes the CTR deploy-drift class behind ADR-022 (`docs/ADR-023-BINARY-VERSION-CONTRACT.md`).
