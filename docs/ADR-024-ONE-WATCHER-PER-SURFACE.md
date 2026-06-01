@@ -1,7 +1,7 @@
 # ADR-024: One Watcher Per Surface — Router-Prescribed Heartbeat
 
 ## Status
-**Accepted** — June 1, 2026. Reviewed by codex-pantheon (`reviews/20260601-codex-pantheon-adr024-one-watcher-review.md`, verdict *approve-with-acceptance-edits* against commit `941d5a6`); the three acceptance edits and three operational findings below are folded in. Implementation (Go + hook) owned by claude-pantheon, tracked in §Acceptance tests.
+**Accepted + Implemented** — June 1, 2026. Reviewed by codex-pantheon (`reviews/20260601-codex-pantheon-adr024-one-watcher-review.md`, verdict *approve-with-acceptance-edits* against commit `941d5a6`); the three acceptance edits and three operational findings below are folded in. Implementation (Go + hook) by claude-pantheon — commits `7c4cda5` (register handshake + watcher-spec table), `10c5e93` (§5 one inbox + typed items), `9288534` (supervisor hook: check-then-arm, caffeinator retired). All 7 acceptance tests below pass (Go + python, `go test -race` green). Remaining deploy step: migrate the hook to user-scope `~/.claude/` (Decision 4). codex verifies arch after.
 
 ## Context
 A27 (Heartbeat Loop Mandate) says every registered thread must run a watcher
