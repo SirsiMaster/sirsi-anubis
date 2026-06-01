@@ -203,6 +203,49 @@ func TestApiSlay_RealKillRequiresConfirm(t *testing.T) {
 	}
 }
 
+// codex P1 regression: a confirm token prepared for one positional arg set must
+// NOT validate a commit with different args (args are executable input).
+func TestApiRun_ConfirmTokenBindsArgs(t *testing.T) {
+	t.Parallel()
+	ts := testServer(t, runnerCfg())
+	defer ts.Close()
+
+	// Prepare ra/kill for scope "alpha".
+	resp := postJSON(t, ts.URL+"/api/run", ActionRequest{Action: "ra/kill", Target: "node", Args: []string{"alpha"}})
+	var prep PreparedAction
+	if err := json.NewDecoder(resp.Body).Decode(&prep); err != nil {
+		t.Fatalf("decode prepare: %v", err)
+	}
+	resp.Body.Close()
+	if prep.ConfirmToken == "" {
+		t.Fatal("expected a confirm token")
+	}
+
+	// Commit with the SAME token but DIFFERENT args ("beta") — must be rejected.
+	swapped := postJSON(t, ts.URL+"/api/run", ActionRequest{
+		Action: "ra/kill", Target: "node", Args: []string{"beta"},
+		ConfirmToken: prep.ConfirmToken, ActionHash: prep.ActionHash,
+	})
+	defer swapped.Body.Close()
+	if swapped.StatusCode != http.StatusForbidden {
+		t.Fatalf("commit with swapped args status = %d, want 403 (token must bind args)", swapped.StatusCode)
+	}
+
+	// Commit with the SAME args must still succeed (binding doesn't break legit use).
+	resp2 := postJSON(t, ts.URL+"/api/run", ActionRequest{Action: "ra/kill", Target: "node", Args: []string{"alpha"}})
+	var prep2 PreparedAction
+	_ = json.NewDecoder(resp2.Body).Decode(&prep2)
+	resp2.Body.Close()
+	ok := postJSON(t, ts.URL+"/api/run", ActionRequest{
+		Action: "ra/kill", Target: "node", Args: []string{"alpha"},
+		ConfirmToken: prep2.ConfirmToken, ActionHash: prep2.ActionHash,
+	})
+	defer ok.Body.Close()
+	if ok.StatusCode != 200 {
+		t.Fatalf("commit with matching args status = %d, want 200", ok.StatusCode)
+	}
+}
+
 func TestApiStats_Typed(t *testing.T) {
 	t.Parallel()
 	want := StatsResponse{

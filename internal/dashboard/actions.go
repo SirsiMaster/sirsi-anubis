@@ -48,7 +48,7 @@ func actionSpecs() []ActionSpec {
 		{Key: "ra/collect", Label: "Ra Collect", Glyph: "𓇶", Args: []string{"ra", "collect"}},
 
 		// Destructive / high-impact (E2 confirm token required)
-		{Key: "network/fix", Label: "Network Fix", Glyph: "🌐", Args: []string{"network", "fix"}, Destructive: true},
+		{Key: "network/fix", Label: "Network Fix", Glyph: "🌐", Args: []string{"network", "--fix"}, Destructive: true},
 		{Key: "ra/deploy", Label: "Ra Deploy", Glyph: "𓇶", Args: []string{"ra", "deploy"}, Destructive: true, AcceptsArgs: true},
 		{Key: "ra/kill", Label: "Ra Kill", Glyph: "𓇶", Args: []string{"ra", "kill"}, Destructive: true, AcceptsArgs: true},
 	}
@@ -131,10 +131,22 @@ func (s *Server) dispatchRun(w http.ResponseWriter, r *http.Request) {
 			writeError(w, "confirm guard not available", http.StatusServiceUnavailable)
 			return
 		}
+		// Bind the executable positional args into the confirm fingerprint so a
+		// token prepared for one arg set can never commit a different one (codex
+		// P1). Args ARE executable input for AcceptsArgs destructive actions
+		// (ra/deploy, ra/kill), so they must be part of what the token authorizes.
+		confirmParams := req.Params
+		if spec.AcceptsArgs && len(req.Args) > 0 {
+			confirmParams = make(map[string]string, len(req.Params)+1)
+			for k, v := range req.Params {
+				confirmParams[k] = v
+			}
+			confirmParams["__args"] = strings.Join(req.Args, "\x00")
+		}
 		// Phase 1 — no token: return a prepared (dry-run) action with a token.
 		if req.ConfirmToken == "" {
 			preview := fmt.Sprintf("Would run: sirsi %s", strings.Join(args, " "))
-			prep, err := s.confirm.Prepare(req.Action, req.Target, req.Params, preview, nil, "")
+			prep, err := s.confirm.Prepare(req.Action, req.Target, confirmParams, preview, nil, "")
 			if err != nil {
 				writeError(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -143,7 +155,7 @@ func (s *Server) dispatchRun(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Phase 2 — token present: validate before executing for real.
-		if err := s.confirm.Validate(req.ConfirmToken, req.Action, req.Target, req.Params, req.ActionHash); err != nil {
+		if err := s.confirm.Validate(req.ConfirmToken, req.Action, req.Target, confirmParams, req.ActionHash); err != nil {
 			writeError(w, err.Error(), http.StatusForbidden)
 			return
 		}

@@ -95,6 +95,42 @@ func TestADR024_RegisterMenubar_ResidentSpec(t *testing.T) {
 	}
 }
 
+// codex P1: every registered dashboard action must resolve to a real CLI shape.
+// cobra errors on an unknown flag OR unknown command even with --help, so a
+// `<args> --help` that exits 0 with no "unknown flag"/"unknown command" proves
+// the shape is real. Special coverage for destructive entries (codex). Mirrors
+// internal/dashboard actionSpecs(); guards the network/fix --fix-vs-subcommand
+// regression specifically.
+func TestADR_DashboardActionShapesResolveToRealCLI(t *testing.T) {
+	t.Parallel()
+	shapes := [][]string{
+		{"network", "--fix"}, // destructive — was wrongly "network fix" (codex P1b)
+		{"ra", "deploy"},     // destructive
+		{"ra", "kill"},       // destructive
+		{"ra", "collect"},
+		{"duplicates"},
+		{"thoth", "sync"},
+		{"seshat", "ingest"},
+		{"net", "align"},
+		{"audit"}, {"maat"}, {"risk"}, {"hardware"}, {"scan"}, {"ghosts"}, {"doctor"}, {"quality"},
+	}
+	for _, sh := range shapes {
+		sh := sh
+		t.Run(strings.Join(sh, "_"), func(t *testing.T) {
+			t.Parallel()
+			args := append(append([]string{}, sh...), "--help")
+			stdout, stderr, err := runSirsi(t, 10*time.Second, args...)
+			if err != nil {
+				t.Fatalf("`sirsi %s --help` failed (shape not real): %v\n%s%s", strings.Join(sh, " "), err, stdout, stderr)
+			}
+			combined := stdout + stderr
+			if strings.Contains(combined, "unknown flag") || strings.Contains(combined, "unknown command") {
+				t.Errorf("`sirsi %s --help` reports an unreal shape:\n%s", strings.Join(sh, " "), combined)
+			}
+		})
+	}
+}
+
 // Acceptance test 3: repeated register on the same (agent_id, pid) returns the
 // same thread and the same watcher spec (idempotent).
 func TestADR024_RegisterIdempotent_SameThreadAndSpec(t *testing.T) {
