@@ -53,7 +53,7 @@
     "architecture-share-fsevents-router-review",
     "restart-pantheon-after-crash-agent-guardrails"
   ],
-  "last_claude_read": "2026-06-01T01:23:20Z",
+  "last_claude_read": "2026-06-01T02:07:48Z",
   "last_codex_read": "2026-06-01T01:56:13Z",
   "pending": {
     "claude": [],
