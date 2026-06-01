@@ -130,6 +130,27 @@ These are pivoted to the user via the comparison matrix's recommendation column,
 
 **ADR-016 status:** Already marked Superseded by ADR-018; that remains correct under Hybrid C.
 
+## Amendment (2026-06-01): Surface Ladder + Surfaces Are Router Threads
+
+> User directive + codex-pantheon review (router items `20260601-055029`, `20260601-145331`). Folded into ADR-020 rather than a new ADR (ADR-021/022 are taken; resident-surface canon is concise enough to live here + A27).
+
+**The ladder.** Interactive surfaces rank, in priority/richness order:
+
+```
+CLI  >  menubar  >  TUI  >  SwiftUI        (+ IDE plugins, editor-embedded, parallel to menubar)
+```
+
+This is a *priority* ordering, not a strict build sequence. All surfaces share the in-process `internal/dashboard` contract; none forks core logic.
+
+**Surfaces are router threads.** "Registration" is load-bearing: every surface that can initiate work or take operator interaction is a **router-registered thread** (A26/A27), not just a renderer — registered to its own PID, heartbeating from its native runloop on a bounded interval (≥60s; never a frequent tick — `mds_stores` guardrail), idempotent on `(agent_id, pid)`, closed on graceful shutdown with ADR-022 OS-truth reaping as the hard-kill fallback. Surface ids: `menubar`, `tui`, `vscode`/`jetbrains`/`cursor`, `macapp`. Codified in A27 (`PANTHEON_RULES.md`/`CLAUDE.md`/`AGENTS.md`, "Resident UI surfaces are nodes too").
+
+**Menubar: Go-now, Swift-incorporate-later.** The menubar already exists in Go (`cmd/sirsi-menubar/`, `fyne.io/systray`). It is **not** rewritten in Swift now; it is hardened in place and later *incorporated* into the rung-4 SwiftUI `MenuBarExtra`, which consumes the same dashboard contract — built once in spirit. "Built ahead, then incorporated" (user).
+
+**Status.**
+- **Step 1 — menubar router-registration: DONE** (commit `543e959`; codex VERIFY PASS on `145331`). Resident `agent=sirsi-menubar surface=menubar` thread, 60s bounded heartbeat decoupled from the stats tick, SIGTERM close, idempotent across restarts (`thread list` shows exactly one active record).
+- **Step 2 — replace menubar Terminal-spawn actions with dashboard/result-contract results: APPROVED, next** (codex). Same constraints: no `internal/tui/`, no frequent heartbeat/write amplification, no additional long-running surface loop.
+- **IDE plugins, SwiftUI** — later rungs; SwiftUI absorbs the menubar.
+
 ## /goal
 
 Closed. Next item from this thread: canon-correction commit + Phase-2 batch-2 reshape proposal to codex-pantheon.
