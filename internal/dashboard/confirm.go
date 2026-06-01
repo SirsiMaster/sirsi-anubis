@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"net/http"
 	"sort"
 	"strings"
 	"sync"
@@ -156,6 +157,36 @@ func (g *ConfirmGuard) Validate(token, action, target string, params map[string]
 	pc.consumed = true
 	delete(g.pending, token) // single-use: remove on consume
 	return nil
+}
+
+// requireConfirm enforces the E2 confirm contract for a destructive HTTP
+// handler. It returns true ONLY when the caller may execute for real (a valid
+// confirm token was presented). Otherwise it writes the response itself — a
+// PreparedAction (prepare/dry-run) when no token was supplied, or an error when
+// the token is invalid — and returns false, so the caller simply returns.
+//
+// This is the single shared destructive-confirm contract codex required: every
+// destructive endpoint funnels through it, so "omitted dry_run" can never
+// destroy and no endpoint invents its own confirmation semantics.
+func (s *Server) requireConfirm(w http.ResponseWriter, action, target string, params map[string]string, token, echoedHash, preview string, affected []string, impact string) bool {
+	if s.confirm == nil {
+		writeError(w, "confirm guard not available", http.StatusServiceUnavailable)
+		return false
+	}
+	if token == "" {
+		prep, err := s.confirm.Prepare(action, target, params, preview, affected, impact)
+		if err != nil {
+			writeError(w, err.Error(), http.StatusInternalServerError)
+			return false
+		}
+		writeJSON(w, prep)
+		return false
+	}
+	if err := s.confirm.Validate(token, action, target, params, echoedHash); err != nil {
+		writeError(w, err.Error(), http.StatusForbidden)
+		return false
+	}
+	return true
 }
 
 // gcLocked drops expired or consumed tokens. Caller must hold g.mu.

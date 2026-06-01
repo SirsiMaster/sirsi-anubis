@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal"
@@ -28,8 +30,10 @@ func (s *Server) apiFindings(w http.ResponseWriter, r *http.Request) {
 
 // cleanRequest is the payload for POST /api/clean.
 type cleanRequest struct {
-	Indices []int `json:"indices"` // finding indices to clean
-	DryRun  bool  `json:"dry_run"`
+	Indices      []int  `json:"indices"`                 // finding indices to clean
+	DryRun       bool   `json:"dry_run"`                 // legacy/explicit dry-run (preview only)
+	ConfirmToken string `json:"confirm_token,omitempty"` // E2: present to commit a real deletion
+	ActionHash   string `json:"action_hash,omitempty"`   // E2: echoed fingerprint from the prepare phase
 }
 
 // apiClean handles POST /api/clean — cleans selected findings.
@@ -86,14 +90,42 @@ func (s *Server) apiClean(w http.ResponseWriter, r *http.Request) {
 	engine := jackal.DefaultEngine()
 	engine.RegisterAll(rules.AllRules()...)
 
-	opts := jackal.CleanOptions{
-		DryRun:   req.DryRun,
-		Confirm:  !req.DryRun,
-		UseTrash: true,
-	}
-
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
+
+	// E2 confirm contract: a real deletion requires a valid confirm token.
+	// Without one we ALWAYS run a dry-run preview and hand back a token — an
+	// omitted dry_run can never delete (Rule A1). The action is keyed on the
+	// concrete finding paths so the token can authorize only this exact set.
+	var affected []string
+	var previewBytes int64
+	for _, f := range findings {
+		affected = append(affected, f.Path)
+		previewBytes += f.SizeBytes
+	}
+	target := strings.Join(affected, "\n")
+	params := map[string]string{"count": strconv.Itoa(len(findings))}
+
+	if req.ConfirmToken == "" && !req.DryRun {
+		preview := fmt.Sprintf("Would delete %d item(s), ~%s", len(findings), jackal.FormatSize(previewBytes))
+		if !s.requireConfirm(w, "clean", target, params, "", "", preview, affected, jackal.FormatSize(previewBytes)) {
+			return // requireConfirm wrote the PreparedAction (token) — caller stops
+		}
+	} else if req.ConfirmToken != "" {
+		if err := s.confirm.Validate(req.ConfirmToken, "clean", target, params, req.ActionHash); err != nil {
+			writeError(w, err.Error(), http.StatusForbidden)
+			return
+		}
+	}
+
+	// Real deletion only when a token validated; otherwise this is an explicit
+	// dry_run:true preview request.
+	commit := req.ConfirmToken != ""
+	opts := jackal.CleanOptions{
+		DryRun:   !commit,
+		Confirm:  commit,
+		UseTrash: true,
+	}
 
 	result, err := engine.Clean(ctx, findings, opts)
 	if err != nil {
@@ -107,7 +139,7 @@ func (s *Server) apiClean(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, map[string]interface{}{
-		"dry_run":     req.DryRun,
+		"dry_run":     !commit,
 		"cleaned":     result.Cleaned,
 		"bytes_freed": result.BytesFreed,
 		"freed_human": jackal.FormatSize(result.BytesFreed),

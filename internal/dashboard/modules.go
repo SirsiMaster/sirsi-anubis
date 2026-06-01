@@ -96,8 +96,10 @@ func (s *Server) apiGhostClean(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		AppName string `json:"app_name"`
-		DryRun  bool   `json:"dry_run"`
+		AppName      string `json:"app_name"`
+		DryRun       bool   `json:"dry_run"`
+		ConfirmToken string `json:"confirm_token,omitempty"`
+		ActionHash   string `json:"action_hash,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, "invalid JSON", http.StatusBadRequest)
@@ -116,13 +118,30 @@ func (s *Server) apiGhostClean(w http.ResponseWriter, r *http.Request) {
 
 	for _, g := range ghosts {
 		if g.AppName == req.AppName {
-			bytesFreed, filesRemoved, err := scanner.Clean(g, req.DryRun, true)
+			// E2 confirm contract: a real removal requires a valid token. With
+			// no token and no explicit dry_run we hand back a token instead of
+			// deleting (Rule A1).
+			params := map[string]string{"app": req.AppName}
+			if req.ConfirmToken == "" && !req.DryRun {
+				preview := "Would remove ghost remnants for " + req.AppName
+				if !s.requireConfirm(w, "ghosts/clean", req.AppName, params, "", "", preview, nil, "") {
+					return
+				}
+			} else if req.ConfirmToken != "" {
+				if err := s.confirm.Validate(req.ConfirmToken, "ghosts/clean", req.AppName, params, req.ActionHash); err != nil {
+					writeError(w, err.Error(), http.StatusForbidden)
+					return
+				}
+			}
+
+			commit := req.ConfirmToken != ""
+			bytesFreed, filesRemoved, err := scanner.Clean(g, !commit, true)
 			if err != nil {
 				writeError(w, fmt.Sprintf("clean failed: %v", err), http.StatusInternalServerError)
 				return
 			}
 			writeJSON(w, map[string]interface{}{
-				"dry_run":       req.DryRun,
+				"dry_run":       !commit,
 				"bytes_freed":   bytesFreed,
 				"freed_human":   fmt.Sprintf("%.1f MB", float64(bytesFreed)/1048576),
 				"files_removed": filesRemoved,
@@ -161,6 +180,19 @@ func (s *Server) apiSlay(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dryRun := r.URL.Query().Get("dry_run") != "false"
+
+	// E2 confirm contract: an actual kill (dry_run=false) requires a valid
+	// confirm token. Without one we return a PreparedAction token rather than
+	// killing. The default (dry_run unset) remains a safe preview.
+	if !dryRun {
+		token := r.URL.Query().Get("confirm_token")
+		hash := r.URL.Query().Get("action_hash")
+		params := map[string]string{}
+		preview := "Would terminate process group: " + target
+		if !s.requireConfirm(w, "slay", target, params, token, hash, preview, []string{target}, "") {
+			return
+		}
+	}
 
 	result, err := guard.Slay(guard.SlayTarget(target), dryRun)
 	if err != nil {
@@ -399,6 +431,18 @@ func (s *Server) apiVaultPrune(w http.ResponseWriter, r *http.Request) {
 	dur, err := time.ParseDuration(olderThan)
 	if err != nil {
 		writeError(w, "invalid duration: "+olderThan, http.StatusBadRequest)
+		return
+	}
+
+	// E2 confirm contract: pruning permanently removes vault entries, so it
+	// requires a valid confirm token. Without one we return a PreparedAction
+	// token instead of deleting (Rule A1) — there is no longer an unguarded
+	// immediate prune.
+	token := r.URL.Query().Get("confirm_token")
+	hash := r.URL.Query().Get("action_hash")
+	params := map[string]string{"older_than": olderThan}
+	preview := "Would prune vault entries older than " + olderThan
+	if !s.requireConfirm(w, "vault/prune", olderThan, params, token, hash, preview, nil, "") {
 		return
 	}
 

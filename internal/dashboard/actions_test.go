@@ -143,6 +143,66 @@ func TestApiRun_DestructivePrepareThenCommit(t *testing.T) {
 	}
 }
 
+func TestApiVaultPrune_RequiresConfirm(t *testing.T) {
+	t.Parallel()
+	ts := testServer(t, Config{})
+	defer ts.Close()
+
+	// No token => prepare (dry-run), returns a token. Nothing is pruned, and
+	// the vault is never even opened.
+	resp, err := http.Post(ts.URL+"/api/vault/prune?older_than=720h", "application/x-www-form-urlencoded", nil)
+	if err != nil {
+		t.Fatalf("POST: %v", err)
+	}
+	var prep PreparedAction
+	if err := json.NewDecoder(resp.Body).Decode(&prep); err != nil {
+		t.Fatalf("decode prepare: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != 200 || !prep.DryRun || prep.ConfirmToken == "" {
+		t.Fatalf("prune without token must return a dry-run PreparedAction with a token (status=%d)", resp.StatusCode)
+	}
+
+	// Bogus token must be rejected, not pruned.
+	bad, err := http.Post(ts.URL+"/api/vault/prune?older_than=720h&confirm_token=bogus", "application/x-www-form-urlencoded", nil)
+	if err != nil {
+		t.Fatalf("POST: %v", err)
+	}
+	defer bad.Body.Close()
+	if bad.StatusCode != http.StatusForbidden {
+		t.Fatalf("bad-token prune status = %d, want 403", bad.StatusCode)
+	}
+}
+
+func TestApiSlay_RealKillRequiresConfirm(t *testing.T) {
+	t.Parallel()
+	ts := testServer(t, Config{})
+	defer ts.Close()
+
+	// dry_run=false with no token => prepare, never kills.
+	resp, err := http.Post(ts.URL+"/api/slay?target=lsp&dry_run=false", "application/x-www-form-urlencoded", nil)
+	if err != nil {
+		t.Fatalf("POST: %v", err)
+	}
+	var prep PreparedAction
+	if err := json.NewDecoder(resp.Body).Decode(&prep); err != nil {
+		t.Fatalf("decode prepare: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != 200 || !prep.DryRun || prep.ConfirmToken == "" {
+		t.Fatalf("real kill without token must return a PreparedAction (status=%d)", resp.StatusCode)
+	}
+
+	bad, err := http.Post(ts.URL+"/api/slay?target=lsp&dry_run=false&confirm_token=bogus", "application/x-www-form-urlencoded", nil)
+	if err != nil {
+		t.Fatalf("POST: %v", err)
+	}
+	defer bad.Body.Close()
+	if bad.StatusCode != http.StatusForbidden {
+		t.Fatalf("bad-token kill status = %d, want 403", bad.StatusCode)
+	}
+}
+
 func TestApiStats_Typed(t *testing.T) {
 	t.Parallel()
 	want := StatsResponse{
