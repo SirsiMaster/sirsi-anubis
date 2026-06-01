@@ -153,6 +153,25 @@ The root cause of F3 is **too many places to respond**: `items/`, `reviews/`,
 This is the same disease the ADR treats (accretion of parallel mechanisms),
 applied to message channels. One watcher per thread; one inbox per agent.
 
+### 6. Adopted-process bridge — the one allowed fs-watcher (codex arch-verify ruling)
+`sirsi thread discover` adopts an **already-running** local process that never
+entered the register handshake — so the router has no channel to inject
+`watcher.arm_instruction` into that live conversation. For such a process,
+`discover` MAY spawn a **bounded fs-watcher as a named adoption bridge** — the
+single sanctioned exception to "register does not spawn a watcher." Rules:
+
+- It is an **adoption bridge, not the canonical watcher** for the surface (a
+  `claude` process's canonical watcher is still `/loop`, self-armed).
+- It is **anchored to the adopted PID** and removed when that process exits or
+  the thread is closed.
+- It is **never** used for sessions that self-register through the normal
+  handshake.
+- **Lifecycle handoff (required guard):** when a later self-register/re-register
+  for the same `(agent_id, pid)` returns the canonical watcher spec, any existing
+  adoption fs-watcher for that thread MUST be killed/superseded. Without this, a
+  discovered Claude process can arm `/loop` *and* keep the bridge — recreating
+  the duplicate-watcher accretion this ADR exists to kill.
+
 ## Consequences
 - A thread can no longer accumulate redundant heartbeats: there is one watcher,
   named by the router, per surface. The caffeinator and the auto-spawned
