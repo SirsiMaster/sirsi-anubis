@@ -2,7 +2,7 @@
 
 This index tracks **all** architectural decisions for the Sirsi Pantheon ecosystem.
 
-**Total ADRs: 21** | **Next available: ADR-022**
+**Total ADRs: 22** | **Next available: ADR-023**
 
 ---
 
@@ -31,6 +31,7 @@ This index tracks **all** architectural decisions for the Sirsi Pantheon ecosyst
 | [ADR-019](ADR-019-KNOWLEDGE-SUBSTRATE.md) | Knowledge Substrate — Thoth/Seba/Understand three-tool split, JSON-as-architectural-code, bidirectional sync, Hedera hypergraph direction | Accepted | 2026-05-26 |
 | [ADR-020](ADR-020-INTERACTIVE-SURFACE-REOPENED.md) | Interactive Surface Reopened — Multi-Track Evaluation; closed Hybrid C (TUI first cross-platform, Mac native later) | Accepted (Hybrid C) | 2026-05-29 |
 | [ADR-021](ADR-021-DEITIES-NOT-SINGLE-REPO.md) | Deities Must Not Assume Single-Repo — Osiris workstation-scoping; scope sourced from CTR registry, not process cwd | **Proposed** | 2026-05-31 |
+| [ADR-022](ADR-022-CTR-OS-TRUTH-LIVENESS.md) | CTR Liveness Is OS Truth, Not Heartbeat Recency — terminal `reaped` state, zombie-aware reaper, idempotent registration | **Accepted** | 2026-06-01 |
 
 ---
 
@@ -51,6 +52,7 @@ This index tracks **all** architectural decisions for the Sirsi Pantheon ecosyst
 - ADR-019: Knowledge Substrate
 - ADR-020: Interactive Surface Reopened — closed Hybrid C (TUI first cross-platform, Mac native later)
 - ADR-021: Deities Must Not Assume Single-Repo *(proposed — Osiris workstation-scoping)*
+- ADR-022: CTR Liveness Is OS Truth, Not Heartbeat Recency *(accepted — reaped-is-terminal, zombie-aware reaper)*
 
 ### Ghost Detection & Indexing
 - ADR-002: Ka Ghost Detection
@@ -93,6 +95,7 @@ This index tracks **all** architectural decisions for the Sirsi Pantheon ecosyst
 | ADR-019 | Active — Knowledge Substrate |
 | ADR-020 | Active — Interactive Surface Reopened (closed Hybrid C) |
 | ADR-021 | **Proposed** — Deities Must Not Assume Single-Repo (Osiris Workstation-Scoping) |
-| ADR-022+ | Next available |
+| ADR-022 | **Accepted** — CTR Liveness Is OS Truth, Not Heartbeat Recency |
+| ADR-023+ | Next available |
 
-> **Last updated:** May 31, 2026 — ADR-021 **proposed**: deities whose domain is workstation-scoped must source scope from CTR workstation discovery, not the process cwd; the Osiris menubar `RepoDir: "."` defect (cwd=`/` under launchd) is the trigger. Routed to codex-pantheon for review (`docs/ADR-021-DEITIES-NOT-SINGLE-REPO.md`).
+> **Last updated:** June 1, 2026 — ADR-022 **accepted**: CTR thread liveness is decided against the live OS process table, not heartbeat recency; the terminal `reaped` state can't be revived by a late heartbeat; the reaper detects defunct (zombie `Z`) PIDs that `kill -0` misses; registration is idempotent. Shipped in commit `ca6e343` (`docs/ADR-022-CTR-OS-TRUTH-LIVENESS.md`).
