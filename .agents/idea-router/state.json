@@ -1,5 +1,4 @@
 {
-  "version": 1,
   "active_topics": [
     "ra-horus-router-hypervisor-canon",
     "finalwishes-tier1-ga",
@@ -8,9 +7,11 @@
     "finalwishes-lob-google-photos",
     "finalwishes-rag-architecture",
     "finalwishes-mobile-architecture",
-    "pantheon-mac-native-cli-pivot"
+    "pantheon-mac-native-cli-pivot",
+    "lean-af-cross-repo-cleanup-sweep"
   ],
   "completed_topics": [
+    "active-thread-coordination",
     "finalwishes-v0102-predeploy",
     "horus-thread-registration-wake",
     "safety-reset",
@@ -49,10 +50,55 @@
     "nexus-otel-smoke-followup",
     "mac-native-cli-pivot-review",
     "router-refactor-session-2026-05-21-review",
-    "architecture-share-fsevents-router-review"
+    "architecture-share-fsevents-router-review",
+    "restart-pantheon-after-crash-agent-guardrails"
   ],
-  "last_codex_read": "2026-05-21T18:04:20-04:00",
-  "last_claude_read": "2026-05-21T17:55:00-04:00",
+  "last_claude_read": "2026-06-01T01:23:20Z",
+  "last_codex_read": "2026-06-01T01:22:19Z",
+  "pending": {
+    "claude": [],
+    "claude-assiduous": [
+      "20260522-024136-claude-pantheon-claude-assiduous-sirsi-router-ack-is-live-migration-helper-for-legacy-pending",
+      "20260522-024530-claude-pantheon-claude-assiduous-please-ack-adoption-of-caffeinate-contract-sirsi-router-ack-",
+      "20260522-claude-pantheon-route-assiduous-impl",
+      "20260526-163510-claude-pantheon-claude-assiduous-lean-af-cleanup-assiduous-3-pid-files-ignore-rules"
+    ],
+    "claude-finalwishes": [
+      "20260522-024136-claude-pantheon-claude-finalwishes-sirsi-router-ack-is-live-migration-helper-for-legacy-pending",
+      "20260522-024530-claude-pantheon-claude-finalwishes-please-ack-adoption-of-caffeinate-contract-sirsi-router-ack-",
+      "20260526-163510-claude-pantheon-claude-finalwishes-lean-af-cleanup-finalwishes-narrow-preserve-rag-legal-dirty-"
+    ],
+    "claude-homebrew-tools": [
+      "20260522-024136-claude-pantheon-claude-homebrew-tools-sirsi-router-ack-is-live-migration-helper-for-legacy-pending",
+      "20260522-024530-claude-pantheon-claude-homebrew-tools-please-ack-adoption-of-caffeinate-contract-sirsi-router-ack-",
+      "20260522-claude-pantheon-route-homebrew-tools-impl",
+      "20260526-163510-claude-pantheon-claude-homebrew-tools-lean-af-cleanup-homebrew-tools-ds-store-ignore"
+    ],
+    "claude-nexus": [
+      "20260522-024136-claude-pantheon-claude-nexus-sirsi-router-ack-is-live-migration-helper-for-legacy-pending",
+      "20260522-024530-claude-pantheon-claude-nexus-please-ack-adoption-of-caffeinate-contract-sirsi-router-ack-",
+      "20260522-claude-pantheon-route-nexus-impl",
+      "20260526-163510-claude-pantheon-claude-nexus-lean-af-cleanup-sirsinexusapp-codex-approved-ready-to-implem"
+    ],
+    "claude-pantheon": [],
+    "claude-porch-and-alley": [
+      "20260522-024136-claude-pantheon-claude-porch-and-alley-sirsi-router-ack-is-live-migration-helper-for-legacy-pending",
+      "20260522-024530-claude-pantheon-claude-porch-and-alley-please-ack-adoption-of-caffeinate-contract-sirsi-router-ack-",
+      "20260522-claude-pantheon-route-porch-and-alley-impl",
+      "20260526-163510-claude-pantheon-claude-porch-and-alley-lean-af-cleanup-porch-and-alley-tsbuildinfo-ignore-rules"
+    ],
+    "codex-assiduous": [],
+    "codex-finalwishes": [],
+    "codex-homebrew-tools": [],
+    "codex-nexus": [],
+    "codex-pantheon": [],
+    "codex-porch-and-alley": []
+  },
+  "pending_for_claude": [],
+  "pending_for_codex": [],
+  "pending_for_user": [
+    "20260522-claude-pantheon-user-dev-root-cleanup-decision"
+  ],
   "rules": {
     "codex_universal_responder": true,
     "deities_are_modules": true,
@@ -68,29 +114,5 @@
     "safety_first": true,
     "super_agent_requires_cross_repo_mandate": true
   },
-  "pending": {
-    "claude": [],
-    "claude-assiduous": [],
-    "claude-finalwishes": [],
-    "claude-nexus": [],
-    "claude-pantheon": [
-      "20260521-codex-pantheon-router-refactor-session-review",
-      "20260521-codex-pantheon-architecture-share-fsevents-router-review"
-    ],
-    "codex-assiduous": [],
-    "codex-finalwishes": [],
-    "codex-pantheon": [
-      "20260521-claude-pantheon-tui-elimination-and-phase0-next"
-    ]
-  },
-  "pending_for_claude": [
-    "20260521-codex-pantheon-router-refactor-session-review",
-    "20260521-codex-pantheon-architecture-share-fsevents-router-review"
-  ],
-  "pending_for_codex": [
-    "20260521-claude-pantheon-tui-elimination-and-phase0-next"
-  ],
-  "pending_for_user": [
-    "20260521-claude-pantheon-mac-native-cli-pivot-phase-0"
-  ]
+  "version": 1
 }
