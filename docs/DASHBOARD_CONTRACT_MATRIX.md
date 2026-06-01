@@ -2,10 +2,10 @@
 
 | Field | Value |
 | :--- | :--- |
-| **Status** | DRAFT freeze artifact — routed to codex-pantheon for the freeze-gate decision (codex review of plan `155645` required this matrix before any surface work) |
-| **Produced by** | claude-pantheon Phase-A read-only audit (codex-approved scope), 2026-06-01 |
+| **Status** | **FROZEN (E1/E2/E3/E5 implemented)** — routed to codex-pantheon for the implementation-review gate. E4/E6 fast-follow. |
+| **Produced by** | claude-pantheon Phase-A read-only audit (codex-approved scope), 2026-06-01; freeze implemented same day per codex freeze-gate ruling (item `162436`) |
 | **Governs** | [SURFACE_REWRITE_MASTER_PLAN.md](SURFACE_REWRITE_MASTER_PLAN.md), [ADR-020](ADR-020-INTERACTIVE-SURFACE-REOPENED.md) |
-| **Verdict** | **Contract NOT yet frozen.** Read-side coherent; write/action side incomplete. Surface work (menubar Step 2, TUI wiring) is BLOCKED on completing items §E1–E3. |
+| **Verdict** | **Contract frozen on E1/E2/E3/E5.** Action side now typed + endpoint-complete; all destructive ops gated by one server-enforced confirm contract; `/api/stats` typed. Surface work (menubar Step 2, TUI wiring) is UNBLOCKED pending codex's implementation review. See §Freeze Complete below. |
 
 > **Why this exists:** codex's plan review (`APPROVE WITH GATES`) ruled that `internal/dashboard` "is a contract only after it has a written endpoint/action/schema matrix. A package existing in source is not a frozen contract." This is that matrix. It is the gate.
 
@@ -94,3 +94,25 @@ One row per user action. `surface consumers`: **CLI** = native cobra; **menubar*
 6. Give the runner an args/result schema so "run any verb" becomes a real contract; have the menubar consume `/api/events` (it hosts the buffer at `main.go:129` but never reads it).
 
 **Bottom line:** read-side (stats, findings, ghosts, doctor, guard, horus, vault, ra-status/scopes, notifications, stele, events) is broadly coherent. The **write/action side is unfrozen**: ~12 actions have no endpoint, destructive ops share no confirm contract, responses are untyped/inline. Menubar Step 2 and TUI wiring are blocked on E1–E3 at minimum.
+
+---
+
+## Freeze Complete — E1/E2/E3/E5 implemented (2026-06-01)
+
+Implemented in a single lane (claude-pantheon) per codex's freeze-gate ruling (item `162436`): minimal-but-load-bearing freeze = E1 + E2 + E3 + E5, E4/E6 fast-follow. Commits `8675796`, `f5b3084`, `edb8a74`. `go test -race ./internal/dashboard/` green.
+
+| Gap | Resolution | Where |
+| :--- | :--- | :--- |
+| **E3** — untyped responses; `/api/stats` opaque `[]byte` | Typed `ActionRequest`/`ActionResult`/`PreparedAction`; typed `StatsResponse` (JSON tags mirror the menubar `StatsSnapshot`); `/api/stats` decodes through it with honest passthrough fallback. | `contract.go`, `api.go:apiStats` |
+| **E2** — destructive ops share no confirm contract; `/api/clean` deleted when `dry_run` omitted | `ConfirmGuard`: server-enforced, single-use, tokenized two-phase confirm (SHA-256 action hash; missing/unknown/expired/mismatched/reused all rejected). Shared `requireConfirm()` helper. All 5 destructive endpoints (`clean`, `ghosts/clean`, `slay`, `vault/prune`, + destructive registry actions) gated. **Omitted `dry_run` can never destroy** (Rule A1). | `confirm.go`, `findings.go`, `modules.go`, `actions.go` |
+| **E1** — ~12 actions had no endpoint | Canonical `ActionSpec` registry (legacy 8 + 12 gap-list actions) reachable via typed `POST /api/run`; `GET /api/actions` is the discovery endpoint. Destructive actions (`network/fix`, `ra/deploy`, `ra/kill`) carry the confirm flag. | `actions.go` |
+| **E5** — scan/run was query-only `?cmd=` | `POST /api/run` accepts a typed `ActionRequest`; server-defined base args + opt-in caller positional args (no arbitrary injection); runner+SSE remains the streaming path; legacy `?cmd=` retained but cannot fire destructive. | `actions.go:dispatchRun`, `runner.go` |
+
+**Confirm design (E2) — exactly as codex specified:** prepare/dry-run returns typed preview + `confirm_token` + `expires_at` + stable hash; commit requires token + matching action/target/params; server rejects missing/expired/mismatched/reused; default is dry-run/prepare; the token is the safety boundary (no reliance on client `confirm()`). Works for HTTP, TUI modal, and menubar/SwiftUI dialog uniformly.
+
+**Deferred (fast-follow, documented honestly):**
+- **E4** — soft-error 200s + mobile-vs-dashboard envelope decision. Existing read endpoints kept additive-compatible; no NEW write endpoint adds a soft-error or untyped map.
+- **E6** — broader runner args/result schema beyond the registry; menubar consuming `/api/events`.
+- **renice** — left unguarded by design: it adjusts process priority (reversible), not a deletion/kill. Flagged for codex to confirm confirm-exemption.
+
+**Surface work is now unblocked** pending codex's implementation review: menubar Step 2 replaces `spawnTUIWithCommand` with `GET /api/actions` + typed `POST /api/run` (+ confirm flow for destructive); TUI wiring consumes the same contract.
