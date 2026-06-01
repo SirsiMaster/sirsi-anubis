@@ -164,6 +164,13 @@ var threadRegisterCmd = &cobra.Command{
 		if threadRegSurface == "" {
 			return fmt.Errorf("--surface is required (claude|codex|gemini|gemma|qwen|mcp|api|webhook|worker)")
 		}
+		// The registry PID must be the long-lived agent process. If we store
+		// this `sirsi thread register` process, the read-time reaper closes the
+		// thread immediately after register exits.
+		anchor := threadRegAnchorPID
+		if anchor <= 0 {
+			anchor = resolveAnchorPID()
+		}
 
 		host, _ := os.Hostname()
 		thr := &router.Thread{
@@ -174,7 +181,7 @@ var threadRegisterCmd = &cobra.Command{
 			Workstream:    threadRegWorkstream,
 			Watches:       threadRegWatches,
 			WakeMechanism: threadRegWake,
-			PID:           os.Getpid(),
+			PID:           anchor,
 			Host:          host,
 		}
 		// Fill wake mechanism from registry if not provided.
@@ -221,10 +228,6 @@ var threadRegisterCmd = &cobra.Command{
 		// shell that invoked sirsi. Falls back to PPID's PPID (grandparent
 		// of sirsi) which is typically the agent runtime when called from
 		// a hook script.
-		anchor := threadRegAnchorPID
-		if anchor <= 0 {
-			anchor = resolveAnchorPID()
-		}
 		if err := spawnRouterWatcher(out.ThreadID, out.AgentID, routerRoot, anchor); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to spawn router watcher: %v\n", err)
 		} else {

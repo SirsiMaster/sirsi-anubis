@@ -2,7 +2,7 @@
 
 | Field | Value |
 | :--- | :--- |
-| **Status** | Draft — awaiting codex-pantheon + user review (ADR-020 §"Why This TUI Will Be Different" Gate, Condition 4) |
+| **Status** | **Gate 1 cleared** — codex-pantheon approved 2026-05-31 (`reviews/20260531-codex-pantheon-tui-design-proof-gate1-review.md`); user signed off for Gate 2. **Gate 2 scaffold landed** at `internal/tui/` (scaffold only — no launch path; see CHANGELOG [Unreleased]). |
 | **Author** | claude-pantheon (lane: `pantheon-interactive-surface-decision`) |
 | **Gate** | Phase-2 batch-2 Gate 1 — design proof. **No `internal/tui/` code lands until this clears.** |
 | **Governs** | [ADR-020](ADR-020-INTERACTIVE-SURFACE-REOPENED.md) (Hybrid C), [ADR-018](ADR-018-NATIVE-MAC-APP.md), [ADR-016](ADR-016-TUI-PRIMARY-INTERFACE.md) |
