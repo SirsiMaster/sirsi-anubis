@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -71,37 +70,18 @@ func killRouterWatcher(threadID string) {
 	_ = os.Remove(pf)
 }
 
-// reapDeadPIDThreads marks threads as closed when their recorded PID no
-// longer exists on this host. Only acts on threads whose Host matches the
-// current hostname — refuses to reap remote-host threads since we can't
-// observe other hosts' process tables. Returns count reaped.
+// reapDeadPIDThreads sweeps threads whose recorded PID is dead by OS truth —
+// gone OR defunct (zombie Z) — to the terminal `reaped` status, so a late
+// heartbeat can no longer revive them to `active`. It scopes to this host only
+// (remote process tables are unobservable) and delegates the OS-truth check to
+// router.ReapDeadThreads, which detects zombies that `kill -0` cannot.
 //
 // Called automatically at the top of `sirsi thread list` so orphans get
 // swept whenever anyone reads the registry — no daemon, no polling,
 // per AGENTS.md §Lean #1 (the read IS the event).
-func reapDeadPIDThreads(routerRoot string) int {
-	reg, err := router.LoadThreadRegistry(routerRoot)
-	if err != nil {
-		return 0
-	}
+func reapDeadPIDThreads(routerRoot string) []router.ReapedThread {
 	host, _ := os.Hostname()
-	reaped := 0
-	for _, t := range reg.SortedThreads() {
-		if t.Status == router.ThreadStatusClosed {
-			continue
-		}
-		if t.PID <= 0 || t.Host != host {
-			continue // missing PID or remote host — can't verify, leave alone
-		}
-		if err := syscall.Kill(t.PID, syscall.Signal(0)); err != nil && errors.Is(err, syscall.ESRCH) {
-			t.Status = router.ThreadStatusClosed
-			t.LastError = fmt.Sprintf("reaped: PID %d not alive at %s", t.PID, time.Now().UTC().Format(time.RFC3339))
-			reaped++
-		}
-	}
-	if reaped > 0 {
-		_ = router.SaveThreadRegistry(routerRoot, reg)
-	}
+	reaped, _ := router.ReapDeadThreads(routerRoot, host)
 	return reaped
 }
 
@@ -313,6 +293,50 @@ var threadCloseCmd = &cobra.Command{
 	},
 }
 
+var threadPruneOlderThan time.Duration
+
+var threadPruneCmd = &cobra.Command{
+	Use:   "prune",
+	Short: "Remove terminal threads (closed/reaped) older than --older-than",
+	Long: `Permanently delete terminal thread records (closed or reaped) whose
+last_seen_at is older than the cutoff. Live, idle, blocked, and stale threads
+are never pruned. This keeps threads.json from accumulating tombstones — the
+registry churn that re-triggers Spotlight indexing on every write.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		repoRoot, err := router.FindRepoRoot()
+		if err != nil {
+			return fmt.Errorf("no idea-router found: %w", err)
+		}
+		routerRoot := filepath.Join(repoRoot, ".agents", "idea-router")
+		reg, err := router.LoadThreadRegistry(routerRoot)
+		if err != nil {
+			return err
+		}
+		before := len(reg.Threads)
+		// --older-than 0 means "prune every terminal record regardless of age".
+		// PruneClosed treats maxAge<=0 as disabled (a wipe-all guard), so map 0
+		// to the smallest positive window to express prune-all intent.
+		cutoff := threadPruneOlderThan
+		if cutoff <= 0 {
+			cutoff = time.Nanosecond
+		}
+		removed := reg.PruneClosed(time.Now().UTC(), cutoff)
+		if removed > 0 {
+			if err := router.SaveThreadRegistry(routerRoot, reg); err != nil {
+				return err
+			}
+		}
+		if JsonOutput {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			return enc.Encode(map[string]int{"before": before, "removed": removed, "remaining": before - removed})
+		}
+		fmt.Printf("Pruned %d terminal thread(s) older than %s (%d → %d records)\n",
+			removed, threadPruneOlderThan, before, before-removed)
+		return nil
+	},
+}
+
 var (
 	watchThreadID    string
 	watchAgentID     string
@@ -449,8 +473,8 @@ var threadListCmd = &cobra.Command{
 			return fmt.Errorf("no idea-router found: %w", err)
 		}
 		routerRoot := filepath.Join(repoRoot, ".agents", "idea-router")
-		// Sweep dead-PID threads to closed before reading.
-		reapDeadPIDThreads(routerRoot)
+		// Sweep dead/defunct-PID threads to `reaped` before reading (OS truth).
+		reapedNow := reapDeadPIDThreads(routerRoot)
 		reg, err := router.LoadThreadRegistry(routerRoot)
 		if err != nil {
 			return err
@@ -467,7 +491,7 @@ var threadListCmd = &cobra.Command{
 		}
 		var rows []row
 		for _, t := range reg.SortedThreads() {
-			if t.Status == router.ThreadStatusClosed && !threadListAll {
+			if t.Status.IsTerminal() && !threadListAll {
 				continue
 			}
 			rows = append(rows, row{thr: t, stale: t.IsStale(now, stale)})
@@ -489,6 +513,15 @@ var threadListCmd = &cobra.Command{
 
 		output.Header("CTR — Live Threads")
 		fmt.Println()
+		// OS-truth integrity warning: surface what the reaper just retired so
+		// the operator knows the registry disagreed with the live process table.
+		if len(reapedNow) > 0 {
+			fmt.Printf("  ⚠️  integrity: reaped %d dead/defunct thread(s) against OS truth this read:\n", len(reapedNow))
+			for _, r := range reapedNow {
+				fmt.Printf("       %s (agent=%s pid=%d %s)\n", r.ThreadID, r.AgentID, r.PID, r.State)
+			}
+			fmt.Println()
+		}
 		if len(rows) == 0 {
 			fmt.Println("  No registered threads. Run `sirsi thread register --agent <id> --surface <surface>`.")
 			return nil
@@ -500,6 +533,8 @@ var threadListCmd = &cobra.Command{
 			}
 			if r.thr.Status == router.ThreadStatusClosed {
 				marker = "⚫"
+			} else if r.thr.Status == router.ThreadStatusReaped {
+				marker = "💀"
 			} else if r.thr.Status == router.ThreadStatusBlocked {
 				marker = "⛔"
 			} else if r.thr.Status == router.ThreadStatusIdle {
@@ -548,5 +583,8 @@ func init() {
 	threadWatchRouterCmd.Flags().StringVar(&watchAgentID, "agent", "", "Agent ID")
 	threadWatchRouterCmd.Flags().StringVar(&watchRouterRoot, "router-root", "", "Router root directory")
 	threadWatchRouterCmd.Flags().IntVar(&watchParentPID, "parent-pid", 0, "Parent process to anchor lifetime to")
-	threadCmd.AddCommand(threadRegisterCmd, threadHeartbeatCmd, threadCloseCmd, threadListCmd, threadWatchRouterCmd)
+
+	threadPruneCmd.Flags().DurationVar(&threadPruneOlderThan, "older-than", 24*time.Hour, "Delete terminal threads whose last_seen is older than this")
+
+	threadCmd.AddCommand(threadRegisterCmd, threadHeartbeatCmd, threadCloseCmd, threadListCmd, threadPruneCmd, threadWatchRouterCmd)
 }

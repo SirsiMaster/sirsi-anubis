@@ -98,6 +98,119 @@ func TestCloseThread(t *testing.T) {
 	}
 }
 
+// TestHeartbeat_ClosedIsTerminal locks in the reaped-is-terminal guard: a
+// closed/reaped thread must not be revived to active by a late heartbeat.
+// Regression for CTR false-active resurrection (router item
+// 20260601-024355-codex-pantheon-claude-home-execute-fix-ctr-false-active-...).
+func TestHeartbeat_ClosedIsTerminal(t *testing.T) {
+	tmp := t.TempDir()
+	thr, _ := RegisterThread(tmp, &Thread{AgentID: "claude-pantheon", Surface: "claude"})
+	if _, err := CloseThread(tmp, thr.ThreadID); err != nil {
+		t.Fatalf("CloseThread: %v", err)
+	}
+	// A late heartbeat against the closed record must be rejected.
+	if _, err := Heartbeat(tmp, thr.ThreadID, HeartbeatUpdate{Status: ThreadStatusActive}); err == nil {
+		t.Fatalf("expected heartbeat on closed thread to be rejected, got nil error")
+	}
+	// And the record must remain closed — not silently revived to active.
+	reg, err := LoadThreadRegistry(tmp)
+	if err != nil {
+		t.Fatalf("LoadThreadRegistry: %v", err)
+	}
+	if got := reg.Threads[thr.ThreadID].Status; got != ThreadStatusClosed {
+		t.Errorf("closed thread was revived: status=%q, want %q", got, ThreadStatusClosed)
+	}
+}
+
+// TestReapDeadThreads_DefunctAndGone locks in Bug B2: a thread whose PID is
+// defunct (zombie Z) OR gone must be reaped to the terminal `reaped` status —
+// not left `active`. A naive kill -0 check answers "alive" for a zombie, which
+// is the exact false-active the registry suffered. Uses an injected prober so
+// no real zombie is needed.
+func TestReapDeadThreads_DefunctAndGone(t *testing.T) {
+	tmp := t.TempDir()
+	host, _ := os.Hostname()
+
+	mk := func(agent string, pid int) *Thread {
+		thr, err := RegisterThread(tmp, &Thread{AgentID: agent, Surface: "claude", PID: pid, Host: host})
+		if err != nil {
+			t.Fatalf("RegisterThread(%s): %v", agent, err)
+		}
+		return thr
+	}
+	gone := mk("claude-gone", 4001)
+	defunct := mk("claude-defunct", 4002)
+	alive := mk("claude-alive", 4003)
+	noPID := mk("claude-nopid", 0)
+
+	old := getPIDStateFn()
+	setPIDStateFn(func(pid int) PIDState {
+		switch pid {
+		case 4001:
+			return PIDGone
+		case 4002:
+			return PIDDefunct
+		case 4003:
+			return PIDAlive
+		default:
+			return PIDUnknown
+		}
+	})
+	defer setPIDStateFn(old)
+
+	reaped, err := ReapDeadThreads(tmp, host)
+	if err != nil {
+		t.Fatalf("ReapDeadThreads: %v", err)
+	}
+	if len(reaped) != 2 {
+		t.Fatalf("expected 2 reaped (gone+defunct), got %d: %+v", len(reaped), reaped)
+	}
+
+	reg, _ := LoadThreadRegistry(tmp)
+	if got := reg.Threads[gone.ThreadID].Status; got != ThreadStatusReaped {
+		t.Errorf("gone thread: status=%q want reaped", got)
+	}
+	if got := reg.Threads[defunct.ThreadID].Status; got != ThreadStatusReaped {
+		t.Errorf("defunct (zombie) thread: status=%q want reaped — Bug B2 regression", got)
+	}
+	if got := reg.Threads[alive.ThreadID].Status; got != ThreadStatusActive {
+		t.Errorf("alive thread: status=%q want active (must not be reaped)", got)
+	}
+	if got := reg.Threads[noPID.ThreadID].Status; got != ThreadStatusActive {
+		t.Errorf("no-PID thread: status=%q want active (unverifiable, never reaped)", got)
+	}
+
+	// A late heartbeat against a reaped thread must be refused (no revival).
+	if _, err := Heartbeat(tmp, defunct.ThreadID, HeartbeatUpdate{Status: ThreadStatusActive}); err == nil {
+		t.Error("expected heartbeat on reaped thread to be rejected")
+	}
+}
+
+// TestReapDeadThreads_RemoteHostUntouched ensures the reaper never retires a
+// thread recorded on a different host — we cannot observe a remote process
+// table, so its liveness is unknowable here.
+func TestReapDeadThreads_RemoteHostUntouched(t *testing.T) {
+	tmp := t.TempDir()
+	thr, _ := RegisterThread(tmp, &Thread{AgentID: "claude-remote", Surface: "claude", PID: 5001, Host: "some-other-host"})
+
+	old := getPIDStateFn()
+	setPIDStateFn(func(int) PIDState { return PIDGone })
+	defer setPIDStateFn(old)
+
+	host, _ := os.Hostname()
+	reaped, err := ReapDeadThreads(tmp, host)
+	if err != nil {
+		t.Fatalf("ReapDeadThreads: %v", err)
+	}
+	if len(reaped) != 0 {
+		t.Fatalf("expected 0 reaped for remote host, got %d", len(reaped))
+	}
+	reg, _ := LoadThreadRegistry(tmp)
+	if got := reg.Threads[thr.ThreadID].Status; got != ThreadStatusActive {
+		t.Errorf("remote-host thread was reaped: status=%q want active", got)
+	}
+}
+
 func TestIsStale(t *testing.T) {
 	thr := &Thread{
 		Status:     ThreadStatusActive,

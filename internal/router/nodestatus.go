@@ -76,6 +76,8 @@ type ThreadSummary struct {
 	AgeSeconds    float64      `json:"age_seconds"`
 	IdleSeconds   float64      `json:"idle_seconds"`
 	Stale         bool         `json:"stale,omitempty"`
+	PID           int          `json:"pid,omitempty"`
+	OSState       PIDState     `json:"os_state,omitempty"` // OS-truth liveness of PID
 }
 
 // AgentHealthCheck reports whether a local agent CLI is available and authenticated.
@@ -278,10 +280,15 @@ func CollectNodeStatus(repoRoot string, launchctlCheck LaunchctlChecker, authPro
 	}
 
 	// --- Live thread registry ---
+	// Reap dead/defunct-PID threads against OS truth before reading, so Horus
+	// and the menubar never present a gone or zombie PID as a live agent (the
+	// CTR false-active bug). Scoped to this host; remote tables are unobservable.
+	host, _ := os.Hostname()
+	_, _ = ReapDeadThreads(routerRoot, host)
 	if treg, err := LoadThreadRegistry(routerRoot); err == nil {
 		now := time.Now().UTC()
 		for _, thr := range treg.SortedThreads() {
-			if thr.Status == ThreadStatusClosed {
+			if thr.Status.IsTerminal() {
 				continue
 			}
 			sum := ThreadSummary{
@@ -298,6 +305,8 @@ func CollectNodeStatus(repoRoot string, launchctlCheck LaunchctlChecker, authPro
 				AgeSeconds:    now.Sub(thr.StartedAt).Seconds(),
 				IdleSeconds:   now.Sub(thr.LastSeenAt).Seconds(),
 				Stale:         thr.IsStale(now, DefaultThreadStaleAfter),
+				PID:           thr.PID,
+				OSState:       PIDStateOf(thr.PID),
 			}
 			if sum.Stale {
 				ns.StaleThreads = append(ns.StaleThreads, sum)
