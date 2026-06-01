@@ -61,3 +61,9 @@ ios/.build/
 .agents/idea-router/work-queue.json
 .agents/idea-router/threads.json
 .agents/idea-router/logs/
+.agents/idea-router/.threads.json-*
+.agents/idea-router/processes.json
+.agents/idea-router/locks/
+
+# Claude local runtime artifacts
+.claude/hooks/__pycache__/
