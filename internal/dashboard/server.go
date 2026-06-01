@@ -40,6 +40,7 @@ type Server struct {
 	mu      sync.RWMutex
 	running bool
 	runner  *Runner
+	confirm *ConfirmGuard
 }
 
 // New creates a dashboard server with all routes registered.
@@ -48,7 +49,7 @@ func New(cfg Config) *Server {
 		cfg.Port = DashboardPort
 	}
 
-	s := &Server{cfg: cfg}
+	s := &Server{cfg: cfg, confirm: NewConfirmGuard()}
 
 	// Initialize runner if we have both an event buffer and a binary path.
 	if cfg.Events != nil && cfg.SirsiBin != "" {
@@ -73,6 +74,7 @@ func New(cfg Config) *Server {
 	mux.HandleFunc("/api/events", s.apiEvents)
 	mux.HandleFunc("/api/run", s.apiRun)
 	mux.HandleFunc("/api/run/status", s.apiRunStatus)
+	mux.HandleFunc("/api/actions", s.apiActions)
 	mux.HandleFunc("/api/findings", s.apiFindings)
 	mux.HandleFunc("/api/clean", s.apiClean)
 

@@ -11,7 +11,12 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/stele"
 )
 
-// apiStats returns the current system stats snapshot as JSON.
+// apiStats returns the current system stats snapshot as the typed
+// StatsResponse contract (E3). The producer (the menubar's StatsFn) emits bytes
+// with JSON tags identical to StatsResponse, so we decode → re-encode through
+// the contract type to make the boundary typed. If the bytes do not match the
+// contract (forward-incompatible producer), we degrade honestly by passing the
+// original bytes through rather than dropping data silently.
 func (s *Server) apiStats(w http.ResponseWriter, r *http.Request) {
 	if s.cfg.StatsFn == nil {
 		writeError(w, "stats not available", http.StatusServiceUnavailable)
@@ -22,8 +27,15 @@ func (s *Server) apiStats(w http.ResponseWriter, r *http.Request) {
 		writeError(w, "stats collection failed", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(data)
+
+	var typed StatsResponse
+	if err := json.Unmarshal(data, &typed); err != nil {
+		// Producer shape diverged from the contract — pass through verbatim.
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(data)
+		return
+	}
+	writeJSON(w, typed)
 }
 
 // apiNotifications returns notification history as JSON.

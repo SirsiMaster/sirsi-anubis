@@ -71,15 +71,22 @@ func (r *Runner) Current() string {
 // Run executes a command by key. Returns an error if already running or key is invalid.
 func (r *Runner) Run(key string) error {
 	actions := DefaultActions()
-	var action *Runnable
 	for i := range actions {
 		if actions[i].Key == key {
-			action = &actions[i]
-			break
+			a := actions[i]
+			return r.RunArgs(a.Key, a.Label, a.Glyph, a.Args)
 		}
 	}
-	if action == nil {
-		return fmt.Errorf("unknown command: %s", key)
+	return fmt.Errorf("unknown command: %s", key)
+}
+
+// RunArgs executes `sirsi <args...>` under a logical key, streaming output via
+// the event buffer (E5). It is the generic execution path the typed action
+// contract dispatches to. Returns an error if a command is already running or
+// args are empty.
+func (r *Runner) RunArgs(key, label, glyph string, args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("no args for action: %s", key)
 	}
 
 	r.mu.Lock()
@@ -91,9 +98,10 @@ func (r *Runner) Run(key string) error {
 	r.current = key
 	r.mu.Unlock()
 
+	action := &Runnable{Key: key, Label: label, Glyph: glyph, Args: args}
 	r.events.Push(Event{
 		Type: "run_start",
-		Data: mustJSON(map[string]string{"key": key, "label": action.Label, "glyph": action.Glyph}),
+		Data: mustJSON(map[string]string{"key": key, "label": label, "glyph": glyph}),
 	})
 
 	go r.execute(action)
@@ -177,29 +185,11 @@ func mustJSON(v interface{}) string {
 	return string(b)
 }
 
-// apiRun handles POST /api/run?cmd=<key> — starts a command.
+// apiRun handles POST /api/run. It accepts the typed ActionRequest JSON body
+// (E5) and remains backward-compatible with the legacy ?cmd=<key> query form.
+// Destructive actions are gated by the E2 confirm engine. See dispatchRun.
 func (s *Server) apiRun(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeError(w, "POST required", http.StatusMethodNotAllowed)
-		return
-	}
-	if s.runner == nil {
-		writeError(w, "runner not available", http.StatusServiceUnavailable)
-		return
-	}
-
-	key := r.URL.Query().Get("cmd")
-	if key == "" {
-		writeError(w, "missing cmd parameter", http.StatusBadRequest)
-		return
-	}
-
-	if err := s.runner.Run(key); err != nil {
-		writeError(w, err.Error(), http.StatusConflict)
-		return
-	}
-
-	writeJSON(w, map[string]string{"status": "started", "cmd": key})
+	s.dispatchRun(w, r)
 }
 
 // apiRunStatus handles GET /api/run/status — returns current runner state.
