@@ -20,6 +20,7 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/mirror"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/output"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/ra"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/selfupdate"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/stele"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/suggest"
 )
@@ -960,6 +961,24 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 	report, err := guard.Doctor()
 	if err != nil {
 		return fmt.Errorf("doctor failed: %w", err)
+	}
+
+	// Binary-drift check (ADR-023): local, no network. Surfaces the CTR
+	// deploy-drift class — a stale sibling binary (e.g. sirsi-menubar) running
+	// old internal/router code while source is fixed. Flows into the
+	// SessionStart health line via the standard findings surface.
+	if drift, derr := selfupdate.ScanHost(); derr == nil {
+		f := guard.DiagnosticFinding{
+			Check:    "binary-drift",
+			Severity: guard.SeverityOK,
+			Message:  "Sirsi binaries " + drift.Summary(),
+		}
+		if !drift.Healthy {
+			f.Severity = guard.SeverityWarn
+			f.Message = "Sirsi binary drift detected"
+			f.Detail = drift.Summary() + " → run `sirsi self-update` (Homebrew: `brew upgrade sirsi-pantheon`)"
+		}
+		report.Findings = append(report.Findings, f)
 	}
 
 	if JsonOutput {

@@ -22,11 +22,27 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal/rules"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/notify"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
+	modversion "github.com/SirsiMaster/sirsi-pantheon/internal/version"
 )
 
-var version = "v0.20.0"
+// version is sourced from the shared build-version contract, stamped via ldflags.
+var version = modversion.Version
 
 func main() {
+	// Version contract: `sirsi-menubar version [--json]`. Lets internal/selfupdate
+	// probe this binary for sibling drift (the CTR deploy-drift class, ADR-023).
+	if len(os.Args) > 1 && os.Args[1] == "version" {
+		info := modversion.Current("sirsi-menubar")
+		if len(os.Args) > 2 && os.Args[2] == "--json" {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			_ = enc.Encode(info)
+		} else {
+			fmt.Printf("☥ Sirsi Menubar %s\n", info.Version)
+		}
+		return
+	}
+
 	unlock, err := platform.TryLock("menubar")
 	if err != nil {
 		fmt.Printf("☥ Sirsi Menubar is already running. Exiting.\n")

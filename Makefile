@@ -5,7 +5,7 @@ BUILD_DIR ?= bin
 INSTALL_DIR ?= $(HOME)/.local/bin
 # Release builds strip debug symbols (-s) and DWARF tables (-w) → ~13MB core binary.
 # Use `make build-debug` for full 20MB binary with symbols for dlv/pprof.
-GO_LDFLAGS ?= -s -w -X main.version=v$(VERSION)
+GO_LDFLAGS ?= -s -w -X github.com/SirsiMaster/sirsi-pantheon/internal/version.Version=v$(VERSION)
 GO_FLAGS ?= -ldflags="$(GO_LDFLAGS)"
 
 .PHONY: all clean build build-debug install uninstall build-agent build-menubar bundle dmg publish test test-proof ios ios-framework android-aar brain-train brain-install
@@ -18,7 +18,7 @@ build:
 
 # --- Debug Build (with symbols, ~20MB) ---
 build-debug:
-	go build -ldflags="-X main.version=v$(VERSION)" -o $(BUILD_DIR)/sirsi ./cmd/sirsi/
+	go build -ldflags="-X github.com/SirsiMaster/sirsi-pantheon/internal/version.Version=v$(VERSION)" -o $(BUILD_DIR)/sirsi ./cmd/sirsi/
 
 # --- Install to PATH ---
 install: build

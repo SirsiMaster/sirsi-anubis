@@ -7,10 +7,11 @@ import (
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/logging"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/thoth"
+	modversion "github.com/SirsiMaster/sirsi-pantheon/internal/version"
 	"github.com/spf13/cobra"
 )
 
-var version = "v0.4.0-standalone"
+var version = modversion.Version
 
 func main() {
 	_ = version // set via ldflags

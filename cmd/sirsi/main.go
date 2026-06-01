@@ -17,7 +17,9 @@ import (
 	modversion "github.com/SirsiMaster/sirsi-pantheon/internal/version"
 )
 
-var version = "v0.21.0"
+// version is sourced from the shared build-version contract (internal/version),
+// stamped via ldflags — no more hand-edited literal.
+var version = modversion.Version
 
 // versionCmd prints the version and optionally checks for updates.
 var versionCmd = &cobra.Command{
@@ -45,8 +47,15 @@ var versionCmd = &cobra.Command{
 			for _, e := range layout {
 				modules[e.key] = modversion.Get(e.key)
 			}
+			info := modversion.Current("sirsi")
 			result := map[string]interface{}{
-				"version": version,
+				"binary":  info.Binary,
+				"version": info.Version,
+				"commit":  info.Commit,
+				"date":    info.Date,
+				"path":    info.Path,
+				"go":      info.GoVer,
+				"dirty":   info.Dirty,
 				"product": "Sirsi Pantheon",
 				"modules": modules,
 			}

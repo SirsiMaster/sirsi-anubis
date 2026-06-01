@@ -25,10 +25,11 @@ import (
 
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal/rules"
+	modversion "github.com/SirsiMaster/sirsi-pantheon/internal/version"
 )
 
-// Version is set by goreleaser at build time.
-var version = "dev"
+// version is sourced from the shared build-version contract, stamped via ldflags.
+var version = modversion.Version
 
 // AgentResponse is the standard JSON response envelope.
 type AgentResponse struct {

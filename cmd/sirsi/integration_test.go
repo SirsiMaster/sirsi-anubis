@@ -268,11 +268,10 @@ func TestVersion(t *testing.T) {
 	}
 
 	combined := stdout
-	if !strings.Contains(combined, "0.21.0") {
-		t.Errorf("version output missing '0.21.0', got:\n%s", combined)
-	}
-	if !strings.Contains(combined, "Pantheon") {
-		t.Errorf("version output missing 'Pantheon', got:\n%s", combined)
+	// Version is stamped via ldflags (internal/version), not a frozen literal,
+	// so assert the banner renders rather than a specific number (ADR-023).
+	if !strings.Contains(combined, "Sirsi Pantheon") {
+		t.Errorf("version output missing 'Sirsi Pantheon' banner, got:\n%s", combined)
 	}
 }
 
@@ -494,7 +493,7 @@ func TestDeityCommands(t *testing.T) {
 			args:           []string{"version"},
 			timeout:        10 * time.Second,
 			wantExit0:      true,
-			outputContains: []string{"0.21.0", "Pantheon"},
+			outputContains: []string{"Pantheon"},
 		},
 		{
 			name:           "help",

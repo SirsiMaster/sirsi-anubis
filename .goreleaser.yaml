@@ -24,9 +24,9 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X main.version={{.Version}}
-      - -X main.commit={{.ShortCommit}}
-      - -X main.date={{.Date}}
+      - -X github.com/SirsiMaster/sirsi-pantheon/internal/version.Version={{.Version}}
+      - -X github.com/SirsiMaster/sirsi-pantheon/internal/version.Commit={{.ShortCommit}}
+      - -X github.com/SirsiMaster/sirsi-pantheon/internal/version.Date={{.Date}}
 
   - id: sirsi-agent
     main: ./cmd/sirsi-agent/
@@ -42,7 +42,9 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X main.version={{.Version}}
+      - -X github.com/SirsiMaster/sirsi-pantheon/internal/version.Version={{.Version}}
+      - -X github.com/SirsiMaster/sirsi-pantheon/internal/version.Commit={{.ShortCommit}}
+      - -X github.com/SirsiMaster/sirsi-pantheon/internal/version.Date={{.Date}}
 
   - id: sirsi-anubis
     main: ./cmd/anubis/
@@ -58,9 +60,9 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X main.version={{.Version}}
-      - -X main.commit={{.ShortCommit}}
-      - -X main.date={{.Date}}
+      - -X github.com/SirsiMaster/sirsi-pantheon/internal/version.Version={{.Version}}
+      - -X github.com/SirsiMaster/sirsi-pantheon/internal/version.Commit={{.ShortCommit}}
+      - -X github.com/SirsiMaster/sirsi-pantheon/internal/version.Date={{.Date}}
 
   - id: sirsi-maat
     main: ./cmd/maat/
@@ -76,9 +78,9 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X main.version={{.Version}}
-      - -X main.commit={{.ShortCommit}}
-      - -X main.date={{.Date}}
+      - -X github.com/SirsiMaster/sirsi-pantheon/internal/version.Version={{.Version}}
+      - -X github.com/SirsiMaster/sirsi-pantheon/internal/version.Commit={{.ShortCommit}}
+      - -X github.com/SirsiMaster/sirsi-pantheon/internal/version.Date={{.Date}}
 
   - id: sirsi-thoth
     main: ./cmd/thoth/
@@ -94,9 +96,9 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X main.version={{.Version}}
-      - -X main.commit={{.ShortCommit}}
-      - -X main.date={{.Date}}
+      - -X github.com/SirsiMaster/sirsi-pantheon/internal/version.Version={{.Version}}
+      - -X github.com/SirsiMaster/sirsi-pantheon/internal/version.Commit={{.ShortCommit}}
+      - -X github.com/SirsiMaster/sirsi-pantheon/internal/version.Date={{.Date}}
 
   - id: sirsi-scarab
     main: ./cmd/scarab/
@@ -112,9 +114,9 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X main.version={{.Version}}
-      - -X main.commit={{.ShortCommit}}
-      - -X main.date={{.Date}}
+      - -X github.com/SirsiMaster/sirsi-pantheon/internal/version.Version={{.Version}}
+      - -X github.com/SirsiMaster/sirsi-pantheon/internal/version.Commit={{.ShortCommit}}
+      - -X github.com/SirsiMaster/sirsi-pantheon/internal/version.Date={{.Date}}
 
   - id: sirsi-guard
     main: ./cmd/guard/
@@ -130,9 +132,9 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X main.version={{.Version}}
-      - -X main.commit={{.ShortCommit}}
-      - -X main.date={{.Date}}
+      - -X github.com/SirsiMaster/sirsi-pantheon/internal/version.Version={{.Version}}
+      - -X github.com/SirsiMaster/sirsi-pantheon/internal/version.Commit={{.ShortCommit}}
+      - -X github.com/SirsiMaster/sirsi-pantheon/internal/version.Date={{.Date}}
 
   # NOTE: sirsi-menubar requires CGO (systray) and cannot cross-compile.
   # It is macOS-only and built separately via `make dmg` or `scripts/build-dmg.sh`.
