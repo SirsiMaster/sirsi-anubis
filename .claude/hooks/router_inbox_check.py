@@ -57,16 +57,42 @@ def load_json(path: Path) -> dict:
         return json.load(handle)
 
 
-def claude_agent_id(repo_root: Path, agents: dict) -> str:
-    repo_root_resolved = repo_root.resolve()
-    matches: list[str] = []
+def resolve_agent_by_cwd(cwd: Path, agents: dict) -> str | None:
+    """Resolve the session's agent by matching the ACTUAL cwd against agents.json
+    cwd entries, longest-prefix wins (most specific). Returns None when no claude
+    agent's cwd contains the cwd.
+
+    Critically (ADR-024 refinement, claude-home item 210348): this MUST NOT
+    default to claude-pantheon. A home/non-portfolio cwd that resolved to
+    claude-pantheon caused a claude-home session to falsely heartbeat
+    claude-pantheon's thread — a cross-agent liveness lie. No confident match =>
+    the caller no-ops, never guesses an agent."""
+    try:
+        cwd_resolved = cwd.resolve()
+    except (OSError, RuntimeError):
+        return None
+    best_agent, best_len = None, -1
     for agent_id, config in agents.get("agents", {}).items():
         if config.get("type") != "claude":
             continue
-        cwd = config.get("cwd")
-        if cwd and Path(cwd).expanduser().resolve() == repo_root_resolved:
-            matches.append(agent_id)
-    return sorted(matches)[0] if matches else "claude-pantheon"
+        c = config.get("cwd")
+        if not c:
+            continue
+        try:
+            base = Path(c).expanduser().resolve()
+        except (OSError, RuntimeError):
+            continue
+        if cwd_resolved == base or base in cwd_resolved.parents:
+            n = len(base.parts)
+            if n > best_len:
+                best_len, best_agent = n, agent_id
+    return best_agent
+
+
+def resolve_agent(cwd: Path, agents: dict) -> str | None:
+    """Authoritative agents.json longest-prefix match, then the portfolio
+    substring map as a confident fallback. None => no-op (never default)."""
+    return resolve_agent_by_cwd(cwd, agents) or portfolio_agent_for_cwd(str(cwd))
 
 
 def pending_items(state: dict, agent_id: str) -> list[str]:
@@ -245,9 +271,12 @@ def main() -> int:
     except (OSError, json.JSONDecodeError):
         return 0
 
-    # Resolve the agent by ACTUAL cwd first (the router root may be the shared
-    # pantheon one), falling back to agents.json cwd matching.
-    agent_id = portfolio_agent_for_cwd(str(cwd)) or claude_agent_id(repo_root, agents)
+    # Resolve the agent by ACTUAL cwd. If we cannot confidently identify the
+    # session's agent, NO-OP — never default to claude-pantheon and falsely
+    # heartbeat its thread from another agent's session (ADR-024 refinement).
+    agent_id = resolve_agent(cwd, agents)
+    if not agent_id:
+        return 0
     sup = supervisor_mode()
 
     # Register handshake + heartbeat (no caffeinator, no fs-watcher — ADR-024).

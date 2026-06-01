@@ -79,5 +79,25 @@ class TestPortfolioAgentForCwd(unittest.TestCase):
         self.assertIsNone(hook.portfolio_agent_for_cwd("/Users/x"))
 
 
+class TestResolveAgentByCwd(unittest.TestCase):
+    AGENTS = {"agents": {
+        "claude-home": {"type": "claude", "cwd": str(Path.home())},
+        "claude-pantheon": {"type": "claude", "cwd": str(Path.home() / "Development" / "sirsi-pantheon")},
+    }}
+
+    # ADR-024 refinement (item 210348): a home cwd must resolve to claude-home,
+    # NEVER default to claude-pantheon (which caused a false cross-heartbeat).
+    def test_home_resolves_to_claude_home_not_pantheon(self):
+        self.assertEqual(hook.resolve_agent_by_cwd(Path.home(), self.AGENTS), "claude-home")
+
+    def test_longest_prefix_wins(self):
+        cwd = Path.home() / "Development" / "sirsi-pantheon" / "cmd"
+        self.assertEqual(hook.resolve_agent_by_cwd(cwd, self.AGENTS), "claude-pantheon")
+
+    def test_no_match_returns_none_not_default(self):
+        # Empty agents => no confident match => None (caller no-ops), NOT pantheon.
+        self.assertIsNone(hook.resolve_agent_by_cwd(Path("/var"), {"agents": {}}))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
