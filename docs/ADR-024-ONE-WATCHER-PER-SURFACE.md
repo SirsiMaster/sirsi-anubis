@@ -84,7 +84,7 @@ code) maps surface → `{type, mechanism, arm_instruction, heartbeat_interval}`.
   "watcher": {
     "type": "loop-monitor",
     "mechanism": "/loop + Monitor on .agents/idea-router/items/",
-    "arm_instruction": "Arm /loop watching items/ for `to: <agent>`; heartbeat each tick.",
+    "arm_instruction": "Arm /loop watching items/ for `to: <agent>`; heartbeat each tick. Re-assert idempotently keyed on the thread_id (`pgrep -f thr-<thread_id>`) — NOT the shared loop body / `DIR=` string (it collides with other agents' loops on a shared host), NOT TaskList.",
     "heartbeat_interval_s": 60
   }
 }
@@ -108,10 +108,15 @@ becomes registered-but-unwatched.
 
 The check is **idempotent on OS truth, never the harness task list** (F2):
 re-arm only when **zero** matching watcher processes exist for this
-`(agent_id, thread_id)` — detected by an OS signature (e.g.
-`pgrep -f "<thread-specific heartbeat signature>"`), the same `(agent_id, pid)`
-identity ADR-022 reaps on. `TaskList`/harness views may falsely report empty and
-MUST NOT be the arming gate, or they cause duplicate watchers.
+`(agent_id, thread_id)` — detected by an OS signature that includes the
+**thread_id** (`pgrep -f thr-<thread_id>`), the same `(agent_id, pid)`
+identity ADR-022 reaps on. The signature MUST be the thread_id, **not** the
+shared loop body or `DIR=.agents/idea-router/items` string — every Claude
+surface runs the same body, so a shared-string `pgrep` matches *other agents'*
+loops on the same host and falsely reports "already armed" (observed
+2026-06-01: claude-deck's check matched claude-home's live loop). `TaskList`/
+harness views may falsely report empty and MUST NOT be the arming gate, or they
+cause duplicate watchers.
 
 A `Stop`-hook gate (`exit 2` until the surface's watcher is detected alive via
 the same OS signature) is the backstop for surfaces that ignore the instruction;
