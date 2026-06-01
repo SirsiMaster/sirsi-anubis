@@ -132,6 +132,26 @@ func onReady() {
 	startGuardBridge(ctx)
 	startPeriodicScan(ctx)
 
+	// ── CTR router registration (A26/A27) ──────────────────────────
+	// Register the menubar as a resident, router-visible surface bound to this
+	// process PID, with a bounded heartbeat. Best-effort: skipped if no router
+	// root is reachable. See register.go.
+	menubarRouterRoot, menubarThreadID := registerMenubarThread(ctx)
+
+	// Close the resident thread cleanly on SIGTERM/SIGINT (launchd kickstart,
+	// logout, shutdown). systray's event loop below does NOT catch signals, so
+	// without this the record would linger active until OS-truth reaping. This
+	// is the "close on shutdown if feasible" path; reaping (ADR-022) is fallback.
+	go func() {
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+		<-sigCh
+		cancel()
+		closeMenubarThread(menubarRouterRoot, menubarThreadID)
+		_ = dashSrv.Stop()
+		systray.Quit()
+	}()
+
 	// ── Background stats + recent activity loop ─────────────────────
 	go func() {
 		for {
@@ -223,6 +243,7 @@ func onReady() {
 			spawnTUIWithCommand("net align")
 		case <-mQuit.ClickedCh:
 			cancel()
+			closeMenubarThread(menubarRouterRoot, menubarThreadID)
 			_ = dashSrv.Stop()
 			if nStore != nil {
 				nStore.Close()
