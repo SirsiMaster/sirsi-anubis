@@ -158,6 +158,7 @@ var (
 	sendFrom         string
 	sendTo           string
 	sendTitle        string
+	sendType         string
 	sendInstructions string
 )
 
@@ -184,7 +185,7 @@ recipient picks it up next time they run sirsi router pull <their-id>.
 		if err != nil {
 			return err
 		}
-		id, err := work.Send(root, sendFrom, sendTo, sendTitle, instr)
+		id, err := work.SendTyped(root, sendFrom, sendTo, sendTitle, sendType, instr)
 		if err != nil {
 			return err
 		}
@@ -359,6 +360,7 @@ func init() {
 	routerSendCmd.Flags().StringVar(&sendFrom, "from", "", "Sender agent id (e.g., claude-pantheon)")
 	routerSendCmd.Flags().StringVar(&sendTo, "to", "", "Recipient agent id (e.g., codex-pantheon)")
 	routerSendCmd.Flags().StringVar(&sendTitle, "title", "", "Short title for the work item")
+	routerSendCmd.Flags().StringVar(&sendType, "type", "", "Message type: proposal|review|decision (ADR-024 §5 — one inbox, no reviews/ or decisions/ dirs)")
 	routerSendCmd.Flags().StringVar(&sendInstructions, "instructions", "", "Instructions body (literal text, or @file)")
 	routerCloseCmd.Flags().StringVar(&closeResult, "result", "", "Result body (literal text, or @file)")
 	routerStatusCmd.Flags().IntVar(&statusStaleHours, "stale", 24, "Hours after which an open item is flagged as stale (0 disables)")

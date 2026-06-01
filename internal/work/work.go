@@ -22,6 +22,7 @@ type Item struct {
 	From         string
 	To           string
 	Title        string
+	Type         string // ADR-024 §5: "proposal" | "review" | "decision" | "" — collapses the old reviews/ + decisions/ channels onto one inbox item
 	Status       string // "open" or "closed"
 	Opened       string // RFC3339
 	Closed       string // RFC3339, empty if open
@@ -71,6 +72,14 @@ func unquoteYAML(v string) string {
 
 // Send writes a new open item from→to and returns its ID (filename stem).
 func Send(root, from, to, title, instructions string) (string, error) {
+	return SendTyped(root, from, to, title, "", instructions)
+}
+
+// SendTyped is Send with an explicit message type (ADR-024 §5). msgType is one
+// of "proposal"/"review"/"decision" (or "" for a plain work item) and is
+// written as a `type:` frontmatter field so reviews and decisions live as
+// addressed items/ entries instead of separate reviews/ + decisions/ channels.
+func SendTyped(root, from, to, title, msgType, instructions string) (string, error) {
 	if from == "" || to == "" {
 		return "", fmt.Errorf("from and to are required")
 	}
@@ -80,18 +89,22 @@ func Send(root, from, to, title, instructions string) (string, error) {
 	now := time.Now().UTC()
 	id := fmt.Sprintf("%s-%s-%s-%s", now.Format("20060102-150405"), slugify(from), slugify(to), slugify(title))
 	path := filepath.Join(itemsDir(root), id+".md")
+	typeLine := ""
+	if msgType != "" {
+		typeLine = fmt.Sprintf("type: %s\n", quoteYAML(msgType))
+	}
 	body := fmt.Sprintf(`---
 from: %s
 to: %s
 title: %s
-status: open
+%sstatus: open
 opened: %s
 ---
 
 ## Instructions
 
 %s
-`, quoteYAML(from), quoteYAML(to), quoteYAML(title), now.Format(time.RFC3339), strings.TrimSpace(instructions))
+`, quoteYAML(from), quoteYAML(to), quoteYAML(title), typeLine, now.Format(time.RFC3339), strings.TrimSpace(instructions))
 	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
 		return "", err
 	}
@@ -216,6 +229,8 @@ func parse(id, content string) (Item, error) {
 			it.To = v
 		case "title":
 			it.Title = v
+		case "type":
+			it.Type = v
 		case "status":
 			it.Status = v
 		case "opened":

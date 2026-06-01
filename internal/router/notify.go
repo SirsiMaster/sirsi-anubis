@@ -104,7 +104,7 @@ func buildRouterPrompt(agent, docType, docID string) string {
 	sb.WriteString("- Keep work scoped to this repository unless the plan explicitly designates a super-agent cross-repo mandate.\n")
 	sb.WriteString("- Continue until the item /goal is met, blocked by safety/user approval, or impossible with a precise reason.\n")
 	sb.WriteString("- Run the relevant tests or verification commands and record the exact evidence.\n")
-	sb.WriteString("- Write the result to .agents/idea-router/reviews/ or .agents/idea-router/decisions/ as appropriate.\n")
+	sb.WriteString("- Reply as an addressed item in items/ (ADR-024 §5: one inbox). Close the item you acted on with `sirsi router close <id> --result @path`, and/or send a follow-up with `sirsi router send --from <you> --to <them> --type review|decision ...`. Do NOT write replies to reviews/ or decisions/ — the inbox reader only scans items/, so a reply parked elsewhere goes unread (F3).\n")
 	sb.WriteString("- Update state.json: acknowledge your pending item only after reading and acting, update your last_read timestamp, and add the other agent to the pending inbox only when further review or work is required.\n")
 	sb.WriteString("- Do not leave a vague next step when you can complete the work yourself.\n")
 	return sb.String()
