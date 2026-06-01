@@ -185,10 +185,21 @@ var threadRegisterCmd = &cobra.Command{
 			return err
 		}
 
+		// ADR-024: register is a pure handshake. It no longer auto-spawns an
+		// fs-watcher; it RETURNS the canonical watcher the surface must arm.
+		// The router owns the surface→watcher mapping (R4 inventory in code);
+		// the surface owns the arming. register always returns the spec, even
+		// when the supervisor is off (SIRSI_SUPERVISOR=0 suppresses managed
+		// arming/enforcement only — the spec stays visible for diagnostics).
+		spec := router.WatcherFor(out.Surface, out.AgentID, out.ThreadID)
+
 		if JsonOutput {
 			enc := json.NewEncoder(os.Stdout)
 			enc.SetIndent("", "  ")
-			return enc.Encode(out)
+			return enc.Encode(struct {
+				*router.Thread
+				Watcher router.WatcherSpec `json:"watcher"`
+			}{out, spec})
 		}
 		fmt.Printf("Registered thread %s\n", out.ThreadID)
 		fmt.Printf("  agent: %s (surface=%s)\n", out.AgentID, out.Surface)
@@ -199,20 +210,13 @@ var threadRegisterCmd = &cobra.Command{
 		}
 		fmt.Printf("  status: %s\n", out.Status)
 		fmt.Println()
+		fmt.Println("Watcher (arm exactly this — ADR-024):")
+		fmt.Printf("  type: %s  (heartbeat %ds, watches_inbox=%v, resident=%v)\n",
+			spec.Type, spec.HeartbeatIntervalS, spec.WatchesInbox, spec.Resident)
+		fmt.Printf("  %s\n", spec.ArmInstruction)
+		fmt.Println()
 		fmt.Println("Send heartbeats with:")
 		fmt.Printf("  sirsi thread heartbeat --thread %s\n", out.ThreadID)
-
-		// Initiate the per-thread FSEvents subscription. Dies when the
-		// anchor PID exits — caller should pass the LONG-LIVED process
-		// PID (the actual claude/codex/gemini binary), not the ephemeral
-		// shell that invoked sirsi. Falls back to PPID's PPID (grandparent
-		// of sirsi) which is typically the agent runtime when called from
-		// a hook script.
-		if err := spawnRouterWatcher(out.ThreadID, out.AgentID, routerRoot, anchor); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to spawn router watcher: %v\n", err)
-		} else {
-			fmt.Printf("  router watcher: pid in %s (anchored to pid=%d)\n", watcherPidfile(out.ThreadID), anchor)
-		}
 		return nil
 	},
 }
@@ -338,12 +342,12 @@ registry churn that re-triggers Spotlight indexing on every write.`,
 }
 
 var (
-	watchThreadID    string
-	watchAgentID     string
-	watchRouterRoot  string
-	watchParentPID   int
-	watchDebounce    = 800 * time.Millisecond
-	watchAliveCheck  = 30 * time.Second
+	watchThreadID   string
+	watchAgentID    string
+	watchRouterRoot string
+	watchParentPID  int
+	watchDebounce   = 800 * time.Millisecond
+	watchAliveCheck = 30 * time.Second
 )
 
 var threadWatchRouterCmd = &cobra.Command{
