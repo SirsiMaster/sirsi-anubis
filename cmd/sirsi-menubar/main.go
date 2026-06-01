@@ -180,7 +180,7 @@ func onReady() {
 		case <-mDashboard.ClickedCh:
 			spawnTUIWindow()
 		case <-mStats.ClickedCh:
-			spawnTUIWithCommand("doctor")
+			spawnTUIWithCommand("diagnose")
 		case <-mRaHeader.ClickedCh:
 			spawnTUIWithCommand("ra status")
 		case <-mRaDeploy.ClickedCh:
@@ -201,7 +201,7 @@ func onReady() {
 		case <-mScan.ClickedCh:
 			spawnTUIWithCommand("scan")
 		case <-mJudge.ClickedCh:
-			spawnTUIWithCommand("anubis judge --dry-run")
+			spawnTUIWithCommand("anubis clean")
 		case <-mKa.ClickedCh:
 			spawnTUIWithCommand("ghosts")
 		// Ma'at
@@ -218,7 +218,7 @@ func onReady() {
 		case <-mSeba.ClickedCh:
 			spawnTUIWithCommand("seba hardware")
 		case <-mOsiris.ClickedCh:
-			spawnTUIWithCommand("osiris assess")
+			spawnTUIWithCommand("osiris risk")
 		case <-mNet.ClickedCh:
 			spawnTUIWithCommand("net align")
 		case <-mQuit.ClickedCh:
@@ -245,26 +245,21 @@ func spawnTUIWindow() {
 	spawnTUIWithCommand("")
 }
 
-// spawnTUIWithCommand opens or activates the Pantheon TUI and optionally
-// types a command into the input bar. If a TUI window (titled "☥ Sirsi")
-// already exists, it activates that window and types the command into it.
-// If not, it spawns a new TUI session.
+// spawnTUIWithCommand opens or activates a Sirsi terminal window and runs a
+// concrete CLI command. The older ADR-016 bridge expected a `sirsi pantheon`
+// TUI command, but the active CLI surface exposes direct commands instead.
 //
 // This is the ONLY way the menubar should interact with the user —
 // everything happens inside the TUI viewport (ADR-016).
 func spawnTUIWithCommand(command string) {
-	sirsiBin := findSirsiBinary() + " pantheon"
-
-	// Build the command to type into the TUI input bar after it's ready.
-	typeCmd := ""
+	sirsiBin := findSirsiBinary()
+	commandLine := shellQuote(sirsiBin)
 	if command != "" {
-		typeCmd = fmt.Sprintf(`
-		delay 0.5
-		tell application "System Events"
-			keystroke "%s"
-			keystroke return
-		end tell`, escapeAppleScript(command))
+		commandLine += " " + command
+	} else {
+		commandLine += " status"
 	}
+	commandLine += "; echo; read -n 1 -s -r '?Press any key to close...'"
 
 	// Check if iTerm2 is installed, prefer it over Terminal.app
 	if _, err := os.Stat("/Applications/iTerm.app"); err == nil {
@@ -292,9 +287,13 @@ func spawnTUIWithCommand(command string) {
 			write text "%s"
 			set name to "☥ Sirsi"
 		end tell
+	else
+		tell current session of current window
+			write text "%s"
+		end tell
 	end if
-end tell%s`, escapeAppleScript(sirsiBin), typeCmd)
-		_ = exec.Command("osascript", "-e", script).Start()
+end tell`, escapeAppleScript(commandLine), escapeAppleScript(commandLine))
+		runAppleScript("iterm", script)
 		return
 	}
 
@@ -316,9 +315,11 @@ tell application "Terminal"
 		do script "%s"
 		delay 0.5
 		set custom title of front window to "☥ Sirsi"
+	else
+		do script "%s" in front window
 	end if
-end tell%s`, escapeAppleScript(sirsiBin), typeCmd)
-	_ = exec.Command("osascript", "-e", script).Start()
+end tell`, escapeAppleScript(commandLine), escapeAppleScript(commandLine))
+	runAppleScript("terminal", script)
 }
 
 // escapeAppleScript escapes backslashes and double quotes for AppleScript strings.
@@ -326,6 +327,19 @@ func escapeAppleScript(s string) string {
 	s = strings.ReplaceAll(s, "\\", "\\\\")
 	s = strings.ReplaceAll(s, "\"", "\\\"")
 	return s
+}
+
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
+}
+
+func runAppleScript(label, script string) {
+	go func() {
+		cmd := exec.Command("osascript", "-e", script)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			fmt.Fprintf(os.Stderr, "menubar %s launch failed: %v\n%s\n", label, err, strings.TrimSpace(string(out)))
+		}
+	}()
 }
 
 // ── Live State ─────────────────────────────────────────────────────────
