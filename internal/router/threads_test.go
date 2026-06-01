@@ -265,3 +265,65 @@ func TestNewThreadID_Unique(t *testing.T) {
 		t.Errorf("expected unique IDs, got %s == %s", a, b)
 	}
 }
+
+// TestRegisterThread_IdempotentOnAgentPID locks in the fix for the heartbeat-loop
+// explosion: re-registering the same live (agent_id, pid) must reuse the existing
+// thread instead of minting a new one (and a new caffeinate loop). Regression guard
+// for the 160-loops-for-10-PIDs defect.
+func TestRegisterThread_IdempotentOnAgentPID(t *testing.T) {
+	tmp := t.TempDir()
+	first, err := RegisterThread(tmp, &Thread{
+		AgentID: "claude-pantheon", Surface: "claude", Repo: "/repo", PID: 4242,
+	})
+	if err != nil {
+		t.Fatalf("first RegisterThread: %v", err)
+	}
+
+	// Same session re-registers (discover/police churn). No pinned ThreadID.
+	second, err := RegisterThread(tmp, &Thread{
+		AgentID: "claude-pantheon", Surface: "claude", Repo: "/repo", PID: 4242,
+		CurrentItem: "20260601-resume",
+	})
+	if err != nil {
+		t.Fatalf("second RegisterThread: %v", err)
+	}
+	if second.ThreadID != first.ThreadID {
+		t.Errorf("expected reuse of %s, got new thread %s", first.ThreadID, second.ThreadID)
+	}
+	if second.CurrentItem != "20260601-resume" {
+		t.Errorf("current_item not carried onto reused thread: %q", second.CurrentItem)
+	}
+
+	reg, err := LoadThreadRegistry(tmp)
+	if err != nil {
+		t.Fatalf("LoadThreadRegistry: %v", err)
+	}
+	if len(reg.Threads) != 1 {
+		t.Errorf("expected 1 thread after re-register, got %d", len(reg.Threads))
+	}
+
+	// A different PID is a genuinely different session — must NOT collapse.
+	other, err := RegisterThread(tmp, &Thread{
+		AgentID: "claude-pantheon", Surface: "claude", Repo: "/repo", PID: 9999,
+	})
+	if err != nil {
+		t.Fatalf("other RegisterThread: %v", err)
+	}
+	if other.ThreadID == first.ThreadID {
+		t.Errorf("distinct PID collapsed into existing thread")
+	}
+
+	// A terminal record must not be reused — closing then re-registering starts fresh.
+	if _, err := Heartbeat(tmp, first.ThreadID, HeartbeatUpdate{Status: ThreadStatusClosed}); err != nil {
+		t.Fatalf("Heartbeat close: %v", err)
+	}
+	revived, err := RegisterThread(tmp, &Thread{
+		AgentID: "claude-pantheon", Surface: "claude", Repo: "/repo", PID: 4242,
+	})
+	if err != nil {
+		t.Fatalf("revive RegisterThread: %v", err)
+	}
+	if revived.ThreadID == first.ThreadID {
+		t.Errorf("reused a closed (terminal) thread; expected fresh thread_id")
+	}
+}
