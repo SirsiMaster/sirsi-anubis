@@ -21,10 +21,34 @@ import sys
 from pathlib import Path
 
 
+# The portfolio router is shared and lives in sirsi-pantheon. Sessions started
+# outside any repo (bare ~) still belong to a portfolio agent, so we fall back
+# to this shared root (Decision 4: fire from any cwd, incl. non-pantheon).
+DEFAULT_ROUTER_REPO = Path("~/Development/sirsi-pantheon").expanduser()
+
+
 def find_repo_root(start: Path) -> Path | None:
     for candidate in [start, *start.parents]:
         if (candidate / ".agents" / "idea-router" / "state.json").is_file():
             return candidate
+    return None
+
+
+def portfolio_agent_for_cwd(cwd: str) -> str | None:
+    """Map an actual cwd to its portfolio agent id (mirrors the established
+    SessionStart inline mapping). Returns None if the cwd is not in a known
+    portfolio repo, so the caller can fall back to agents.json matching."""
+    pairs = [
+        ("sirsi-pantheon", "claude-pantheon"),
+        ("assiduous", "claude-assiduous"),
+        ("FinalWishes", "claude-finalwishes"),
+        ("SirsiNexusApp", "claude-nexus"),
+        ("porch-and-alley", "claude-porch-and-alley"),
+        ("homebrew-tools", "claude-homebrew-tools"),
+    ]
+    for needle, agent in pairs:
+        if needle in cwd:
+            return agent
     return None
 
 
@@ -203,8 +227,14 @@ def heartbeat(thread_id: str, runner=subprocess.run) -> None:
 
 def main() -> int:
     mode = sys.argv[1] if len(sys.argv) > 1 else "session"
+    cwd = Path.cwd()
     repo_override = os.environ.get("SIRSI_ROUTER_REPO_ROOT")
-    repo_root = Path(repo_override).expanduser().resolve() if repo_override else find_repo_root(Path.cwd())
+    if repo_override:
+        repo_root = Path(repo_override).expanduser().resolve()
+    else:
+        # Walk up from cwd; fall back to the shared portfolio router so the
+        # supervisor fires even from a non-pantheon / bare-home cwd (Decision 4).
+        repo_root = find_repo_root(cwd) or DEFAULT_ROUTER_REPO
     if repo_root is None:
         return 0
 
@@ -215,7 +245,9 @@ def main() -> int:
     except (OSError, json.JSONDecodeError):
         return 0
 
-    agent_id = claude_agent_id(repo_root, agents)
+    # Resolve the agent by ACTUAL cwd first (the router root may be the shared
+    # pantheon one), falling back to agents.json cwd matching.
+    agent_id = portfolio_agent_for_cwd(str(cwd)) or claude_agent_id(repo_root, agents)
     sup = supervisor_mode()
 
     # Register handshake + heartbeat (no caffeinator, no fs-watcher — ADR-024).

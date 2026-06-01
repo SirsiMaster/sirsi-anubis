@@ -66,5 +66,18 @@ class TestShouldArm(unittest.TestCase):
         self.assertFalse(hook.should_arm("", "on", runner=fake_runner(1, "")))
 
 
+class TestPortfolioAgentForCwd(unittest.TestCase):
+    def test_pantheon(self):
+        self.assertEqual(hook.portfolio_agent_for_cwd("/Users/x/Development/sirsi-pantheon/cmd"), "claude-pantheon")
+
+    def test_other_repos(self):
+        self.assertEqual(hook.portfolio_agent_for_cwd("/Users/x/Development/assiduous"), "claude-assiduous")
+        self.assertEqual(hook.portfolio_agent_for_cwd("/Users/x/Development/FinalWishes/web"), "claude-finalwishes")
+
+    def test_bare_home_no_match(self):
+        # Bare home (no portfolio repo in path) => None, caller falls back.
+        self.assertIsNone(hook.portfolio_agent_for_cwd("/Users/x"))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
