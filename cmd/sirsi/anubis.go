@@ -621,12 +621,33 @@ func runAnubisMirror(cmd *cobra.Command, args []string) error {
 	output.Banner()
 	output.Header("Duplicate File Detection")
 
+	// Default to the user's home directory when no path is given, matching how
+	// `sirsi scan` defaults. Without this, mirror.Scan returns "no paths
+	// specified" and the discarded error left res nil → panic on first deref.
+	paths := args
+	if len(paths) == 0 {
+		if home, err := os.UserHomeDir(); err == nil {
+			paths = []string{home}
+		}
+	}
+
 	stopSpin := output.Spinner("Scanning for duplicate files...")
-	opts := mirror.ScanOptions{Paths: args, DryRun: true}
-	res, _ := mirror.Scan(opts)
+	opts := mirror.ScanOptions{Paths: paths, DryRun: true}
+	res, err := mirror.Scan(opts)
 	stopSpin()
 
 	elapsed := time.Since(start)
+
+	if err != nil || res == nil {
+		cr := &output.CommandResult{Command: "sirsi duplicates", Duration: elapsed}
+		cr.Summary = "Duplicate scan could not run"
+		if err != nil {
+			cr.AddWarning("scan error: %v", err)
+		}
+		cr.AddNextAction("sirsi duplicates ~/Downloads", "Scan a specific directory")
+		cr.Render()
+		return nil
+	}
 
 	cr := &output.CommandResult{
 		Command:  "sirsi duplicates",
