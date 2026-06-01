@@ -23,7 +23,7 @@ Registered agents describe *who can be woken*. Threads describe *which sessions 
 
 1. Determine or declare its `agent_id`.
 2. Register a `thread_id` once at startup.
-3. Heartbeat while alive (periodically or on each work step).
+3. **Run a heartbeat loop while alive** — a persistent wake-loop that watches the inbox until the thread closes. Each surface uses its own mechanism; the contract is identical (see "Heartbeat Loop" below).
 4. Watch its inbox and either work, queue, or block.
 5. Close the thread at the end of the session.
 
@@ -37,6 +37,24 @@ sirsi thread close --thread thr-XXXX
 ```
 
 Surfaces are model-neutral: `claude`, `codex`, `gemini`, `gemma`, `qwen`, `mcp`, `api`, `webhook`, `worker`. Missing/invalid registration is treated as a local-node health problem in `sirsi router node-status`.
+
+### Heartbeat Loop (mandatory from register → close)
+
+A registered thread that is not looping is invisible to its own inbox — items addressed to it sit unread until the next manual `ctr`. The heartbeat loop is what makes registration mean "alive and watching," not just "known." It is the same primitive across every surface; only the implementation differs:
+
+| Surface | Heartbeat mechanism |
+| :--- | :--- |
+| `claude` | **`/loop`** — self-paced, watching the inbox; arm a file Monitor on `items/` and a fallback ScheduleWakeup. This IS the Claude heartbeat. |
+| `codex` | Codex's native heartbeat worker (already built in). |
+| `gemini`/`gemma`/`qwen` | Surface-native loop, or fall back to `sirsi router daemon`. |
+| `mcp`/`api`/`webhook`/`worker` | `sirsi router daemon` or the resident launch agent. |
+
+Rules:
+
+- **Start the loop at registration, stop it only at `sirsi thread close`.** Registered-but-not-looping is a node-health failure.
+- The loop's job is minimal: pull the inbox, act on or queue new items, emit a `sirsi thread heartbeat`, sleep. It is not a work driver — it is a watcher.
+- Prefer event-driven waking (file Monitor on `items/`) over fixed polling; keep a long fallback tick so the loop survives a missed event.
+- One loop per thread. De-registering (`thread close`) is the only clean way to end it.
 
 ## Protocol
 
