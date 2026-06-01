@@ -51,6 +51,24 @@ func EnsureRoot(root string) error {
 	return os.MkdirAll(itemsDir(root), 0o755)
 }
 
+// quoteYAML wraps a value in double quotes and escapes embedded quotes,
+// backslashes, and newlines so titles/agent ids containing YAML-sensitive
+// characters (colons, leading -, &, *, !, |, etc.) round-trip cleanly.
+func quoteYAML(v string) string {
+	r := strings.NewReplacer(`\`, `\\`, `"`, `\"`, "\n", `\n`, "\r", `\r`)
+	return `"` + r.Replace(v) + `"`
+}
+
+// unquoteYAML reverses quoteYAML. Values that aren't double-quoted pass through.
+func unquoteYAML(v string) string {
+	if len(v) < 2 || v[0] != '"' || v[len(v)-1] != '"' {
+		return v
+	}
+	inner := v[1 : len(v)-1]
+	r := strings.NewReplacer(`\"`, `"`, `\n`, "\n", `\r`, "\r", `\\`, `\`)
+	return r.Replace(inner)
+}
+
 // Send writes a new open item from→to and returns its ID (filename stem).
 func Send(root, from, to, title, instructions string) (string, error) {
 	if from == "" || to == "" {
@@ -73,7 +91,7 @@ opened: %s
 ## Instructions
 
 %s
-`, from, to, title, now.Format(time.RFC3339), strings.TrimSpace(instructions))
+`, quoteYAML(from), quoteYAML(to), quoteYAML(title), now.Format(time.RFC3339), strings.TrimSpace(instructions))
 	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
 		return "", err
 	}
@@ -190,7 +208,7 @@ func parse(id, content string) (Item, error) {
 			continue
 		}
 		k = strings.TrimSpace(k)
-		v = strings.TrimSpace(v)
+		v = unquoteYAML(strings.TrimSpace(v))
 		switch k {
 		case "from":
 			it.From = v

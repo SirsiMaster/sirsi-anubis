@@ -17,10 +17,11 @@ export PATH="$HOME/.local/bin:/Applications/Codex.app/Contents/Resources:/opt/ho
 SIRSI="$HOME/.local/bin/sirsi"
 CLAUDE_BIN="$HOME/.local/bin/claude"
 CODEX_BIN="/Applications/Codex.app/Contents/Resources/codex"
+LOCK_ROOT="$ROUTER_ROOT/locks"
 
 ts() { date "+%Y-%m-%dT%H:%M:%S%z"; }
 
-mkdir -p "$(dirname "$LOG")"
+mkdir -p "$(dirname "$LOG")" "$LOCK_ROOT"
 
 # cd into the repo upfront so `sirsi` commands can locate the router via
 # FindRepoRoot() — launchd's default cwd is `/`, which silently breaks pull.
@@ -29,6 +30,68 @@ cd "$REPO_ROOT" || { echo "[$(ts)] dispatch.sh exit — cannot cd to $REPO_ROOT"
 # Agents this host claims. Keep this explicit so launchd does not pretend to
 # deliver to agents that have no local headless wake path.
 AGENTS=(claude-pantheon codex-pantheon)
+
+agent_lock_dir() { printf '%s/dispatch-%s.lock' "$LOCK_ROOT" "$1"; }
+
+agent_is_running() {
+  agent="$1"
+  lock_dir="$(agent_lock_dir "$agent")"
+  pid_file="$lock_dir/pid"
+  [ -d "$lock_dir" ] || return 1
+  if [ -f "$pid_file" ]; then
+    pid="$(cat "$pid_file" 2>/dev/null || true)"
+    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+      return 0
+    fi
+  fi
+  rm -rf "$lock_dir"
+  return 1
+}
+
+start_agent_worker() {
+  agent="$1"
+  prompt="$2"
+  lock_dir="$(agent_lock_dir "$agent")"
+
+  if agent_is_running "$agent"; then
+    echo "[$(ts)] $agent skipped: worker already running (lock=$lock_dir)" >> "$LOG"
+    return 2
+  fi
+  if ! mkdir "$lock_dir" 2>/dev/null; then
+    if agent_is_running "$agent"; then
+      echo "[$(ts)] $agent skipped: worker already running (lock=$lock_dir)" >> "$LOG"
+      return 2
+    fi
+    echo "[$(ts)] $agent skipped: lock contention at $lock_dir" >> "$LOG"
+    return 2
+  fi
+
+  case "$agent" in
+    claude-*)
+      if [ ! -x "$CLAUDE_BIN" ]; then
+        echo "[$(ts)] $agent blocked: claude CLI not executable at $CLAUDE_BIN" >> "$LOG"
+        rm -rf "$lock_dir"
+        return 1
+      fi
+      ( printf '%s\n' "$prompt" | "$CLAUDE_BIN" --print --permission-mode auto >> "$LOG" 2>&1; rm -rf "$lock_dir" ) &
+      ;;
+    codex-*)
+      if [ ! -x "$CODEX_BIN" ]; then
+        echo "[$(ts)] $agent blocked: Codex CLI not executable at $CODEX_BIN" >> "$LOG"
+        rm -rf "$lock_dir"
+        return 1
+      fi
+      ( printf '%s\n' "$prompt" | "$CODEX_BIN" exec -C "$REPO_ROOT" --sandbox workspace-write - >> "$LOG" 2>&1; rm -rf "$lock_dir" ) &
+      ;;
+    *)
+      echo "[$(ts)] $agent blocked: no dispatch branch for agent family" >> "$LOG"
+      rm -rf "$lock_dir"
+      return 1
+      ;;
+  esac
+  echo "$!" > "$lock_dir/pid"
+  return 0
+}
 
 dispatched=0
 pull_errors=0
@@ -46,15 +109,10 @@ for agent in "${AGENTS[@]}"; do
   ids=$(echo "$pull_out" | awk '/• /{print $2}')
 
   # --- Legacy push: state.json pending[<agent>] ---
-  legacy_ids=$(python3 -c "
-import json, sys
-try:
-    s = json.load(open('$ROUTER_ROOT/state.json'))
-    for x in s.get('pending', {}).get('$agent', []):
-        print(x)
-except Exception:
-    pass
-" 2>/dev/null)
+  legacy_ids=""
+  if command -v jq >/dev/null 2>&1; then
+    legacy_ids=$(jq -r --arg agent "$agent" '.pending[$agent][]? // empty' "$ROUTER_ROOT/state.json" 2>/dev/null)
+  fi
 
   all_ids=$(printf '%s\n%s\n' "$ids" "$legacy_ids" | grep -v '^$' | sort -u)
   [ -z "$all_ids" ] && continue
@@ -71,26 +129,10 @@ $all_ids
 Work only those addressed items. Write the required router review/decision/completion artifacts, update state.json, and stop. If a blocker prevents work, write a blocker artifact instead of looping."
 
   cd "$REPO_ROOT" || continue
-  case "$agent" in
-    claude-*)
-      if [ ! -x "$CLAUDE_BIN" ]; then
-        echo "[$(ts)] $agent blocked: claude CLI not executable at $CLAUDE_BIN" >> "$LOG"
-        continue
-      fi
-      echo "$prompt" | "$CLAUDE_BIN" --print --permission-mode auto >> "$LOG" 2>&1 &
-      ;;
-    codex-*)
-      if [ ! -x "$CODEX_BIN" ]; then
-        echo "[$(ts)] $agent blocked: Codex CLI not executable at $CODEX_BIN" >> "$LOG"
-        continue
-      fi
-      echo "$prompt" | "$CODEX_BIN" exec -C "$REPO_ROOT" --sandbox workspace-write - >> "$LOG" 2>&1 &
-      ;;
-    *)
-      echo "[$(ts)] $agent blocked: no dispatch branch for agent family" >> "$LOG"
-      continue
-      ;;
-  esac
+  start_agent_worker "$agent" "$prompt"
+  start_rc=$?
+  [ $start_rc -eq 1 ] && continue
+  [ $start_rc -eq 2 ] && continue
   if ! "$SIRSI" router ack "$agent" $all_ids >> "$LOG" 2>&1; then
     echo "[$(ts)] $agent warning: failed to ack legacy pending ids" >> "$LOG"
   fi

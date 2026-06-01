@@ -121,7 +121,7 @@ func ModuleTier(module string) CoverageTier {
 // tierAssignments maps modules to their testability tier.
 // Tier A (80%): safety-critical or pure logic
 // Tier B (50%): mixed I/O, default for unknown modules
-// Tier C (30%): heavy interactive/OS coupling (bubbletea TUI, dashboards)
+// Tier C (30%): heavy interactive/OS coupling (native GUI, dashboards)
 var tierAssignments = map[string]CoverageTier{
 	// Tier A — pure or safety-critical
 	"cleaner": TierA,

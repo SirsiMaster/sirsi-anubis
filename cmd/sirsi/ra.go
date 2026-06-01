@@ -504,7 +504,7 @@ var raWatchCmd = &cobra.Command{
   sirsi ra watch         Launch the command center
   sirsi ra deploy        Deploy agents (auto-opens watch in a new window)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return output.LaunchDashboard()
+		return fmt.Errorf("ra watch TUI is sunset; the interactive surface is the forthcoming native macOS app (ADR-018)")
 	},
 }
 

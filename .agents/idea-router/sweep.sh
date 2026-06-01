@@ -52,22 +52,29 @@ done
 
 # 4. Active CTR claude threads must have a live watcher (the adopt-without-
 #    watcher bug we fixed 2026-05-31). Reaper runs implicitly on `thread list`.
-"$SIRSI" thread list --json 2>/dev/null | python3 -c "
-import json, sys, os
-try:
-    threads = json.load(sys.stdin)
-except Exception:
-    print('thread list parse failed', file=sys.stderr); sys.exit(1)
-for t in threads:
-    th = t.get('thread') or {}
-    if th.get('status') != 'active': continue
-    if not th.get('agent_id','').startswith('claude-'): continue
-    if t.get('idle_seconds', 1e9) > 600: continue  # stale anyway; reaper will catch
-    tid = th.get('thread_id')
-    pf = f'/tmp/sirsi-router-watch-{tid}.pid'
-    if not os.path.exists(pf):
-        print(f'thread {tid} ({th.get(\"agent_id\")}) active but no watcher pidfile')
-" 2>&1 | while IFS= read -r line; do fail "$line"; done
+if command -v jq >/dev/null 2>&1; then
+  "$SIRSI" thread list --json 2>/dev/null | jq -r '
+    .[]
+    | select(.thread.status == "active")
+    | select(.thread.agent_id | startswith("claude-"))
+    | select(.idle_seconds <= 600)
+    | [.thread.thread_id, .thread.agent_id]
+    | @tsv
+  ' 2>/dev/null | while IFS=$'\t' read -r tid agent_id; do
+    pf="/tmp/sirsi-router-watch-$tid.pid"
+    if [ ! -f "$pf" ]; then
+      fail "thread $tid ($agent_id) active but no watcher pidfile"
+    fi
+  done
+else
+  fail "jq missing; cannot verify active thread watcher coverage"
+fi
+
+# 4.5. Refresh process awareness. Discovery registers mappable repo-launched
+#      agent sessions; scout records every visible PID into processes.json.
+#      Both are read-only except discover's safe registration of mappable agents.
+"$SIRSI" thread discover --json >/dev/null 2>&1 || fail "thread discover failed"
+"$SIRSI" thread scout --json >/dev/null 2>&1 || fail "thread scout failed"
 
 # 5. Probe round-trip: send → confirm seen by dispatcher → close
 probe_title="sweep-probe-$(date +%s)"
