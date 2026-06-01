@@ -33,7 +33,7 @@ This index tracks **all** architectural decisions for the Sirsi Pantheon ecosyst
 | [ADR-021](ADR-021-DEITIES-NOT-SINGLE-REPO.md) | Deities Must Not Assume Single-Repo — Osiris workstation-scoping; scope sourced from CTR registry, not process cwd | **Proposed** | 2026-05-31 |
 | [ADR-022](ADR-022-CTR-OS-TRUTH-LIVENESS.md) | CTR Liveness Is OS Truth, Not Heartbeat Recency — terminal `reaped` state, zombie-aware reaper, idempotent registration | **Accepted** | 2026-06-01 |
 | [ADR-023](ADR-023-BINARY-VERSION-CONTRACT.md) | One Build-Version Contract + Local Drift Detection — `internal/version` single source, unified ldflags, `internal/selfupdate` D2/D3 scan, `sirsi doctor` binary-drift finding | **Accepted** | 2026-06-01 |
-| [ADR-024](ADR-024-ONE-WATCHER-PER-SURFACE.md) | One Watcher Per Surface — Router-Prescribed Heartbeat — register becomes a handshake returning the surface's canonical watcher; stops auto-spawning fs-watcher; retires 3-heartbeat accretion | **Proposed** | 2026-06-01 |
+| [ADR-024](ADR-024-ONE-WATCHER-PER-SURFACE.md) | One Watcher Per Surface — Router-Prescribed Heartbeat — register handshake returns surface's canonical watcher; one inbox (`items/`); idempotent re-arm on OS truth | **Accepted** | 2026-06-01 |
 
 ---
 
@@ -56,7 +56,7 @@ This index tracks **all** architectural decisions for the Sirsi Pantheon ecosyst
 - ADR-021: Deities Must Not Assume Single-Repo *(proposed — Osiris workstation-scoping)*
 - ADR-022: CTR Liveness Is OS Truth, Not Heartbeat Recency *(accepted — reaped-is-terminal, zombie-aware reaper)*
 - ADR-023: One Build-Version Contract + Local Drift Detection *(accepted — single `internal/version`, `sirsi doctor` binary-drift)*
-- ADR-024: One Watcher Per Surface — Router-Prescribed Heartbeat *(proposed — register handshake returns the surface's canonical watcher; one heartbeat per thread)*
+- ADR-024: One Watcher Per Surface — Router-Prescribed Heartbeat *(accepted — register handshake returns the surface's canonical watcher; one inbox; one heartbeat per thread)*
 
 ### Ghost Detection & Indexing
 - ADR-002: Ka Ghost Detection
@@ -101,7 +101,7 @@ This index tracks **all** architectural decisions for the Sirsi Pantheon ecosyst
 | ADR-021 | **Proposed** — Deities Must Not Assume Single-Repo (Osiris Workstation-Scoping) |
 | ADR-022 | **Accepted** — CTR Liveness Is OS Truth, Not Heartbeat Recency |
 | ADR-023 | **Accepted** — One Build-Version Contract + Local Drift Detection |
-| ADR-024 | **Proposed** — One Watcher Per Surface — Router-Prescribed Heartbeat |
+| ADR-024 | **Accepted** — One Watcher Per Surface — Router-Prescribed Heartbeat |
 | ADR-024+ | Next available |
 
 > **Last updated:** June 1, 2026 — ADR-023 **accepted**: one build-version contract (`internal/version`) replaces seven scattered `var version` literals; ldflags unified across all binaries; `internal/selfupdate` detects sibling (D2) and PATH (D3) drift locally with no network; `sirsi doctor` emits a `binary-drift` finding that surfaces in the SessionStart health line. Fixes the CTR deploy-drift class behind ADR-022 (`docs/ADR-023-BINARY-VERSION-CONTRACT.md`).
