@@ -687,3 +687,18 @@ The user's question "does it work" was the single highest-leverage prompt of the
 **Canon:** ADR-INDEX (+ADR-026 Proposed, 24→25, next 027), CHANGELOG (Unreleased/Added). Routed to claude-pantheon for review (item `20260602-021743`, type=review). Design-phase only — no code in either lane until codex + claude-pantheon bless the contract shape; then I implement steps 1-3 (contract+endpoint+verb), they implement 4-5 (surface render).
 
 **Drift caught live:** the `sirsi` on PATH is v0.21.0 (no `router send --type` flag) while the repo is v0.22.0-beta — the exact ADR-023 binary-drift class. Flagged in the review item for the Decision-5 stale-Homebrew rebuild on claude-pantheon's ADR-024 follow-up plate; not self-fixed (its lane).
+
+## 2026-06-02 — ADR-025 completed: Thoth-gated exit + suspend/resume/reconcile (R3)
+
+**Context:** Core ADR-025 (`414142f`) had landed the `suspended` status and `SuspendThread`/`ResumeThread` lib primitives with 6 tests. This session finished R3 of the always-on supervisor: the CLI verbs, the SessionStart reconciliation gate, the exit hooks, and the 3 remaining acceptance tests.
+
+**Built:**
+- **`ReconcileExits`** (`internal/router/threads.go`) — the authoritative SessionStart gate (ADR-025 §4). Pure, host- and agent-scoped, with an injected `RetroSyncFn` (Rule A16). Stale-active → heal in place to suspended after retro sync; reaped (terminal, never revived per ADR-022) → mint a suspended successor carrying `reaped_from` if memory is recoverable, else a visible `UNRECOVERABLE` warning. Idempotent via `hasSuccessorFor` + a 24h `ReconcileReapedLookback` so SessionStart never re-mints or re-warns forever.
+- **CLI verbs** (`cmd/sirsi/threadsuspend.go`): `thread suspend` (`--self`/`--thread`, `thoth sync` first for a fresh `thoth_ref`, snapshots owned open items from `state.json` Pending + resume prompt, kills the fs-watcher), `thread resume` (restores owned items, prints resume prompt, returns the ADR-024 `WatcherFor` spec to re-arm), `thread reconcile` (`--agent`, reaps dead PIDs first, then `ReconcileExits`; `SIRSI_SUPERVISOR=0` skips the managed action). `bestEffortThothSync` returns (commit-ref, ok) where ok = capture succeeded — the honest signal gating successor-vs-warn.
+- **Hooks** (user-scope `~/.claude/settings.json`, ADR-024 §4 default-on): new `SessionEnd` → `thoth sync` + `thread suspend --self` (best-effort, visible error — SessionEnd cannot block); `SessionStart` 3rd entry → `thread reconcile --agent <id>` (the guaranteed gate). Both gated by `SIRSI_SUPERVISOR=0`.
+
+**Tests:** +3 reconcile acceptance tests (stale-in-place, reaped-successor-then-warn + idempotency, host/agent scoping). 9 ADR-025 tests total, `go test -race ./internal/router` green; `go build ./...` exit 0. Verbs smoke-tested register→suspend→resume→close on a throwaway thread with the freshly-built binary.
+
+**Deviation flagged for codex:** re-`register` matching a suspended record currently mints a *fresh* thread (codified by the shipped core test `TestRegisterThread_BypassesSuspendedFastPath`) rather than auto-adopting via the resume transition as ADR-025 §1 describes. Explicit `sirsi thread resume` is the supported resume path. Left as-is to avoid changing codex-reviewed core behavior; routed to codex-pantheon for a ruling.
+
+**Operational note:** the PATH-installed `sirsi` is killed with exit 137 on a trivial `thread heartbeat` — the freshly-built binary works. Confirms ADR-023 binary drift; the user-scope hooks call PATH `sirsi`, so they only become functional after the rebuild+install follow-up.

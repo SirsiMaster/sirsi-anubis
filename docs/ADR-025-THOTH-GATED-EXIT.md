@@ -7,6 +7,15 @@ ADR-024 which covered R1/R2/R4/R5). codex review round 1 = *changes-requested*
 (`20260601-codex-pantheon-adr025-rev2-confirm`). Implementation (Go + hook)
 owned by claude-pantheon, queued after its ADR-024 lane.
 
+**Implemented** — June 2, 2026. Core (`414142f`): `suspended` status + `Suspend`/`Resume`
++ heartbeat-reject + reaper-skip + register-bypass. This lane: `sirsi thread
+suspend`/`resume`/`reconcile` verbs (`cmd/sirsi/threadsuspend.go`), `ReconcileExits`
+(`internal/router/threads.go`) as the SessionStart gate, and the user-scope
+`SessionEnd` (sync + `suspend --self`) + `SessionStart` (`reconcile --agent`) hooks.
+9 ADR-025 `go test -race` tests green. Deviation flagged for codex: re-`register`
+matching a suspended record mints a fresh thread (per the shipped core test) rather
+than auto-adopting via the resume transition — explicit `resume` is the supported path.
+
 ## Context
 A27 binds a thread's life to `register → close`. ADR-024 made *birth* and
 *liveness* correct. **Exit is still ungoverned.** R3 of the supervisor vision

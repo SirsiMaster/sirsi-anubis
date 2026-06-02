@@ -374,6 +374,159 @@ func ResumeThread(routerRoot, threadID string) (*Thread, error) {
 	return t, nil
 }
 
+// ReconcileReapedLookback bounds how far back a reaped record is still eligible
+// for successor-minting / unrecoverable-warning during SessionStart reconciliation.
+// Reaped records older than this are presumed already handled (or about to be
+// pruned) and are left alone — this keeps reconciliation from re-warning forever
+// about ancient post-reboot reaps.
+const ReconcileReapedLookback = 24 * time.Hour
+
+// RetroSyncFn retroactively captures memory for a thread that exited without
+// syncing it, returning the resumable payload (with a fresh ThothRef) and whether
+// the session transcript was still recoverable. It is injected so reconciliation
+// stays pure and host-independent (Rule A16): the CLI wires it to `sirsi thoth
+// sync` + an on-disk transcript check; tests stub it. For the stale-active heal
+// the bool is ignored (the transcript is the live session's, always present); for
+// a reaped record it gates whether a successor can be minted at all.
+type RetroSyncFn func(t *Thread) (payload *SuspendPayload, transcriptAvailable bool)
+
+// ReconcileAction names the healing transition reconciliation performed for one
+// dirty-exit record.
+type ReconcileAction string
+
+const (
+	// ReconcileSuspendedStale: a stale active record (the /clear / soft-exit case)
+	// was healed in place — retro-synced then transitioned active→suspended.
+	ReconcileSuspendedStale ReconcileAction = "suspended-stale"
+	// ReconcileMintedSuccessor: a reaped (terminal) record got a NEW suspended
+	// successor carrying reaped_from; the reaped record stays reaped (ADR-022).
+	ReconcileMintedSuccessor ReconcileAction = "minted-successor"
+	// ReconcileUnrecoverable: a reaped record had no recoverable transcript, so no
+	// successor could be minted. The caller MUST surface this visibly — memory was
+	// lost, never silently.
+	ReconcileUnrecoverable ReconcileAction = "warn-unrecoverable"
+)
+
+// ReconcileOutcome is one action ReconcileExits took, in declaration order.
+type ReconcileOutcome struct {
+	ThreadID    string          `json:"thread_id"`              // the dirty record acted on
+	AgentID     string          `json:"agent_id"`               // its agent
+	Action      ReconcileAction `json:"action"`                 // what healing happened
+	SuccessorID string          `json:"successor_id,omitempty"` // minted suspended thread (minted-successor only)
+}
+
+// hasSuccessorFor reports whether a suspended successor already exists for the
+// given reaped thread id — the idempotency guard that stops every SessionStart
+// from minting a fresh successor for the same reaped record.
+func (r *ThreadRegistry) hasSuccessorFor(reapedID string) bool {
+	for _, t := range r.Threads {
+		if t == nil || t.SuspendPayload == nil {
+			continue
+		}
+		if t.SuspendPayload.ReapedFrom == reapedID {
+			return true
+		}
+	}
+	return false
+}
+
+// ReconcileExits heals the two dirty-exit shapes ADR-025 §4 defines, on this host
+// (and optionally scoped to one agent — each surface heals its own lineage at its
+// own SessionStart, rather than one start sweeping every agent). It is the
+// authoritative gate: SessionEnd is best-effort, but this always runs at start.
+//
+//   - Stale active record (heartbeat quiet, never transitioned): healed IN PLACE
+//     to suspended after a retro sync. It was never terminal, so this is legal —
+//     ADR-022's terminal invariant is untouched.
+//   - Reaped record (terminal, hard-kill case): NEVER revived. If the transcript
+//     is recoverable, a new suspended SUCCESSOR is minted carrying reaped_from;
+//     otherwise an unrecoverable warning is recorded for the caller to surface.
+//     Idempotent via hasSuccessorFor + a recency lookback.
+//
+// reg is mutated in place; the caller saves it. Outcomes are returned in a
+// deterministic (sorted-id) order for stable output and tests.
+func ReconcileExits(reg *ThreadRegistry, host, agentFilter string, now time.Time, staleAfter time.Duration, retro RetroSyncFn) []ReconcileOutcome {
+	if reg == nil || reg.Threads == nil {
+		return nil
+	}
+	if staleAfter <= 0 {
+		staleAfter = DefaultThreadStaleAfter
+	}
+	if retro == nil {
+		retro = func(*Thread) (*SuspendPayload, bool) { return &SuspendPayload{}, false }
+	}
+	// Snapshot ids: we mint successors into reg.Threads while iterating.
+	ids := make([]string, 0, len(reg.Threads))
+	for id := range reg.Threads {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+
+	var outcomes []ReconcileOutcome
+	for _, id := range ids {
+		t := reg.Threads[id]
+		if t == nil {
+			continue
+		}
+		if host != "" && t.Host != "" && t.Host != host {
+			continue // another machine's process table is unobservable here
+		}
+		if agentFilter != "" && t.AgentID != agentFilter {
+			continue
+		}
+
+		switch {
+		case t.Status == ThreadStatusReaped:
+			if now.Sub(t.LastSeenAt) > ReconcileReapedLookback || reg.hasSuccessorFor(t.ThreadID) {
+				continue // too old, or already healed — idempotent
+			}
+			payload, ok := retro(t)
+			if !ok {
+				outcomes = append(outcomes, ReconcileOutcome{ThreadID: t.ThreadID, AgentID: t.AgentID, Action: ReconcileUnrecoverable})
+				continue
+			}
+			if payload == nil {
+				payload = &SuspendPayload{}
+			}
+			if payload.SuspendedAt.IsZero() {
+				payload.SuspendedAt = now
+			}
+			payload.ReapedFrom = t.ThreadID
+			succ := &Thread{
+				ThreadID:       NewThreadID(),
+				AgentID:        t.AgentID,
+				Surface:        t.Surface,
+				Repo:           t.Repo,
+				Workstream:     t.Workstream,
+				Host:           t.Host,
+				StartedAt:      now,
+				LastSeenAt:     now,
+				Status:         ThreadStatusSuspended,
+				SuspendPayload: payload,
+			}
+			reg.Threads[succ.ThreadID] = succ
+			outcomes = append(outcomes, ReconcileOutcome{ThreadID: t.ThreadID, AgentID: t.AgentID, Action: ReconcileMintedSuccessor, SuccessorID: succ.ThreadID})
+
+		case t.Status == ThreadStatusSuspended || t.Status.IsTerminal():
+			continue // parked or cleanly closed — nothing to heal
+
+		case t.IsStale(now, staleAfter):
+			payload, _ := retro(t) // transcript is the live session's; always present
+			if payload == nil {
+				payload = &SuspendPayload{}
+			}
+			if payload.SuspendedAt.IsZero() {
+				payload.SuspendedAt = now
+			}
+			t.Status = ThreadStatusSuspended
+			t.SuspendPayload = payload
+			t.LastSeenAt = now
+			outcomes = append(outcomes, ReconcileOutcome{ThreadID: t.ThreadID, AgentID: t.AgentID, Action: ReconcileSuspendedStale})
+		}
+	}
+	return outcomes
+}
+
 // ReapedThread records one thread the reaper retired against OS truth.
 type ReapedThread struct {
 	ThreadID string
