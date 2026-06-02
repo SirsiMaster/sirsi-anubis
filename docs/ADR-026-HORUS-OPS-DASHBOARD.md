@@ -164,7 +164,8 @@ flowchart TD
 
 ## Acceptance tests (required before merge; surface owner: claude-pantheon)
 - `GET /api/node-status` returns a `router.NodeStatus` whose `--json` shape is
-  byte-identical to `sirsi router node-status --json` (one read-model, two
+  contract-identical to `sirsi router node-status --json` (same schema; CLI is
+  pretty-printed, HTTP body is compact — one read-model, two
   transports).
 - A thread whose PID is gone/defunct renders `os_state` ≠ alive and is **never**
   counted in `live_thread_count` (ADR-022 honesty, inherited).

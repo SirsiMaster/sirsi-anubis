@@ -207,6 +207,14 @@ func Summarize(ns *router.NodeStatus, max int) OpsSummary {
 
 // containsType reports whether an agent id contains a CLI type token
 // ("claude" or "codex"). Exists so Summarize doesn't pull in strings.
+//
+// v1 CONSTRAINT (codex arch-verify 2026-06-02): substring match works because
+// current agent IDs are all "claude-*" or "codex-*" prefixed (claude-pantheon,
+// codex-finalwishes, etc). If agent naming expands beyond those prefixes,
+// replace this with a prefix match or an explicit agent_type / agent-id
+// mapping before relying on it for auth badges. The risk is a false-positive
+// auth alarm on an agent whose id incidentally contains "claude"/"codex" as a
+// substring (e.g. a future "myclaudething" agent).
 func containsType(agentID, cliType string) bool {
 	// agent ids are "claude-pantheon", "codex-finalwishes", etc.
 	if len(cliType) == 0 || len(agentID) < len(cliType) {

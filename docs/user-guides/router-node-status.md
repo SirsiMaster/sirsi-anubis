@@ -11,7 +11,7 @@ ops pane render the same read-model.
 
 ```sh
 sirsi router node-status            # styled human render (default)
-sirsi router node-status --json     # raw JSON (byte-identical to the HTTP endpoint)
+sirsi router node-status --json     # raw JSON (contract-identical to the HTTP endpoint)
 ```
 
 The verb is **read-only**: it never registers a thread, writes the inbox, or
@@ -63,7 +63,7 @@ mutates registry state. Safe to run from any context, including audit scripts.
 
 | Flag | Default | Description |
 | :--- | :--- | :--- |
-| `--json` | `false` | Output raw JSON. The shape is **byte-identical** to `GET /api/node-status`; safe to pipe to `jq`. |
+| `--json` | `false` | Output raw JSON. The shape is **contract-identical** to `GET /api/node-status` (same schema; the CLI pretty-prints with 2-space indent, the HTTP body uses compact encoding). Safe to pipe to `jq`. |
 
 ## JSON shape
 

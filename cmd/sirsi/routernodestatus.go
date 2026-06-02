@@ -10,8 +10,10 @@ import (
 )
 
 // sirsi router node-status [--json] — the Horus ops-view operator surface
-// (ADR-026). Wraps router.CollectNodeStatus(); --json output is byte-identical
-// to GET /api/node-status (one read-model, two transports).
+// (ADR-026). Wraps router.CollectNodeStatus(); --json output is
+// contract-identical to GET /api/node-status (same schema; CLI uses
+// pretty-printed JSON, the HTTP body uses compact encoding — codex
+// arch-verify 2026-06-02 PASS).
 //
 // Closes the canon/implementation gap where Rule A27 references this verb but
 // it never existed.
