@@ -5,25 +5,6 @@
 
 ---
 
-## Entry 016 — 2026-03-23 16:25 — "First, Do No Harm"
-
-**Context**: Session 11 — experienced IDE degradation firsthand during a multi-hour agent session.
-
-**Insight**: Three Antigravity IDE plugin workers consumed 219% CPU (99.1% + 74.3% + 45.4%), starving the UI renderer and making buttons unclickable. System had 88% free RAM — this was purely CPU contention, not memory pressure. Pantheon's Guard module cannot currently detect CPU pressure or IDE degradation.
-
-**Decision**: Created ADR-006 (Self-Aware Resource Governance) with five key components:
-1. Guard gets CPU pressure awareness (not just RAM)
-2. Self-limiting execution ('Yield Mode') — check load before heavy ops
-3. IDE Health Check MCP tool — agents self-diagnose their own impact
-4. Inter-deity referral for resource issues (ADR-005 principle #7)
-5. New Rule A16: Pantheon tools MUST NOT make a bad situation worse
-
-**Implementation**: Built `internal/yield/` module with `ShouldYield()` and `WarnIfHeavy()`. Uses load average vs core count ratio. 4 tests passing. Ready to wire into all heavy commands.
-
-**Learning**: We discovered this by dogfooding. If we hadn't experienced it ourselves, users would have. This is why dogfooding matters.
-
----
-
 ## Entry 017 — 2026-03-24 20:30 — "The Boss Fight: 99% Coverage and the Interface Wall"
 
 **Context**: Hitting the 90% weighted coverage wall and wiring the Antigravity bridge into the CLI.
@@ -674,3 +655,35 @@ The user's question "does it work" was the single highest-leverage prompt of the
 **Deployed + Phase 1.5:** built from the working tree and installed to `~/.local/bin/sirsi` (the install therefore also carries the parallel scout-lane's uncommitted `thread scout`). The hourly `sweep.sh` — already wired by the scout/runtime-restore lane to call `discover` + `scout` — runs PASS. ADR-021 (`dd36ccf`, parallel lane) consumes this primitive: workstation-scoped deities (Osiris et al.) source their repo set from CTR discovery, never `cwd`.
 
 **Open / next:** Phase 2 (SessionStart hook → `discover --self`) approved, not yet wired. Phase 3 spike pending. Coupling to flag: the installed binary includes the scout lane's uncommitted code — that lane should commit `threadscout.go` + `sweep.sh` + friends and own a clean rebuild-install.
+
+## Entry 036 — 2026-06-01 12:28 — Session Compact (COMPACT)
+
+> Persisted via `thoth compact` before context compression.
+
+**Decisions**:
+- {"session_id":"bafb166f-7d28-44f4-872f-6c2c49b47752","transcript_path":"/Users/thekryptodragon/.claude/projects/-Users-thekryptodragon/bafb166f-7d28-44f4-872f-6c2c49b47752.jsonl","cwd":"/Users/thekryptodragon/Development/sirsi-pantheon","hook_event_name":"PreCompact","trigger":"manual","custom_instructions":null}
+- Router snapshot:
+- active topics: ra-horus-router-hypervisor-canon, finalwishes-tier1-ga, finalwishes-dependabot-sweep, finalwishes-owner-readiness, finalwishes-lob-google-photos, finalwishes-rag-architecture, finalwishes-mobile-architecture, pantheon-mac-native-cli-pivot, lean-af-cross-repo-cleanup-sweep
+- completed topics: 41
+- last Codex read: 2026-06-01T16:24:36Z
+- last Claude read: 2026-06-01T16:12:19Z
+- pending: none
+- dispatch ledger: 2658 bytes, updated 2026-05-21 17:30:56
+
+---
+
+## 2026-06-02 — ADR-026 Horus ops-dashboard (proposed) + R4 capability inventory
+
+**Lane:** claude-home, Horus ops-view content lane. Boundary ratified 2026-06-01 (items `235419`/`235652`): I own the ops-view content + read contract; claude-pantheon owns the surface chrome (CLI/TUI/menubar/macapp). Horus renders INTO their surfaces, not beside them.
+
+**Finding — the gap is exposure, not computation.** `router.CollectNodeStatus()` (`internal/router/nodestatus.go`) already aggregates the entire operator read-model into one `NodeStatus`: registered agents + wake-health, router queue (pending-by-agent / topics / last reads), work-queue dispatch failures, live+stale threads carrying `os_state` OS-truth liveness (ADR-022), daemon health + binary-drift (ADR-023), and claude/codex CLI auth. It is complete and trapped in Go — **not** in the frozen dashboard contract (matrix row *Router ack → MISSING, no `/api/router/*`*), **no** CLI verb (Rule A27 canon references `router node-status`, which does not exist), **no** surface render (menubar hosts the dashboard server but paints none of it; TUI scaffold has no ops pane).
+
+**ADR-026 decision:** promote `NodeStatus` to a frozen additive contract; serve it at typed `GET /api/node-status` (+ `?view=summary` → `OpsSummary` for the menubar); add `sirsi router node-status [--json]` (makes the A27-referenced verb real, --json shape == HTTP body); define menubar/TUI as read-only *projections* of the one read-model (no re-aggregation — the frozen-action-contract principle applied to reads). Read-only endpoint: zero destructive surface, nothing to confirm-gate.
+
+**Challenged the framing (Rule A23):** the resume said "GET /api/horus," but `/api/horus/*` is already the code-graph namespace (`scan/query/report` → `SymbolGraph`/`WorkstationReport`). Reusing it conflates two Horus meanings, so the ops-view is `/api/node-status` (one name → one meaning). Recommended `/api/node-status`; flagged for claude-pantheon to override if their surface ladder needs `/api/horus`.
+
+**R4 inventory:** `docs/HORUS_OPS_READMODEL_R4_INVENTORY.md` — the human-readable form of `watcherspec.go` ("the R4 capability inventory in code"): Part 1 the per-surface watcher-capability matrix (how each surface stays alive), Part 2 the ops read-model source + exposure ledger (what the operator can see vs. what's still trapped). R-mapping confirmed from ADR-025 status line: R1/R2/R4/R5 = ADR-024, R3 = ADR-025.
+
+**Canon:** ADR-INDEX (+ADR-026 Proposed, 24→25, next 027), CHANGELOG (Unreleased/Added). Routed to claude-pantheon for review (item `20260602-021743`, type=review). Design-phase only — no code in either lane until codex + claude-pantheon bless the contract shape; then I implement steps 1-3 (contract+endpoint+verb), they implement 4-5 (surface render).
+
+**Drift caught live:** the `sirsi` on PATH is v0.21.0 (no `router send --type` flag) while the repo is v0.22.0-beta — the exact ADR-023 binary-drift class. Flagged in the review item for the Decision-5 stale-Homebrew rebuild on claude-pantheon's ADR-024 follow-up plate; not self-fixed (its lane).

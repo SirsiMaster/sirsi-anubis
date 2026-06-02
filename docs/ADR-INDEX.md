@@ -2,7 +2,7 @@
 
 This index tracks **all** architectural decisions for the Sirsi Pantheon ecosystem.
 
-**Total ADRs: 24** | **Next available: ADR-026**
+**Total ADRs: 25** | **Next available: ADR-027**
 
 ---
 
@@ -35,6 +35,7 @@ This index tracks **all** architectural decisions for the Sirsi Pantheon ecosyst
 | [ADR-023](ADR-023-BINARY-VERSION-CONTRACT.md) | One Build-Version Contract + Local Drift Detection — `internal/version` single source, unified ldflags, `internal/selfupdate` D2/D3 scan, `sirsi doctor` binary-drift finding | **Accepted** | 2026-06-01 |
 | [ADR-024](ADR-024-ONE-WATCHER-PER-SURFACE.md) | One Watcher Per Surface — Router-Prescribed Heartbeat — register handshake returns surface's canonical watcher; one inbox (`items/`); idempotent re-arm on OS truth | **Accepted** | 2026-06-01 |
 | [ADR-025](ADR-025-THOTH-GATED-EXIT.md) | Thoth-Gated Exit + Resumable Thread Suspend — `suspended` (resumable-but-not-live) carrying memory+plans; `thread suspend`/`resume`; SessionEnd hook; SessionStart reconciliation as the authoritative gate (R3) | **Accepted** | 2026-06-01 |
+| [ADR-026](ADR-026-HORUS-OPS-DASHBOARD.md) | Horus Ops-Dashboard — one typed read-model (`router.NodeStatus`) over `GET /api/node-status` + `sirsi router node-status` verb; menubar/TUI read-only projections; realizes ADR-015 "dashboard is Horus" (read companion to the frozen action contract) | **Proposed** | 2026-06-02 |
 
 ---
 

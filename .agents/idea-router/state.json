@@ -53,40 +53,16 @@
     "architecture-share-fsevents-router-review",
     "restart-pantheon-after-crash-agent-guardrails"
   ],
-  "last_claude_read": "2026-06-01T02:07:48Z",
-  "last_codex_read": "2026-06-01T01:56:13Z",
+  "last_claude_read": "2026-06-02T02:17:43Z",
+  "last_codex_read": "2026-06-01T23:06:00Z",
   "pending": {
     "claude": [],
-    "claude-assiduous": [
-      "20260522-024136-claude-pantheon-claude-assiduous-sirsi-router-ack-is-live-migration-helper-for-legacy-pending",
-      "20260522-024530-claude-pantheon-claude-assiduous-please-ack-adoption-of-caffeinate-contract-sirsi-router-ack-",
-      "20260522-claude-pantheon-route-assiduous-impl",
-      "20260526-163510-claude-pantheon-claude-assiduous-lean-af-cleanup-assiduous-3-pid-files-ignore-rules"
-    ],
-    "claude-finalwishes": [
-      "20260522-024136-claude-pantheon-claude-finalwishes-sirsi-router-ack-is-live-migration-helper-for-legacy-pending",
-      "20260522-024530-claude-pantheon-claude-finalwishes-please-ack-adoption-of-caffeinate-contract-sirsi-router-ack-",
-      "20260526-163510-claude-pantheon-claude-finalwishes-lean-af-cleanup-finalwishes-narrow-preserve-rag-legal-dirty-"
-    ],
-    "claude-homebrew-tools": [
-      "20260522-024136-claude-pantheon-claude-homebrew-tools-sirsi-router-ack-is-live-migration-helper-for-legacy-pending",
-      "20260522-024530-claude-pantheon-claude-homebrew-tools-please-ack-adoption-of-caffeinate-contract-sirsi-router-ack-",
-      "20260522-claude-pantheon-route-homebrew-tools-impl",
-      "20260526-163510-claude-pantheon-claude-homebrew-tools-lean-af-cleanup-homebrew-tools-ds-store-ignore"
-    ],
-    "claude-nexus": [
-      "20260522-024136-claude-pantheon-claude-nexus-sirsi-router-ack-is-live-migration-helper-for-legacy-pending",
-      "20260522-024530-claude-pantheon-claude-nexus-please-ack-adoption-of-caffeinate-contract-sirsi-router-ack-",
-      "20260522-claude-pantheon-route-nexus-impl",
-      "20260526-163510-claude-pantheon-claude-nexus-lean-af-cleanup-sirsinexusapp-codex-approved-ready-to-implem"
-    ],
+    "claude-assiduous": [],
+    "claude-finalwishes": [],
+    "claude-homebrew-tools": [],
+    "claude-nexus": [],
     "claude-pantheon": [],
-    "claude-porch-and-alley": [
-      "20260522-024136-claude-pantheon-claude-porch-and-alley-sirsi-router-ack-is-live-migration-helper-for-legacy-pending",
-      "20260522-024530-claude-pantheon-claude-porch-and-alley-please-ack-adoption-of-caffeinate-contract-sirsi-router-ack-",
-      "20260522-claude-pantheon-route-porch-and-alley-impl",
-      "20260526-163510-claude-pantheon-claude-porch-and-alley-lean-af-cleanup-porch-and-alley-tsbuildinfo-ignore-rules"
-    ],
+    "claude-porch-and-alley": [],
     "codex-assiduous": [],
     "codex-finalwishes": [],
     "codex-homebrew-tools": [],
