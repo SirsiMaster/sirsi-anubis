@@ -42,6 +42,30 @@ func bestEffortThothSync(repoRoot string) (ref string, ok bool) {
 	return strings.TrimSpace(string(out)), true
 }
 
+// countUncommitted returns the number of uncommitted (modified/untracked) files
+// in repoRoot via `git status --porcelain`. Read-only — never mutates the tree.
+// Used to surface working-tree state that may be stranded when a thread is reaped
+// (ADR-024 §6 / stranded-work finding; claude-home ruling 053800). 0 on error.
+func countUncommitted(repoRoot string) int {
+	out, err := exec.Command("git", "-C", repoRoot, "status", "--porcelain").Output()
+	if err != nil {
+		return 0
+	}
+	n := 0
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		if strings.TrimSpace(line) != "" {
+			n++
+		}
+	}
+	return n
+}
+
+// reapedClass reports whether a reconcile outcome processed a reaped record —
+// the signal that a thread just died, so any uncommitted WIP may be stranded.
+func reapedClass(a router.ReconcileAction) bool {
+	return a == router.ReconcileMintedSuccessor || a == router.ReconcileUnrecoverable
+}
+
 // ownedOpenItems returns the router item ids still addressed to agentID, so a
 // suspended thread carries its unfinished work into resume (A26 owned items).
 func ownedOpenItems(repoRoot, agentID string) []string {
@@ -280,10 +304,28 @@ suspend/resume always work).`,
 			}
 		}
 
+		// Stranded-work surfacing (ADR-024 §6 / claude-home ruling 053800): when a
+		// reaped thread was freshly reconciled AND the working tree has uncommitted
+		// changes, those changes MAY be stranded from the dead thread. Read-only —
+		// surface for adopt-or-discard; never stash (repo-global, cross-lane harm)
+		// and never attribute (git can't map hunks to threads). A18 is the real
+		// prevention; this is the safety net.
+		reapedFreshly := false
+		for _, o := range outcomes {
+			if reapedClass(o.Action) {
+				reapedFreshly = true
+				break
+			}
+		}
+		strandedN := 0
+		if reapedFreshly {
+			strandedN = countUncommitted(repoRoot)
+		}
+
 		if JsonOutput {
 			enc := json.NewEncoder(os.Stdout)
 			enc.SetIndent("", "  ")
-			return enc.Encode(map[string]any{"healed": len(outcomes), "outcomes": outcomes})
+			return enc.Encode(map[string]any{"healed": len(outcomes), "outcomes": outcomes, "stranded_uncommitted": strandedN})
 		}
 		if len(outcomes) == 0 {
 			fmt.Println("reconcile: no dirty exits to heal")
@@ -298,6 +340,9 @@ suspend/resume always work).`,
 			case router.ReconcileUnrecoverable:
 				fmt.Fprintf(os.Stderr, "⚠ memory UNRECOVERABLE for reaped %s [%s] — no transcript, no successor minted\n", o.ThreadID, o.AgentID)
 			}
+		}
+		if strandedN > 0 {
+			fmt.Fprintf(os.Stderr, "⚠ %d uncommitted file(s) may be stranded from reaped thread(s) — review with `git status`; adopt (commit) or discard explicitly (never auto-stashed)\n", strandedN)
 		}
 		return nil
 	},
