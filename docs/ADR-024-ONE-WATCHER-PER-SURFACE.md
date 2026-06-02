@@ -212,3 +212,106 @@ single sanctioned exception to "register does not spawn a watcher." Rules:
 Refs: PANTHEON_RULES.md A27 (heartbeat loop), A26 (router relay), A24 (autonomy),
 A11/A19 (Spotlight write-amplification context); companion to ADR-022 (CTR
 OS-truth liveness). Resolves the three-heartbeat accretion observed 2026-06-01.
+
+---
+
+## Amendment 1 — Worker-lifecycle gate + reap-key identity (DRAFT)
+
+**Status:** DRAFT — June 2, 2026. Sole writer: claude-pantheon (router CLAIM
+`20260602-024522`, claude-home root-authority). Covers registration-hygiene
+findings (2) and (3) from the 2026-06-01/02 CTR accretion sweep. Finding (1) —
+menubar non-idempotent registration — stays with the surface-chrome source-lock
+holder per ruling `20260602-023813` and is **not** in this amendment's scope.
+Route for review: claude-home + codex-pantheon. **No code lands before codex
+arch-verify** (this is a draft; A12 / Rule 14).
+
+### Context
+
+Two registration defects survived the ADR-024 watcher consolidation and the
+ADR-022 reaper, and both produce the same observable symptom — a registry that
+either balloons with phantom `active` records or reaps live threads:
+
+- **(2) Ephemeral workers register persistent threads.** Ra/router-dispatched
+  `claude --print` workers (and the fs-watcher-spawned `ctr` workers ADR-024 §D2
+  is retiring) are *one-shot, non-interactive* processes. When such a worker runs
+  `sirsi thread register`, it mints a persistent CTR thread that outlives the
+  worker by milliseconds — then the worker exits and the record is left for the
+  reaper. At scale this is a dominant source of phantom records. ADR-024 already
+  classifies surfaces (`watcherspec.go`), but registration itself has **no gate**
+  preventing a non-interactive invocation from registering.
+
+- **(3) The reaper keys on a bare PID.** `internal/router/liveness.go`
+  (`PIDStateOf` → `ps -o stat=`) answers "does PID N exist and is it non-defunct"
+  — but a PID is **not a stable identity**. The OS recycles PIDs, and a session
+  that re-registers gets a *new* anchor PID while a prior record still names the
+  old one. Bare-PID liveness therefore (a) reaps a live thread whose recorded PID
+  was a short-lived intermediate that has since exited, and (b) in the reuse case
+  could read a *recycled* PID belonging to an unrelated process as "alive,"
+  resurrecting a stale record. **Observed live this session:** thread
+  `thr-f78c30cf3088fea3` was reaped within ~60s (`PID 12080 gone`) because the
+  register anchor resolved to a transient shell PID, not the long-lived agent
+  process — the exact (a) failure. This is the highest-confidence systemic bug.
+
+### Decision
+
+**(2) Worker-lifecycle clause (A27 addendum, resident-surface gate).**
+Registration of a *persistent* CTR thread is gated to **interactive / resident
+surfaces** — the surfaces ADR-024's `watcherspec.go` already enumerates
+(`claude`, `codex`, `gemini`/`gemma`/`qwen` interactive; resident `menubar`,
+`tui`, `vscode`/`jetbrains`/`cursor`, `macapp`). Ephemeral Ra/router-dispatched
+`claude --print` (or `-p`) workers and fs-watcher-spawned `ctr` workers **MUST
+NOT** register persistent threads. This is an *interactive-surface gate, not an
+any-invocation gate* (agreed option (a)): a worker may still read/act on the
+router, but it does not enroll as a live node. Stated alongside A27's
+resident-surface clause: *registration means "an interactive or resident surface
+is alive and watching" — a one-shot worker is neither.* The signal already exists
+in code (`isOneShotWorker` in `threaddiscover.go` detects `--print`/`-p`); the
+clause makes refusing-to-register the rule, not just a discover-time skip.
+
+**(3) Reap-key = composite identity, not bare PID (ADR-022 correction).**
+A thread's OS-truth identity is **`(pid, start_time)`** — or equivalently
+`(agent_id, pid, start_time)` — never bare `pid`. `start_time` (process boot
+time) is the cheap generation discriminator: a recycled PID carries a *newer*
+start time, so the composite key mismatches and the record reads `gone` rather
+than being falsely revived; and a record whose recorded `(pid, start_time)` no
+longer matches a live process is `gone` even if that bare PID was reused.
+
+- **Discriminator:** `ps -o lstart= -p <pid>` (BSD/macOS) / `ps -o lstart=`
+  (Linux) — a stable per-process boot timestamp, one cheap `ps` call (no new
+  dependency, same shape as the existing `ps -o stat=` probe).
+- **Capture:** `Thread` records `start_time` (the recorded process's `lstart`) at
+  register time, alongside `pid`. Backward-compatible: a record with an empty
+  `start_time` falls back to today's bare-PID behavior (no regression for
+  pre-amendment records; they age out via prune).
+- **Fix path (post-review):** extend `liveness.go` with a
+  `PIDStateOfWithStart(pid int, startedAt string) PIDState` that returns `gone`
+  when the live PID's `lstart` differs from the recorded one; `ReapDeadThreads`
+  and `RegisterThread`'s idempotency fast-path key on the composite. Injectable
+  per A16, mutex-guarded per A21, exactly like the current prober.
+
+### Acceptance tests (required before merge; owner: claude-pantheon, post-review)
+
+- A `--print`/`-p` worker invoking `thread register` is **refused** (or no-ops
+  with a clear message) and creates no persistent record; an interactive/resident
+  surface registers normally.
+- `ReapDeadThreads` marks a record `reaped` when the live PID's `start_time`
+  differs from the recorded one (recycled-PID case) — proven with an injected
+  prober, no real processes (A16).
+- A record whose `(pid, start_time)` still matches a live process is **not**
+  reaped (no false-positive on a genuinely live thread — the regression that bit
+  `thr-f78c30cf3088fea3`).
+- A pre-amendment record with empty `start_time` retains today's bare-PID
+  semantics (backward-compatible).
+
+### Neith's Triad note (A22)
+
+This is an amendment to an accepted ADR, not a new ADR; the parent ADR-024 and
+companion ADR-022 carry the full Triad. The fix path above is the
+"Recommended Implementation Order"; the `(pid, start_time)` vs bare-`pid` choice
+is the "Key Decision" (rejected alternative: heartbeat-recency-only liveness —
+already rejected by ADR-022 for the zombie case, and insufficient here for the
+reuse case).
+
+Refs: ADR-022 (OS-truth liveness — corrected by finding 3), ADR-024 §D2/§1
+(register handshake, resident surfaces), PANTHEON_RULES.md A27/A26/A16/A21;
+router CLAIM `20260602-024522`, ruling `20260602-023813`.
