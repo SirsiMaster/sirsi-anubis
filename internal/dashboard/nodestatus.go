@@ -25,7 +25,7 @@ const DefaultOpsSummaryMax = 12
 
 // OpsSummary is the bounded menubar projection of router.NodeStatus.
 // It is a pure reduction — every field is derived from the source NodeStatus
-// in dashboardSummarize(); no field is sourced independently. This keeps
+// in Summarize(); no field is sourced independently. This keeps
 // "one read-model" honest even when the menubar's NSMenu can't show the full
 // thread list (claude-pantheon constraint #2 from boundary ack 235652).
 type OpsSummary struct {
@@ -60,10 +60,21 @@ type AgentSummary struct {
 	NeedsLogin   bool   `json:"needs_login,omitempty"`
 }
 
-// dashboardSummarize is the pure reduction NodeStatus → OpsSummary.
+// Summarize is the **exported** pure reduction NodeStatus → OpsSummary.
+//
+// Surfaces (menubar, future macapp) call this directly in-process to avoid the
+// silly serialize→HTTP-loopback→deserialize path when they already have a
+// *router.NodeStatus in hand. It's the same reduction served at
+// GET /api/node-status?view=summary — one read-model, one reducer, no surface
+// re-aggregates (ADR-026 invariant).
+//
 // Bounded by `max` (the agent list is truncated; remainder counted in
-// MoreAgents). Stable, ordered output for diff-rendering by the menubar.
-func dashboardSummarize(ns *router.NodeStatus, max int) OpsSummary {
+// MoreAgents). Stable ordering: pending desc, then live desc, then alpha — for
+// diff-rendering by the menubar without flicker on equal-signal agents. Pass
+// DefaultOpsSummaryMax to use the NSMenu-safe default (12 + overflow row).
+//
+// Pure function — no host side effects, safe to call from any goroutine.
+func Summarize(ns *router.NodeStatus, max int) OpsSummary {
 	if max <= 0 {
 		max = DefaultOpsSummaryMax
 	}
@@ -195,7 +206,7 @@ func dashboardSummarize(ns *router.NodeStatus, max int) OpsSummary {
 }
 
 // containsType reports whether an agent id contains a CLI type token
-// ("claude" or "codex"). Exists so dashboardSummarize doesn't pull in strings.
+// ("claude" or "codex"). Exists so Summarize doesn't pull in strings.
 func containsType(agentID, cliType string) bool {
 	// agent ids are "claude-pantheon", "codex-finalwishes", etc.
 	if len(cliType) == 0 || len(agentID) < len(cliType) {
@@ -235,7 +246,7 @@ func (s *Server) apiNodeStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.URL.Query().Get("view") == "summary" {
-		writeJSON(w, dashboardSummarize(ns, DefaultOpsSummaryMax))
+		writeJSON(w, Summarize(ns, DefaultOpsSummaryMax))
 		return
 	}
 	writeJSON(w, ns)

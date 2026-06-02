@@ -113,7 +113,7 @@ func TestNodeStatus_Summary_Bounded_Truncates(t *testing.T) {
 	for i := 0; i < DefaultOpsSummaryMax+5; i++ {
 		ns.RegisteredAgents = append(ns.RegisteredAgents, "filler-"+string(rune('a'+i)))
 	}
-	got := dashboardSummarize(ns, DefaultOpsSummaryMax)
+	got := Summarize(ns, DefaultOpsSummaryMax)
 	if len(got.Agents) != DefaultOpsSummaryMax {
 		t.Errorf("Agents len = %d, want exactly %d (cap)", len(got.Agents), DefaultOpsSummaryMax)
 	}
