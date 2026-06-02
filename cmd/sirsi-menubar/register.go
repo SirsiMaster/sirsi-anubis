@@ -132,7 +132,7 @@ func pruneOwnStaleRecords(routerRoot, keepThreadID string) {
 	}
 }
 
-// heartbeatLoop emits a bounded-interval heartbeat until ctx is cancelled.
+// heartbeatLoop emits a bounded-interval heartbeat until ctx is canceled.
 func heartbeatLoop(ctx context.Context, routerRoot, threadID string) {
 	t := time.NewTicker(menubarHeartbeatInterval)
 	defer t.Stop()
