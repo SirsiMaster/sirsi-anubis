@@ -99,5 +99,85 @@ class TestResolveAgentByCwd(unittest.TestCase):
         self.assertIsNone(hook.resolve_agent_by_cwd(Path("/var"), {"agents": {}}))
 
 
+class TestAdoptOrRegister_AnchorPidIdentity(unittest.TestCase):
+    """Finding 20260602-032542: a long-lived claude session whose prior thread
+    record idled past 300s gets a NEW thread_id minted each wakeup, leaving
+    phantom pid=0/os=unknown records. The fix: filter by (agent_id, anchor pid),
+    not by idle window. Same session = same record forever.
+
+    These tests stub `thread list --json` + `register --json` via a programmable
+    fake runner that returns different bodies per call. No host side effects.
+    """
+
+    def _runner(self, list_body: str, register_body: str = '{"thread_id":"thr-NEW","watcher":{"arm_instruction":"arm"}}'):
+        calls = {"n": 0}
+        def _run(args, **kwargs):
+            calls["n"] += 1
+            verb = args[2] if len(args) > 2 else ""
+            if verb == "list":
+                return types.SimpleNamespace(returncode=0, stdout=list_body)
+            if verb == "register":
+                # echo any --thread passed so tests can assert which id was reused.
+                tid = "thr-NEW"
+                if "--thread" in args:
+                    tid = args[args.index("--thread") + 1]
+                return types.SimpleNamespace(returncode=0, stdout='{"thread_id":"%s","watcher":{"arm_instruction":"arm"}}' % tid)
+            return types.SimpleNamespace(returncode=0, stdout="")
+        return _run, calls
+
+    def test_adopts_record_with_matching_anchor_pid(self):
+        """Same pid as the live claude session => adopt that thread, never mint."""
+        list_body = '[{"thread":{"agent_id":"claude-home","status":"active","thread_id":"thr-LIVE","pid":12345},"idle_seconds":1000.0}]'
+        runner, _ = self._runner(list_body)
+        original_anchor = hook.claude_session_pid
+        hook.claude_session_pid = lambda: 12345  # type: ignore[assignment]
+        try:
+            tid, _ = hook.adopt_or_register("claude-home", Path("/tmp"), runner=runner)
+        finally:
+            hook.claude_session_pid = original_anchor  # type: ignore[assignment]
+        # The record idled 1000s — past the old 300s window — but anchor pid
+        # matches, so it MUST be adopted (the bug fix).
+        self.assertEqual(tid, "thr-LIVE")
+
+    def test_does_not_adopt_record_on_different_pid_even_if_fresh(self):
+        """A fresh record on a DIFFERENT pid is NOT this session — must mint."""
+        list_body = '[{"thread":{"agent_id":"claude-home","status":"active","thread_id":"thr-OTHER","pid":99999},"idle_seconds":5.0}]'
+        runner, _ = self._runner(list_body)
+        original_anchor = hook.claude_session_pid
+        hook.claude_session_pid = lambda: 12345  # type: ignore[assignment]
+        try:
+            tid, _ = hook.adopt_or_register("claude-home", Path("/tmp"), runner=runner)
+        finally:
+            hook.claude_session_pid = original_anchor  # type: ignore[assignment]
+        # No --thread is passed to register => server mints; our stub returns thr-NEW.
+        self.assertEqual(tid, "thr-NEW")
+
+    def test_fallback_to_freshness_only_when_anchor_unresolvable(self):
+        """When claude_session_pid() returns None (subprocess timeout), fall
+        back to the legacy `idle < 300s` heuristic so we still adopt rather
+        than always-mint."""
+        list_body = '[{"thread":{"agent_id":"claude-home","status":"active","thread_id":"thr-FRESH","pid":12345},"idle_seconds":10.0}]'
+        runner, _ = self._runner(list_body)
+        original_anchor = hook.claude_session_pid
+        hook.claude_session_pid = lambda: None  # type: ignore[assignment]
+        try:
+            tid, _ = hook.adopt_or_register("claude-home", Path("/tmp"), runner=runner)
+        finally:
+            hook.claude_session_pid = original_anchor  # type: ignore[assignment]
+        self.assertEqual(tid, "thr-FRESH")
+
+    def test_no_fresh_no_anchor_match_mints(self):
+        """Stale record + anchor mismatch => mint a fresh thread."""
+        list_body = '[{"thread":{"agent_id":"claude-home","status":"active","thread_id":"thr-STALE","pid":99999},"idle_seconds":1000.0}]'
+        runner, _ = self._runner(list_body)
+        original_anchor = hook.claude_session_pid
+        hook.claude_session_pid = lambda: 12345  # type: ignore[assignment]
+        try:
+            tid, _ = hook.adopt_or_register("claude-home", Path("/tmp"), runner=runner)
+        finally:
+            hook.claude_session_pid = original_anchor  # type: ignore[assignment]
+        self.assertEqual(tid, "thr-NEW")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

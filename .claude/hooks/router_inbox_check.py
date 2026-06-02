@@ -217,9 +217,18 @@ def register_handshake(agent_id: str, repo_path: Path, thread_id: str | None,
 
 
 def adopt_or_register(agent_id: str, repo_path: Path, runner=subprocess.run) -> tuple[str | None, str]:
-    """Adopt a fresh active thread for agent_id if one exists, else register a
-    new one. Returns (thread_id, arm_instruction). No watcher is spawned here —
-    register is a pure handshake (ADR-024 Decision 2)."""
+    """Adopt the existing active thread anchored on THIS session's pid if one
+    exists; else register a new one. Returns (thread_id, arm_instruction).
+    No watcher is spawned here — register is a pure handshake (ADR-024 D2).
+
+    Identity is **(agent_id, anchor pid)** — the durable session identity per
+    ADR-022 §4 / ADR-024 §2. The prior implementation keyed on "freshest active
+    record within 300s of last register", which mints a new thread_id once the
+    prior record idles past the threshold (a single live claude session that
+    sits ≥5min between hook fires). That is the phantom pid=0/os=unknown
+    accretion source claude-pantheon characterized in finding 20260602-032542.
+    Filter by anchor pid: same session = same record, every wakeup.
+    """
     try:
         out = runner(["sirsi", "thread", "list", "--json"], capture_output=True, text=True, timeout=2)
         threads = json.loads(out.stdout) if out.returncode == 0 and out.stdout.strip() else []
@@ -227,17 +236,36 @@ def adopt_or_register(agent_id: str, repo_path: Path, runner=subprocess.run) -> 
         threads = []
 
     anchor = claude_session_pid()
-    fresh = [
-        t for t in threads
-        if (t.get("thread") or {}).get("agent_id") == agent_id
-        and (t.get("thread") or {}).get("status") == "active"
-        and t.get("idle_seconds", 1e9) < 300
-    ]
     existing = None
-    if fresh:
-        fresh.sort(key=lambda t: t.get("idle_seconds", 1e9))
-        existing = (fresh[0].get("thread") or {}).get("thread_id")
-    # Idempotent on (agent_id, pid): reuses `existing` if passed, else mints one.
+
+    # Primary path: adopt the thread anchored on THIS session's pid. Durable
+    # across wakeups regardless of idle gap — same long-lived claude CLI = same
+    # pid = same record. (agent_id, pid) is the OS-truth identity.
+    if anchor is not None:
+        for t in threads:
+            th = t.get("thread") or {}
+            if (th.get("agent_id") == agent_id
+                    and th.get("status") == "active"
+                    and th.get("pid") == anchor):
+                existing = th.get("thread_id")
+                break
+
+    # Fallback: only when anchor is unresolvable (subprocess timeout / parse
+    # failure in claude_session_pid). Picks the freshest active record so we
+    # still adopt rather than always-mint. The 300s window mirrors the prior
+    # behavior but is now reachable ONLY in the anchor-unknown corner case, not
+    # on every routine wakeup.
+    if existing is None and anchor is None:
+        fresh = [
+            t for t in threads
+            if (t.get("thread") or {}).get("agent_id") == agent_id
+            and (t.get("thread") or {}).get("status") == "active"
+            and t.get("idle_seconds", 1e9) < 300
+        ]
+        if fresh:
+            fresh.sort(key=lambda t: t.get("idle_seconds", 1e9))
+            existing = (fresh[0].get("thread") or {}).get("thread_id")
+
     return register_handshake(agent_id, repo_path, existing, anchor, runner=runner)
 
 
