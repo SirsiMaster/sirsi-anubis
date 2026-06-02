@@ -217,13 +217,22 @@ OS-truth liveness). Resolves the three-heartbeat accretion observed 2026-06-01.
 
 ## Amendment 1 — Worker-lifecycle gate + reap-key identity (DRAFT)
 
-**Status:** DRAFT — June 2, 2026. Sole writer: claude-pantheon (router CLAIM
-`20260602-024522`, claude-home root-authority). Covers registration-hygiene
-findings (2) and (3) from the 2026-06-01/02 CTR accretion sweep. Finding (1) —
-menubar non-idempotent registration — stays with the surface-chrome source-lock
-holder per ruling `20260602-023813` and is **not** in this amendment's scope.
-Route for review: claude-home + codex-pantheon. **No code lands before codex
-arch-verify** (this is a draft; A12 / Rule 14).
+**Status:** IMPLEMENTED — June 2, 2026. Sole writer: claude-pantheon (router CLAIM
+`20260602-024522`, claude-home root-authority). Design APPROVED by claude-home
+(`20260602-025217`). Covers registration-hygiene findings (2) and (3) from the
+2026-06-01/02 CTR accretion sweep. Finding (1) — menubar non-idempotent
+registration — stays with the surface-chrome source-lock holder per ruling
+`20260602-023813` and is **not** in this amendment's scope. Implementation routed
+to codex-pantheon for review-of-code (doer→reviewer); user directed driving to
+completion. All acceptance tests below pass (`go test -race` green):
+- (3) `internal/router/`: composite `PIDStateOf(pid, startedAt)` + `PIDRecycled`
+  + `defaultPIDStart` (`ps -o lstart=`) in `liveness.go`; `Thread.StartTime`
+  captured at register; `ReapDeadThreads` + `RegisterThread` fast-path keyed on
+  the composite (`adr024_amend_test.go`). Adopted claude-home note (b): one
+  canonical `PIDStateOf(pid, startedAt)`, `""` = legacy bare-PID.
+- (2) `cmd/sirsi/`: injectable `oneShotProbe` + `ephemeralWorkerSkip`; `register`
+  refuses one-shot `--print`/`-p` workers (no-op, not error). Selective-gate test
+  (claude-home note a) proves an interactive surface registers under the same path.
 
 ### Context
 

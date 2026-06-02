@@ -306,7 +306,7 @@ func CollectNodeStatus(repoRoot string, launchctlCheck LaunchctlChecker, authPro
 				IdleSeconds:   now.Sub(thr.LastSeenAt).Seconds(),
 				Stale:         thr.IsStale(now, DefaultThreadStaleAfter),
 				PID:           thr.PID,
-				OSState:       PIDStateOf(thr.PID),
+				OSState:       PIDStateOf(thr.PID, thr.StartTime),
 			}
 			if sum.Stale {
 				ns.StaleThreads = append(ns.StaleThreads, sum)

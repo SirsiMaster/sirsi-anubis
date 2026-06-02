@@ -71,6 +71,11 @@ type Thread struct {
 	CurrentItem   string       `json:"current_item,omitempty"`
 	LastError     string       `json:"last_error,omitempty"`
 	PID           int          `json:"pid,omitempty"`
+	// StartTime is the OS start signature of PID captured at registration
+	// (ADR-024 Amendment 1) — the generation half of the (pid, start_time)
+	// composite identity that makes reaping resistant to PID reuse. Empty on
+	// legacy records and platforms without a start-time probe (bare-PID fallback).
+	StartTime     string       `json:"start_time,omitempty"`
 	Host          string       `json:"host,omitempty"`
 	// SuspendPayload carries resumable continuation state while Status is
 	// suspended (ADR-025). Nil for active/terminal threads.
@@ -193,6 +198,14 @@ func RegisterThread(routerRoot string, t *Thread) (*Thread, error) {
 	// discover call for the same session spawned a duplicate record and a
 	// duplicate caffeinate loop — 150+ loops for ~10 live PIDs, all waking each
 	// minute. One live session → one thread.
+	// Capture the composite-identity discriminator once (ADR-024 Amendment 1):
+	// the OS start signature of this PID. Empty on legacy callers / unsupported
+	// platforms, which keeps the bare-PID behavior.
+	newStart := t.StartTime
+	if newStart == "" && t.PID > 0 {
+		newStart = PIDStartTimeOf(t.PID)
+	}
+
 	if t.ThreadID == "" && t.PID > 0 {
 		for id, existing := range reg.Threads {
 			if existing == nil {
@@ -205,6 +218,14 @@ func RegisterThread(routerRoot string, t *Thread) (*Thread, error) {
 			// suspended one without restoring its continuation state.
 			if existing.AgentID == t.AgentID && existing.PID == t.PID &&
 				!existing.Status.IsTerminal() && existing.Status != ThreadStatusSuspended {
+				// (pid, start_time) composite (ADR-024 Amendment 1): only reuse
+				// when the start signatures agree (or either is unknown). A
+				// mismatch means the OS recycled this PID onto a DIFFERENT
+				// process — adopting the stale record would resurrect a dead
+				// thread, so mint a fresh one instead.
+				if existing.StartTime != "" && newStart != "" && existing.StartTime != newStart {
+					continue
+				}
 				existing.LastSeenAt = now
 				if t.CurrentItem != "" {
 					existing.CurrentItem = t.CurrentItem
@@ -220,6 +241,9 @@ func RegisterThread(routerRoot string, t *Thread) (*Thread, error) {
 
 	if t.ThreadID == "" {
 		t.ThreadID = NewThreadID()
+	}
+	if t.StartTime == "" {
+		t.StartTime = newStart
 	}
 	if t.StartedAt.IsZero() {
 		t.StartedAt = now
@@ -568,7 +592,7 @@ func ReapDeadThreads(routerRoot, host string) ([]ReapedThread, error) {
 		if t.PID <= 0 || (host != "" && t.Host != host) {
 			continue // unverifiable PID or a different host's process table
 		}
-		state := PIDStateOf(t.PID)
+		state := PIDStateOf(t.PID, t.StartTime)
 		if !DeadByOSTruth(state) {
 			continue
 		}

@@ -702,3 +702,15 @@ The user's question "does it work" was the single highest-leverage prompt of the
 **Deviation flagged for codex:** re-`register` matching a suspended record currently mints a *fresh* thread (codified by the shipped core test `TestRegisterThread_BypassesSuspendedFastPath`) rather than auto-adopting via the resume transition as ADR-025 §1 describes. Explicit `sirsi thread resume` is the supported resume path. Left as-is to avoid changing codex-reviewed core behavior; routed to codex-pantheon for a ruling.
 
 **Operational note:** the PATH-installed `sirsi` is killed with exit 137 on a trivial `thread heartbeat` — the freshly-built binary works. Confirms ADR-023 binary drift; the user-scope hooks call PATH `sirsi`, so they only become functional after the rebuild+install follow-up.
+
+## 2026-06-02 — ADR-024 Amendment 1 implemented: worker-lifecycle gate + (pid,start_time) reap-key
+
+**Context:** claude-home CLAIM 024522 assigned claude-pantheon (sole writer) the ADR-024 amendment for CTR registration-hygiene findings (2) worker-lifecycle and (3) reap-key. claude-home APPROVED the design (025217). User directed "keep going until you finish," so implemented the approved design (doer→reviewer; routed implementation to codex). Finding (1)/menubar excluded per ruling 023813.
+
+**(3) Reap-key — the systemic bug.** Bare-PID liveness can't tell a recycled/re-registered PID from the original. `internal/router/liveness.go`: `PIDStateOf(pid, startedAt)` (composite identity) + new `PIDRecycled` state (distinct from `gone` for diagnostics; `DeadByOSTruth` includes it) + injectable `pidStartFn`/`defaultPIDStart` (`ps -o lstart=`, mutex-guarded A21). `""` startedAt → bare-PID fallback (zero regression). `Thread.StartTime` captured at register via `PIDStartTimeOf`; `ReapDeadThreads` + `RegisterThread` fast-path key on the composite. Adopted claude-home note (b): one canonical `PIDStateOf(pid, startedAt)`, not a separate `PIDStateOfWithStart`. **No-false-reap guarantee** tested (the regression that reaped live sessions this session).
+
+**(2) Worker gate.** `cmd/sirsi`: injectable `oneShotProbe` + pure `ephemeralWorkerSkip`; `register` refuses one-shot `--print`/`-p` workers (no-op, not error). Selective-gate test (claude-home note a) proves interactive surfaces still register under the same path.
+
+**Tests:** `internal/router/adr024_amend_test.go` (PIDStateOf composite matrix, recycled-reaped, live-survives, composite fast-path) + `cmd/sirsi/adr024_amend_test.go` (selective gate). `go test -race ./internal/router ./cmd/sirsi` green; `go build ./...` exit 0; start_time capture smoke-verified via real `ps -o lstart`. Doc DRAFT→IMPLEMENTED.
+
+**Routed to codex for review-of-code (doer→reviewer).** Pending codex on this + ADR-025 + binary-unification ruling (024046).

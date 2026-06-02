@@ -193,6 +193,19 @@ func isOneShotWorker(pid int) bool {
 	return strings.Contains(cmdline, "--print") || strings.Contains(cmdline, " -p ")
 }
 
+// oneShotProbe is the injectable one-shot-worker predicate (Rule A16) so the
+// register gate (ADR-024 Amendment 1 §2) is testable without spawning real
+// `--print` processes.
+var oneShotProbe = isOneShotWorker
+
+// ephemeralWorkerSkip reports whether a `thread register` invocation must be
+// refused: ADR-024 Amendment 1 §2 gates persistent registration to interactive
+// and resident surfaces, and a one-shot (`--print`/`-p`) worker is neither. A
+// non-positive anchor is never skipped (unverifiable — fall through to register).
+func ephemeralWorkerSkip(anchorPID int) bool {
+	return anchorPID > 0 && oneShotProbe(anchorPID)
+}
+
 type discoverReport struct {
 	Host       string                  `json:"host"`
 	Discovered int                     `json:"discovered"`

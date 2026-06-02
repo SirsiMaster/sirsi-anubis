@@ -152,6 +152,24 @@ var threadRegisterCmd = &cobra.Command{
 			anchor = resolveAnchorPID()
 		}
 
+		// ADR-024 Amendment 1 §2: a one-shot (`--print`/`-p`) worker is neither an
+		// interactive nor a resident surface, so it MUST NOT enroll as a persistent
+		// CTR thread (the ephemeral-worker accretion source). Refuse-to-register is
+		// a no-op, not an error — a worker shouldn't fail because it tried, and it
+		// may still read/act on the router without enrolling.
+		if ephemeralWorkerSkip(anchor) {
+			if JsonOutput {
+				enc := json.NewEncoder(os.Stdout)
+				enc.SetIndent("", "  ")
+				return enc.Encode(map[string]any{
+					"skipped": "one-shot worker — not an interactive/resident surface (ADR-024 Amendment 1 §2)",
+					"pid":     anchor,
+				})
+			}
+			fmt.Printf("thread register: skipped — pid %d is a one-shot (--print/-p) worker, not an interactive/resident surface (ADR-024 Amendment 1). It may read/act on the router without enrolling a persistent thread.\n", anchor)
+			return nil
+		}
+
 		host, _ := os.Hostname()
 		thr := &router.Thread{
 			ThreadID:      threadRegID,

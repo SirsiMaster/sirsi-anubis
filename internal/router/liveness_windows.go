@@ -13,3 +13,11 @@ func defaultPIDState(pid int) PIDState {
 	}
 	return PIDAlive
 }
+
+// defaultPIDStart returns "" on Windows: there is no cheap, dependency-free
+// lstart equivalent, and Windows has neither the zombie nor the routine PID-
+// reuse pressure this discriminator defends against. Empty makes PIDStateOf
+// fall back to bare-PID semantics (the pre-Amendment behavior) — correct here.
+func defaultPIDStart(pid int) string {
+	return ""
+}
