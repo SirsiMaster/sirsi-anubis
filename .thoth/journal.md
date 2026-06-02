@@ -714,3 +714,21 @@ The user's question "does it work" was the single highest-leverage prompt of the
 **Tests:** `internal/router/adr024_amend_test.go` (PIDStateOf composite matrix, recycled-reaped, live-survives, composite fast-path) + `cmd/sirsi/adr024_amend_test.go` (selective gate). `go test -race ./internal/router ./cmd/sirsi` green; `go build ./...` exit 0; start_time capture smoke-verified via real `ps -o lstart`. Doc DRAFT→IMPLEMENTED.
 
 **Routed to codex for review-of-code (doer→reviewer).** Pending codex on this + ADR-025 + binary-unification ruling (024046).
+
+## 2026-06-02 — ADR-026 steps 1-3 shipped (Horus ops-dashboard read endpoint + node-status verb)
+
+**Lane:** claude-home (Horus ops-view content). Design approved by claude-pantheon `20260602-022950` with two caveats both folded; surface chrome (steps 4-5) stays with claude-pantheon per the ratified boundary.
+
+**The pattern that made this small:** the entire operator read-model already existed in `router.CollectNodeStatus()` — agents, queue, dispatch failures, live/stale threads with `os_state` (ADR-022), daemon + binary-drift (ADR-023), agent CLI auth. The gap was exposure, not computation. ADR-026 promised three thin wrappers; the code is exactly that:
+
+- `router.NodeStatus.SchemaVersion = "1.0.0"` — one field + one constant + one stamp line in `CollectNodeStatus`. Surfaces decode tolerantly; bumps only on a breaking shape change.
+- `internal/dashboard/nodestatus.go` — `GET /api/node-status` serves the typed shape directly (consumer→producer; dashboard imports router; no cycle). `?view=summary` returns `OpsSummary` — a **pure reduction** of the same NodeStatus (every field derived, nothing sourced independently — the action-contract principle applied to reads). Bounded to top-N=12 agents by pending+live signal with `more_agents` overflow row for the NSMenu budget (claude-pantheon caveat #2). Drift/auth roll-up sets `worst_icon` (🟢/🟡/🔴) for the menubar's lead row.
+- `cmd/sirsi/routernodestatus.go` — `sirsi router node-status [--json]` wraps `CollectNodeStatus()`. `--json` shape is byte-identical to the HTTP body (one read-model, two transports). Default render is a styled human view (Rule A10). Closes the canon/implementation gap where Rule A27 references this verb but it never existed.
+
+**Smoke-run reality check (live registry):** the verb surfaced **7 phantom `pid=0/os=unknown` claude-pantheon records** sitting "active" 40+ minutes idle — the exact ADR-024 Amendment 1 finding (3) PID-reuse / lost-anchor class. The verb didn't just compile; it's already the operator surface that proves Amendment 1 is needed. Self-validation.
+
+**Race avoided (A21):** caught claude-pantheon mid-flight refactoring `PIDStateOf` to `(pid, startedAt)` in the same files I needed to touch. The `SchemaVersion` field add is in `nodestatus.go` (their lane file) — kept it minimal (1 field, 1 const, 1 stamp line; top of struct, not near their call-site changes). Did all other work in new files (`dashboard/nodestatus.go`, `cmd/sirsi/routernodestatus.go`, `dashboard/nodestatus_test.go`). Their refactor landed independently; my dashboard tests pass green.
+
+**Verification:** 5 tests `internal/dashboard/nodestatus_test.go` `go test -race` green in 1.3s — full-contract serve, summary derivation (drift flag + needs-login projection), bounded truncation, 503 nil-collector, 500 collector-error. `go build ./...` ok. `sirsi router node-status` + `--json` smoke-run produce expected output against live registry.
+
+**Next:** route to codex for arch-verify; notify claude-pantheon their surface chrome (steps 4-5: menubar `OpsSummary` rows + TUI 4th pane) is unblocked. ADR-INDEX flipped Proposed → Accepted with the impl-status note.

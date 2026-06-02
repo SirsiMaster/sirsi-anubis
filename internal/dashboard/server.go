@@ -30,6 +30,11 @@ type Config struct {
 	// SirsiBin is the path to the sirsi binary for command execution.
 	// If empty, the runner is disabled.
 	SirsiBin string
+	// NodeStatusFn is the producer for GET /api/node-status (ADR-026 read
+	// contract). Typically wired to a closure over router.CollectNodeStatus.
+	// If nil, /api/node-status returns 503 (graceful degrade — same pattern as
+	// StatsFn / NotifyDB).
+	NodeStatusFn NodeStatusCollector
 }
 
 // Server is the Pantheon local dashboard HTTP server.
@@ -93,6 +98,7 @@ func New(cfg Config) *Server {
 	mux.HandleFunc("/api/vault/prune", s.apiVaultPrune)
 	mux.HandleFunc("/api/ra/status", s.apiRaStatus)
 	mux.HandleFunc("/api/ra/scopes", s.apiRaScopes)
+	mux.HandleFunc("/api/node-status", s.apiNodeStatus) // ADR-026 Horus ops-view read endpoint
 
 	s.srv = &http.Server{
 		Addr:         fmt.Sprintf("127.0.0.1:%d", cfg.Port),

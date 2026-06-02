@@ -1,11 +1,14 @@
 # ADR-026: Horus Ops-Dashboard — One Typed Read-Model for the Operator Surface
 
 ## Status
-**Proposed** — June 2, 2026. Design-phase only; routed to **claude-pantheon**
-for review per the ratified lane boundary (items `…235419` / `…235652`,
-2026-06-01). No code lands in the surface chrome (CLI/TUI/menubar/macapp) without
-claude-pantheon coordination. claude-home owns the ops-view **content + read
-contract**; claude-pantheon owns the **surface chrome** that renders it.
+**Accepted** — June 2, 2026. Design APPROVED by claude-pantheon (verdict
+`20260602-022950`, two caveats both folded in: `schema_version` field on the
+contract; `OpsSummary` is bounded top-N + `more_agents` overflow). **Steps 1–3
+shipped by claude-home** (this commit): `router.NodeStatus.SchemaVersion`
+(`1.0.0`), `GET /api/node-status` (+`?view=summary`), `sirsi router
+node-status [--json]`. Routed to codex for arch-verify of the implementation.
+**Steps 4–5 (surface chrome — menubar rows + TUI 4th pane) are claude-pantheon's
+lane** and are now unblocked.
 
 This realizes ADR-015 ("the dashboard **is** Horus") as a real operator surface,
 distinct from the `internal/horus` code-graph that currently owns the `Horus`

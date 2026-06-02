@@ -16,8 +16,18 @@ import (
 	"time"
 )
 
-// NodeStatus is the aggregated Horus local-node view.
+// NodeStatusSchemaVersion is the frozen contract version for the NodeStatus
+// JSON shape (ADR-026). Surfaces decode tolerantly by checking this field; bump
+// on any breaking change (renames, type changes). Additive changes (new fields)
+// do NOT bump — that's the whole point of a versioned, additive contract.
+const NodeStatusSchemaVersion = "1.0.0"
+
+// NodeStatus is the aggregated Horus local-node view (ADR-026 frozen contract).
+// One read-model, N read-only projections — surfaces never re-aggregate.
 type NodeStatus struct {
+	// Contract
+	SchemaVersion string `json:"schema_version"` // = NodeStatusSchemaVersion at stamp time
+
 	// Router
 	RouterHome string `json:"router_home"`
 	RepoRoot   string `json:"repo_root"`
@@ -179,6 +189,7 @@ func CollectNodeStatus(repoRoot string, launchctlCheck LaunchctlChecker, authPro
 	routerRoot := filepath.Join(repoRoot, ".agents", "idea-router")
 
 	ns := &NodeStatus{
+		SchemaVersion:   NodeStatusSchemaVersion,
 		RouterHome:      routerRoot,
 		RepoRoot:        repoRoot,
 		PendingByAgent:  make(map[string][]string),
