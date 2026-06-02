@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -22,6 +23,7 @@ import (
 	"github.com/SirsiMaster/sirsi-pantheon/internal/jackal/rules"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/notify"
 	"github.com/SirsiMaster/sirsi-pantheon/internal/platform"
+	"github.com/SirsiMaster/sirsi-pantheon/internal/router"
 	modversion "github.com/SirsiMaster/sirsi-pantheon/internal/version"
 )
 
@@ -136,6 +138,20 @@ func onReady() {
 		StatsFn: func() ([]byte, error) {
 			snap := CollectStats(cfg)
 			return json.Marshal(snap)
+		},
+		// ADR-026 step 4 (surface-chrome lane): serve the Horus ops read-model
+		// from the menubar's in-process dashboard (GET /api/node-status [+ ?view=
+		// summary]). Reuse the menubar's own router-root resolution (handles the
+		// launchd cwd=/ case, ADR-021) and derive the repo root for
+		// CollectNodeStatus. Graceful: an unresolved root → error → 503, the
+		// designed degrade (same as a nil StatsFn). Read-only, no destructive surface.
+		NodeStatusFn: func() (*router.NodeStatus, error) {
+			routerRoot, ok := resolveRouterRoot()
+			if !ok {
+				return nil, fmt.Errorf("router root not resolvable from menubar context")
+			}
+			repoRoot := filepath.Dir(filepath.Dir(routerRoot)) // strip /.agents/idea-router
+			return router.CollectNodeStatus(repoRoot, nil)
 		},
 	})
 	if err := dashSrv.Start(); err != nil {
