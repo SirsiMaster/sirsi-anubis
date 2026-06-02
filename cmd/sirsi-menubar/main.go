@@ -67,6 +67,20 @@ func runHeadless() {
 	<-sigCh
 }
 
+// menubarNodeStatus produces the Horus local-node read-model for the menubar's
+// in-process dashboard (ADR-026 4a) and the 4b ops rows. It reuses the menubar's
+// own router-root resolution (which carries the launchd cwd=/ fallback, ADR-021)
+// and derives the repo root for router.CollectNodeStatus. Unresolved root →
+// error (the dashboard endpoint 503s; the 4b refresh loop skips the update).
+func menubarNodeStatus() (*router.NodeStatus, error) {
+	routerRoot, ok := resolveRouterRoot()
+	if !ok {
+		return nil, fmt.Errorf("router root not resolvable from menubar context")
+	}
+	repoRoot := filepath.Dir(filepath.Dir(routerRoot)) // strip /.agents/idea-router
+	return router.CollectNodeStatus(repoRoot, nil)
+}
+
 func onReady() {
 	systray.SetTemplateIcon(AnkhIcon, AnkhIcon)
 	systray.SetTitle("Sirsi")
@@ -77,6 +91,20 @@ func onReady() {
 
 	// ── Stats section ───────────────────────────────────────────────
 	mStats := systray.AddMenuItem("Loading...", "Click to refresh stats")
+	systray.AddSeparator()
+
+	// ── Horus ops read-model (ADR-026 step 4b) ─────────────────────
+	// One lead row (worst-glyph roll-up, clickable → opens the full dashboard/TUI)
+	// + bounded agent rows, refreshed from the same NodeStatus the in-process
+	// dashboard serves. Read-only projection — no re-aggregation (Summarize is
+	// the canonical reduction). Rows are disabled (informational).
+	mOpsHeader := systray.AddMenuItem("ops: loading…", "Horus local-node status — click to open the full dashboard")
+	const opsRowCount = 12
+	opsRows := make([]*systray.MenuItem, opsRowCount)
+	for i := range opsRows {
+		opsRows[i] = systray.AddMenuItem("  —", "")
+		opsRows[i].Disable()
+	}
 	systray.AddSeparator()
 
 	// ── Ra section ──────────────────────────────────────────────────
@@ -141,18 +169,11 @@ func onReady() {
 		},
 		// ADR-026 step 4 (surface-chrome lane): serve the Horus ops read-model
 		// from the menubar's in-process dashboard (GET /api/node-status [+ ?view=
-		// summary]). Reuse the menubar's own router-root resolution (handles the
-		// launchd cwd=/ case, ADR-021) and derive the repo root for
-		// CollectNodeStatus. Graceful: an unresolved root → error → 503, the
-		// designed degrade (same as a nil StatsFn). Read-only, no destructive surface.
-		NodeStatusFn: func() (*router.NodeStatus, error) {
-			routerRoot, ok := resolveRouterRoot()
-			if !ok {
-				return nil, fmt.Errorf("router root not resolvable from menubar context")
-			}
-			repoRoot := filepath.Dir(filepath.Dir(routerRoot)) // strip /.agents/idea-router
-			return router.CollectNodeStatus(repoRoot, nil)
-		},
+		// summary]). menubarNodeStatus reuses the menubar's own router-root
+		// resolution (launchd cwd=/ case, ADR-021); unresolved → error → 503, the
+		// designed degrade. Read-only, no destructive surface. The 4b refresh loop
+		// reduces the same producer into menu rows (one read-model, one producer).
+		NodeStatusFn: menubarNodeStatus,
 	})
 	if err := dashSrv.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "dashboard: %v\n", err)
@@ -222,6 +243,23 @@ func onReady() {
 				}
 			}
 
+			// Update Horus ops read-model rows (ADR-026 step 4b). Reduce the same
+			// NodeStatus the in-process dashboard serves into the bounded summary,
+			// then render via the unit-tested opsLeadRow/opsAgentRows. Best-effort:
+			// an unresolved root / collect error leaves the prior titles in place.
+			if ns, err := menubarNodeStatus(); err == nil && ns != nil {
+				sum := dashboard.Summarize(ns, opsRowCount)
+				mOpsHeader.SetTitle(opsLeadRow(sum))
+				rows := opsAgentRows(sum)
+				for i, item := range opsRows {
+					if i < len(rows) {
+						item.SetTitle(rows[i])
+					} else {
+						item.SetTitle("  —")
+					}
+				}
+			}
+
 			time.Sleep(cfg.Interval)
 		}
 	}()
@@ -231,6 +269,8 @@ func onReady() {
 		select {
 		case <-mDashboard.ClickedCh:
 			spawnTUIWindow()
+		case <-mOpsHeader.ClickedCh:
+			spawnTUIWindow() // ADR-026 4b: lead ops row opens the full dashboard/TUI
 		case <-mStats.ClickedCh:
 			spawnTUIWithCommand("diagnose")
 		case <-mRaHeader.ClickedCh:
