@@ -240,6 +240,55 @@ func TestReconcileExits_ReapedMintsSuccessorThenWarns(t *testing.T) {
 	}
 }
 
+// ADR-025 retention: suspended state is non-prunable by default but accretes
+// unbounded without a bound. PruneStaleSuspended is the opt-in retention — old
+// suspends (never resumed) are removed; recent suspends are preserved; terminal
+// and live records are untouched.
+func TestPruneStaleSuspended(t *testing.T) {
+	now := time.Now().UTC()
+	reg := &ThreadRegistry{Threads: map[string]*Thread{
+		"old-susp": {ThreadID: "old-susp", AgentID: "claude-pantheon", Status: ThreadStatusSuspended,
+			SuspendPayload: &SuspendPayload{SuspendedAt: now.Add(-10 * 24 * time.Hour)}},
+		"recent-susp": {ThreadID: "recent-susp", AgentID: "claude-pantheon", Status: ThreadStatusSuspended,
+			SuspendPayload: &SuspendPayload{SuspendedAt: now.Add(-1 * time.Hour)}},
+		"old-susp-nopayload": {ThreadID: "old-susp-nopayload", AgentID: "claude-pantheon", Status: ThreadStatusSuspended,
+			LastSeenAt: now.Add(-10 * 24 * time.Hour)}, // falls back to LastSeenAt
+		"live": {ThreadID: "live", AgentID: "claude-pantheon", Status: ThreadStatusActive, LastSeenAt: now.Add(-10 * 24 * time.Hour)},
+		"reaped": {ThreadID: "reaped", AgentID: "claude-pantheon", Status: ThreadStatusReaped, LastSeenAt: now.Add(-10 * 24 * time.Hour)},
+	}}
+
+	removed := reg.PruneStaleSuspended(now, SuspendedRetention)
+	if removed != 2 {
+		t.Errorf("removed %d, want 2 (the two old suspends)", removed)
+	}
+	if _, ok := reg.Threads["old-susp"]; ok {
+		t.Error("old suspended (payload SuspendedAt) must be pruned")
+	}
+	if _, ok := reg.Threads["old-susp-nopayload"]; ok {
+		t.Error("old suspended (LastSeenAt fallback) must be pruned")
+	}
+	if _, ok := reg.Threads["recent-susp"]; !ok {
+		t.Error("recent suspended must be preserved (resume-later guarantee)")
+	}
+	if _, ok := reg.Threads["live"]; !ok {
+		t.Error("live thread must never be touched")
+	}
+	if _, ok := reg.Threads["reaped"]; !ok {
+		t.Error("terminal thread is PruneClosed's job, not PruneStaleSuspended's")
+	}
+	// retention<=0 is a no-op (never a blanket wipe).
+	if n := reg.PruneStaleSuspended(now, 0); n != 0 {
+		t.Errorf("retention<=0 removed %d, want 0 (no-op guard)", n)
+	}
+	// Default PruneClosed must STILL never remove suspended (resume-later holds).
+	reg2 := &ThreadRegistry{Threads: map[string]*Thread{
+		"s": {ThreadID: "s", AgentID: "a", Status: ThreadStatusSuspended, LastSeenAt: now.Add(-99 * 24 * time.Hour)},
+	}}
+	if n := reg2.PruneClosed(now, time.Hour); n != 0 {
+		t.Errorf("PruneClosed removed %d suspended, want 0 (must stay non-prunable by default)", n)
+	}
+}
+
 // ADR-025 acceptance: reconciliation is host- and agent-scoped — a stale record on
 // another host or for another agent is left untouched (a surface heals only its
 // own lineage on its own machine).

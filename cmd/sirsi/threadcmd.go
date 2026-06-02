@@ -325,7 +325,10 @@ var threadCloseCmd = &cobra.Command{
 	},
 }
 
-var threadPruneOlderThan time.Duration
+var (
+	threadPruneOlderThan       time.Duration
+	threadPruneSuspendedOlderT time.Duration
+)
 
 var threadPruneCmd = &cobra.Command{
 	Use:   "prune",
@@ -333,7 +336,13 @@ var threadPruneCmd = &cobra.Command{
 	Long: `Permanently delete terminal thread records (closed or reaped) whose
 last_seen_at is older than the cutoff. Live, idle, blocked, and stale threads
 are never pruned. This keeps threads.json from accumulating tombstones — the
-registry churn that re-triggers Spotlight indexing on every write.`,
+registry churn that re-triggers Spotlight indexing on every write.
+
+Suspended threads (ADR-025) are NON-terminal and are NEVER pruned by default —
+they are resumable. Pass --suspended-older-than <dur> to ALSO remove suspended
+records whose suspend time is older than that window (abandoned pauses never
+resumed); this is the opt-in retention bound that stops suspended state from
+accreting unbounded (it skips recent suspends, preserving resume-later).`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		repoRoot, err := router.FindRepoRoot()
 		if err != nil {
@@ -353,7 +362,18 @@ registry churn that re-triggers Spotlight indexing on every write.`,
 			cutoff = time.Nanosecond
 		}
 		removed := reg.PruneClosed(time.Now().UTC(), cutoff)
-		if removed > 0 {
+		// ADR-025 opt-in suspended retention: only when the flag is set, never by
+		// default (suspended is resumable). 0 here means "the flag was given as 0"
+		// → prune all suspended regardless of age, mapped to the smallest window.
+		suspRemoved := 0
+		if cmd.Flags().Changed("suspended-older-than") {
+			susp := threadPruneSuspendedOlderT
+			if susp <= 0 {
+				susp = time.Nanosecond
+			}
+			suspRemoved = reg.PruneStaleSuspended(time.Now().UTC(), susp)
+		}
+		if removed+suspRemoved > 0 {
 			if err := router.SaveThreadRegistry(routerRoot, reg); err != nil {
 				return err
 			}
@@ -361,10 +381,10 @@ registry churn that re-triggers Spotlight indexing on every write.`,
 		if JsonOutput {
 			enc := json.NewEncoder(os.Stdout)
 			enc.SetIndent("", "  ")
-			return enc.Encode(map[string]int{"before": before, "removed": removed, "remaining": before - removed})
+			return enc.Encode(map[string]int{"before": before, "removed": removed, "suspended_removed": suspRemoved, "remaining": before - removed - suspRemoved})
 		}
-		fmt.Printf("Pruned %d terminal thread(s) older than %s (%d → %d records)\n",
-			removed, threadPruneOlderThan, before, before-removed)
+		fmt.Printf("Pruned %d terminal + %d stale-suspended thread(s) (%d → %d records)\n",
+			removed, suspRemoved, before, before-removed-suspRemoved)
 		return nil
 	},
 }
@@ -617,6 +637,7 @@ func init() {
 	threadWatchRouterCmd.Flags().IntVar(&watchParentPID, "parent-pid", 0, "Parent process to anchor lifetime to")
 
 	threadPruneCmd.Flags().DurationVar(&threadPruneOlderThan, "older-than", 24*time.Hour, "Delete terminal threads whose last_seen is older than this")
+	threadPruneCmd.Flags().DurationVar(&threadPruneSuspendedOlderT, "suspended-older-than", 0, "Also delete suspended (ADR-025) threads whose suspend time is older than this (opt-in retention; off by default)")
 
 	threadCmd.AddCommand(threadRegisterCmd, threadHeartbeatCmd, threadCloseCmd, threadListCmd, threadPruneCmd, threadWatchRouterCmd)
 }

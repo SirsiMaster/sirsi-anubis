@@ -659,3 +659,41 @@ func (r *ThreadRegistry) PruneClosed(now time.Time, maxAge time.Duration) int {
 	}
 	return removed
 }
+
+// SuspendedRetention is the default window a suspended record is preserved before
+// PruneStaleSuspended treats it as abandoned. Generous enough for the multi-day
+// NOTEBOOKS "resume name" pattern, bounded enough that suspended records — which
+// the reaper AND PruneClosed both intentionally skip (ADR-025) — cannot accrete
+// unbounded in threads.json (the A27 write-amplification → Spotlight mds_stores
+// class, dogfooded 2026-06-02: 7 orphaned pid=0 suspends from one churny session).
+const SuspendedRetention = 7 * 24 * time.Hour
+
+// PruneStaleSuspended removes suspended records (ADR-025) whose suspend time is
+// older than retention — abandoned pauses that were never resumed. It is the
+// retention bound that keeps ADR-025's deliberately non-prunable `suspended`
+// state from accreting forever. OPT-IN by design: callers pass an explicit
+// retention, so the default prune path (PruneClosed) still never touches
+// suspended — the resume-later guarantee holds for any *recent* suspend. Suspend
+// time is SuspendPayload.SuspendedAt when present, else LastSeenAt (the
+// transition timestamp). retention<=0 is a no-op (never a blanket wipe). Returns
+// the count removed.
+func (r *ThreadRegistry) PruneStaleSuspended(now time.Time, retention time.Duration) int {
+	if retention <= 0 {
+		return 0
+	}
+	removed := 0
+	for id, t := range r.Threads {
+		if t == nil || t.Status != ThreadStatusSuspended {
+			continue
+		}
+		ts := t.LastSeenAt
+		if t.SuspendPayload != nil && !t.SuspendPayload.SuspendedAt.IsZero() {
+			ts = t.SuspendPayload.SuspendedAt
+		}
+		if now.Sub(ts) > retention {
+			delete(r.Threads, id)
+			removed++
+		}
+	}
+	return removed
+}

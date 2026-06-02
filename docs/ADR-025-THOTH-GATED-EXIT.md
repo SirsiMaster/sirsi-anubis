@@ -182,6 +182,16 @@ flowchart TD
   first-class router home — resume re-adopts memory + open items in one verb.
 - Completes A27's lifecycle: `register → heartbeat → (suspend ⇄ resume)* → close`.
 
+### Refinement (2026-06-02) — opt-in suspended retention
+`suspended` being non-prunable is correct for *recent* pauses but lets orphaned
+suspends accrete unbounded (dogfooded: 7 `pid=0` churn-artifact suspends surfaced
+by `router node-status`). Additive fix (Rule 15, not a contract change):
+`ThreadRegistry.PruneStaleSuspended(now, retention)` + `SuspendedRetention` (7d)
+remove suspends older than retention (`SuspendPayload.SuspendedAt`, else
+`LastSeenAt`); `sirsi thread prune --suspended-older-than <dur>` exposes it
+**opt-in**. The default prune path still never touches suspended — the
+resume-later guarantee holds for any recent pause; only abandoned ones age out.
+
 Refs: PANTHEON_RULES.md A27 (lifecycle), A26 (relay/owned items), A22 (Triad);
 ADR-024 (R1/R2/R4/R5 companion), ADR-022 (OS-truth reaping), Thoth memory system.
 Resolves R3 of the always-on supervisor.
