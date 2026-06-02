@@ -87,8 +87,49 @@ func registerMenubarThread(ctx context.Context) (routerRoot, threadID string) {
 	if err != nil {
 		return "", ""
 	}
+	// Bound registry growth (A27 write-amplification → Spotlight mds_stores).
+	// Registration is idempotent on (agent_id, pid), so every relaunch is a NEW
+	// PID = a new record; the prior one is reaped by OS-truth (ADR-022) but the
+	// terminal record lingers in threads.json until pruned. A resident surface
+	// that relaunches often would otherwise accrete unbounded reaped rows. Reap
+	// this host's dead PIDs, then drop the menubar's OWN stale terminal records
+	// (agent-scoped — never touches other agents' history). Best-effort: a
+	// failure here must never stop the menubar from launching.
+	pruneOwnStaleRecords(root, thr.ThreadID)
 	go heartbeatLoop(ctx, root, thr.ThreadID)
 	return root, thr.ThreadID
+}
+
+// menubarRecordRetention is how long a terminal (reaped/closed) menubar record
+// is kept before this surface prunes its own. Generous enough to preserve recent
+// launch history for debugging, short enough that threads.json never accretes.
+const menubarRecordRetention = time.Hour
+
+// pruneOwnStaleRecords reaps this host's dead PIDs, then removes the menubar's
+// own terminal records older than the retention window, keeping the live record
+// (keepThreadID) untouched. Scoped to menubarAgentID so it is safe for a single
+// surface to run on every launch without disturbing other agents.
+func pruneOwnStaleRecords(routerRoot, keepThreadID string) {
+	host, _ := os.Hostname()
+	_, _ = router.ReapDeadThreads(routerRoot, host) // dead-PID actives → terminal
+	reg, err := router.LoadThreadRegistry(routerRoot)
+	if err != nil {
+		return
+	}
+	now := time.Now().UTC()
+	removed := 0
+	for id, t := range reg.Threads {
+		if t == nil || id == keepThreadID || t.AgentID != menubarAgentID {
+			continue
+		}
+		if t.Status.IsTerminal() && now.Sub(t.LastSeenAt) > menubarRecordRetention {
+			delete(reg.Threads, id)
+			removed++
+		}
+	}
+	if removed > 0 {
+		_ = router.SaveThreadRegistry(routerRoot, reg)
+	}
 }
 
 // heartbeatLoop emits a bounded-interval heartbeat until ctx is cancelled.
