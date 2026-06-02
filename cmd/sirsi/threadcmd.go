@@ -193,6 +193,16 @@ var threadRegisterCmd = &cobra.Command{
 		// arming/enforcement only — the spec stays visible for diagnostics).
 		spec := router.WatcherFor(out.Surface, out.AgentID, out.ThreadID)
 
+		// ADR-024 §6 (discover-bridge lifecycle guard): a self-register for
+		// this (agent_id, pid) is authoritative — the real session is present
+		// and will arm the canonical watcher above. Supersede any adoption
+		// fs-watcher the `discover` bridge spawned for this thread, else the
+		// bridge AND the prescribed watcher both run = duplicate accretion
+		// (codex follow-up, router item 205359 #1). Always safe: the bridge is
+		// only ever the discover-spawned `watch-router` fork, never the
+		// surface's canonical watcher, so removing it can never strand a thread.
+		killRouterWatcher(out.ThreadID)
+
 		if JsonOutput {
 			enc := json.NewEncoder(os.Stdout)
 			enc.SetIndent("", "  ")

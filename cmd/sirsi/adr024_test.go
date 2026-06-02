@@ -3,6 +3,7 @@ package main_test
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -128,6 +129,58 @@ func TestADR_DashboardActionShapesResolveToRealCLI(t *testing.T) {
 				t.Errorf("`sirsi %s --help` reports an unreal shape:\n%s", strings.Join(sh, " "), combined)
 			}
 		})
+	}
+}
+
+// ADR-024 §6 (discover-bridge lifecycle guard, codex item 205359 #1):
+// `discover` adopts a running claude process by spawning an fs-watcher bridge.
+// When that same process self-registers, register hands back the canonical
+// loop-monitor spec — and MUST supersede the adoption bridge, else the bridge
+// AND /loop both run (duplicate accretion). Simulated here by planting a live
+// bridge pidfile, then self-registering the same (agent, pid): the bridge
+// process must be signalled dead and its pidfile removed.
+func TestADR024_SelfRegisterSupersedesDiscoverBridge(t *testing.T) {
+	tmp := setupTempRouter(t)
+
+	// First register creates the thread and yields its stable id.
+	first := registerThread(t, tmp, "test-adr024-bridge", "claude")
+
+	// Plant a live "bridge" the discover path would have spawned: a real
+	// process whose PID lives in the per-thread watcher pidfile.
+	bridge := exec.Command("sleep", "30")
+	if err := bridge.Start(); err != nil {
+		t.Fatalf("start bridge stand-in: %v", err)
+	}
+	t.Cleanup(func() { _ = bridge.Process.Kill() })
+	pidfile := "/tmp/sirsi-router-watch-" + first.ThreadID + ".pid"
+	if err := os.WriteFile(pidfile, []byte(strconv.Itoa(bridge.Process.Pid)), 0o644); err != nil {
+		t.Fatalf("plant bridge pidfile: %v", err)
+	}
+	t.Cleanup(func() { os.Remove(pidfile) })
+
+	// Self-register the same (agent, pid) — the authoritative session arriving.
+	second := registerThread(t, tmp, "test-adr024-bridge", "claude")
+	if first.ThreadID != second.ThreadID {
+		t.Fatalf("idempotent register must reuse thread: %q != %q", first.ThreadID, second.ThreadID)
+	}
+
+	// The bridge must be superseded: pidfile gone, process signalled to exit.
+	if _, err := os.Stat(pidfile); err == nil {
+		t.Errorf("bridge pidfile %s survived self-register — guard did not fire", pidfile)
+	}
+	// Confirm the bridge actually terminated. We are its parent, so Wait()
+	// reaps it; a Wait that returns is proof the SIGTERM landed (a survivor
+	// would block until the 2s watchdog kills it and the test fails).
+	done := make(chan error, 1)
+	go func() { done <- bridge.Wait() }()
+	select {
+	case err := <-done:
+		// SIGTERM surfaces as an *exec.ExitError; nil would mean clean exit.
+		// Either way the process is gone — the guard superseded it.
+		_ = err
+	case <-time.After(2 * time.Second):
+		_ = bridge.Process.Kill()
+		t.Errorf("bridge pid %d still alive after self-register — guard did not supersede it", bridge.Process.Pid)
 	}
 }
 
